@@ -156,6 +156,11 @@ AVIF_API avifResult avifImagePushProperty(avifImage * image,
                                           const uint8_t * boxPayload,
                                           size_t boxPayloadSize);
 
+// Check if the FourCC property value is a known value
+AVIF_NODISCARD avifBool avifIsKnownPropertyType(const uint8_t boxtype[4]);
+// Check if the extended property (UUID) is valid
+AVIF_NODISCARD avifBool avifIsValidUUID(const uint8_t uuid[16]);
+
 // ---------------------------------------------------------------------------
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
