@@ -114,7 +114,7 @@ if(AVIF_ENABLE_GTEST)
     add_avif_gtest_with_data(avifencodetest)
     add_avif_internal_gtest_with_data(avifgainmaptest avifincrtest_helpers_internal)
 
-    if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         add_avif_gtest_with_data(avifjpeggainmaptest)
     endif()
 
@@ -263,7 +263,7 @@ if(AVIF_BUILD_APPS)
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
 
-    if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
                                                        ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
         )
@@ -284,7 +284,7 @@ if(AVIF_BUILD_APPS)
                          ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
         )
 
-        if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+        if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
             add_test(NAME test_cmd_gainmap COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_gainmap.sh ${CMAKE_BINARY_DIR}
                                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
             )
@@ -367,7 +367,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 set_tests_properties(avifminitest PROPERTIES DISABLED True)
             endif()
             set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
-            if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+            if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
                 set_tests_properties(avifjpeggainmaptest PROPERTIES DISABLED True)
             endif()
             if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
