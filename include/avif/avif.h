@@ -193,11 +193,9 @@ typedef enum AVIF_NODISCARD avifResult
     AVIF_RESULT_CANNOT_CHANGE_SETTING = 27, // a setting that can't change is changed during encoding
     AVIF_RESULT_INCOMPATIBLE_IMAGE = 28,    // the image is incompatible with already encoded images
     AVIF_RESULT_INTERNAL_ERROR = 29,        // some invariants have not been satisfied (likely a bug in libavif)
-#if defined(AVIF_ENABLE_GAIN_MAP)
     AVIF_RESULT_ENCODE_GAIN_MAP_FAILED = 30,
     AVIF_RESULT_DECODE_GAIN_MAP_FAILED = 31,
     AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE = 32,
-#endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED = 33,
     AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED = 34,
@@ -590,7 +588,6 @@ typedef struct avifContentLightLevelInformationBox
     uint16_t maxPALL;
 } avifContentLightLevelInformationBox;
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 // ---------------------------------------------------------------------------
 // avifGainMap
 // Gain Maps are a solution for a consistent and adaptive display of HDR images.
@@ -699,8 +696,6 @@ typedef struct avifGainMap
 AVIF_API avifGainMap * avifGainMapCreate(void);
 // Frees a gain map, including the 'image' field if non NULL.
 AVIF_API void avifGainMapDestroy(avifGainMap * gainMap);
-
-#endif // AVIF_ENABLE_GAIN_MAP
 
 // ---------------------------------------------------------------------------
 
@@ -828,22 +823,19 @@ typedef struct avifImage
     avifImageItemProperty * properties; // NULL only if numProperties is 0.
     size_t numProperties;
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
     // Gain map image and metadata. NULL if no gain map is present.
     // Owned by the avifImage and gets freed when calling avifImageDestroy().
     // gainMap->image->transformFlags is always AVIF_TRANSFORM_NONE.
     avifGainMap * gainMap;
-#endif
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
 AVIF_NODISCARD AVIF_API avifImage * avifImageCreate(uint32_t width, uint32_t height, uint32_t depth, avifPixelFormat yuvFormat);
 AVIF_NODISCARD AVIF_API avifImage * avifImageCreateEmpty(void); // helper for making an image to decode into
-// Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present
-// and if AVIF_ENABLE_GAIN_MAP is defined.
+// Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 // Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes.
-// Ignores the gainMap field (which exists only if AVIF_ENABLE_GAIN_MAP is defined).
+// Ignores the gainMap field.
 AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect);
 AVIF_API void avifImageDestroy(avifImage * image);
 
@@ -856,8 +848,7 @@ AVIF_API avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * 
 // Sets XMP metadata.
 AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
-// Allocate/free/steal planes. These functions ignore the gainMap field (which exists only if
-// AVIF_ENABLE_GAIN_MAP is defined).
+// Allocate/free/steal planes. These functions ignore the gainMap field.
 AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
 AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
@@ -1199,12 +1190,8 @@ typedef enum avifImageContentTypeFlag
     AVIF_IMAGE_CONTENT_NONE = 0,
     // Color only or alpha only is not currently supported.
     AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA = (1 << 0) | (1 << 1),
-#if defined(AVIF_ENABLE_GAIN_MAP)
     AVIF_IMAGE_CONTENT_GAIN_MAP = (1 << 2),
     AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP,
-#else
-    AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-#endif
 
     AVIF_IMAGE_CONTENT_DECODE_DEFAULT = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
 } avifImageContentTypeFlag;
@@ -1394,10 +1381,10 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // function can be called next to retrieve the number of top rows that can be immediately accessed
 // from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
 // if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
-// If a gain map is present and AVIF_ENABLE_GAIN_MAP is on and
-// (imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) is nonzero, the gain map's planes can also be accessed
-// in the same way. If the gain map's height is different from the main image, then the number of
-// available gain map rows is at least:
+// If a gain map is present and  (imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) is nonzero,
+// the gain map's planes can also be accessed in the same way.
+// If the gain map's height is different from the main image, then the number of available gain map
+// rows is at least:
 // roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)
 // When gain map scaling is needed, callers might choose to use a few less rows depending on how many rows
 // are needed by the scaling algorithm, to avoid the last row(s) changing when more data becomes available.
@@ -1517,9 +1504,7 @@ typedef struct avifEncoder
 
     // Version 1.1.0 ends here. Add any new members after this line.
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
     int qualityGainMap; // changeable encoder setting
-#endif
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
@@ -1587,10 +1572,8 @@ AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output
 // AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION from avifEncoderWrite() or avifEncoderAddImage().
 AVIF_API avifResult avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value);
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 // Returns the size in bytes of the AV1 image item containing gain map samples, or 0 if no gain map was encoded.
 AVIF_API size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder);
-#endif
 
 // Helpers
 AVIF_NODISCARD AVIF_API avifBool avifImageUsesU16(const avifImage * image);
@@ -1605,7 +1588,6 @@ AVIF_API uint32_t avifImagePlaneHeight(const avifImage * image, int channel);
 // either the brand 'avif' or 'avis' (or both), without performing any allocations.
 AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * input);
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 // ---------------------------------------------------------------------------
 // Gain Map utilities.
 // Gain Maps are a HIGHLY EXPERIMENTAL FEATURE, see comments in the avifGainMap
@@ -1657,8 +1639,6 @@ AVIF_API avifResult avifImageComputeGainMap(const avifImage * baseImage,
                                             const avifImage * altImage,
                                             avifGainMap * gainMap,
                                             avifDiagnostics * diag);
-
-#endif // AVIF_ENABLE_GAIN_MAP
 
 #ifdef __cplusplus
 } // extern "C"

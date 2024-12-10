@@ -7,8 +7,6 @@
 #include <math.h>
 #include <string.h>
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
-
 static void avifGainMapSetDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
@@ -848,5 +846,3 @@ cleanup:
     avifRGBImageFreePixels(&altImageRgb);
     return res;
 }
-
-#endif // AVIF_ENABLE_GAIN_MAP

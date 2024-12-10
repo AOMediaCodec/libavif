@@ -18,7 +18,7 @@
 
 #include "iccjpeg.h"
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
 #include <libxml/parser.h>
 #endif
 
@@ -286,7 +286,7 @@ static const uint8_t * avifJPEGFindSubstr(const uint8_t * str, size_t strLength,
             return AVIF_FALSE; \
     } while (0)
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
 
 // Reads a 4-byte unsigned integer in little-endian format from the raw bitstream src.
 static uint32_t avifJPEGReadUint32LittleEndian(const uint8_t * src)
@@ -833,7 +833,7 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
     }
     return AVIF_FALSE;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+#endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
 
 // Note on setjmp() and volatile variables:
 //
@@ -1023,7 +1023,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
     }
 
     avifBool readXMP = !ignoreXMP;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     readXMP = readXMP || !ignoreGainMap; // Gain map metadata is in XMP.
 #endif
     if (readXMP) {
@@ -1172,7 +1172,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
         avifImageFixXMP(avif); // Remove one trailing null character if any.
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
     if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
         avifGainMap * gainMap = avifGainMapCreate();
@@ -1209,7 +1209,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
             assert(AVIF_FALSE);
         }
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+#endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
     jpeg_finish_decompress(&cinfo);
     ret = AVIF_TRUE;
 cleanup:
