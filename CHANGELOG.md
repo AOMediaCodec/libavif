@@ -39,8 +39,6 @@ The changes are relative to the previous release, unless the baseline is specifi
   utility functions.
 * Turn on the gain map API. Remove the
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
-  Rename AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION to
-  AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION.
 
 ## [1.1.1] - 2024-07-30
 

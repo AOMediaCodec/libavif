@@ -269,7 +269,7 @@ if(AVIF_LIBSHARPYUV_ENABLED)
 endif(AVIF_LIBSHARPYUV_ENABLED)
 
 set_local_or_system_option(
-    "LIBXML2" "OFF" "Use libxml2. When enabled, allows converting jpeg files with gain maps to avif using avifenc"
+    "LIBXML2" "OFF" "Use libxml2. When enabled, allows converting JPEG files with gain maps to AVIF using avifenc"
 )
 check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
 
@@ -668,7 +668,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         set(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION TRUE)
         add_compile_definitions(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     else()
-        message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
+        message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in JPEG files")
     endif()
 
     set(AVIF_APPS_SRCS apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c

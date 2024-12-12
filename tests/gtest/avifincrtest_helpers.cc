@@ -362,10 +362,9 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
              previously_decoded_row_count, decoded_row_count);
       AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
-    const bool has_gain_map = (reference.gainMap != nullptr);
     const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
         reference.height, cell_height, reference.alphaPlane != nullptr,
-        has_gain_map, data.available.size, data.full_size,
+        reference.gainMap != nullptr, data.available.size, data.full_size,
         enable_fine_incremental_check);
     if (decoded_row_count < min_decoded_row_count) {
       printf(

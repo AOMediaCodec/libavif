@@ -4571,11 +4571,10 @@ static avifResult avifParse(avifDecoder * decoder)
         // * If the brand 'avif' is present, require a meta box
         // * If the brand 'avis' is present, require a moov box
         // * If AVIF_ENABLE_EXPERIMENTAL_MINI is defined and the brand 'mif3' is present, require a mini box
-        avifBool sawEverythingNeeded = ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen);
+        avifBool sawEverythingNeeded = ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen) && (!needsTmap || tmapSeen);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         sawEverythingNeeded = sawEverythingNeeded && (!needsMini || miniSeen);
 #endif
-        sawEverythingNeeded = sawEverythingNeeded && (!needsTmap || tmapSeen);
         if (sawEverythingNeeded) {
             return AVIF_RESULT_OK;
         }
@@ -6256,28 +6255,25 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             AVIF_ASSERT_OR_RETURN(tileIndex == 0);
             avifImage * src = tile->image;
 
-            switch (tile->input->itemCategory) {
-                case AVIF_ITEM_GAIN_MAP:
-                    AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
-                    decoder->image->gainMap->image->width = src->width;
-                    decoder->image->gainMap->image->height = src->height;
-                    decoder->image->gainMap->image->depth = src->depth;
-                    break;
-                default:
-                    if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
-                        (decoder->image->depth != src->depth)) {
-                        if (avifIsAlpha(tile->input->itemCategory)) {
-                            avifDiagnosticsPrintf(&decoder->diag,
-                                                  "The color image item does not match the alpha image item in width, height, or bit depth");
-                            return AVIF_RESULT_DECODE_ALPHA_FAILED;
-                        }
-                        avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
-
-                        decoder->image->width = src->width;
-                        decoder->image->height = src->height;
-                        decoder->image->depth = src->depth;
+            if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
+                decoder->image->gainMap->image->width = src->width;
+                decoder->image->gainMap->image->height = src->height;
+                decoder->image->gainMap->image->depth = src->depth;
+            } else {
+                if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
+                    (decoder->image->depth != src->depth)) {
+                    if (avifIsAlpha(tile->input->itemCategory)) {
+                        avifDiagnosticsPrintf(&decoder->diag,
+                                              "The color image item does not match the alpha image item in width, height, or bit depth");
+                        return AVIF_RESULT_DECODE_ALPHA_FAILED;
                     }
-                    break;
+                    avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
+
+                    decoder->image->width = src->width;
+                    decoder->image->height = src->height;
+                    decoder->image->depth = src->depth;
+                }
             }
 
             if (avifIsAlpha(tile->input->itemCategory)) {
