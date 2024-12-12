@@ -64,10 +64,6 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
-option(AVIF_ENABLE_GAIN_MAP
-       "Enable gain map code (for HDR images that look good both on HDR and SDR displays)" ON
-)
-
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
@@ -273,13 +269,10 @@ if(AVIF_LIBSHARPYUV_ENABLED)
 endif(AVIF_LIBSHARPYUV_ENABLED)
 
 set_local_or_system_option(
-    "LIBXML2" "OFF" "Use libxml2. When enabled and AVIF_ENABLE_GAIN_MAP is ON, \
-    allows converting JPEG files with gain maps to AVIF using avifenc"
+    "LIBXML2" "OFF" "Use libxml2. When enabled, allows converting JPEG files with gain maps to AVIF using avifenc"
 )
+check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
 
-if(AVIF_ENABLE_GAIN_MAP)
-    check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
-endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -365,10 +358,6 @@ if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
 endif()
 
-if(AVIF_ENABLE_GAIN_MAP)
-    add_compile_definitions(AVIF_ENABLE_GAIN_MAP)
-endif()
-
 if(AVIF_ENABLE_EXPERIMENTAL_MINI)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_MINI)
 endif()
@@ -384,6 +373,7 @@ set(AVIF_SRCS
     src/colrconvert.c
     src/diag.c
     src/exif.c
+    src/gainmap.c
     src/io.c
     src/mem.c
     src/obu.c
@@ -397,9 +387,6 @@ set(AVIF_SRCS
     src/utils.c
     src/write.c
 )
-if(AVIF_ENABLE_GAIN_MAP)
-    list(APPEND AVIF_SRCS src/gainmap.c)
-endif()
 if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     list(APPEND AVIF_SRCS src/sampletransform.c)
 endif()
@@ -585,7 +572,7 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_LIB_USE_CXX OR (AVIF_BUILD_APPS AND AVIF_ENABLE_GAIN_MAP) OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
+if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
                                                                                                          OR AVIF_ENABLE_GTEST))
 )
     enable_language(CXX)
@@ -677,13 +664,11 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         find_package(JPEG REQUIRED)
     endif()
 
-    if(AVIF_ENABLE_GAIN_MAP)
-        if(TARGET LibXml2::LibXml2)
-            set(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION TRUE)
-            add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
-        else()
-            message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in jpeg files")
-        endif()
+    if(TARGET LibXml2::LibXml2)
+        set(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION TRUE)
+        add_compile_definitions(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
+    else()
+        message(STATUS "libavif: libxml2 not found; avifenc will ignore any gain map in JPEG files")
     endif()
 
     set(AVIF_APPS_SRCS apps/shared/avifexif.c apps/shared/avifjpeg.c apps/shared/avifpng.c apps/shared/avifutil.c
@@ -696,7 +681,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             target_link_libraries(avif_apps${suffix} PRIVATE m)
         endif()
-        if(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+        if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
             target_link_libraries(avif_apps${suffix} PRIVATE LibXml2::LibXml2)
         endif()
         target_include_directories(avif_apps${suffix} INTERFACE apps/shared)
@@ -755,33 +740,32 @@ if(AVIF_BUILD_APPS)
             LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
     endif()
-    if(AVIF_ENABLE_GAIN_MAP)
-        include(LocalLibargparse)
-        set(AVIFGAINMAPUTIL_SRCS
-            apps/avifgainmaputil/avifgainmaputil.cc
-            apps/avifgainmaputil/convert_command.cc
-            apps/avifgainmaputil/combine_command.cc
-            apps/avifgainmaputil/extractgainmap_command.cc
-            apps/avifgainmaputil/imageio.cc
-            apps/avifgainmaputil/printmetadata_command.cc
-            apps/avifgainmaputil/tonemap_command.cc
-            apps/avifgainmaputil/program_command.cc
-            apps/avifgainmaputil/swapbase_command.cc
-        )
+    include(LocalLibargparse)
 
-        add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
-        if(WIN32)
-            if(MSVC)
-                target_sources(avifgainmaputil PRIVATE apps/utf8.manifest)
-            elseif(MINGW)
-                target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
-            endif()
+    set(AVIFGAINMAPUTIL_SRCS
+        apps/avifgainmaputil/avifgainmaputil.cc
+        apps/avifgainmaputil/convert_command.cc
+        apps/avifgainmaputil/combine_command.cc
+        apps/avifgainmaputil/extractgainmap_command.cc
+        apps/avifgainmaputil/imageio.cc
+        apps/avifgainmaputil/printmetadata_command.cc
+        apps/avifgainmaputil/tonemap_command.cc
+        apps/avifgainmaputil/program_command.cc
+        apps/avifgainmaputil/swapbase_command.cc
+    )
+
+    add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
+    if(WIN32)
+        if(MSVC)
+            target_sources(avifgainmaputil PRIVATE apps/utf8.manifest)
+        elseif(MINGW)
+            target_sources(avifgainmaputil PRIVATE apps/utf8.rc)
         endif()
-        set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
-        target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
-        target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
-        # Don't add avifgainmaputil to installed apps for now.
     endif()
+    set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
+    target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
+    target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
+    # Don't add avifgainmaputil to installed apps for now.
 endif()
 
 if(AVIF_BUILD_TESTS)

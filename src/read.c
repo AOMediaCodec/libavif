@@ -2016,8 +2016,6 @@ static avifBool avifParseImageGridBox(avifImageGrid * grid,
     return avifROStreamRemainingBytes(&s) == 0;
 }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
-
 static avifBool avifParseGainMapMetadata(avifGainMap * gainMap, avifROStream * s)
 {
     uint32_t isMultichannel;
@@ -2095,7 +2093,6 @@ static avifResult avifParseToneMappedImageBox(avifGainMap * gainMap, const uint8
 
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 // bit_depth is assumed to be 2 (32-bit).
@@ -2317,7 +2314,7 @@ static avifResult avifParseContentLightLevelInformationBox(avifProperty * prop, 
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI) && defined(AVIF_ENABLE_GAIN_MAP)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
 static avifResult avifSkipMasteringDisplayColourVolume(avifROStream * s)
 {
     for (int c = 0; c < 3; c++) {
@@ -2418,7 +2415,7 @@ static avifResult avifParseMiniHDRProperties(avifROStream * s, uint32_t * hasCll
     }
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_MINI && AVIF_ENABLE_GAIN_MAP
+#endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
 // Implementation of section 2.3.3 of AV1 Codec ISO Media File Format Binding specification v1.2.0.
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
@@ -3864,7 +3861,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     uint32_t hasClli = AVIF_FALSE, tmapHasClli = AVIF_FALSE;
     avifContentLightLevelInformationBox clli = {}, tmapClli = {};
     if (hasHdr) {
-#if defined(AVIF_ENABLE_GAIN_MAP)
         AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &hasGainmap, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_flag;
         if (hasGainmap) {
             // avifDecoderReset() requires the 'tmap' brand to be registered for the tone mapping derived image item to be parsed.
@@ -3930,9 +3926,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         if (hasGainmap) {
             AVIF_CHECKRES(avifParseMiniHDRProperties(&s, &tmapHasClli, &tmapClli));
         }
-#else
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-#endif // AVIF_ENABLE_GAIN_MAP
     }
 
     // Chunk sizes
@@ -4410,10 +4403,8 @@ static avifResult avifParse(avifDecoder * decoder)
     avifBool miniSeen = AVIF_FALSE;
     avifBool needsMini = AVIF_FALSE;
 #endif
-#if defined(AVIF_ENABLE_GAIN_MAP)
     avifBool needsTmap = AVIF_FALSE;
     avifBool tmapSeen = AVIF_FALSE;
-#endif
     avifFileType ftyp = {};
 
     for (;;) {
@@ -4532,12 +4523,10 @@ static avifResult avifParse(avifDecoder * decoder)
                               AVIF_RESULT_BMFF_PARSE_FAILED);
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
-#if defined(AVIF_ENABLE_GAIN_MAP)
             needsTmap = avifFileTypeHasBrand(&ftyp, "tmap");
             if (needsTmap) {
                 needsMeta = AVIF_TRUE;
             }
-#endif
         } else if (isMeta) {
             AVIF_CHECKERR(!metaSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -4546,14 +4535,12 @@ static avifResult avifParse(avifDecoder * decoder)
             AVIF_CHECKRES(avifParseMetaBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             metaSeen = AVIF_TRUE;
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
             for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
                 if (!memcmp(data->meta->items.item[itemIndex]->type, "tmap", 4)) {
                     tmapSeen = AVIF_TRUE;
                     break;
                 }
             }
-#endif
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         } else if (isMini) {
@@ -4584,12 +4571,9 @@ static avifResult avifParse(avifDecoder * decoder)
         // * If the brand 'avif' is present, require a meta box
         // * If the brand 'avis' is present, require a moov box
         // * If AVIF_ENABLE_EXPERIMENTAL_MINI is defined and the brand 'mif3' is present, require a mini box
-        avifBool sawEverythingNeeded = ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen);
+        avifBool sawEverythingNeeded = ftypSeen && (!needsMeta || metaSeen) && (!needsMoov || moovSeen) && (!needsTmap || tmapSeen);
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         sawEverythingNeeded = sawEverythingNeeded && (!needsMini || miniSeen);
-#endif
-#if defined(AVIF_ENABLE_GAIN_MAP)
-        sawEverythingNeeded = sawEverythingNeeded && (!needsTmap || tmapSeen);
 #endif
         if (sawEverythingNeeded) {
             return AVIF_RESULT_OK;
@@ -4601,13 +4585,9 @@ static avifResult avifParse(avifDecoder * decoder)
     if ((needsMeta && !metaSeen) || (needsMoov && !moovSeen)) {
         return AVIF_RESULT_TRUNCATED_DATA;
     }
-#if defined(AVIF_ENABLE_GAIN_MAP)
     if (needsTmap && !tmapSeen) {
         return metaIsSizeZero ? AVIF_RESULT_TRUNCATED_DATA : AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-#else
-    (void)metaIsSizeZero;
-#endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     if (needsMini && !miniSeen) {
         return AVIF_RESULT_TRUNCATED_DATA;
@@ -4666,7 +4646,6 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     return avifFileTypeIsCompatible(&ftyp);
 }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 static avifBool avifBrandArrayHasBrand(avifBrandArray * brands, const char * brand)
 {
     for (uint32_t brandIndex = 0; brandIndex < brands->count; ++brandIndex) {
@@ -4676,7 +4655,6 @@ static avifBool avifBrandArrayHasBrand(avifBrandArray * brands, const char * bra
     }
     return AVIF_FALSE;
 }
-#endif
 
 // ---------------------------------------------------------------------------
 
@@ -5280,7 +5258,6 @@ static avifResult avifReadColorProperties(avifIO * io,
     return avifReadColorNclxProperty(properties, colorPrimaries, transferCharacteristics, matrixCoefficients, yuvRange, cicpSet);
 }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
 // Finds a 'tmap' (tone mapped image item) box associated with the given 'colorItem'.
 // If found, fills 'toneMappedImageItem' and  sets 'gainMapItemID' to the id of the gain map
 // item associated with the box. Otherwise, sets 'toneMappedImageItem' to NULL.
@@ -5465,7 +5442,6 @@ static avifResult aviDecoderCheckGainMapProperties(avifDecoder * decoder, const 
     }
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 // Finds a 'sato' Sample Transform derived image item box.
@@ -5598,9 +5574,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     avifCodecType colorCodecType = AVIF_CODEC_TYPE_UNKNOWN;
     const avifPropertyArray * colorProperties = NULL;
-#if defined(AVIF_ENABLE_GAIN_MAP)
     const avifPropertyArray * gainMapProperties = NULL;
-#endif
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         avifTrack * colorTrack = NULL;
         avifTrack * alphaTrack = NULL;
@@ -5768,7 +5742,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                       &codecType[AVIF_ITEM_ALPHA]));
         }
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
         // Section 10.2.6 of 23008-12:2024/AMD 1:2024(E):
         //   'tmap' brand
         //   This brand enables file players to identify and decode HEIF files containing tone-map derived image
@@ -5805,7 +5778,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 }
             }
         }
-#endif // AVIF_ENABLE_GAIN_MAP
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids are not coded items either but it's different)).
@@ -5956,7 +5928,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->alphaPremultiplied = decoder->alphaPresent &&
                                              (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id);
 
-#if defined(AVIF_ENABLE_GAIN_MAP)
         if (mainItems[AVIF_ITEM_GAIN_MAP]) {
             AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
             decoder->image->gainMap->image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
@@ -5968,7 +5939,6 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                                                       codecType[AVIF_ITEM_GAIN_MAP]));
             gainMapProperties = &mainItems[AVIF_ITEM_GAIN_MAP]->properties;
         }
-#endif
     }
 
     uint32_t firstTileIndex = 0;
@@ -6030,11 +6000,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
         decoder->image->imir = imirProp->u.imir;
     }
-#if defined(AVIF_ENABLE_GAIN_MAP)
     if (gainMapProperties != NULL) {
         AVIF_CHECKRES(aviDecoderCheckGainMapProperties(decoder, gainMapProperties));
     }
-#endif
 
     if (!data->cicpSet && (data->tiles.count > 0)) {
         avifTile * firstTile = &data->tiles.tile[0];
@@ -6149,11 +6117,9 @@ static avifResult avifImageLimitedToFullAlpha(avifImage * image)
 
 static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
 {
-#if defined(AVIF_ENABLE_GAIN_MAP)
     if (itemCategory == AVIF_ITEM_GAIN_MAP) {
         return AVIF_RESULT_DECODE_GAIN_MAP_FAILED;
     }
-#endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
         return AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED;
@@ -6276,12 +6242,10 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
 
         if (!stealPlanes) {
             avifImage * dstImage = decoder->image;
-#if defined(AVIF_ENABLE_GAIN_MAP)
             if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
                 AVIF_ASSERT_OR_RETURN(dstImage->gainMap && dstImage->gainMap->image);
                 dstImage = dstImage->gainMap->image;
             }
-#endif
             if (tileIndex == 0) {
                 AVIF_CHECKRES(avifDecoderDataAllocateImagePlanes(decoder->data, info, dstImage));
             }
@@ -6291,39 +6255,32 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             AVIF_ASSERT_OR_RETURN(tileIndex == 0);
             avifImage * src = tile->image;
 
-            switch (tile->input->itemCategory) {
-#if defined(AVIF_ENABLE_GAIN_MAP)
-                case AVIF_ITEM_GAIN_MAP:
-                    AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
-                    decoder->image->gainMap->image->width = src->width;
-                    decoder->image->gainMap->image->height = src->height;
-                    decoder->image->gainMap->image->depth = src->depth;
-                    break;
-#endif
-                default:
-                    if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
-                        (decoder->image->depth != src->depth)) {
-                        if (avifIsAlpha(tile->input->itemCategory)) {
-                            avifDiagnosticsPrintf(&decoder->diag,
-                                                  "The color image item does not match the alpha image item in width, height, or bit depth");
-                            return AVIF_RESULT_DECODE_ALPHA_FAILED;
-                        }
-                        avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
-
-                        decoder->image->width = src->width;
-                        decoder->image->height = src->height;
-                        decoder->image->depth = src->depth;
+            if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
+                AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
+                decoder->image->gainMap->image->width = src->width;
+                decoder->image->gainMap->image->height = src->height;
+                decoder->image->gainMap->image->depth = src->depth;
+            } else {
+                if ((decoder->image->width != src->width) || (decoder->image->height != src->height) ||
+                    (decoder->image->depth != src->depth)) {
+                    if (avifIsAlpha(tile->input->itemCategory)) {
+                        avifDiagnosticsPrintf(&decoder->diag,
+                                              "The color image item does not match the alpha image item in width, height, or bit depth");
+                        return AVIF_RESULT_DECODE_ALPHA_FAILED;
                     }
-                    break;
+                    avifImageFreePlanes(decoder->image, AVIF_PLANES_ALL);
+
+                    decoder->image->width = src->width;
+                    decoder->image->height = src->height;
+                    decoder->image->depth = src->depth;
+                }
             }
 
             if (avifIsAlpha(tile->input->itemCategory)) {
                 avifImageStealPlanes(decoder->image, src, AVIF_PLANES_A);
-#if defined(AVIF_ENABLE_GAIN_MAP)
             } else if (tile->input->itemCategory == AVIF_ITEM_GAIN_MAP) {
                 AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
                 avifImageStealPlanes(decoder->image->gainMap->image, src, AVIF_PLANES_YUV);
-#endif
             } else { // AVIF_ITEM_COLOR
                 avifImageStealPlanes(decoder->image, src, AVIF_PLANES_YUV);
             }
@@ -6647,7 +6604,6 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
     uint32_t minRowCount = decoder->image->height;
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
-#if defined(AVIF_ENABLE_GAIN_MAP)
         if (c == AVIF_ITEM_GAIN_MAP) {
             const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
             if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) && gainMap != NULL && gainMap->height != 0) {
@@ -6665,7 +6621,6 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
             }
             continue;
         }
-#endif
         const uint32_t rowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[c], decoder->image);
         minRowCount = AVIF_MIN(minRowCount, rowCount);
     }

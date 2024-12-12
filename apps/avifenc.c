@@ -57,8 +57,7 @@ typedef struct
     avifBool ignoreXMP;
     avifBool ignoreColorProfile;
 
-    // These settings are only relevant when compiled with AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
-    // (which also implies AVIF_ENABLE_GAIN_MAP).
+    // These settings are only relevant when compiled with AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION.
     avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
     int qualityGainMap;
     avifBool ignoreGainMap; // ignore any gain map present in the input file.
@@ -240,7 +239,7 @@ static void syntaxLong(void)
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
     printf("    --qgain-map Q                      : Set quality for the gain map (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
@@ -525,7 +524,7 @@ static avifBool avifInputReadImage(avifInput * input,
         if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
         }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         if (cached->image->gainMap && cached->image->gainMap->image) {
             image->gainMap->image = avifImageCreateEmpty();
             const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap->image->width, cached->image->gainMap->image->height };
@@ -1143,7 +1142,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     if (settings->overrideQualityAlpha != INVALID_QUALITY) {
         encoder->qualityAlpha = settings->overrideQualityAlpha;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     if (settings->qualityGainMap != INVALID_QUALITY) {
         encoder->qualityGainMap = settings->qualityGainMap;
     }
@@ -1157,7 +1156,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         snprintf(speedStr, sizeof(speedStr), "%d", settings->speed);
     }
     char gainMapStr[100] = { 0 };
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     if (firstImage->gainMap && firstImage->gainMap->image) {
         snprintf(gainMapStr, sizeof(gainMapStr), ", gain map quality [%d (%s)]", encoder->qualityGainMap, qualityString(encoder->qualityGainMap));
     }
@@ -1241,7 +1240,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     success = AVIF_TRUE;
     byteSizes->colorSizeBytes = encoder->ioStats.colorOBUSize;
     byteSizes->alphaSizeBytes = encoder->ioStats.alphaOBUSize;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     byteSizes->gainMapSizeBytes = avifEncoderGetGainMapSizeBytes(encoder);
 #endif
 
@@ -1269,7 +1268,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
 
     avifBool hasGainMap = AVIF_FALSE;
     avifBool allQualitiesConstrained = settings->qualityIsConstrained && settings->qualityAlphaIsConstrained;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     hasGainMap = (firstImage->gainMap && firstImage->gainMap->image);
     if (hasGainMap) {
         allQualitiesConstrained = allQualitiesConstrained && settings->qualityGainMapIsConstrained;
@@ -1814,7 +1813,7 @@ int main(int argc, char * argv[])
             settings.ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-profile") || !strcmp(arg, "--ignore-icc")) {
             settings.ignoreColorProfile = AVIF_TRUE;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         } else if (!strcmp(arg, "--ignore-gain-map")) {
             settings.ignoreGainMap = AVIF_TRUE;
         } else if (!strcmp(arg, "--qgain-map")) {
@@ -2253,7 +2252,7 @@ int main(int argc, char * argv[])
         image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     if (image->gainMap && !image->gainMap->altICC.size) {
         if (image->gainMap->altColorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
             // Assume the alternate image has the same primaries as the base image.
@@ -2264,7 +2263,7 @@ int main(int argc, char * argv[])
             image->gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
         }
     }
-#endif // AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION
+#endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
 
     if (settings.paspPresent) {
         image->transformFlags |= AVIF_TRANSFORM_PASP;
