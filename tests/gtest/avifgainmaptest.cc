@@ -1191,6 +1191,80 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   }
 }
 
+TEST(GainMapTest, OpaqueProperties) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+
+  std::vector<uint8_t> abcd_data({0, 0, 0, 1, 'a', 'b', 'c'});
+  std::vector<uint8_t> efgh_data({'e', 'h'});
+  uint8_t uuid[16] = {0x95, 0x96, 0xf1, 0xad, 0xb8, 0xab, 0x4a, 0xfc,
+                      0x9e, 0xfc, 0x83, 0x87, 0xac, 0x79, 0x37, 0xda};
+  std::vector<uint8_t> uuid_data({'x', 'y', 'z'});
+  ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"abcd",
+                                       abcd_data.data(), abcd_data.size()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      avifImageAddOpaqueProperty(image.get()->gainMap->image, (uint8_t*)"efgh",
+                                 efgh_data.data(), efgh_data.size()),
+      AVIF_RESULT_OK);
+  // Should not be added
+  ASSERT_EQ(
+      avifImageAddOpaqueProperty(image.get()->gainMap->image, (uint8_t*)"mdat",
+                                 efgh_data.data(), efgh_data.size()),
+      AVIF_RESULT_INVALID_ARGUMENT);
+  ASSERT_EQ(avifImageAddUUIDProperty(image.get()->gainMap->image, uuid,
+                                     uuid_data.data(), uuid_data.size()),
+            AVIF_RESULT_OK);
+  ASSERT_NE(image, nullptr);
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << encoder->diag.error;
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+
+  result = avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+
+  result = avifDecoderParse(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << decoder->diag.error;
+  ASSERT_NE(decoder->image, nullptr);
+  ASSERT_EQ(decoder->image->numProperties, 1u);
+
+  const avifImageItemProperty& abcd = decoder->image->properties[0];
+  EXPECT_EQ(std::string(abcd.boxtype, abcd.boxtype + 4), "abcd");
+  EXPECT_EQ(std::vector<uint8_t>(abcd.boxPayload.data,
+                                 abcd.boxPayload.data + abcd.boxPayload.size),
+            abcd_data);
+
+  ASSERT_NE(decoder->image->gainMap, nullptr);
+  ASSERT_NE(decoder->image->gainMap->image, nullptr);
+  ASSERT_EQ(decoder->image->gainMap->image->numProperties, 2u);
+  const avifImageItemProperty& efgh =
+      decoder->image->gainMap->image->properties[0];
+  EXPECT_EQ(std::string(efgh.boxtype, efgh.boxtype + 4), "efgh");
+  EXPECT_EQ(std::vector<uint8_t>(efgh.boxPayload.data,
+                                 efgh.boxPayload.data + efgh.boxPayload.size),
+            efgh_data);
+
+  const avifImageItemProperty& uuidProp =
+      decoder->image->gainMap->image->properties[1];
+  EXPECT_EQ(std::string(uuidProp.boxtype, uuidProp.boxtype + 4), "uuid");
+  EXPECT_EQ(std::vector<uint8_t>(uuidProp.usertype, uuidProp.usertype + 16),
+            std::vector<uint8_t>(uuid, uuid + 16));
+  EXPECT_EQ(
+      std::vector<uint8_t>(uuidProp.boxPayload.data,
+                           uuidProp.boxPayload.data + uuidProp.boxPayload.size),
+      uuid_data);
+}
+
 class CreateGainMapTest
     : public testing::TestWithParam<std::tuple<
           /*image1_name=*/std::string, /*image2_name=*/std::string,
