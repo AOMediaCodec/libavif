@@ -31,7 +31,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update avm.cmd: research-v8.1.0
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.0
 * Update libjpeg.cmd/LocalJpeg.cmake: v3.0.4
-* Update libxml2.cmd/LocalLibXml2.cmake: v2.13.4
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.13.5
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.2.1
 * Change experimental gainmap API: remove avifGainMapMetadata and
   avifGainMapMetadataDouble structs.
