@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
+
 #include <string.h>
 
 struct avifKnownProperty
 {
-    const uint8_t fourcc[4];
+    uint8_t fourcc[4];
 };
 
-static const struct avifKnownProperty avifKnownProperties[] = {
+static const struct avifKnownProperty knownProperties[] = {
     { { 'f', 't', 'y', 'p' } }, { { 'u', 'u', 'i', 'd' } }, { { 'm', 'e', 't', 'a' } }, { { 'h', 'd', 'l', 'r' } },
     { { 'p', 'i', 't', 'm' } }, { { 'd', 'i', 'n', 'f' } }, { { 'd', 'r', 'e', 'f' } }, { { 'i', 'd', 'a', 't' } },
     { { 'i', 'l', 'o', 'c' } }, { { 'i', 'i', 'n', 'f' } }, { { 'i', 'n', 'f', 'e' } }, { { 'i', 'p', 'r', 'p' } },
@@ -24,7 +25,7 @@ static const struct avifKnownProperty avifKnownProperties[] = {
     { { 'm', 'd', 'a', 't' } },
 };
 
-static const size_t numKnownProperties = sizeof(avifKnownProperties) / sizeof(avifKnownProperties[0]);
+static const size_t numKnownProperties = sizeof(knownProperties) / sizeof(knownProperties[0]);
 
 static const size_t FOURCC_BYTES = 4;
 static const size_t UUID_BYTES = 16;
@@ -34,7 +35,7 @@ static const uint8_t ISO_UUID_SUFFIX[12] = { 0x00, 0x01, 0x00, 0x10, 0x80, 0x00,
 avifBool avifIsKnownPropertyType(const uint8_t boxtype[4])
 {
     for (size_t i = 0; i < numKnownProperties; i++) {
-        if (memcmp(avifKnownProperties[i].fourcc, boxtype, FOURCC_BYTES) == 0) {
+        if (memcmp(knownProperties[i].fourcc, boxtype, FOURCC_BYTES) == 0) {
             return AVIF_TRUE;
         }
     }
@@ -46,7 +47,7 @@ avifBool avifIsValidUUID(const uint8_t uuid[16])
     // This check is to reject encoding a known property via the UUID mechanism
     // See ISO/IEC 14496-12 Section 4.2.3
     for (size_t i = 0; i < numKnownProperties; i++) {
-        if ((memcmp(avifKnownProperties[i].fourcc, uuid, FOURCC_BYTES) == 0) &&
+        if ((memcmp(knownProperties[i].fourcc, uuid, FOURCC_BYTES) == 0) &&
             (memcmp(ISO_UUID_SUFFIX, uuid + FOURCC_BYTES, UUID_BYTES - FOURCC_BYTES) == 0)) {
             return AVIF_FALSE;
         }

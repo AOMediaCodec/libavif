@@ -819,7 +819,8 @@ typedef struct avifImage
 
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
-    // At encoding: Set using avifImageAddOpaqueProperty() or avifImageAddUUIDProperty() and written by the avifEncoder.
+    // At encoding: Set using avifImageAddOpaqueProperty() or avifImageAddUUIDProperty() and written by the avifEncoder
+    // in the order that they are added to the image.
     avifImageItemProperty * properties; // NULL only if numProperties is 0.
     size_t numProperties;
 
@@ -854,10 +855,11 @@ AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);   
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
 
 // Add arbitrary (opaque) properties to the image.
-// Use of these functions for known properties and boxes (e.g. ispe or meta) will likely result in
-// invalid files, and should be avoided.
-// If creating a ItemFullProperty, the version and flags values should be provided as the first four bytes of
-// the data argument, and accounted for in the dataSize.
+// Note: This is an advanced usage, intended for users with specific requirements who are familiar with the
+// HEIF and ISO BMFF standards. Use of these functions for known properties and boxes (e.g. ispe or meta)
+// will likely result in invalid files, and should be avoided.
+// If creating an ItemFullProperty, the version and flags values should be provided as the first four bytes of
+// the data argument, and those four bytes included in the dataSize.
 AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
 // This version adds an ItemProperty (or ItemFullProperty if version and flags are provided in data argument), using
 // the user extension (uuid) mechanism, see ISO/IEC 14496-12:2022 Section 4.2. The box type is set to 'uuid'.

@@ -3006,7 +3006,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         // write out any opaque properties from avifImageAddOpaqueProperty() or avifImageAddUUIDProperty()
         for (size_t i = 0; i < itemMetadata->numProperties; i++) {
             avifItemPropertyDedupStart(dedup);
-            avifImageItemProperty * prop = &(itemMetadata->properties[i]);
+            const avifImageItemProperty * prop = &itemMetadata->properties[i];
             avifBoxMarker propMarker;
             AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, (const char *)prop->boxtype, AVIF_BOX_SIZE_TBD, &propMarker));
             if (memcmp(prop->boxtype, "uuid", 4) == 0) {
