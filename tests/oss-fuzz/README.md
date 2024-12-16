@@ -1,20 +1,16 @@
-# Fuzzing AVIF on oss-fuzz
-
-*Last updated: 2024-01-22* 
-*Authors: [Vincent Rabaud](mailto:vrabaud@google.com)*
-*Status: **Current***
-
 # Overview
 
 This document provides links and knowledge about fuzzing libavif on oss-fuzz.
 
-# Creating targets
+# Fuzzing AVIF on oss-fuzz
+
+## Creating targets
 
 [fuzztest](https://github.com/google/fuzztest/) is the framework of choice. Any fuzztest test declared in libavif/tests/CMakeLists.txt will be picked up and added to the list.
 
-# Links
+## Links
 
-The main page [https://oss-fuzz.com](https://oss-fuzz.com)[/](https://oss-fuzz.com/) links to:
+If you have the credentials, the main page [https://oss-fuzz.com](https://oss-fuzz.com) links to:
 
 - the [crashes](https://oss-fuzz.com/testcases?project=libavif&open=yes) : some tests do not have a bug created. They are flaky, duplicates. Still, it is worth going over the list in case there is a flaky true positive.
 - the [stats](https://oss-fuzz.com/fuzzer-stats?project=libavif&fuzzer=libFuzzer&job=libfuzzer_asan_libavif&group_by=by-fuzzer) for the different fuzzers
@@ -25,15 +21,15 @@ You can see the status of all projects:
 or just the page for libavif:
 [https://introspector.oss-fuzz.com/project-profile?project=libavif](https://introspector.oss-fuzz.com/project-profile?project=libavif)
 
-# Gotchas
+## Gotchas
 
 The [build.sh](https://github.com/AOMediaCodec/libavif/blob/a98fa4f760eacc26aa33ed396640253e29786cce/tests/oss-fuzz/build.sh#L1) file used to build the fuzzers has a few tricks:
 
-- fuzztest is only compatible with libfuzzer so only build the tests fo libfuzzer:
+- fuzztest is only compatible with libfuzzer so only build the tests for libfuzzer:
   - [https://github.com/AOMediaCodec/libavif/blob/a98fa4f760eacc26aa33ed396640253e29786cce/tests/oss-fuzz/build.sh\#L81](https://github.com/AOMediaCodec/libavif/blob/a98fa4f760eacc26aa33ed396640253e29786cce/tests/oss-fuzz/build.sh#L81)
   - do not forget extra flags: [https://github.com/AOMediaCodec/libavif/blob/a98fa4f760eacc26aa33ed396640253e29786cce/tests/oss-fuzz/build.sh\#L61](https://github.com/AOMediaCodec/libavif/blob/a98fa4f760eacc26aa33ed396640253e29786cce/tests/oss-fuzz/build.sh#L61)
 
-# Testing locally
+## Testing locally
 
 When you have your local checkout of [https://github.com/google/oss-fuzz](https://github.com/google/oss-fuzz), you can build the different fuzzers locally following instructions at [https://google.github.io/oss-fuzz/getting-started/new-project-guide/\#testing-locally](https://google.github.io/oss-fuzz/getting-started/new-project-guide/#testing-locally)
 
@@ -62,7 +58,7 @@ There is a final thing to check that does not appear in the libavif CI:
 python3 infra/helper.py check_build --sanitizer <address/memory/undefined> libavif
 ```
 
-# More debugging
+## More debugging
 
 If check\_build times out, you might need to debug the oss-fuzz code itself, like in infra/base-images/base-runner/bad\_build\_check  
 You then need to rebuild the dockers:
