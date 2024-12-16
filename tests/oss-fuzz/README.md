@@ -13,11 +13,11 @@ You need to build with the following CMake flags:
 You can then run your tests as normal:
 
 ```sh
-ctest --output-on-failure -R avif_fuzztest_enc_dec
+ctest --output-on-failure -R fuzztest
 ```
 
-In case of error, an `FUZZTEST_PRNG_SEED` variable is set. You can then use it
-to re-run your test, e.g. :
+In case of error, an `FUZZTEST_PRNG_SEED` variable is printed. You can then use
+it to re-run your test, e.g. :
 
 ```sh
 FUZZTEST_PRNG_SEED=wDH4mhJJCJa1aCoRe-yN-Jlzqn7oa9RxFnltRR1y1_A ctest --output-on-failure -R ^avif_fuzztest_enc_dec$
