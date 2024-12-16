@@ -100,6 +100,8 @@ The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
 `AVIF_ENABLE_GTEST` CMake options. They require GoogleTest
 (`-DAVIF_GTEST=SYSTEM` or `-DAVIF_GTEST=LOCAL`).
 
+Fuzzing test instructions are also provided in `ext/oss-fuzz/README.md`.
+
 ### Command Lines
 
 The following instructions can be used to build the libavif library and the
