@@ -860,6 +860,8 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // will likely result in invalid files, and should be avoided.
 // If creating an ItemFullProperty, the version and flags values should be provided as the first four bytes of
 // the data argument, and those four bytes included in the dataSize.
+// Users of this API should consider calling avifParse() on the resulting file (i.e. the encoder output) to
+// check that the arbitrary properties have not resulted in an invalid file.
 AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
 // This version adds an ItemProperty (or ItemFullProperty if version and flags are provided in data argument), using
 // the user extension (uuid) mechanism, see ISO/IEC 14496-12:2022 Section 4.2. The box type is set to 'uuid'.
