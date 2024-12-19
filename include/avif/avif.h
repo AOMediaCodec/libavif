@@ -856,8 +856,8 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 
 // Add arbitrary (opaque) properties to the image.
 // Note: This is an advanced usage, intended for users with specific requirements who are familiar with the
-// HEIF and ISO BMFF standards. Use of these functions for known properties and boxes (e.g. ispe or meta)
-// will likely result in invalid files, and should be avoided.
+// HEIF and ISO BMFF standards. Use of these functions for properties and boxes that are handled by
+// libavif (e.g. ispe or meta) will likely result in invalid files, and should be avoided.
 // If creating an ItemFullProperty, the version and flags values should be provided as the first four bytes of
 // the data argument, and those four bytes included in the dataSize.
 // Users of this API should consider calling avifParse() on the resulting file (i.e. the encoder output) to
