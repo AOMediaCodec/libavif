@@ -610,12 +610,16 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
     return AVIF_RESULT_OK;
 }
 
-// Subset of avifEncoderWriteColorProperties() for the properties pasp, clap, irot, imir.
-static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
-                                                          avifRWStream * outputStream,
-                                                          const avifImage * imageMetadata,
-                                                          struct ipmaArray * ipma,
-                                                          avifItemPropertyDedup * dedup);
+static avifResult avifEncoderWritePasp(avifRWStream * dedupStream,
+                                       avifRWStream * outputStream,
+                                       const avifImage * imageMetadata,
+                                       struct ipmaArray * ipma,
+                                       avifItemPropertyDedup * dedup);
+static avifResult avifEncoderWriteClapIrotImir(avifRWStream * dedupStream,
+                                               avifRWStream * outputStream,
+                                               const avifImage * imageMetadata,
+                                               struct ipmaArray * ipma,
+                                               avifItemPropertyDedup * dedup);
 
 // This function is used in two codepaths:
 // * writing color *item* properties
@@ -660,10 +664,12 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
     }
 
     // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
-    // Therefore, *always* writing an nclx box, even if an a prof box was already written above.
+    // Therefore, *always* writing an nclx box, even if a prof box was already written above.
     AVIF_CHECKRES(avifEncoderWriteNclxProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
 
-    return avifEncoderWriteExtendedColorProperties(dedupStream, outputStream, imageMetadata, ipma, dedup);
+    AVIF_CHECKRES(avifEncoderWritePasp(dedupStream, outputStream, imageMetadata, ipma, dedup));
+
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifEncoderWriteContentLightLevelInformation(avifRWStream * outputStream,
@@ -739,13 +745,12 @@ static avifResult avifEncoderWriteMiniHDRProperties(avifRWStream * outputStream,
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
-static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupStream,
-                                                          avifRWStream * outputStream,
-                                                          const avifImage * imageMetadata,
-                                                          struct ipmaArray * ipma,
-                                                          avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWritePasp(avifRWStream * dedupStream,
+                                       avifRWStream * outputStream,
+                                       const avifImage * imageMetadata,
+                                       struct ipmaArray * ipma,
+                                       avifItemPropertyDedup * dedup)
 {
-    // Write (Optional) Transformations
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
@@ -759,6 +764,15 @@ static avifResult avifEncoderWriteExtendedColorProperties(avifRWStream * dedupSt
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
         }
     }
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifEncoderWriteClapIrotImir(avifRWStream * dedupStream,
+                                               avifRWStream * outputStream,
+                                               const avifImage * imageMetadata,
+                                               struct ipmaArray * ipma,
+                                               avifItemPropertyDedup * dedup)
+{
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
@@ -2862,6 +2876,12 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             imageHeight = item->gridHeight;
         }
 
+        // ISO/IEC 23008-12:2024 section 6.5.1:
+        //   Writers should arrange the descriptive properties specified in 6.5 prior to any other properties
+        //   in the sequence associating properties with an item.
+        // For each item, write the descriptive properties first (and thus associate them before the
+        // transformative properties).
+
         // Properties all image items need (coded and derived)
         // ispe = image spatial extent (width, height)
         avifItemPropertyDedupStart(dedup);
@@ -2944,42 +2964,11 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // Write the colr nclx box.
             AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->ipma, dedup));
 
-            // Also write the transformative properties.
-
-            // For the orientation, it could be done in multiple ways:
-            // - Bake the orientation in the base and gain map images.
-            //   This does not allow for orientation changes without recompression.
-            // - Associate 'irot'/'imir' with the 'tmap' derived image item only.
-            //   If so, decoding only the base image would give a different orientation than
-            //   decoding the tone-mapped image.
-            // - Wrap the base image in an 'iden' derived image item and associate 'irot'/'imir'
-            //   with the 'tmap' and 'iden' derived image items. 'iden' is not currently supported
-            //   by libavif, reducing the backward compatibility of this solution.
-            // - Associate 'irot'/'imir' with the base and gain map image items.
-            //   Do not associate 'irot'/'imir' with the 'tmap' derived image item.
-            //   These transformative properties are supposed to be applied at decoding on
-            //   image items before these are used as input to a derived image item.
-            //   libavif uses this pattern at encoding and requires it at decoding.
-            //   As of today, this is forbidden by the AVIF specification:
-            //     https://aomediacodec.github.io/av1-avif/v1.1.0.html#file-constraints
-            //   That rule was written before 'tmap' was proposed and may be relaxed for 'tmap'.
-
-            // 'clap' is treated as 'irot'/'imir', although it could differ between the base and
-            // gain map image items if these have different dimensions.
-            if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
-                AVIF_CHECKERR(imageMetadata->width != itemMetadata->width || imageMetadata->height != itemMetadata->height,
-                              AVIF_RESULT_NOT_IMPLEMENTED);
-            }
-
             // 'pasp' is not a transformative property (despite AVIF_TRANSFORM_PASP being part of
             // avifTransformFlag) but it is assumed to apply to the gain map in the same way as
-            // the transformative properties above.
-
-            // Based on the explanation above, 'pasp', 'clap', 'irot' and 'imir' have to match between the base and
-            // gain map image items in the container part of the encoded file.
-            // To enforce that, the transformative properties of the gain map cannot be set explicitly in the API.
+            // the transformative properties below.
             AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
-            AVIF_CHECKRES(avifEncoderWriteExtendedColorProperties(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWritePasp(&dedup->s, s, imageMetadata, &item->ipma, dedup));
         }
 
         if (item->extraLayerCount > 0) {
@@ -3016,6 +3005,47 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
 
             // We don't add an 'lsel' property since many decoders do not support it and will reject the image,
             // see https://github.com/AOMediaCodec/libavif/pull/2429
+        }
+
+        // Also write the transformative properties.
+
+        if (item->itemCategory == AVIF_ITEM_COLOR) {
+            // Color specific properties
+            // Note the 'tmap' (tone mapped image) item when a gain map is present also has itemCategory AVIF_ITEM_COLOR.
+            AVIF_CHECKRES(avifEncoderWriteClapIrotImir(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+        } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
+            // Gain map specific properties
+
+            // For the orientation, it could be done in multiple ways:
+            // - Bake the orientation in the base and gain map images.
+            //   This does not allow for orientation changes without recompression.
+            // - Associate 'irot'/'imir' with the 'tmap' derived image item only.
+            //   If so, decoding only the base image would give a different orientation than
+            //   decoding the tone-mapped image.
+            // - Wrap the base image in an 'iden' derived image item and associate 'irot'/'imir'
+            //   with the 'tmap' and 'iden' derived image items. 'iden' is not currently supported
+            //   by libavif, reducing the backward compatibility of this solution.
+            // - Associate 'irot'/'imir' with the base and gain map image items.
+            //   Do not associate 'irot'/'imir' with the 'tmap' derived image item.
+            //   These transformative properties are supposed to be applied at decoding on
+            //   image items before these are used as input to a derived image item.
+            //   libavif uses this pattern at encoding and requires it at decoding.
+            //   As of today, this is forbidden by the AVIF specification:
+            //     https://aomediacodec.github.io/av1-avif/v1.1.0.html#file-constraints
+            //   That rule was written before 'tmap' was proposed and may be relaxed for 'tmap'.
+
+            // 'clap' is treated as 'irot'/'imir', although it could differ between the base and
+            // gain map image items if these have different dimensions.
+            if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
+                AVIF_CHECKERR(imageMetadata->width != itemMetadata->width || imageMetadata->height != itemMetadata->height,
+                              AVIF_RESULT_NOT_IMPLEMENTED);
+            }
+
+            // Based on the explanation above, 'clap', 'irot' and 'imir' have to match between the base and
+            // gain map image items in the container part of the encoded file.
+            // To enforce that, the transformative properties of the gain map cannot be set explicitly in the API.
+            AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
+            AVIF_CHECKRES(avifEncoderWriteClapIrotImir(&dedup->s, s, imageMetadata, &item->ipma, dedup));
         }
     }
     return AVIF_RESULT_OK;
@@ -3589,6 +3619,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
                 AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
+                AVIF_CHECKRES(avifEncoderWriteClapIrotImir(NULL, &s, imageMetadata, NULL, NULL));
                 AVIF_CHECKRES(avifEncoderWriteHDRProperties(NULL, &s, imageMetadata, NULL, NULL));
             }
 
