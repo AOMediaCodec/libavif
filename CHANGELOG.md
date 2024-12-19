@@ -42,6 +42,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
+* Add 'avifgainmaputil' command line tool to installed apps.
 
 ## [1.1.1] - 2024-07-30
 
