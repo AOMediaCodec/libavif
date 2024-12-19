@@ -37,14 +37,14 @@ void PropsValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
   for (TestProp testProp : testProps) {
     if (testProp.fourcc == UUID_4CC) {
       ASSERT_EQ(
-          avifImageAddUUIDProperty(image.get(), testProp.uuid.data(), testProp.body.data(),
-                                   testProp.body.size()),
+          avifImageAddUUIDProperty(image.get(), testProp.uuid.data(),
+                                   testProp.body.data(), testProp.body.size()),
           AVIF_RESULT_OK);
     } else {
-      ASSERT_EQ(
-          avifImageAddOpaqueProperty(image.get(), testProp.fourcc.data(), testProp.body.data(),
-                                     testProp.body.size()),
-          AVIF_RESULT_OK);
+      ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), testProp.fourcc.data(),
+                                           testProp.body.data(),
+                                           testProp.body.size()),
+                AVIF_RESULT_OK);
     }
   }
 
