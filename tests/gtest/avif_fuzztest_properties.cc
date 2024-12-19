@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2024 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <array>
@@ -36,19 +36,13 @@ void PropsValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
 
   for (TestProp testProp : testProps) {
     if (testProp.fourcc == UUID_4CC) {
-      uint8_t uuid[16];
-      for (int i = 0; i < 16; i++) {
-        uuid[i] = testProp.uuid[i];
-      }
       ASSERT_EQ(
-          avifImageAddUUIDProperty(image.get(), uuid, testProp.body.data(),
+          avifImageAddUUIDProperty(image.get(), testProp.uuid.data(), testProp.body.data(),
                                    testProp.body.size()),
           AVIF_RESULT_OK);
     } else {
-      const uint8_t fourcc[4] = {testProp.fourcc[0], testProp.fourcc[1],
-                                 testProp.fourcc[2], testProp.fourcc[3]};
       ASSERT_EQ(
-          avifImageAddOpaqueProperty(image.get(), fourcc, testProp.body.data(),
+          avifImageAddOpaqueProperty(image.get(), testProp.fourcc.data(), testProp.body.data(),
                                      testProp.body.size()),
           AVIF_RESULT_OK);
     }
