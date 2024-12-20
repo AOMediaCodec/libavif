@@ -48,7 +48,7 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_LIBXML2=LOCAL
           -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
-          -DAVIF_ENABLE_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
+          -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
           -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
       - name: Build libavif (ninja)
         working-directory: ./build

@@ -127,8 +127,12 @@ cmake_dependent_option(
 
 set_local_or_system_option(
     "GTEST" OFF
-    "Build the GoogleTest framework by providing your own copy of the repo in ext/googletest (see Local Builds in README)"
+    "Use the GoogleTest framework. Enables avif C++ tests that depend on GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON."
 )
+if(NOT AVIF_GTEST STREQUAL "OFF")
+    set(AVIF_ENABLE_GTEST ON)
+endif()
+
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 option(
@@ -140,9 +144,6 @@ option(
     AVIF_ENABLE_GOLDEN_TESTS
     "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON and AVIF_BUILD_TESTS=ON, and depends on MP4box which can be built with ext/mp4box.sh"
     OFF
-)
-option(AVIF_ENABLE_GTEST
-       "Build avif C++ tests, which depend on GoogleTest. Requires GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON." ON
 )
 option(AVIF_ENABLE_FUZZTEST "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS is ON."
        OFF

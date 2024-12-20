@@ -52,7 +52,7 @@ jobs:
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
           -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-          -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GTEST=OFF
+          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=OFF
           -DAVIF_ENABLE_WERROR=ON
       - name: Build libavif (ninja)
         working-directory: ./build
