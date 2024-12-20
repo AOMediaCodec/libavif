@@ -96,9 +96,8 @@ first run the associated script in the `ext/` subdirectory.
 A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
 option.
 
-The remaining tests can be built by enabling the `AVIF_BUILD_TESTS` and
-`AVIF_ENABLE_GTEST` CMake options. They require GoogleTest
-(`-DAVIF_GTEST=SYSTEM` or `-DAVIF_GTEST=LOCAL`).
+The remaining tests can be built by enabling `AVIF_BUILD_TESTS` and setting
+`AVIF_GTEST` to `SYSTEM` or `LOCAL`.
 
 ### Command Lines
 

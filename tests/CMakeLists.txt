@@ -43,7 +43,7 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
-if(AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST OR AVIF_BUILD_APPS)
+if(AVIF_ENABLE_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers PUBLIC avif_apps avif)
     target_link_libraries(aviftest_helpers PRIVATE avif_enable_warnings)
@@ -82,7 +82,7 @@ macro(add_avif_internal_gtest_with_data TEST_NAME)
     register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
-if(AVIF_ENABLE_GTEST)
+if(AVIF_GTEST)
     check_avif_option(AVIF_GTEST TARGET GTest::GTest PKG_NAME GTest)
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
     target_link_libraries(avifincrtest_helpers PUBLIC avif)
@@ -92,7 +92,7 @@ if(AVIF_ENABLE_GTEST)
     target_link_libraries(avifincrtest_helpers_internal PRIVATE GTest::GTest avif_enable_warnings)
 endif()
 
-if(AVIF_ENABLE_GTEST)
+if(AVIF_GTEST)
     if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         add_avif_internal_gtest_with_data(avif16bittest)
         add_avif_internal_gtest(avifsampletransformtest)
@@ -163,7 +163,7 @@ if(AVIF_ENABLE_GTEST)
         message(STATUS "Some tests are skipped because libsharpyuv is unavailable.")
     endif()
 else()
-    message(STATUS "Most tests are disabled because AVIF_ENABLE_GTEST is OFF.")
+    message(STATUS "Most tests are disabled because AVIF_GTEST is OFF.")
 endif()
 
 ################################################################################
@@ -319,7 +319,7 @@ endif()
 # AV2 tests
 
 if(AVIF_CODEC_AVM_ENABLED)
-    if(AVIF_ENABLE_GTEST)
+    if(AVIF_GTEST)
         add_avif_gtest(avifavmtest)
         if(AVIF_ENABLE_EXPERIMENTAL_MINI)
             add_avif_gtest(avifavmminitest)
@@ -343,7 +343,7 @@ if(AVIF_CODEC_AVM_ENABLED)
     )
         # Disable all tests that use avifEncoder without explicitly setting the codec to avm.
         set_tests_properties(aviftest PROPERTIES DISABLED True)
-        if(AVIF_ENABLE_GTEST)
+        if(AVIF_GTEST)
             set_tests_properties(
                 avifallocationtest
                 avifbasictest

@@ -39,6 +39,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   utility functions.
 * Turn on the gain map API. Remove the
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
+* Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
+  AVIF_GTEST=LOCAL/SYSTEM.
 
 ## [1.1.1] - 2024-07-30
 
