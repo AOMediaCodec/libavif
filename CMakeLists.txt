@@ -129,9 +129,6 @@ set_local_or_system_option(
     "GTEST" OFF
     "Use the GoogleTest framework. Enables avif C++ tests that depend on GoogleTest. Has no effect unless AVIF_BUILD_TESTS is ON."
 )
-if(NOT AVIF_GTEST STREQUAL "OFF")
-    set(AVIF_ENABLE_GTEST ON)
-endif()
 
 option(AVIF_BUILD_APPS "Build avif apps." OFF)
 option(AVIF_BUILD_TESTS "Build avif tests." OFF)
@@ -573,9 +570,7 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST
-                                                                                                         OR AVIF_ENABLE_GTEST))
-)
+if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
         # [[nodiscard]] requires C++17.
@@ -652,7 +647,7 @@ if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
 
-if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_ENABLE_GTEST)))
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_GTEST)))
     if(AVIF_ZLIBPNG STREQUAL "OFF")
         message(FATAL_ERROR "libavif: AVIF_ZLIBPNG cannot be OFF when AVIF_BUILD_APPS or AVIF_BUILD_TESTS is ON")
     elseif(AVIF_ZLIBPNG STREQUAL "SYSTEM")
