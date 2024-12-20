@@ -31,6 +31,12 @@ ConvertCommand::ConvertCommand()
 }
 
 avifResult ConvertCommand::Run() {
+#if !defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
+  std::cout << "JPEG gainmap conversion unavailable because avifgainmaputil "
+               "was not built with libxml2.\n";
+  return AVIF_RESULT_NOT_IMPLEMENTED;
+#endif
+
   const avifPixelFormat pixel_format =
       static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
 
