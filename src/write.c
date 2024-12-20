@@ -610,16 +610,16 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderWritePasp(avifRWStream * dedupStream,
-                                       avifRWStream * outputStream,
-                                       const avifImage * imageMetadata,
-                                       struct ipmaArray * ipma,
-                                       avifItemPropertyDedup * dedup);
-static avifResult avifEncoderWriteClapIrotImir(avifRWStream * dedupStream,
+static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
                                                avifRWStream * outputStream,
                                                const avifImage * imageMetadata,
                                                struct ipmaArray * ipma,
                                                avifItemPropertyDedup * dedup);
+static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupStream,
+                                                           avifRWStream * outputStream,
+                                                           const avifImage * imageMetadata,
+                                                           struct ipmaArray * ipma,
+                                                           avifItemPropertyDedup * dedup);
 
 // This function is used in two codepaths:
 // * writing color *item* properties
@@ -667,7 +667,7 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
     // Therefore, *always* writing an nclx box, even if a prof box was already written above.
     AVIF_CHECKRES(avifEncoderWriteNclxProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
 
-    AVIF_CHECKRES(avifEncoderWritePasp(dedupStream, outputStream, imageMetadata, ipma, dedup));
+    AVIF_CHECKRES(avifEncoderWritePaspProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
 
     return AVIF_RESULT_OK;
 }
@@ -745,11 +745,11 @@ static avifResult avifEncoderWriteMiniHDRProperties(avifRWStream * outputStream,
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
-static avifResult avifEncoderWritePasp(avifRWStream * dedupStream,
-                                       avifRWStream * outputStream,
-                                       const avifImage * imageMetadata,
-                                       struct ipmaArray * ipma,
-                                       avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
+                                               avifRWStream * outputStream,
+                                               const avifImage * imageMetadata,
+                                               struct ipmaArray * ipma,
+                                               avifItemPropertyDedup * dedup)
 {
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
         if (dedup) {
@@ -767,11 +767,11 @@ static avifResult avifEncoderWritePasp(avifRWStream * dedupStream,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifEncoderWriteClapIrotImir(avifRWStream * dedupStream,
-                                               avifRWStream * outputStream,
-                                               const avifImage * imageMetadata,
-                                               struct ipmaArray * ipma,
-                                               avifItemPropertyDedup * dedup)
+static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupStream,
+                                                           avifRWStream * outputStream,
+                                                           const avifImage * imageMetadata,
+                                                           struct ipmaArray * ipma,
+                                                           avifItemPropertyDedup * dedup)
 {
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
         if (dedup) {
@@ -2964,11 +2964,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // Write the colr nclx box.
             AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->ipma, dedup));
 
-            // 'pasp' is not a transformative property (despite AVIF_TRANSFORM_PASP being part of
-            // avifTransformFlag) but it is assumed to apply to the gain map in the same way as
-            // the transformative properties below.
-            AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
-            AVIF_CHECKRES(avifEncoderWritePasp(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWritePaspProperty(&dedup->s, s, imageMetadata, &item->ipma, dedup));
         }
 
         if (item->extraLayerCount > 0) {
@@ -3012,7 +3008,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
             // Note the 'tmap' (tone mapped image) item when a gain map is present also has itemCategory AVIF_ITEM_COLOR.
-            AVIF_CHECKRES(avifEncoderWriteClapIrotImir(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, itemMetadata, &item->ipma, dedup));
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
@@ -3043,9 +3039,12 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
 
             // Based on the explanation above, 'clap', 'irot' and 'imir' have to match between the base and
             // gain map image items in the container part of the encoded file.
-            // To enforce that, the transformative properties of the gain map cannot be set explicitly in the API.
+            // 'pasp' is not a transformative property (despite AVIF_TRANSFORM_PASP being part of
+            // avifTransformFlag) but it is assumed to apply to the gain map in the same way as
+            // the transformative properties above.
+            // To enforce that, the transformative and 'pasp' properties of the gain map cannot be set explicitly in the API.
             AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
-            AVIF_CHECKRES(avifEncoderWriteClapIrotImir(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, imageMetadata, &item->ipma, dedup));
         }
     }
     return AVIF_RESULT_OK;
@@ -3619,8 +3618,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
                 AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
-                AVIF_CHECKRES(avifEncoderWriteClapIrotImir(NULL, &s, imageMetadata, NULL, NULL));
                 AVIF_CHECKRES(avifEncoderWriteHDRProperties(NULL, &s, imageMetadata, NULL, NULL));
+                AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(NULL, &s, imageMetadata, NULL, NULL));
             }
 
             avifBoxMarker ccst;
