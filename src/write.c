@@ -3037,11 +3037,12 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                               AVIF_RESULT_NOT_IMPLEMENTED);
             }
 
-            // Based on the explanation above, 'clap', 'irot' and 'imir' have to match between the base and
-            // gain map image items in the container part of the encoded file.
             // 'pasp' is not a transformative property (despite AVIF_TRANSFORM_PASP being part of
             // avifTransformFlag) but it is assumed to apply to the gain map in the same way as
             // the transformative properties above.
+
+            // Based on the explanation above, 'clap', 'irot', 'imir' and 'pasp' have to match between the base and
+            // gain map image items in the container part of the encoded file.
             // To enforce that, the transformative and 'pasp' properties of the gain map cannot be set explicitly in the API.
             AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
             AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, imageMetadata, &item->ipma, dedup));
