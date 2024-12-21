@@ -375,6 +375,7 @@ set(AVIF_SRCS
     src/io.c
     src/mem.c
     src/obu.c
+    src/properties.c
     src/rawdata.c
     src/read.c
     src/reformat.c
