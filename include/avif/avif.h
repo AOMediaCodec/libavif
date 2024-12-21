@@ -860,6 +860,9 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // libavif (e.g. ispe or meta) will likely result in invalid files, and should be avoided.
 // If creating an ItemFullProperty, the version and flags values should be provided as the first four bytes of
 // the data argument, and those four bytes included in the dataSize.
+// Any properties will be added after the usual libavif descriptive properties, and before the libavif
+// transformative properties (e.g. irot, imir, clap). Be aware that readers will apply transformative
+// properties in the order they occur.
 // Users of this API should consider calling avifParse() on the resulting file (i.e. the encoder output) to
 // check that the arbitrary properties have not resulted in an invalid file.
 AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
