@@ -99,6 +99,8 @@ option.
 The remaining tests can be built by enabling `AVIF_BUILD_TESTS` and setting
 `AVIF_GTEST` to `SYSTEM` or `LOCAL`.
 
+Fuzzing test instructions are also provided in `ext/oss-fuzz/README.md`.
+
 ### Command Lines
 
 The following instructions can be used to build the libavif library and the
