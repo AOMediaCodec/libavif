@@ -15,8 +15,8 @@ git checkout 078ea0871cc96d3a69bad406577f176a4fa14ae9
 sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
 sed -i 's/-DADDRESS_SANITIZER//g' ./cmake/FuzzTestFlagSetup.cmake
 : # Fixes for https://github.com/google/fuzztest/issues/1125
-sed -i 's/if (IsEnginePlaceholderInput(data)) return;/if (data.size() == 0) return;/g' ./fuzztest/internal/compatibility_mode.cc
-sed -i 's/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/g' ./cmake/BuildDependencies.cmake
+sed -i 's/if (IsEnginePlaceholderInput(data))/if (data.size() == 0)/' ./fuzztest/internal/compatibility_mode.cc
+sed -i 's/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/' ./cmake/BuildDependencies.cmake
 
 : # fuzztest is built by the main CMake project through add_subdirectory as recommended at:
 : # https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
