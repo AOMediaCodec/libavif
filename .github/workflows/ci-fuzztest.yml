@@ -35,10 +35,6 @@ jobs:
           codec-dav1d: "LOCAL"
           libxml2: "LOCAL"
           libyuv: ${{ matrix.libyuv }}
-      - name: Build fuzztest
-        if: steps.setup.outputs.ext-cache-hit != 'true'
-        working-directory: ./ext
-        run: bash -e fuzztest.cmd
 
       - name: Prepare libavif (cmake)
         run: >
@@ -52,7 +48,6 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
-          -DAVIF_ENABLE_FUZZTEST=ON
           -DAVIF_LOCAL_FUZZTEST=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
           -DAVIF_ENABLE_WERROR=ON

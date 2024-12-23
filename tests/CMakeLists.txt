@@ -43,7 +43,7 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
-if(AVIF_ENABLE_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
+if(AVIF_LOCAL_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers PUBLIC avif_apps avif)
     target_link_libraries(aviftest_helpers PRIVATE avif_enable_warnings)
@@ -170,42 +170,35 @@ endif()
 ################################################################################
 # Experimental FuzzTest support (Linux only)
 
-if(AVIF_ENABLE_FUZZTEST)
+if(AVIF_LOCAL_FUZZTEST)
     # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
     # are considered as extra source files.
     macro(add_avif_fuzztest TEST_NAME)
         add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc ${ARGN})
         # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
-        target_link_libraries(${TEST_NAME} PRIVATE avif_fuzztest_helpers aviftest_helpers_internal avif_enable_warnings)
+        target_link_libraries(${TEST_NAME} PRIVATE avif_fuzztest_helpers aviftest_helpers_internal)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} --stack_limit_kb=512)
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
     endmacro()
 
-    if(AVIF_LOCAL_FUZZTEST)
-        # Run ext/fuzztest.cmd first.
-        # Recommended top-level CMake options:
-        #   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_CODEC_DAV1D=ON -DAVIF_ENABLE_WERROR=OFF
-        # Reproducing a failure can be done by setting the environment variable
-        #   FUZZTEST_REPLAY=/path/to/repro_file.test
-        # and running one of the targets below.
-        # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
-        # Note: There are compiler warnings in the FuzzTest headers. Add the
-        # ext/fuzztest subdirectory with the SYSTEM directory property set to
-        # true so that warnings in its headers are suppressed.
-        if(CMAKE_VERSION VERSION_LESS 3.25.0)
-            message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
-        endif()
-        # Add the fuzztest project. Note this may add some tests which may not be built because of EXCLUDE_FROM_ALL and will
-        # therefore fail. They can be ignored by adding them to CTestCustom.cmake
-        # See https://gitlab.kitware.com/cmake/cmake/-/issues/20212
-        add_subdirectory(${AVIF_SOURCE_DIR}/ext/fuzztest ${AVIF_SOURCE_DIR}/ext/fuzztest/build.libavif EXCLUDE_FROM_ALL SYSTEM)
-    else()
-        message(
-            FATAL_ERROR
-                "fuzztest: Installed FuzzTest is not supported, please set AVIF_LOCAL_FUZZTEST=ON or AVIF_ENABLE_FUZZTEST=OFF"
-        )
+    # Recommended top-level CMake options:
+    #   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DAVIF_CODEC_DAV1D=ON -DAVIF_ENABLE_WERROR=OFF
+    # Reproducing a failure can be done by setting the environment variable
+    #   FUZZTEST_REPLAY=/path/to/repro_file.test
+    # and running one of the targets below.
+    # See https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md
+    # Note: There are compiler warnings in the FuzzTest headers. Add the
+    # ext/fuzztest subdirectory with the SYSTEM directory property set to
+    # true so that warnings in its headers are suppressed.
+    if(CMAKE_VERSION VERSION_LESS 3.25.0)
+        message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
     endif()
+    # Add the fuzztest project. Note this may add some tests which may not be built because of EXCLUDE_FROM_ALL and will
+    # therefore fail. They can be ignored by adding them to CTestCustom.cmake
+    # See https://gitlab.kitware.com/cmake/cmake/-/issues/20212
+    include(LocalFuzztest)
+
     fuzztest_setup_fuzzing_flags()
 
     # Create a library with avif_fuzztest_helpers.cc to compile it only once.
@@ -222,7 +215,7 @@ if(AVIF_ENABLE_FUZZTEST)
     add_avif_fuzztest(avif_fuzztest_read_image)
     add_avif_fuzztest(avif_fuzztest_yuvrgb)
 else()
-    message(STATUS "FuzzTest targets are disabled because AVIF_ENABLE_FUZZTEST is OFF.")
+    message(STATUS "FuzzTest targets are disabled because AVIF_LOCAL_FUZZTEST is OFF.")
 endif()
 
 ################################################################################
