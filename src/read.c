@@ -2099,7 +2099,7 @@ static avifResult avifParseToneMappedImageBox(avifGainMap * gainMap, const uint8
 static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTransformExpression * expression)
 {
     uint8_t tokenCount;
-    AVIF_CHECK(avifROStreamRead(s, &tokenCount, /*size=*/1)); // unsigned int(8) token_count;
+    AVIF_CHECKERR(avifROStreamRead(s, &tokenCount, /*size=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) token_count;
     AVIF_CHECKERR(tokenCount != 0, AVIF_RESULT_BMFF_PARSE_FAILED);
     AVIF_CHECKERR(avifArrayCreate(expression, sizeof(expression->tokens[0]), tokenCount), AVIF_RESULT_OUT_OF_MEMORY);
 
@@ -2107,14 +2107,14 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
         avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
         AVIF_CHECKERR(token != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
-        AVIF_CHECK(avifROStreamRead(s, &token->type, /*size=*/1)); // unsigned int(8) token;
+        AVIF_CHECKERR(avifROStreamRead(s, &token->type, /*size=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) token;
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
             // Two's complement representation is assumed here.
             uint32_t constant;
-            AVIF_CHECK(avifROStreamReadU32(s, &constant)); // signed int(1<<(bit_depth+3)) constant;
-            token->constant = *(int32_t *)&constant;       // maybe =(int32_t)constant; is enough
+            AVIF_CHECKERR(avifROStreamReadU32(s, &constant), AVIF_RESULT_BMFF_PARSE_FAILED); // signed int(1<<(bit_depth+3)) constant;
+            token->constant = *(int32_t *)&constant; // maybe =(int32_t)constant; is enough
         } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
-            AVIF_CHECK(avifROStreamRead(s, &token->inputImageItemIndex, 1)); // unsigned int(8) input_image_item_index;
+            AVIF_CHECKERR(avifROStreamRead(s, &token->inputImageItemIndex, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) input_image_item_index;
         }
     }
     AVIF_CHECKERR(avifROStreamRemainingBytes(s) == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2131,8 +2131,8 @@ static avifResult avifParseSampleTransformImageBox(const uint8_t * raw,
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[sato]");
 
     uint8_t version, bitDepth;
-    AVIF_CHECK(avifROStreamReadBitsU8(&s, &version, /*bitCount=*/6));  // unsigned int(6) version = 0;
-    AVIF_CHECK(avifROStreamReadBitsU8(&s, &bitDepth, /*bitCount=*/2)); // unsigned int(2) bit_depth;
+    AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &version, /*bitCount=*/6), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(6) version = 0;
+    AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &bitDepth, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) bit_depth;
     AVIF_CHECKERR(version == 0, AVIF_RESULT_NOT_IMPLEMENTED);
     AVIF_CHECKERR(bitDepth == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, AVIF_RESULT_NOT_IMPLEMENTED);
 
