@@ -6052,6 +6052,18 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
     }
 
+    if (gainMapProperties) {
+        for (size_t i = 0; i < gainMapProperties->count; ++i) {
+            const avifProperty * property = &gainMapProperties->prop[i];
+            if (property->isOpaque) {
+                AVIF_CHECKRES(avifImagePushProperty(decoder->image->gainMap->image,
+                                                    property->type,
+                                                    property->u.opaque.usertype,
+                                                    property->u.opaque.boxPayload.data,
+                                                    property->u.opaque.boxPayload.size));
+            }
+        }
+    }
     return AVIF_RESULT_OK;
 }
 

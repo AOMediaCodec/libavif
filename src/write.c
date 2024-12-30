@@ -3003,6 +3003,20 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // see https://github.com/AOMediaCodec/libavif/pull/2429
         }
 
+        // write out any opaque properties from avifImageAddOpaqueProperty() or avifImageAddUUIDProperty()
+        for (size_t i = 0; i < itemMetadata->numProperties; i++) {
+            avifItemPropertyDedupStart(dedup);
+            const avifImageItemProperty * prop = &itemMetadata->properties[i];
+            avifBoxMarker propMarker;
+            AVIF_CHECKRES(avifRWStreamWriteBox(&dedup->s, (const char *)prop->boxtype, AVIF_BOX_SIZE_TBD, &propMarker));
+            if (memcmp(prop->boxtype, "uuid", 4) == 0) {
+                AVIF_CHECKRES(avifRWStreamWrite(&dedup->s, prop->usertype, 16));
+            }
+            AVIF_CHECKRES(avifRWStreamWrite(&dedup->s, prop->boxPayload.data, prop->boxPayload.size));
+            avifRWStreamFinishBox(&dedup->s, propMarker);
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+        }
+
         // Also write the transformative properties.
 
         if (item->itemCategory == AVIF_ITEM_COLOR) {

@@ -136,6 +136,7 @@ if(AVIF_GTEST)
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest_with_data(avifprogressivetest)
     add_avif_gtest_with_data(avifpropertytest)
+    add_avif_internal_gtest(avifpropinternaltest)
     add_avif_gtest(avifrangetest)
     add_avif_gtest_with_data(avifreadimagetest)
     add_avif_internal_gtest(avifrgbtest)
@@ -217,6 +218,7 @@ if(AVIF_ENABLE_FUZZTEST)
     add_avif_fuzztest(avif_fuzztest_enc_dec)
     add_avif_fuzztest(avif_fuzztest_enc_dec_anim)
     add_avif_fuzztest(avif_fuzztest_enc_dec_incr gtest/avifincrtest_helpers.cc)
+    add_avif_fuzztest(avif_fuzztest_properties)
     add_avif_fuzztest(avif_fuzztest_read_image)
     add_avif_fuzztest(avif_fuzztest_yuvrgb)
 else()
@@ -358,6 +360,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifiostatstest
                 avifmetadatatest
                 avifprogressivetest
+                avifpropertytest
                 avifrangetest
                 avify4mtest
                 PROPERTIES DISABLED True

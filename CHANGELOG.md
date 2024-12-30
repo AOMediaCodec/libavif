@@ -10,7 +10,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Added since 1.1.1
 * Add the properties and numProperties fields to avifImage. They are filled by
-  the avifDecoder instance with the properties unrecognized by libavif.
+  the avifDecoder instance with the properties unrecognized by libavif. They are
+  written by the avifEncoder.
 
 ### Changed since 1.1.1
 * avifenc: Allow large images to be encoded.

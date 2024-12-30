@@ -45,6 +45,65 @@ TEST(AvifPropertyTest, Parse) {
   EXPECT_EQ(uuid.boxPayload.size, 0);
 }
 
+TEST(AvifPropertyTest, Serialise) {
+  ImagePtr image = testutil::CreateImage(128, 30, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_ALL);
+  std::vector<uint8_t> abcd_data({0, 0, 0, 1, 'a', 'b', 'c'});
+  std::vector<uint8_t> efgh_data({'e', 'h'});
+  uint8_t uuid[16] = {0x95, 0x96, 0xf1, 0xad, 0xb8, 0xab, 0x4a, 0xfc,
+                      0x9e, 0xfc, 0x83, 0x87, 0xac, 0x79, 0x37, 0xda};
+  std::vector<uint8_t> uuid_data({'x', 'y', 'z'});
+  ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"abcd",
+                                       abcd_data.data(), abcd_data.size()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"efgh",
+                                       efgh_data.data(), efgh_data.size()),
+            AVIF_RESULT_OK);
+  // Should not be added
+  ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"mdat",
+                                       efgh_data.data(), efgh_data.size()),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  ASSERT_EQ(avifImageAddUUIDProperty(image.get(), uuid, uuid_data.data(),
+                                     uuid_data.size()),
+            AVIF_RESULT_OK);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+  ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  ASSERT_EQ(decoder->image->numProperties, 3u);
+
+  const avifImageItemProperty& abcd = decoder->image->properties[0];
+  EXPECT_EQ(std::string(abcd.boxtype, abcd.boxtype + 4), "abcd");
+  EXPECT_EQ(std::vector<uint8_t>(abcd.boxPayload.data,
+                                 abcd.boxPayload.data + abcd.boxPayload.size),
+            abcd_data);
+
+  const avifImageItemProperty& efgh = decoder->image->properties[1];
+  EXPECT_EQ(std::string(efgh.boxtype, efgh.boxtype + 4), "efgh");
+  EXPECT_EQ(std::vector<uint8_t>(efgh.boxPayload.data,
+                                 efgh.boxPayload.data + efgh.boxPayload.size),
+            efgh_data);
+
+  const avifImageItemProperty& uuidProp = decoder->image->properties[2];
+  EXPECT_EQ(std::string(uuidProp.boxtype, uuidProp.boxtype + 4), "uuid");
+  EXPECT_EQ(std::vector<uint8_t>(uuidProp.usertype, uuidProp.usertype + 16),
+            std::vector<uint8_t>(uuid, uuid + 16));
+  EXPECT_EQ(
+      std::vector<uint8_t>(uuidProp.boxPayload.data,
+                           uuidProp.boxPayload.data + uuidProp.boxPayload.size),
+      uuid_data);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
