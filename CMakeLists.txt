@@ -729,14 +729,6 @@ if(AVIF_BUILD_APPS)
     endif()
     target_link_libraries(avifdec avif_apps avif avif_enable_warnings)
 
-    if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
-        install(
-            TARGETS avifenc avifdec
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        )
-    endif()
     include(LocalLibargparse)
 
     set(AVIFGAINMAPUTIL_SRCS
@@ -762,7 +754,15 @@ if(AVIF_BUILD_APPS)
     set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
     target_include_directories(avifgainmaputil PRIVATE apps/avifgainmaputil/)
     target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
-    # Don't add avifgainmaputil to installed apps for now.
+
+    if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
+        install(
+            TARGETS avifenc avifdec avifgainmaputil
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        )
+    endif()
 endif()
 
 if(AVIF_BUILD_TESTS)
