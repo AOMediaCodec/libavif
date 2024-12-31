@@ -1456,13 +1456,6 @@ typedef struct avifScalingMode
 // * If (maxThreads < 2), multithreading is disabled
 //   * NOTE: Please see the "Understanding maxThreads" comment block above
 // * Quality range: [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST]
-// * Quantizer range: [AVIF_QUANTIZER_BEST_QUALITY - AVIF_QUANTIZER_WORST_QUALITY]
-// * In older versions of libavif, the avifEncoder struct doesn't have the quality and qualityAlpha
-//   fields. For backward compatibility, if the quality field is not set, the default value of
-//   quality is based on the average of minQuantizer and maxQuantizer. Similarly the default value
-//   of qualityAlpha is based on the average of minQuantizerAlpha and maxQuantizerAlpha. New code
-//   should set quality and qualityAlpha and leave minQuantizer, maxQuantizer, minQuantizerAlpha,
-//   and maxQuantizerAlpha initialized to their default values.
 // * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
 //   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 //   If autoTiling is set to AVIF_TRUE, libavif ignores tileRowsLog2 and tileColsLog2 and
@@ -1495,10 +1488,10 @@ typedef struct avifEncoder
     // changeable encoder settings
     int quality;
     int qualityAlpha;
-    int minQuantizer;
-    int maxQuantizer;
-    int minQuantizerAlpha;
-    int maxQuantizerAlpha;
+    int minQuantizer;      // Deprecated, use `quality` instead.
+    int maxQuantizer;      // Deprecated, use `quality` instead.
+    int minQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
+    int maxQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
     int tileRowsLog2;
     int tileColsLog2;
     avifBool autoTiling;
