@@ -268,8 +268,8 @@ static void syntaxLong(void)
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
-    printf("    --max QP                          : Deprecated, use -q [0-100] instead\n");
     printf("    --min QP                          : Deprecated, use -q [0-100] instead\n");
+    printf("    --max QP                          : Deprecated, use -q [0-100] instead\n");
     printf("    --minalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
     printf("    --maxalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
     printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
