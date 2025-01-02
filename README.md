@@ -6,14 +6,15 @@ File Format, as described here:
 <https://aomediacodec.github.io/av1-avif/>
 
 It can encode and decode all AV1 supported YUV formats and bit depths (with
-alpha).
+alpha). In addition to the library, encoder and decoder command line tools are
+also provided (`avifenc` and `avifdec`).
 
 It is recommended that you check out/use
 [tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of
 just using the main branch. We will regularly create new versions as bug fixes
 and features are added.
 
-## Usage
+## API usage
 
 Please see the examples in the "examples" directory. If you're already building
 `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
@@ -63,10 +64,29 @@ pacman -S mingw-w64-ucrt-x86_64-libavif
 ## Build Notes
 
 Building libavif requires [CMake](https://cmake.org/).
+See [Build Command Lines](#build-command-lines) below for example command lines.
 
-No AV1 codecs are enabled by default. Enable them by setting any of the
-following CMake options to `LOCAL` or `SYSTEM` whether you want to use a
-locally built or a system installed version (e.g. `-DAVIF_CODEC_AOM=LOCAL`):
+### Controlling Dependencies
+
+CMake flags like `AVIF_CODEC_AOM`, `AVIF_LIBYUV`, etc. allow enabling or
+disabling dependencies. They can take three possible values:
+* `OFF`: the dependency is disabled.
+* `SYSTEM`: the dependency is expected to be installed on the system.
+* `LOCAL`: the dependency is built locally. In most cases, CMake can
+  automatically download and build it. For some dependencies, you need to run the
+  associated script in the `ext/` subdirectory yourself. In cases where
+  CMake handles downloading the dependency, you can still call the script in
+  `ext/` if you want to use a different version of the dependency (e.g. by
+  modifying the script) or make custom code changes to it.
+  If a directory with the dependency exists in the `ext/` directory, CMake will
+  use it instead of downloading a new copy.
+
+### Codec Dependencies
+
+No AV1 codecs are enabled by default. You should enable at least one of them by
+setting any of the following CMake options to `LOCAL` or `SYSTEM`, depending on
+whether you want to use a locally built or a system installed version
+(e.g. `-DAVIF_CODEC_AOM=LOCAL`):
 
 * `AVIF_CODEC_AOM` for [libaom](https://aomedia.googlesource.com/aom/) (encoder
   and decoder)
@@ -83,25 +103,27 @@ available (discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif
 is a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-### Static Builds
+### Libyuv Dependency
 
-When set to `LOCAL`, these libraries and the other dependencies will be pulled
-locally by CMake to known-good versions.
-
-To override a local dependency version or to use a custom build of a dependency,
-first run the associated script in the `ext/` subdirectory.
+Libyuv is an optional but strongly recommended dependency that speeds up
+color space conversions. It's enabled by default with a value of `SYSTEM`,
+so it's expected to be installed on the system. It can either be built
+locally instead by using `-DAVIF_LIBYUV=LOCAL` or disabled with
+`-DAVIF_LIBYUV=OFF`.
 
 ### Tests
 
 A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
 option.
 
-The remaining tests can be built by enabling `AVIF_BUILD_TESTS` and setting
-`AVIF_GTEST` to `SYSTEM` or `LOCAL`.
+The remaining tests require [GoogleTest](https://github.com/google/googletest),
+and can be built by enabling `AVIF_BUILD_TESTS` and setting `AVIF_GTEST` to
+`SYSTEM` or `LOCAL`.
 
-Fuzzing test instructions are also provided in `ext/oss-fuzz/README.md`.
+Additionally, fuzzing tests require [fuzztest](https://github.com/google/fuzztest),
+see also fuzzing test instructions in `ext/oss-fuzz/README.md`.
 
-### Command Lines
+### Build Command Lines {#build-command-lines}
 
 The following instructions can be used to build the libavif library and the
 `avifenc` and `avifdec` tools.
