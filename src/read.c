@@ -805,6 +805,14 @@ static void avifMetaDestroy(avifMeta * meta)
 
 static avifResult avifCheckItemID(const char * boxFourcc, uint32_t itemID, avifDiagnostics * diag)
 {
+    // Section 8.11.1.1 of ISO/IEC 14496-12 about MetaBox definition:
+    //   The item_ID value of 0 should not be used
+    // Section 8.11.6 of ISO/IEC 14496-12 about ItemInfoEntry syntax and semantics:
+    //   item_ID contains either 0 for the primary resource (e.g. the XML contained in an XMLBox)
+    //   or the ID of the item for which the following information is defined.
+    // Assuming 'infe' is the only way to properly define an item in AVIF, a compliant item cannot have an ID of zero.
+    // One way to bypass that rule would be to have 'infe' with item_ID being 0, referring to "the primary resource",
+    // and 'pitm' defining "the primary resource" as the item with an item_ID of 0. libavif considers that as invalid.
     if (itemID == 0) {
         avifDiagnosticsPrintf(diag, "Box[%.4s] has an invalid item ID [%u]", boxFourcc, itemID);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
