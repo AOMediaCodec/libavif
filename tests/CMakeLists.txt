@@ -43,7 +43,7 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
-if(AVIF_LOCAL_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
+if(AVIF_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers PUBLIC avif_apps avif)
     target_link_libraries(aviftest_helpers PRIVATE avif_enable_warnings)
@@ -170,7 +170,7 @@ endif()
 ################################################################################
 # Experimental FuzzTest support (Linux only)
 
-if(AVIF_LOCAL_FUZZTEST)
+if(AVIF_FUZZTEST)
     # Adds a fuzztest from file TEST_NAME.cc located in the gtest folder. Extra arguments
     # are considered as extra source files.
     macro(add_avif_fuzztest TEST_NAME)
@@ -194,6 +194,9 @@ if(AVIF_LOCAL_FUZZTEST)
     if(CMAKE_VERSION VERSION_LESS 3.25.0)
         message(FATAL_ERROR "CMake must be at least 3.25 to pass the SYSTEM argument to add_subdirectory(), bailing out")
     endif()
+    if(AVIF_FUZZTEST STREQUAL "SYSTEM")
+        message(FATAL_ERROR "SYSTEM is not supported for AVIF_FUZZTEST")
+    endif()
     # Add the fuzztest project. Note this may add some tests which may not be built because of EXCLUDE_FROM_ALL and will
     # therefore fail. They can be ignored by adding them to CTestCustom.cmake
     # See https://gitlab.kitware.com/cmake/cmake/-/issues/20212
@@ -215,7 +218,7 @@ if(AVIF_LOCAL_FUZZTEST)
     add_avif_fuzztest(avif_fuzztest_read_image)
     add_avif_fuzztest(avif_fuzztest_yuvrgb)
 else()
-    message(STATUS "FuzzTest targets are disabled because AVIF_LOCAL_FUZZTEST is OFF.")
+    message(STATUS "FuzzTest targets are disabled because AVIF_FUZZTEST is OFF.")
 endif()
 
 ################################################################################
