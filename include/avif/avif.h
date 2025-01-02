@@ -1225,7 +1225,7 @@ typedef struct avifDecoder
 {
     // --------------------------------------------------------------------------------------------
     // Inputs (changeable decoder settings)
-    // Additional settings are available at the end of the struct after the version 1.0.0 end marker.
+    // Additional settings are available at the end of the struct after the version 1.1.0 end marker.
 
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
@@ -1282,6 +1282,7 @@ typedef struct avifDecoder
 
     // --------------------------------------------------------------------------------------------
     // Outputs
+    // Additional outputs are available at the end of the struct after the version 1.0.0 end marker.
 
     // All decoded image data; owned by the decoder. All information in this image is incrementally
     // added and updated as avifDecoder*() functions are called. After a successful call to
@@ -1338,7 +1339,7 @@ typedef struct avifDecoder
     // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
     // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
     // to the appropriate source.
-    avifBool imageSequenceTrackPresent; // Changeable decoder setting.
+    avifBool imageSequenceTrackPresent; // Output data field.
 
     // Version 1.1.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
@@ -1479,7 +1480,7 @@ typedef struct avifEncoder
     // Defaults to 1. If < 2, multithreading is disabled. See also 'Understanding maxThreads' above.
     int maxThreads;
     // Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
-    // image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings".
+    // image in fewer bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings".
     // If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
     // a combination of settings are tweaked to simulate this speed range.
     int speed;
@@ -1556,7 +1557,7 @@ typedef struct avifEncoder
 #endif
 } avifEncoder;
 
-// Creates a encoder initialized with default settings values.
+// Creates an encoder initialized with default settings values.
 // Returns NULL if a memory allocation failed.
 AVIF_NODISCARD AVIF_API avifEncoder * avifEncoderCreate(void);
 // Encodes and writes a single image to `output`.
