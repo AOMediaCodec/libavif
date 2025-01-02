@@ -2081,7 +2081,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
                 fprintf(stderr,
-                        "WARNING: --min and --max are deprecated, please used --q [0-100] instead. "
+                        "WARNING: --min and --max are deprecated, please use --q [0-100] instead. "
                         "--min %d --max %d is equivalent to -q %d\n",
                         fileSettings->minQuantizer.value,
                         fileSettings->maxQuantizer.value,
@@ -2089,7 +2089,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.set) {
                 fprintf(stderr,
-                        "WARNING: --minalpha maxalpha --maxalpha are deprecated, please used --qalpha [0-100] instead. "
+                        "WARNING: --minalpha and --maxalpha are deprecated, please use --qalpha [0-100] instead. "
                         "--minalpha %d --maxalpha %d is equivalent to --qalpha %d\n",
                         fileSettings->minQuantizerAlpha.value,
                         fileSettings->maxQuantizerAlpha.value,
