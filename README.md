@@ -14,6 +14,15 @@ It is recommended that you check out/use
 just using the main branch. We will regularly create new versions as bug fixes
 and features are added.
 
+## Command line tool usage
+
+```sh
+avifenc input.[jpg|png|y4m] -q 75 output.avif
+avifdec output.avif decoded.png
+```
+
+See `avifenc --help` for all options.
+
 ## API usage
 
 Please see the examples in the "examples" directory. If you're already building
