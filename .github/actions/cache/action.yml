@@ -1,0 +1,70 @@
+name: "Cache for all OSes"
+description: "Needs to be called before any call to ext/.cmd|sh or cmake"
+inputs:
+  extra-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+  use-meson:
+    description: "Whether meson is used"
+    default: false
+  use-rust:
+    description: "Whether rust is used"
+    default: false
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache-ext.outputs.cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Find workflow path
+      env:
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+      id: workflow-info
+      run: |
+        # Remove repository path.
+        END=(${WORKFLOW_REF/*.github/.github})
+        # Remove branch reference starting with @.
+        MIDDLE=(${END/%@*/})
+        echo "Current workflow path is: ${MIDDLE}"
+        echo "path=${MIDDLE}" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Generate meson cache key
+      if: ${{ inputs.use-meson == 'true' }}
+      run: |
+        echo "MESON_KEY=meson-`meson --version`" >> $GITHUB_ENV
+      shell: bash
+    - name: Generate empty meson cache key
+      if: ${{ inputs.use-meson != 'true' }}
+      run: |
+        echo "MESON_KEY=meson-none" >> $GITHUB_ENV
+      shell: bash
+    - name: Generate cargo cache key
+      if: ${{ inputs.use-rust == 'true' }}
+      run: |
+        echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> $GITHUB_ENV
+        echo "CARGO_CACHE_KEY=${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}" >> $GITHUB_ENV
+      shell: bash
+    - name: Generate empty cargo cache key
+      if: ${{ inputs.use-rust != 'true' }}
+      run: |
+        echo "CARGO_KEY=cargo-none" >> $GITHUB_ENV
+      shell: bash
+    - name: Cache all of cargo
+      if: ${{ inputs.use-rust == 'true' }}
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      continue-on-error: true
+      with:
+        path: ~/.cargo
+        key: ${{ env.CARGO_CACHE_KEY }}-${{ github.run_id }}
+        restore-keys: ${{ env.CARGO_CACHE_KEY }}
+    - name: Cache external dependencies in ext
+      id: cache-ext
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: ext
+        key: ext-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'ext/*.cmd', 'ext/*.sh') }}
+    - name: Cache external dependencies in build/_deps
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: build/_deps
+        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/*') }}

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC. All rights reserved.
+// Copyright 2020 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "avif/internal.h"
@@ -23,20 +23,22 @@ static void gav1CodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool gav1CodecOpen(avifCodec * codec, avifDecoder * decoder)
+static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
+                                      const avifDecodeSample * sample,
+                                      avifBool alpha,
+                                      avifBool * isLimitedRangeAlpha,
+                                      avifImage * image)
 {
     if (codec->internal->gav1Decoder == NULL) {
-        codec->internal->gav1Settings.threads = decoder->maxThreads;
+        codec->internal->gav1Settings.threads = codec->maxThreads;
+        codec->internal->gav1Settings.operating_point = codec->operatingPoint;
+        codec->internal->gav1Settings.output_all_layers = codec->allLayers;
 
         if (Libgav1DecoderCreate(&codec->internal->gav1Settings, &codec->internal->gav1Decoder) != kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
     }
-    return AVIF_TRUE;
-}
 
-static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
-{
     if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
                                    sample->data.data,
                                    sample->data.size,
@@ -48,9 +50,17 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecode
     // returned by the previous Libgav1DecoderDequeueFrame() call. Clear
     // our pointer to the previous output frame.
     codec->internal->gav1Image = NULL;
+
     const Libgav1DecoderBuffer * nextFrame = NULL;
-    if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
-        return AVIF_FALSE;
+    for (;;) {
+        if (Libgav1DecoderDequeueFrame(codec->internal->gav1Decoder, &nextFrame) != kLibgav1StatusOk) {
+            return AVIF_FALSE;
+        }
+        if (nextFrame && (sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (nextFrame->spatial_id != sample->spatialID)) {
+            nextFrame = NULL;
+        } else {
+            break;
+        }
     }
     // Got an image!
 
@@ -106,9 +116,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecode
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
@@ -134,7 +141,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec, const avifDecode
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = gav1Image->plane[0];
         image->alphaRowBytes = gav1Image->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 
@@ -149,12 +156,18 @@ const char * avifCodecVersionGav1(void)
 avifCodec * avifCodecCreateGav1(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    if (codec == NULL) {
+        return NULL;
+    }
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->open = gav1CodecOpen;
     codec->getNextImage = gav1CodecGetNextImage;
     codec->destroyInternal = gav1CodecDestroyInternal;
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    if (codec->internal == NULL) {
+        avifFree(codec);
+        return NULL;
+    }
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     Libgav1DecoderSettingsInitDefault(&codec->internal->gav1Settings);
     return codec;

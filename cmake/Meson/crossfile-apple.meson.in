@@ -1,0 +1,16 @@
+[binaries]
+c = ['clang']
+cpp = ['clang++']
+ar = ['ar']
+strip = ['strip']
+pkg-config = ['pkg-config']
+
+[host_machine]
+system = '@cross_system_name@'
+cpu_family = '@cross_system_processor@'
+cpu = '@cross_system_processor@'
+endian = '@cross_system_endian@'
+
+[built-in options]
+c_args = ['-arch', '@CMAKE_SYSTEM_PROCESSOR@', '-isysroot', '@CMAKE_OSX_SYSROOT@', '@cross_osx_deployment_target@' @cross_additional_cflags@]
+c_link_args = ['-arch', '@CMAKE_SYSTEM_PROCESSOR@', '-isysroot', '@CMAKE_OSX_SYSROOT@', '@cross_osx_deployment_target@' @cross_additional_cflags@]

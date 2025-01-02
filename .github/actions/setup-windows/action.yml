@@ -1,0 +1,39 @@
+name: "Setup on Windows"
+description: "Installs dependencies specific to Windows"
+inputs:
+  codec-aom:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  codec-dav1d:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  codec-rav1e:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Developer Command Prompt for Microsoft Visual C++
+      uses: ilammy/msvc-dev-cmd@v1
+    - name: Set up meson
+      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
+      run: pip install meson
+      shell: bash
+
+    - uses: ./.github/actions/setup-common
+      with:
+        codec-aom: ${{ inputs.codec-aom }}
+        codec-dav1d: ${{ inputs.codec-dav1d }}
+        codec-rav1e: ${{ inputs.codec-rav1e }}
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+        use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
+        use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}

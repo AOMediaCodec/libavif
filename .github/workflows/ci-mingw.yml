@@ -1,0 +1,72 @@
+# This is a copy of ci-unix-shared-local.yml for building shared libraries
+# with an additional build configuration (using installed deps and dav1d).
+
+name: CI MinGW
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-mingw:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+          - mingw64
+          - ucrt64
+          - clang64
+
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.sys }}
+          update: true
+          install: >-
+            git
+          pacboy: >-
+            aom:p
+            cmake:p
+            diffutils:p
+            cc:p
+            dav1d:p
+            imagemagick:p
+            libjpeg-turbo:p
+            libpng:p
+            libyuv:p
+            ninja:p
+            zlib:p
+      - uses: ./.github/actions/cache
+        with:
+          extra-key: ${{ matrix.sys }}
+      - name: Print cmake version
+        run: cmake --version
+
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=SYSTEM
+          -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
+          -DAVIF_CODEC_DAV1D=SYSTEM
+          -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBYUV=SYSTEM
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
+          -DAVIF_BUILD_GDK_PIXBUF=ON
+          -DAVIF_ENABLE_WERROR=ON
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF Tests
+        working-directory: ./build
+        run: ctest -j --output-on-failure

@@ -18,31 +18,33 @@
 #
 
 find_package(PkgConfig QUIET)
-if (PKG_CONFIG_FOUND)
+if(PKG_CONFIG_FOUND)
     pkg_check_modules(_DAV1D dav1d)
-endif (PKG_CONFIG_FOUND)
+endif(PKG_CONFIG_FOUND)
 
-find_path(DAV1D_INCLUDE_DIR
-          NAMES dav1d/dav1d.h
-          PATHS ${_DAV1D_INCLUDEDIR}
-)
+find_path(DAV1D_INCLUDE_DIR NAMES dav1d/dav1d.h PATHS ${_DAV1D_INCLUDEDIR})
 
-find_library(DAV1D_LIBRARY
-             NAMES dav1d
-             PATHS ${_DAV1D_LIBDIR})
+find_library(DAV1D_LIBRARY NAMES dav1d PATHS ${_DAV1D_LIBDIR})
 
-if (DAV1D_LIBRARY)
-    set(DAV1D_LIBRARIES
-        ${DAV1D_LIBRARIES}
-        ${DAV1D_LIBRARY})
-endif (DAV1D_LIBRARY)
+if(DAV1D_LIBRARY)
+    set(DAV1D_LIBRARIES ${DAV1D_LIBRARIES} ${DAV1D_LIBRARY})
+endif(DAV1D_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(dav1d
-                                  FOUND_VAR DAV1D_FOUND
-                                  REQUIRED_VARS DAV1D_LIBRARY DAV1D_LIBRARIES DAV1D_INCLUDE_DIR
-                                  VERSION_VAR _DAV1D_VERSION)
+find_package_handle_standard_args(dav1d REQUIRED_VARS DAV1D_LIBRARY DAV1D_LIBRARIES DAV1D_INCLUDE_DIR VERSION_VAR _DAV1D_VERSION)
 
 # show the DAV1D_INCLUDE_DIR, DAV1D_LIBRARY and DAV1D_LIBRARIES variables only
 # in the advanced view
 mark_as_advanced(DAV1D_INCLUDE_DIR DAV1D_LIBRARY DAV1D_LIBRARIES)
+
+if(DAV1D_LIBRARY)
+    if("${DAV1D_LIBRARY}" MATCHES "\\.a$")
+        add_library(dav1d::dav1d STATIC IMPORTED GLOBAL)
+    else()
+        add_library(dav1d::dav1d SHARED IMPORTED GLOBAL)
+    endif()
+    set_target_properties(
+        dav1d::dav1d PROPERTIES IMPORTED_LOCATION "${DAV1D_LIBRARY}" IMPORTED_IMPLIB "${DAV1D_LIBRARY}" IMPORTED_SONAME dav1d
+    )
+    target_include_directories(dav1d::dav1d INTERFACE ${DAV1D_INCLUDE_DIR})
+endif()

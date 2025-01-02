@@ -1,0 +1,67 @@
+name: "Setup on macOS"
+description: "Installs dependencies specific to macOS"
+inputs:
+  codec-aom:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  codec-dav1d:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  codec-rav1e:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  gtest:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Force update all brew python
+      run: |
+        brew update
+        # GHA messes with links https://github.com/actions/setup-python/issues/577 so we just force replace their installs' with brew's
+        for pkg in $(brew list --formula | grep -E '^python(@[0-9]+\.[0-9]+)?$'); do
+            brew upgrade --force --overwrite "$pkg"
+        done
+        brew cleanup
+      shell: bash
+    - name: Install non-library test dependencies
+      # imagemagick is used in sh tests (not gtest tests) but we assume that no tests are run by the CI
+      # if gtest is off
+      if: ${{ inputs.gtest != 'OFF' }}
+      run: brew install imagemagick
+      shell: bash
+    - name: Install AOM library
+      if: ${{ inputs.codec-aom == 'SYSTEM' }}
+      run: brew install aom
+      shell: bash
+    - name: Install dav1d library
+      if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
+      run: brew install dav1d
+      shell: bash
+    - name: Set up meson
+      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
+      run: brew install meson
+      shell: bash
+    - name: Set up gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run: brew install googletest
+      shell: bash
+
+    - uses: ./.github/actions/setup-common
+      with:
+        codec-aom: ${{ inputs.codec-aom }}
+        codec-dav1d: ${{ inputs.codec-dav1d }}
+        codec-rav1e: ${{ inputs.codec-rav1e }}
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+        use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
+        use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}

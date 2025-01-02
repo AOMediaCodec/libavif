@@ -1,0 +1,21 @@
+name: CI Format Check
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  clang-format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: RafikFarhad/clang-format-github-action@873e2c426db342189305bc04213fe55cb701fd91 # v4
+        with:
+          style: file
+          sources: "apps/*.c,apps/**/*.h,apps/**/*.c,apps/**/*.cc,examples/*.c,include/avif/*.h,src/*.c,tests/*.c,tests/**/*.h,tests/**/*.cc"
+          excludes: "apps/shared/iccjpeg.h,apps/shared/iccjpeg.c"

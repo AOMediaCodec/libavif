@@ -5,10 +5,15 @@
 
 #include "y4m.h"
 
+#include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "avif/avif.h"
+#include "avifutil.h"
 
 #define Y4M_MAX_LINE_SIZE 2048 // Arbitrary limit. Y4M headers should be much smaller than this
 
@@ -20,97 +25,156 @@ struct y4mFrameIterator
     avifBool hasAlpha;
     avifPixelFormat format;
     avifRange range;
+    avifChromaSamplePosition chromaSamplePosition;
+    avifAppSourceTiming sourceTiming;
 
     FILE * inputFile;
     const char * displayFilename;
 };
 
-static avifBool y4mColorSpaceParse(const char * formatString, avifPixelFormat * format, int * depth, avifBool * hasAlpha)
+// Sets frame->format, frame->depth, frame->hasAlpha, and frame->chromaSamplePosition.
+static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIterator * frame)
 {
-    *hasAlpha = AVIF_FALSE;
+    frame->hasAlpha = AVIF_FALSE;
+    frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
 
     if (!strcmp(formatString, "C420jpeg")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        // Chroma sample position is center.
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420mpeg2")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+        return AVIF_TRUE;
+    }
+    if (!strcmp(formatString, "C420paldv")) {
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        frame->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422p12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C444alpha")) {
-        *format = AVIF_PIXEL_FORMAT_YUV444;
-        *depth = 8;
-        *hasAlpha = AVIF_TRUE;
+        frame->format = AVIF_PIXEL_FORMAT_YUV444;
+        frame->depth = 8;
+        frame->hasAlpha = AVIF_TRUE;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C422")) {
-        *format = AVIF_PIXEL_FORMAT_YUV422;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV422;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "C420")) {
-        *format = AVIF_PIXEL_FORMAT_YUV420;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV420;
+        frame->depth = 8;
+        // Chroma sample position is center.
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 8;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 8;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono10")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 10;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 10;
         return AVIF_TRUE;
     }
     if (!strcmp(formatString, "Cmono12")) {
-        *format = AVIF_PIXEL_FORMAT_YUV400;
-        *depth = 12;
+        frame->format = AVIF_PIXEL_FORMAT_YUV400;
+        frame->depth = 12;
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
+}
+
+// Returns an unsigned integer value parsed from [start:end[.
+// Returns -1 in case of failure.
+static int y4mReadUnsignedInt(const char * start, const char * end)
+{
+    const char * p = start;
+    int64_t value = 0;
+    while (p < end && *p >= '0' && *p <= '9') {
+        value = value * 10 + (*(p++) - '0');
+        if (value > INT_MAX) {
+            return -1;
+        }
+    }
+    return (p == start) ? -1 : (int)value;
+}
+
+// Note: this modifies framerateString
+static avifBool y4mFramerateParse(char * framerateString, avifAppSourceTiming * sourceTiming)
+{
+    if (framerateString[0] != 'F') {
+        return AVIF_FALSE;
+    }
+    ++framerateString; // skip past 'F'
+
+    char * colonLocation = strchr(framerateString, ':');
+    if (!colonLocation) {
+        return AVIF_FALSE;
+    }
+    *colonLocation = 0;
+    ++colonLocation;
+
+    int numerator = atoi(framerateString);
+    int denominator = atoi(colonLocation);
+    if ((numerator < 1) || (denominator < 1)) {
+        return AVIF_FALSE;
+    }
+
+    sourceTiming->timescale = (uint64_t)numerator;
+    sourceTiming->duration = (uint64_t)denominator;
+    return AVIF_TRUE;
 }
 
 static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
@@ -157,6 +221,40 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
     return -1;
 }
 
+// Limits each sample value to fit into avif->depth bits.
+// Returns AVIF_TRUE if any sample was clamped this way.
+static avifBool y4mClampSamples(avifImage * avif)
+{
+    if (!avifImageUsesU16(avif)) {
+        assert(avif->depth == 8);
+        return AVIF_FALSE;
+    }
+    assert(avif->depth < 16); // Otherwise it could be skipped too.
+
+    // AV1 encoders and decoders do not care whether the samples are full range or limited range
+    // for the internal computation: it is only passed as an informative tag, so ignore avif->yuvRange.
+    const uint16_t maxSampleValue = (uint16_t)((1u << avif->depth) - 1u);
+
+    avifBool samplesWereClamped = AVIF_FALSE;
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
+        uint32_t planeWidth = avifImagePlaneWidth(avif, plane);
+        uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            uint16_t * row16 = (uint16_t *)row;
+            for (uint32_t x = 0; x < planeWidth; ++x) {
+                if (row16[x] > maxSampleValue) {
+                    row16[x] = maxSampleValue;
+                    samplesWereClamped = AVIF_TRUE;
+                }
+            }
+            row += rowBytes;
+        }
+    }
+    return samplesWereClamped;
+}
+
 #define ADVANCE(BYTES)    \
     do {                  \
         p += BYTES;       \
@@ -164,26 +262,36 @@ static int y4mReadLine(FILE * inputFile, avifRWData * raw, const char * displayF
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIterator ** iter)
+avifBool y4mRead(const char * inputFilename,
+                 uint32_t imageSizeLimit,
+                 avifImage * avif,
+                 avifAppSourceTiming * sourceTiming,
+                 struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
     struct y4mFrameIterator frame;
     frame.width = -1;
     frame.height = -1;
-    frame.depth = -1;
+    // Default to the color space "C420" to match the defaults of aomenc and ffmpeg.
+    frame.depth = 8;
     frame.hasAlpha = AVIF_FALSE;
-    frame.format = AVIF_PIXEL_FORMAT_NONE;
+    frame.format = AVIF_PIXEL_FORMAT_YUV420;
     frame.range = AVIF_RANGE_LIMITED;
+    frame.chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    memset(&frame.sourceTiming, 0, sizeof(avifAppSourceTiming));
     frame.inputFile = NULL;
     frame.displayFilename = inputFilename;
 
     avifRWData raw = AVIF_DATA_EMPTY;
-    avifRWDataRealloc(&raw, Y4M_MAX_LINE_SIZE);
+    if (avifRWDataRealloc(&raw, Y4M_MAX_LINE_SIZE) != AVIF_RESULT_OK) {
+        fprintf(stderr, "Out of memory\n");
+        goto cleanup;
+    }
 
     if (iter && *iter) {
         // Continue reading FRAMEs from this y4m stream
-        memcpy(&frame, *iter, sizeof(struct y4mFrameIterator));
+        frame = **iter;
     } else {
         // Open a fresh y4m and read its header
 
@@ -222,18 +330,28 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
         while (p != end) {
             switch (*p) {
                 case 'W': // width
-                    frame.width = atoi((const char *)p + 1);
+                    frame.width = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
                     break;
                 case 'H': // height
-                    frame.height = atoi((const char *)p + 1);
+                    frame.height = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
                     break;
                 case 'C': // color space
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
                         fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
-                    if (!y4mColorSpaceParse(tmpBuffer, &frame.format, &frame.depth, &frame.hasAlpha)) {
+                    if (!y4mColorSpaceParse(tmpBuffer, &frame)) {
                         fprintf(stderr, "Unsupported y4m pixel format: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    break;
+                case 'F': // framerate
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    if (!y4mFramerateParse(tmpBuffer, &frame.sourceTiming)) {
+                        fprintf(stderr, "Unsupported framerate: %s\n", frame.displayFilename);
                         goto cleanup;
                     }
                     break;
@@ -282,46 +400,55 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename, struct y4mFrameIt
         goto cleanup;
     }
 
-    if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12)) ||
-        (frame.format == AVIF_PIXEL_FORMAT_NONE)) {
+    if ((frame.width < 1) || (frame.height < 1) || ((frame.depth != 8) && (frame.depth != 10) && (frame.depth != 12))) {
         fprintf(stderr, "Failed to parse y4m header (not enough information): %s\n", frame.displayFilename);
         goto cleanup;
     }
+    if ((uint32_t)frame.width > imageSizeLimit / (uint32_t)frame.height) {
+        fprintf(stderr, "Too big y4m dimensions (%d x %d > %u px): %s\n", frame.width, frame.height, imageSizeLimit, frame.displayFilename);
+        goto cleanup;
+    }
 
-    avifImageFreePlanes(avif, AVIF_PLANES_YUV | AVIF_PLANES_A);
+    if (sourceTiming) {
+        *sourceTiming = frame.sourceTiming;
+    }
+
+    avifImageFreePlanes(avif, AVIF_PLANES_ALL);
     avif->width = frame.width;
     avif->height = frame.height;
     avif->depth = frame.depth;
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
-    avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
-
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-
-    uint32_t planeBytes[4];
-    planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * ((avif->height + info.chromaShiftY) >> info.chromaShiftY);
-    if (frame.hasAlpha) {
-        planeBytes[3] = avif->alphaRowBytes * avif->height;
-    } else {
-        planeBytes[3] = 0;
+    avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
+    avifResult allocationResult = avifImageAllocatePlanes(avif, frame.hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
+    if (allocationResult != AVIF_RESULT_OK) {
+        fprintf(stderr, "Failed to allocate the planes: %s\n", avifResultToString(allocationResult));
+        goto cleanup;
     }
 
-    for (int i = 0; i < 3; ++i) {
-        uint32_t bytesRead = (uint32_t)fread(avif->yuvPlanes[i], 1, planeBytes[i], frame.inputFile);
-        if (bytesRead != planeBytes[i]) {
-            fprintf(stderr, "Failed to read y4m plane (not enough data, wanted %d, got %d): %s\n", planeBytes[i], bytesRead, frame.displayFilename);
-            goto cleanup;
+    for (int plane = AVIF_CHAN_Y; plane <= AVIF_CHAN_A; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for A if no alpha and 0 for UV if 4:0:0.
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            uint32_t bytesRead = (uint32_t)fread(row, 1, planeWidthBytes, frame.inputFile);
+            if (bytesRead != planeWidthBytes) {
+                fprintf(stderr,
+                        "Failed to read y4m row (not enough data, wanted %" PRIu32 ", got %" PRIu32 "): %s\n",
+                        planeWidthBytes,
+                        bytesRead,
+                        frame.displayFilename);
+                goto cleanup;
+            }
+            row += rowBytes;
         }
     }
-    if (frame.hasAlpha) {
-        avifImageAllocatePlanes(avif, AVIF_PLANES_A);
-        if (fread(avif->alphaPlane, 1, planeBytes[3], frame.inputFile) != planeBytes[3]) {
-            fprintf(stderr, "Failed to read y4m plane (not enough data): %s\n", frame.displayFilename);
-            goto cleanup;
-        }
+
+    // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified avif->depth.
+    // Avoid that by making sure input values are within the correct range.
+    if (y4mClampSamples(avif)) {
+        fprintf(stderr, "WARNING: some samples were clamped to fit into %u bits per sample\n", avif->depth);
     }
 
     result = AVIF_TRUE;
@@ -338,7 +465,12 @@ cleanup:
             if (!feof(frame.inputFile)) {
                 // Remember y4m state for next time
                 *iter = malloc(sizeof(struct y4mFrameIterator));
-                memcpy(*iter, &frame, sizeof(struct y4mFrameIterator));
+                if (*iter == NULL) {
+                    fprintf(stderr, "Inter-frame state memory allocation failure\n");
+                    result = AVIF_FALSE;
+                } else {
+                    **iter = frame;
+                }
             }
         }
     }
@@ -350,7 +482,7 @@ cleanup:
     return result;
 }
 
-avifBool y4mWrite(avifImage * avif, const char * outputFilename)
+avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 {
     avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;
@@ -381,7 +513,8 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     y4mHeaderFormat = "Cmono XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -400,7 +533,8 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     y4mHeaderFormat = "Cmono10 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -419,7 +553,8 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
                     y4mHeaderFormat = "Cmono12 XYSCSS=400";
                     break;
                 case AVIF_PIXEL_FORMAT_NONE:
-                    // will error later; this case is here for warning's sake
+                case AVIF_PIXEL_FORMAT_COUNT:
+                    // will error later; these cases are here for warning's sake
                     break;
             }
             break;
@@ -438,9 +573,6 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
         rangeString = "XCOLORRANGE=LIMITED";
     }
 
-    avifPixelFormatInfo info;
-    avifGetPixelFormatInfo(avif->yuvFormat, &info);
-
     FILE * f = fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "Cannot open file for write: %s\n", outputFilename);
@@ -454,28 +586,19 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
         goto cleanup;
     }
 
-    uint8_t * planes[3];
-    uint32_t planeBytes[3];
-    planes[0] = avif->yuvPlanes[0];
-    planes[1] = avif->yuvPlanes[1];
-    planes[2] = avif->yuvPlanes[2];
-    planeBytes[0] = avif->yuvRowBytes[0] * avif->height;
-    planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
-    planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
-
-    for (int i = 0; i < 3; ++i) {
-        if (fwrite(planes[i], 1, planeBytes[i], f) != planeBytes[i]) {
-            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeBytes[i], outputFilename);
-            success = AVIF_FALSE;
-            goto cleanup;
-        }
-    }
-    if (writeAlpha) {
-        uint32_t alphaPlaneBytes = avif->alphaRowBytes * avif->height;
-        if (fwrite(avif->alphaPlane, 1, alphaPlaneBytes, f) != alphaPlaneBytes) {
-            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", alphaPlaneBytes, outputFilename);
-            success = AVIF_FALSE;
-            goto cleanup;
+    const int lastPlane = writeAlpha ? AVIF_CHAN_A : AVIF_CHAN_V;
+    for (int plane = AVIF_CHAN_Y; plane <= lastPlane; ++plane) {
+        uint32_t planeHeight = avifImagePlaneHeight(avif, plane); // 0 for UV if 4:0:0.
+        uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
+        const uint8_t * row = avifImagePlane(avif, plane);
+        uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        for (uint32_t y = 0; y < planeHeight; ++y) {
+            if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {
+                fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, outputFilename);
+                success = AVIF_FALSE;
+                goto cleanup;
+            }
+            row += rowBytes;
         }
     }
 

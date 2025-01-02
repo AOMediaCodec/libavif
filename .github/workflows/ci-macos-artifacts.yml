@@ -1,0 +1,76 @@
+# This workflow generates artifacts such as avifenc and avifdec for convenience.
+
+name: CI macOS Release Artifacts
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos-artifacts:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-macos
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
+          -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_DAV1D=LOCAL
+          -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBYUV=LOCAL
+          -DAVIF_ZLIBPNG=LOCAL -DAVIF_JPEG=LOCAL
+          -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
+          -DCMAKE_C_COMPILER=clang
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      # TODO: notarize the binaries
+      - name: Create README.txt
+        run: |
+          cat <<'EOF' > build/README.txt
+          For security reasons, macOS might prevent these binaries from running.
+          If you get a message saying that "Apple cannot check it for malicious software",
+          run this command once:
+          $ sudo xattr -r -d com.apple.quarantine ./avifenc ./avifdec
+          See also https://github.com/AOMediaCodec/libavif/issues/2460
+          EOF
+      - name: Archive artifacts
+        uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
+        with:
+          type: zip
+          filename: ${{ runner.os }}-artifacts.zip
+          directory: build
+          path: |
+            avifenc
+            avifdec
+            README.txt
+      - name: Upload artifacts
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/${{ runner.os }}-artifacts.zip
+          asset_name: ${{ runner.os }}-artifacts.zip
+          asset_content_type: application/zip
+
+    # Use the following instead of the above to test this workflow outside of a release event.
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+    #   with:
+    #     name: ${{ runner.os }}-artifacts.zip
+    #     path: build/${{ runner.os }}-artifacts.zip

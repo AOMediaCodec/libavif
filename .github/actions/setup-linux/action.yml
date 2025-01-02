@@ -1,0 +1,87 @@
+name: "Setup on Linux"
+description: "Installs dependencies and sets env variables specific to Linux"
+inputs:
+  codec-aom:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  codec-dav1d:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    edfault: "OFF"
+  codec-rav1e:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+  gcc-version:
+    description: "Can be empty, in which case CC and CXX are not overriden"
+    default: ""
+  gtest:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  libxml2:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  libyuv:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  oldest-cmake:
+    description: "Can take the values: true, false"
+    default: "false"
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install non-library dependencies
+      run: |
+        sudo apt update -y
+        sudo apt install -y imagemagick libjpeg-turbo8-dev libpng-dev
+      shell: bash
+    - name: Install libaom library
+      if: ${{ inputs.codec-aom == 'SYSTEM' }}
+      run: sudo apt install -y libaom-dev
+      shell: bash
+    - name: Install libdav1d library
+      if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
+      run: sudo apt install -y libdav1d-dev
+      shell: bash
+    - name: Install rav1e library
+      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
+      run: sudo apt install -y librav1e-dev
+      shell: bash
+    - name: Install libxml2 library
+      if: ${{ inputs.libxml2 == 'SYSTEM' }}
+      run: sudo apt install -y libxml2
+      shell: bash
+    - name: Install libyuv library
+      if: ${{ inputs.libyuv == 'SYSTEM' }}
+      run: sudo apt install -y libyuv-dev
+      shell: bash
+    - name: Set up meson
+      if: ${{ inputs.codec-dav1d == 'LOCAL' }}
+      run: sudo apt install -y meson
+      shell: bash
+    - name: Set up gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run: sudo apt install -y libgtest-dev
+      shell: bash
+
+    - uses: ./.github/actions/setup-common
+      with:
+        codec-aom: ${{ inputs.codec-aom }}
+        codec-dav1d: ${{ inputs.codec-dav1d }}
+        codec-rav1e: ${{ inputs.codec-rav1e }}
+        oldest-cmake: ${{ inputs.oldest-cmake }}
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+        use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
+        use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}
+
+    - name: Set GCC & G++ compiler
+      if: ${{ inputs.gcc-version != '' }}
+      run: echo "CC=gcc-${{ inputs.gcc-version }}" >> $GITHUB_ENV && echo "CXX=g++-${{ inputs.gcc-version }}" >> $GITHUB_ENV
+      shell: bash

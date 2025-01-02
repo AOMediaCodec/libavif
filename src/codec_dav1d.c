@@ -24,7 +24,6 @@
 
 struct avifCodecInternal
 {
-    Dav1dSettings dav1dSettings;
     Dav1dContext * dav1dContext;
     Dav1dPicture dav1dPicture;
     avifBool hasPicture;
@@ -49,22 +48,36 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifBool dav1dCodecOpen(avifCodec * codec, avifDecoder * decoder)
+static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
+                                       const avifDecodeSample * sample,
+                                       avifBool alpha,
+                                       avifBool * isLimitedRangeAlpha,
+                                       avifImage * image)
 {
     if (codec->internal->dav1dContext == NULL) {
+        Dav1dSettings dav1dSettings;
+        dav1d_default_settings(&dav1dSettings);
         // Give all available threads to decode a single frame as fast as possible
-        codec->internal->dav1dSettings.n_frame_threads = 1;
-        codec->internal->dav1dSettings.n_tile_threads = AVIF_CLAMP(decoder->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+#if DAV1D_API_VERSION_MAJOR >= 6
+        dav1dSettings.max_frame_delay = 1;
+        dav1dSettings.n_threads = AVIF_CLAMP(codec->maxThreads, 1, DAV1D_MAX_THREADS);
+#else
+        dav1dSettings.n_frame_threads = 1;
+        dav1dSettings.n_tile_threads = AVIF_CLAMP(codec->maxThreads, 1, DAV1D_MAX_TILE_THREADS);
+#endif // DAV1D_API_VERSION_MAJOR >= 6
+        // Set a maximum frame size limit to avoid OOM'ing fuzzers. In 32-bit builds, if
+        // frame_size_limit > 8192 * 8192, dav1d reduces frame_size_limit to 8192 * 8192 and logs
+        // a message, so we set frame_size_limit to at most 8192 * 8192 to avoid the dav1d_log
+        // message.
+        dav1dSettings.frame_size_limit = (sizeof(size_t) < 8) ? AVIF_MIN(codec->imageSizeLimit, 8192 * 8192) : codec->imageSizeLimit;
+        dav1dSettings.operating_point = codec->operatingPoint;
+        dav1dSettings.all_layers = codec->allLayers;
 
-        if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
+        if (dav1d_open(&codec->internal->dav1dContext, &dav1dSettings) != 0) {
             return AVIF_FALSE;
         }
     }
-    return AVIF_TRUE;
-}
 
-static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecodeSample * sample, avifBool alpha, avifImage * image)
-{
     avifBool gotPicture = AVIF_FALSE;
     Dav1dPicture nextFrame;
     memset(&nextFrame, 0, sizeof(Dav1dPicture));
@@ -74,16 +87,17 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecod
         return AVIF_FALSE;
     }
 
+    int res;
     for (;;) {
         if (dav1dData.data) {
-            int res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
+            res = dav1d_send_data(codec->internal->dav1dContext, &dav1dData);
             if ((res < 0) && (res != DAV1D_ERR(EAGAIN))) {
                 dav1d_data_unref(&dav1dData);
                 return AVIF_FALSE;
             }
         }
 
-        int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
+        res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
         if (res == DAV1D_ERR(EAGAIN)) {
             if (dav1dData.data) {
                 // send more data
@@ -98,13 +112,39 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecod
             return AVIF_FALSE;
         } else {
             // Got a picture!
-            gotPicture = AVIF_TRUE;
-            break;
+            if ((sample->spatialID != AVIF_SPATIAL_ID_UNSET) && (sample->spatialID != nextFrame.frame_hdr->spatial_id)) {
+                // Layer selection: skip this unwanted layer
+                dav1d_picture_unref(&nextFrame);
+            } else {
+                gotPicture = AVIF_TRUE;
+                break;
+            }
         }
     }
     if (dav1dData.data) {
         dav1d_data_unref(&dav1dData);
     }
+
+    // Drain all buffered frames in the decoder.
+    //
+    // The sample should have only one frame of the desired layer. If there are more frames after
+    // that frame, we need to discard them so that they won't be mistakenly output when the decoder
+    // is used to decode another sample.
+    Dav1dPicture bufferedFrame;
+    memset(&bufferedFrame, 0, sizeof(Dav1dPicture));
+    do {
+        res = dav1d_get_picture(codec->internal->dav1dContext, &bufferedFrame);
+        if (res < 0) {
+            if (res != DAV1D_ERR(EAGAIN)) {
+                if (gotPicture) {
+                    dav1d_picture_unref(&nextFrame);
+                }
+                return AVIF_FALSE;
+            }
+        } else {
+            dav1d_picture_unref(&bufferedFrame);
+        }
+    } while (res == 0);
 
     if (gotPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
@@ -159,9 +199,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecod
         image->transferCharacteristics = (avifTransferCharacteristics)dav1dImage->seq_hdr->trc;
         image->matrixCoefficients = (avifMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
 
-        avifPixelFormatInfo formatInfo;
-        avifGetPixelFormatInfo(yuvFormat, &formatInfo);
-
+        // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
@@ -186,7 +224,7 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec, const avifDecod
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
-        image->alphaRange = codec->internal->colorRange;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;
@@ -200,21 +238,18 @@ const char * avifCodecVersionDav1d(void)
 avifCodec * avifCodecCreateDav1d(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    if (codec == NULL) {
+        return NULL;
+    }
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->open = dav1dCodecOpen;
     codec->getNextImage = dav1dCodecGetNextImage;
     codec->destroyInternal = dav1dCodecDestroyInternal;
 
     codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    if (codec->internal == NULL) {
+        avifFree(codec);
+        return NULL;
+    }
     memset(codec->internal, 0, sizeof(struct avifCodecInternal));
-    dav1d_default_settings(&codec->internal->dav1dSettings);
-
-    // Set a maximum frame size limit to avoid OOM'ing fuzzers.
-    codec->internal->dav1dSettings.frame_size_limit = AVIF_MAX_IMAGE_SIZE;
-
-    // Ensure that we only get the "highest spatial layer" as a single frame
-    // for each input sample, instead of getting each spatial layer as its own
-    // frame one at a time ("all layers").
-    codec->internal->dav1dSettings.all_layers = 0;
     return codec;
 }

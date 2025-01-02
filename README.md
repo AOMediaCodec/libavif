@@ -1,14 +1,20 @@
-# libavif [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/louquillio/libavif?branch=master&svg=true)](https://ci.appveyor.com/project/louquillio/libavif) [![Travis Build Status](https://travis-ci.com/AOMediaCodec/libavif.svg?branch=master)](https://travis-ci.com/AOMediaCodec/libavif)
+# libavif
 
-This library aims to be a friendly, portable C implementation of the AV1 Image File Format, as described here:
+This library aims to be a friendly, portable C implementation of the AV1 Image
+File Format, as described here:
 
 <https://aomediacodec.github.io/av1-avif/>
 
-It is a work-in-progress, but can already encode and decode all AOM supported YUV formats and bit depths (with alpha).
+It can encode and decode all AV1 supported YUV formats and bit depths (with
+alpha). In addition to the library, encoder and decoder command line tools are
+also provided (`avifenc` and `avifdec`).
 
-For now, it is recommended that you checkout/use [tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of just using the master branch. I will regularly create new versions as bugfixes and features are added.
+It is recommended that you check out/use
+[tagged releases](https://github.com/AOMediaCodec/libavif/releases) instead of
+just using the main branch. We will regularly create new versions as bug fixes
+and features are added.
 
-## Usage
+## Command line tool usage
 
     avifenc [options] input.[jpg|jpeg|png|y4m] output.avif
 
@@ -19,41 +25,177 @@ Examples:
     
 See `avifenc --help` for all options
 
-Please see the examples in the examples directory. If you're already building `libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and run the examples too.
+## API usage
+
+Please see the examples in the "examples" directory. If you're already building
+`libavif`, enable the CMake option `AVIF_BUILD_EXAMPLES` in order to build and
+run the examples too.
+
+## Installation
+
+`libavif` is a package in most major OSs.
+
+### Windows
+
+```sh
+vcpkg install libavif
+```
+You can also download the official windows binaries on the
+[release](https://github.com/AOMediaCodec/libavif/releases) page.
+
+### macOS
+
+Homebrew:
+```sh
+brew install libavif
+```
+MacPorts:
+```sh
+sudo port install libavif
+```
+
+### Linux
+
+Debian-based distributions:
+```sh
+sudo apt install libavif-dev
+```
+Red Hat-based distributions:
+```sh
+sudo yum -y install libavif
+```
+
+### MinGW
+
+For the "default" MSYS2 UCRT64 environment:
+```sh
+pacman -S mingw-w64-ucrt-x86_64-libavif
+```
 
 ## Build Notes
 
 Building libavif requires [CMake](https://cmake.org/).
+See [Build Command Lines](#build-command-lines) below for example command lines.
 
-No AV1 codecs are enabled by default. Enable them by enabling any of the
-following CMake options:
+### Controlling Dependencies
 
-* `AVIF_CODEC_AOM` - requires CMake, NASM
-* `AVIF_CODEC_DAV1D` - requires Meson, Ninja, NASM
-* `AVIF_CODEC_LIBGAV1` - requires CMake, Ninja
-* `AVIF_CODEC_RAV1E` - requires cargo (Rust), NASM
+CMake flags like `AVIF_CODEC_AOM`, `AVIF_LIBYUV`, etc. allow enabling or
+disabling dependencies. They can take three possible values:
+* `OFF`: the dependency is disabled.
+* `SYSTEM`: the dependency is expected to be installed on the system.
+* `LOCAL`: the dependency is built locally. In most cases, CMake can
+  automatically download and build it. For some dependencies, you need to run the
+  associated script in the `ext/` subdirectory yourself. In cases where
+  CMake handles downloading the dependency, you can still call the script in
+  `ext/` if you want to use a different version of the dependency (e.g. by
+  modifying the script) or make custom code changes to it.
+  If a directory with the dependency exists in the `ext/` directory, CMake will
+  use it instead of downloading a new copy.
 
-These libraries (in their C API form) must be externally available
-(discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif is
-a child CMake project, the appropriate CMake target must already exist
+### Codec Dependencies
+
+No AV1 codecs are enabled by default. You should enable at least one of them by
+setting any of the following CMake options to `LOCAL` or `SYSTEM`, depending on
+whether you want to use a locally built or a system installed version
+(e.g. `-DAVIF_CODEC_AOM=LOCAL`):
+
+* `AVIF_CODEC_AOM` for [libaom](https://aomedia.googlesource.com/aom/) (encoder
+  and decoder)
+* `AVIF_CODEC_DAV1D` for [dav1d](https://code.videolan.org/videolan/dav1d)
+  (decoder)
+* `AVIF_CODEC_LIBGAV1` for
+  [libgav1](https://chromium.googlesource.com/codecs/libgav1/) (decoder)
+* `AVIF_CODEC_RAV1E` for [rav1e](https://github.com/xiph/rav1e) (encoder)
+* `AVIF_CODEC_SVT` for [SVT-AV1](https://gitlab.com/AOMediaCodec/SVT-AV1)
+  (encoder)
+
+When set to `SYSTEM`, these libraries (in their C API form) must be externally
+available (discoverable via CMake's `FIND_LIBRARY`) to use them, or if libavif
+is a child CMake project, the appropriate CMake target must already exist
 by the time libavif's CMake scripts are executed.
 
-## Local / Static Builds
+### Libyuv Dependency
 
-The `ext/` subdirectory contains a handful of basic scripts which each pull
-down a known-good copy of an AV1 codec and make a local static library build.
-If you want to statically link any codec into your local (static) build of
-libavif, building using one of these scripts and then enabling the associated
-`AVIF_LOCAL_*` is a convenient method, but you must make sure to disable
-`BUILD_SHARED_LIBS` in CMake to instruct it to make a static libavif library.
+Libyuv is an optional but strongly recommended dependency that speeds up
+color space conversions. It's enabled by default with a value of `SYSTEM`,
+so it's expected to be installed on the system. It can either be built
+locally instead by using `-DAVIF_LIBYUV=LOCAL` or disabled with
+`-DAVIF_LIBYUV=OFF`.
 
-If you want to build/install shared libraries for AV1 codecs, you can still
-peek inside of each script to see where the current known-good SHA is for each
-codec.
+### Tests
 
-## Prebuilt Library (Windows)
+A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
+option.
 
-If you're building on Windows with Visual Studio 2019 and want to try out libavif without going through the build process, static library builds for both Debug and Release are available on [AppVeyor](https://ci.appveyor.com/project/louquillio/libavif).
+The remaining tests require [GoogleTest](https://github.com/google/googletest),
+and can be built by enabling `AVIF_BUILD_TESTS` and setting `AVIF_GTEST` to
+`SYSTEM` or `LOCAL`.
+
+Additionally, fuzzing tests require [fuzztest](https://github.com/google/fuzztest),
+see also fuzzing test instructions in `ext/oss-fuzz/README.md`.
+
+### Build Command Lines {#build-command-lines}
+
+The following instructions can be used to build the libavif library and the
+`avifenc` and `avifdec` tools.
+
+#### Build using installed dependencies
+
+To link against the already installed `aom`, `libjpeg` and `libpng` dependency
+libraries (recommended):
+
+```sh
+git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
+cmake --build libavif/build --parallel
+```
+
+#### Build everything from scratch
+
+For development and debugging purposes, or to generate fully static binaries:
+
+```sh
+git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
+cmake --build libavif/build --parallel
+```
+
+## Prebuilt Binaries (Windows)
+
+Statically-linked `avifenc.exe` and `avifdec.exe` can be downloaded from the
+[Releases](https://github.com/AOMediaCodec/libavif/releases) page.
+
+## Development Notes
+
+Please check the [wiki](https://github.com/AOMediaCodec/libavif/wiki) for extra
+resources on libavif, such as the Release Checklist.
+
+The libavif library is written in C99. Most of the tests are written in C++14.
+
+### Formatting
+
+Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the
+sources from the top-level folder (`clang-format-16` preferred):
+
+```sh
+clang-format -style=file -i \
+  apps/*.c apps/*/*.c apps/*/*.cc apps/*/*.h examples/*.c \
+  include/avif/*.h src/*.c src/*.cc \
+  tests/*.c tests/*/*.cc tests/*/*.h
+```
+
+Use [cmake-format](https://github.com/cheshirekow/cmake_format) to format the
+CMakeLists.txt files from the top-level folder:
+
+```sh
+cmake-format -i \
+  CMakeLists.txt \
+  tests/CMakeLists.txt \
+  cmake/Modules/*.cmake \
+  contrib/CMakeLists.txt \
+  contrib/gdk-pixbuf/CMakeLists.txt \
+  android_jni/avifandroidjni/src/main/jni/CMakeLists.txt
+```
 
 ---
 

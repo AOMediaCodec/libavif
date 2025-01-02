@@ -6,7 +6,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 // This example intends to show how a custom avifIO implementation can be used to decode
 // partially-downloaded AVIFs. Read either the avif_example_decode_file or
@@ -28,7 +27,7 @@
 // or avifDecoderNextImage() varies wildly due to the packing of the file. Ideally, the end of the
 // AVIF is simply a large mdat or moov box full of AV1 payloads, and all metadata (meta boxes,
 // Exif/XMP payloads, etc) are as close to the front as possible. Any trailing MP4 boxes (free, etc)
-// will cause avifDecoderParse() to have to wait to download those, as it can't ensure a succesful
+// will cause avifDecoderParse() to have to wait to download those, as it can't ensure a successful
 // parse without knowing what boxes are remaining.
 
 typedef struct avifIOStreamingReader
@@ -91,13 +90,15 @@ static avifResult avifIOStreamingReaderRead(struct avifIO * io, uint32_t readFla
 
 static void avifIOStreamingReaderDestroy(struct avifIO * io)
 {
-    avifFree(io);
+    free(io);
 }
 
+// Returns null in case of memory allocation failure.
 static avifIOStreamingReader * avifIOCreateStreamingReader(const uint8_t * data, size_t size)
 {
-    avifIOStreamingReader * reader = avifAlloc(sizeof(avifIOStreamingReader));
-    memset(reader, 0, sizeof(avifIOStreamingReader));
+    avifIOStreamingReader * reader = calloc(1, sizeof(avifIOStreamingReader));
+    if (!reader)
+        return NULL;
 
     // It is legal for io.destroy to be NULL, in which you are responsible for cleaning up
     // your own reader. This allows for a pre-existing, on-the-stack, or member variable to be
@@ -128,8 +129,7 @@ int main(int argc, char * argv[])
     const char * inputFilename = argv[1];
 
     int returnCode = 1;
-    avifDecoder * decoder = avifDecoderCreate();
-    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
+    avifDecoder * decoder = NULL;
 
     // Read entire file into fileBuffer
     FILE * f = NULL;
@@ -143,6 +143,7 @@ int main(int argc, char * argv[])
     long fileSize = ftell(f);
     if (fileSize < 0) {
         fprintf(stderr, "Truncated file: %s\n", inputFilename);
+        goto cleanup;
     }
     fseek(f, 0, SEEK_SET);
     fileBuffer = malloc(fileSize);
@@ -152,7 +153,18 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    decoder = avifDecoderCreate();
+    if (!decoder) {
+        fprintf(stderr, "Memory allocation failure\n");
+        goto cleanup;
+    }
+    // Override decoder defaults here (codecChoice, requestedSource, ignoreExif, ignoreXMP, etc)
+
     avifIOStreamingReader * io = avifIOCreateStreamingReader(fileBuffer, fileSize);
+    if (!io) {
+        fprintf(stderr, "Memory allocation failure\n");
+        goto cleanup;
+    }
     avifDecoderSetIO(decoder, (avifIO *)io);
 
     for (int pass = 0; pass < 2; ++pass) {
@@ -209,7 +221,9 @@ int main(int argc, char * argv[])
 
     returnCode = 0;
 cleanup:
-    avifDecoderDestroy(decoder); // this calls avifIOStreamingReaderDestroy for us
+    if (decoder) {
+        avifDecoderDestroy(decoder); // this calls avifIOStreamingReaderDestroy for us
+    }
     if (f) {
         fclose(f);
     }

@@ -1,0 +1,77 @@
+# Workflow that builds libabvif with aom and libyuv, also builds MP4box,
+# and runs tests with "golden" in their name. Test results are saved as artifacts
+# which can be downloaded from GitHub'S UI or with 'gh run download'.
+
+name: CI Linux Golden Tests
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-shared-run-golden-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        include:
+          - runs-on: ubuntu-24.04
+            compiler: gcc
+            gcc: 14
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-linux
+        id: setup
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+          gcc-version: ${{ matrix.gcc }}
+          libxml2: "LOCAL"
+          libyuv: "LOCAL"
+      - name: Build mp4box
+        if: steps.setup.outputs.ext-cache-hit != 'true'
+        working-directory: ./ext
+        run: bash -e mp4box.sh
+
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_LIBXML2=LOCAL
+          -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
+          -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
+          -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF golden tests
+        working-directory: ./build
+        # Runs test that have "golden" in their name.
+        run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure -R golden
+
+      # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+      - name: Archive golden tests output for debugging
+        if: failure()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: golden-tests-output
+          path: ${{ runner.temp }}/golden_tests/**/*
+
+      # Print instructions to help fix the tests.
+      - name: How to fix failing tests
+        if: failure()
+        run: >
+          echo "If the tests fail, download the test results from the Artifacts list at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} or with:
+            gh run download --dir /tmp/golden-tests-output-${{ github.run_id }} --repo ${{ github.repository }} --name golden-tests-output ${{ github.run_id }}
+          Update all files with:
+            cp /tmp/golden-tests-output-${{ github.run_id }}/*/*.xml ~/git/libavif/tests/data/goldens
+          Or look at detailed instructions in the README.txt file in the test ouputs."
