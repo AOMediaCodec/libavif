@@ -213,7 +213,14 @@ macro(check_avif_option _VAR)
             if(${_VAR} STREQUAL "LOCAL")
                 include(${_LOCAL_INCLUDE})
             elseif(${_VAR} STREQUAL "SYSTEM")
-                find_package(${_AVIF_OPTION_PKG_NAME} REQUIRED)
+                # QUIET instead of REQUIRED in order to use a custom error message below.
+                find_package(${_AVIF_OPTION_PKG_NAME} QUIET)
+                if(NOT ${_AVIF_OPTION_PKG_NAME}_FOUND)
+                    message(
+                        FATAL_ERROR
+                            "Cannot find ${_AVIF_OPTION_PKG_NAME}. Make sure it's installed on the system, or pass -D${_VAR}=LOCAL (to fetch and build it locally) or -D${_VAR}=OFF (to disable it)"
+                    )
+                endif()
             endif()
         endif()
     endif()
