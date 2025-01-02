@@ -106,7 +106,7 @@ by the time libavif's CMake scripts are executed.
 ### Libyuv Dependency
 
 Libyuv is an optional but strongly recommended dependency that speeds up
-color space conversions. It's enable by default with a value of `SYSTEM`,
+color space conversions. It's enabled by default with a value of `SYSTEM`,
 so it's expected to be installed on the system. It can either be built
 locally instead by using `-DAVIF_LIBYUV=LOCAL` or disabled with
 `-DAVIF_LIBYUV=OFF`.
@@ -117,8 +117,8 @@ A few tests written in C can be built by enabling the `AVIF_BUILD_TESTS` CMake
 option.
 
 The remaining tests require [GoogleTest](https://github.com/google/googletest),
-and can be built by enabling
-`AVIF_BUILD_TESTS` and setting `AVIF_GTEST` to `SYSTEM` or `LOCAL`.
+and can be built by enabling `AVIF_BUILD_TESTS` and setting `AVIF_GTEST` to
+`SYSTEM` or `LOCAL`.
 
 Additionally, fuzzing tests require [fuzztest](https://github.com/google/fuzztest),
 see also fuzzing test instructions in `ext/oss-fuzz/README.md`.
