@@ -268,22 +268,10 @@ static void syntaxLong(void)
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
-    printf("    --min QP                          : Set min quantizer for color (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --max QP                          : Set max quantizer for color (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --minalpha QP                     : Set min quantizer for alpha (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
-    printf("    --maxalpha QP                     : Set max quantizer for alpha (%d-%d, where %d is lossless)\n",
-           AVIF_QUANTIZER_BEST_QUALITY,
-           AVIF_QUANTIZER_WORST_QUALITY,
-           AVIF_QUANTIZER_LOSSLESS);
+    printf("    --min QP                          : Deprecated, use -q [0-100] instead\n");
+    printf("    --max QP                          : Deprecated, use -q [0-100] instead\n");
+    printf("    --minalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
+    printf("    --maxalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
     printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
     printf("    --duration D                      : Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
@@ -1360,6 +1348,12 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
+static int quantizerToQuality(int minQuantizer, int maxQuantizer)
+{
+    const int quantizer = (minQuantizer + maxQuantizer) / 2;
+    return (int)(100 - (100 * quantizer - 50) / 63.0);
+}
+
 int main(int argc, char * argv[])
 {
     if (argc < 2) {
@@ -2084,6 +2078,22 @@ int main(int argc, char * argv[])
                         "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
                         file->filename);
                 goto cleanup;
+            }
+            if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
+                fprintf(stderr,
+                        "WARNING: --min and --max are deprecated, please use --q [0-100] instead. "
+                        "--min %d --max %d is equivalent to -q %d\n",
+                        fileSettings->minQuantizer.value,
+                        fileSettings->maxQuantizer.value,
+                        quantizerToQuality(fileSettings->minQuantizer.value, fileSettings->maxQuantizer.value));
+            }
+            if (fileSettings->minQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.set) {
+                fprintf(stderr,
+                        "WARNING: --minalpha and --maxalpha are deprecated, please use --qalpha [0-100] instead. "
+                        "--minalpha %d --maxalpha %d is equivalent to --qalpha %d\n",
+                        fileSettings->minQuantizerAlpha.value,
+                        fileSettings->maxQuantizerAlpha.value,
+                        quantizerToQuality(fileSettings->minQuantizerAlpha.value, fileSettings->maxQuantizerAlpha.value));
             }
 
             if (!fileSettings->autoTiling.set) {
