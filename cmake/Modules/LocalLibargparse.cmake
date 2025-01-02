@@ -24,7 +24,10 @@ else()
         GIT_REPOSITORY "https://github.com/kmurray/libargparse.git"
         GIT_TAG ${AVIF_LOCAL_LIBARGPARSE_GIT_TAG}
         # TODO(vrabaud) remove once CMake 3.13 is not supported anymore.
-        PATCH_COMMAND sed -i.bak -e "s:install.*:include(GNUInstallDirs)\\\\ninstall(TARGETS libargparse RUNTIME DESTINATION \\\\$\\\\{CMAKE_INSTALL_BINDIR\\\\} LIBRARY DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\} ARCHIVE DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\}):" CMakeLists.txt
+        PATCH_COMMAND
+            sed -i.bak -e
+            "s:install.*:include(GNUInstallDirs)\\\\ninstall(TARGETS libargparse RUNTIME DESTINATION \\\\$\\\\{CMAKE_INSTALL_BINDIR\\\\} LIBRARY DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\} ARCHIVE DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\}):"
+            CMakeLists.txt
         UPDATE_COMMAND ""
     )
     avif_fetchcontent_populate_cmake(libargparse)
