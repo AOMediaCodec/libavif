@@ -43,6 +43,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
 * Add 'avifgainmaputil' command line tool to installed apps.
+* Deprecate `avifEncoder`'s `minQuantizer`, `maxQuantizer`, `minQuantizerAlpha`,
+  and `maxQuantizerAlpha` fields. `quality` and `qualityAlpha` should be used
+  instead. Deprecate `avifenc`'s `--min`, `--max`, `--minalpha` and `--maxalpha`
+  flags. `-q` or `--qcolor` and `--qalpha` should be used instead.
 
 ## [1.1.1] - 2024-07-30
 
