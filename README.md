@@ -16,14 +16,12 @@ and features are added.
 
 ## Command line tool usage
 
-    avifenc [options] input.[jpg|jpeg|png|y4m] output.avif
+```sh
+avifenc input.[jpg|png|y4m] -q 75 output.avif
+avifdec output.avif decoded.png
+```
 
-Examples:
-
-    avifenc input.png ---lossless output.avif                           # lossless compression 
-    avifenc input.png --jobs 8 --min 20 --max 22 --speed 0 output.avif  # use 8 cores, the best compression (slowest) with an acceptable medium quality
-    
-See `avifenc --help` for all options
+See `avifenc --help` for all options.
 
 ## API usage
 
