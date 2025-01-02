@@ -1214,20 +1214,26 @@ typedef enum avifImageContentTypeFlag
 } avifImageContentTypeFlag;
 typedef uint32_t avifImageContentTypeFlags;
 
-// NOTE: The avifDecoder struct may be extended in a future release. Code outside the libavif
-// library must allocate avifDecoder by calling the avifDecoderCreate() function.
+// AVIF decoder struct. It may be extended in a future release. Code outside the libavif
+// library must allocate avifDecoder by calling the avifDecoderCreate() function, and destroy it with
+// avifDecoderDestroy().
+// This struct contains three types of fields:
+//   * Changeable settings, which users of the API may set.
+//   * Output data fields, that are set by libavif and which users of the API may read.
+//   * Internal fields, which users of the API should ignore.
 typedef struct avifDecoder
 {
     // --------------------------------------------------------------------------------------------
-    // Inputs
+    // Inputs (changeable decoder settings)
+    // Additional settings are available at the end of the struct after the version 1.1.0 end marker.
 
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
-    // Defaults to 1. -- NOTE: Please see the "Understanding maxThreads" comment block above
+    // Defaults to 1. If < 2, multithreading is disabled. See also 'Understanding maxThreads' above.
     int maxThreads;
 
-    // avifs can have multiple sets of images in them. This specifies which to decode.
+    // AVIF files can have multiple sets of images in them. This specifies which to decode.
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
@@ -1276,6 +1282,7 @@ typedef struct avifDecoder
 
     // --------------------------------------------------------------------------------------------
     // Outputs
+    // Additional outputs are available at the end of the struct after the version 1.0.0 end marker.
 
     // All decoded image data; owned by the decoder. All information in this image is incrementally
     // added and updated as avifDecoder*() functions are called. After a successful call to
@@ -1320,25 +1327,28 @@ typedef struct avifDecoder
     // --------------------------------------------------------------------------------------------
     // Internals
 
-    // Use one of the avifDecoderSetIO*() functions to set this
+    // IO source. This field is managed by the decoder. Use one of the avifDecoderSetIO*() functions to set it.
     avifIO * io;
 
     // Internals used by the decoder
     struct avifDecoderData * data;
 
     // Version 1.0.0 ends here.
+    // --------------------------------------------------------------------------------------------
 
     // This is true when avifDecoderParse() detects an image sequence track in the image. If this is true, the image can be
     // decoded either as an animated image sequence or as a still image (the primary image item) by setting avifDecoderSetSource
     // to the appropriate source.
-    avifBool imageSequenceTrackPresent;
+    avifBool imageSequenceTrackPresent; // Output data field.
 
     // Version 1.1.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 
     // Image content to decode (if present). Defaults to AVIF_IMAGE_CONTENT_DECODE_DEFAULT.
-    avifImageContentTypeFlags imageContentToDecode;
+    avifImageContentTypeFlags imageContentToDecode; // Changeable decoder setting.
 } avifDecoder;
 
+// Creates a decoder initialized with default settings values.
 // Returns NULL in case of memory allocation failure.
 AVIF_API avifDecoder * avifDecoderCreate(void);
 AVIF_API void avifDecoderDestroy(avifDecoder * decoder);
@@ -1449,81 +1459,110 @@ typedef struct avifScalingMode
     avifFraction vertical;
 } avifScalingMode;
 
-// Notes:
-// * The avifEncoder struct may be extended in a future release. Code outside the libavif library
-//   must allocate avifEncoder by calling the avifEncoderCreate() function.
-// * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
-// * If (maxThreads < 2), multithreading is disabled
-//   * NOTE: Please see the "Understanding maxThreads" comment block above
-// * Quality range: [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST]
-// * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
-//   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
-//   If autoTiling is set to AVIF_TRUE, libavif ignores tileRowsLog2 and tileColsLog2 and
-//   automatically chooses suitable tiling values.
-// * Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
-//   image in less bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings"./
-//   If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
-//   a combination of settings are tweaked to simulate this speed range.
-// * Extra layer count: [0 - (AVIF_MAX_AV1_LAYER_COUNT-1)]. Non-zero value indicates a layered
-//   (progressive) image.
-// * Some encoder settings can be changed after encoding starts. Changes will take effect in the next
-//   call to avifEncoderAddImage().
+// AVIF encoder struct. It may be extended in a future release. Code outside the libavif library
+// must allocate avifEncoder by calling the avifEncoderCreate() function, and destroy it with
+// avifEncoderDestroy().
+// This struct contains three types of fields:
+//   * Changeable settings, which users of the API may set.
+//   * Output data fields, that are set by libavif and which users of the API may read.
+//   * Internal fields, which users of the API should ignore.
+// Some encoder settings can be changed after encoding starts. Changes will take effect in the next
+// call to avifEncoderAddImage().
 typedef struct avifEncoder
 {
+    // --------------------------------------------------------------------------------------------
+    // Changeable encoder settings
+    // Additional settings are available at the end of the struct after the version 1.0.0 end marker.
+
     // Defaults to AVIF_CODEC_CHOICE_AUTO: Preference determined by order in availableCodecs table (avif.c)
     avifCodecChoice codecChoice;
 
-    // settings (see Notes above)
+    // Defaults to 1. If < 2, multithreading is disabled. See also 'Understanding maxThreads' above.
     int maxThreads;
+    // Speed range: [AVIF_SPEED_SLOWEST - AVIF_SPEED_FASTEST]. Slower should make for a better quality
+    // image in fewer bytes. AVIF_SPEED_DEFAULT means "Leave the AV1 codec to its default speed settings".
+    // If avifEncoder uses rav1e, the speed value is directly passed through (0-10). If libaom is used,
+    // a combination of settings are tweaked to simulate this speed range.
     int speed;
-    int keyframeInterval;     // Any set of |keyframeInterval| consecutive frames will have at least one keyframe. When it is 0,
-                              // there is no such restriction.
-    uint64_t timescale;       // timescale of the media (Hz)
-    int repetitionCount;      // Number of times the image sequence should be repeated. This can also be set to
-                              // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.  Only applicable for image sequences.
-                              // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
-                              // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
-    uint32_t extraLayerCount; // EXPERIMENTAL: Non-zero value encodes layered image.
 
-    // changeable encoder settings
+    // For image sequences (animations), maximum interval between keyframes. Any set of |keyframeInterval|
+    // consecutive frames will have at least one keyframe. When it is 0, no restriction is applied.
+    int keyframeInterval;
+    // For image sequences (animations), timescale of the media in Hz, i.e. the number of time units per second.
+    uint64_t timescale;
+    // For image sequences, number of times the image sequence should be repeated. This can also be set to
+    // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.
+    // Essentially, if repetitionCount is a non-negative integer `n`, then the image sequence should be
+    // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
+    int repetitionCount;
+
+    // EXPERIMENTAL: A non-zero value indicates a layered (progressive) image.
+    // Range: [0 - (AVIF_MAX_AV1_LAYER_COUNT-1)].
+    // To encode a progressive image, set `extraLayerCount` to the number of extra images, then call
+    // `avifEncoderAddImage()` or `avifEncoderAddImageGrid()` exactly `encoder->extraLayerCount+1` times.
+    uint32_t extraLayerCount;
+
+    // Encode quality for the YUV image, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int quality;
+    // Encode quality for the alpha layer if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityAlpha;
     int minQuantizer;      // Deprecated, use `quality` instead.
     int maxQuantizer;      // Deprecated, use `quality` instead.
     int minQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
     int maxQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
+
+    // Tiling splits the image into a grid of smaller images (tiles), allowing parralelization of
+    // encoding/decoding and/or incremental decoding. Tiling also allows encoding larger images.
+    // To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0, or set autoTiling to AVIF_TRUE.
+    // Range: [0-6], where the value indicates a request for 2^n tiles in that dimension.
     int tileRowsLog2;
     int tileColsLog2;
+    // If autoTiling is set to AVIF_TRUE, libavif ignores tileRowsLog2 and tileColsLog2 and
+    // automatically chooses suitable tiling values.
     avifBool autoTiling;
+
+    // Up/down scaling of the image to perform before encoding.
     avifScalingMode scalingMode;
 
-    // stats from the most recent write
+    // --------------------------------------------------------------------------------------------
+    // Outputs
+
+    // Stats from the most recent write.
     avifIOStats ioStats;
 
-    // Additional diagnostics (such as detailed error state)
+    // Additional diagnostics (such as detailed error state).
     avifDiagnostics diag;
 
-    // Internals used by the encoder
+    // --------------------------------------------------------------------------------------------
+    // Internals
+
     struct avifEncoderData * data;
     struct avifCodecSpecificOptions * csOptions;
 
     // Version 1.0.0 ends here.
+    // --------------------------------------------------------------------------------------------
 
     // Defaults to AVIF_HEADER_FULL
-    avifHeaderFormat headerFormat;
+    avifHeaderFormat headerFormat; // Changeable encoder setting.
 
     // Version 1.1.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 
-    int qualityGainMap; // changeable encoder setting
+    // Encode quality for the gain map image if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
+    int qualityGainMap; // Changeable encoder setting.
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
-    avifSampleTransformRecipe sampleTransformRecipe;
+    avifSampleTransformRecipe sampleTransformRecipe; // Changeable encoder setting.
 #endif
 } avifEncoder;
 
-// avifEncoderCreate() returns NULL if a memory allocation failed.
+// Creates an encoder initialized with default settings values.
+// Returns NULL if a memory allocation failed.
 AVIF_NODISCARD AVIF_API avifEncoder * avifEncoderCreate(void);
+// Encodes and writes a single image to `output`.
+// On success (AVIF_RESULT_OK), `output` must be freed with avifRWDataFree().
+// For more complex use cases, see `avifEncoderAddImage()` and `avifEncoderAddImageGrid()` below.
 AVIF_API avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output);
 AVIF_API void avifEncoderDestroy(avifEncoder * encoder);
 
@@ -1549,7 +1588,7 @@ typedef uint32_t avifAddImageFlags;
 //   * avifEncoderAddImage() [exactly once]
 // - Still image grid:
 //   * avifEncoderAddImageGrid() [exactly once, AVIF_ADD_IMAGE_FLAG_SINGLE is assumed]
-// - Image sequence:
+// - Image sequence (animation):
 //   * Set encoder->timescale (Hz) correctly
 //   * avifEncoderAddImage() ... [repeatedly; at least once]
 // - Still layered image:
@@ -1563,7 +1602,7 @@ typedef uint32_t avifAddImageFlags;
 //
 // The image passed to avifEncoderAddImage() or avifEncoderAddImageGrid() is encoded during the
 // call (which may be slow) and can be freed after the function returns.
-
+//
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
 // or if we are encoding a layered image.
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags);
