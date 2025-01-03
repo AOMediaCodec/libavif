@@ -49,6 +49,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   flags. `-q` or `--qcolor` and `--qalpha` should be used instead.
 * For dependencies, the deprecated way of setting AVIF_LOCAL_* to ON is
   removed. Dependency options can now only be set to OFF/LOCAL/SYSTEM.
+* Change the default quality for alpha to be the same as the quality for color.
 
 ## [1.1.1] - 2024-07-30
 
