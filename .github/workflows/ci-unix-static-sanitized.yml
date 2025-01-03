@@ -107,6 +107,8 @@ jobs:
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
           LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
+          C_LD: clang
+          CXX_LD: clang
 
       - name: Prepare libavif (cmake)
         run: >
