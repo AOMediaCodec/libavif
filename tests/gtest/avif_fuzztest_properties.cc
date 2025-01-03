@@ -19,23 +19,21 @@ namespace testutil {
 namespace {
 
 struct TestProp {
-  std::vector<uint8_t> fourcc;
-  std::vector<uint8_t> uuid;
+  std::array<uint8_t, 4> fourcc;
+  std::array<uint8_t, 16> uuid;
   std::vector<uint8_t> body;
 };
 
-static std::vector<uint8_t> UUID_4CC = {'u', 'u', 'i', 'd'};
-
-void PropsValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
-                std::vector<TestProp> testProps) {
+void EncodeDecode(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
+                  const std::vector<TestProp>& testProps) {
   ImagePtr decoded_image(avifImageCreateEmpty());
   ASSERT_NE(image.get(), nullptr);
   ASSERT_NE(encoder.get(), nullptr);
   ASSERT_NE(decoder.get(), nullptr);
   ASSERT_NE(decoded_image.get(), nullptr);
 
-  for (TestProp testProp : testProps) {
-    if (testProp.fourcc == UUID_4CC) {
+  for (const TestProp& testProp : testProps) {
+    if (testProp.fourcc == std::array<uint8_t, 4>{'u', 'u', 'i', 'd'}) {
       ASSERT_EQ(
           avifImageAddUUIDProperty(image.get(), testProp.uuid.data(),
                                    testProp.body.data(), testProp.body.size()),
@@ -61,7 +59,7 @@ void PropsValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
 
   ASSERT_EQ(decoder->image->numProperties, testProps.size());
   for (size_t i = 0; i < testProps.size(); i++) {
-    TestProp testProp = testProps[i];
+    const TestProp& testProp = testProps[i];
     const avifImageItemProperty& decodeProp = decoder->image->properties[i];
     EXPECT_EQ(std::string(decodeProp.boxtype, decodeProp.boxtype + 4),
               std::string(testProp.fourcc.data(), testProp.fourcc.data() + 4));
@@ -73,25 +71,24 @@ void PropsValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder,
 }
 
 inline auto ArbitraryProp() {
-  auto fourcc = fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(4);
-  auto uuid =
-      fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(16);  // ignored
+  auto fourcc = fuzztest::Arbitrary<std::array<uint8_t, 4>>();
+  auto uuid = fuzztest::Arbitrary<std::array<uint8_t, 16>>();  // ignored
   auto body = fuzztest::Arbitrary<std::vector<uint8_t>>();
   // Don't return known properties.
   return fuzztest::Filter(
-      [](TestProp prop) {
+      [](const TestProp& prop) {
         return !avifIsKnownPropertyType(prop.fourcc.data());
       },
       fuzztest::StructOf<TestProp>(fourcc, uuid, body));
 }
 
 inline auto ArbitraryUUIDProp() {
-  auto fourcc = fuzztest::Just(UUID_4CC);
-  auto uuid = fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(16);
+  auto fourcc = fuzztest::Just(std::array<uint8_t, 4>{'u', 'u', 'i', 'd'});
+  auto uuid = fuzztest::Arbitrary<std::array<uint8_t, 16>>();
   auto body = fuzztest::Arbitrary<std::vector<uint8_t>>();
-  // Don't use invalid UUIDs
+  // Don't use invalid UUIDs.
   return fuzztest::Filter(
-      [](TestProp prop) { return avifIsValidUUID(prop.uuid.data()); },
+      [](const TestProp& prop) { return avifIsValidUUID(prop.uuid.data()); },
       fuzztest::StructOf<TestProp>(fourcc, uuid, body));
 }
 
@@ -100,7 +97,7 @@ inline auto ArbitraryProps() {
       fuzztest::OneOf(ArbitraryProp(), ArbitraryUUIDProp()));
 }
 
-FUZZ_TEST(PropertiesAvifFuzzTest, PropsValid)
+FUZZ_TEST(PropertiesAvifFuzzTest, EncodeDecode)
     .WithDomains(ArbitraryAvifImage(), ArbitraryAvifEncoder(),
                  ArbitraryAvifDecoder(), ArbitraryProps());
 
