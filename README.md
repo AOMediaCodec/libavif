@@ -17,7 +17,7 @@ and features are added.
 ## Command line tool usage
 
 ```sh
-avifenc input.[jpg|png|y4m] -q 75 output.avif
+avifenc -q 75 input.[jpg|png|y4m] output.avif
 avifdec output.avif decoded.png
 ```
 
