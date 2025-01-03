@@ -1,4 +1,4 @@
-: # If you want to use a local build of libxml2, you must clone the libxml2 repo in this directory first, then enable CMake's AVIF_LOCAL_LIBXML2 option.
+: # If you want to use a local build of libxml2, you must clone the libxml2 repo in this directory first, then set CMake's AVIF_LIBXML2 to LOCAL.
 : # The git tag below is known to work, and will occasionally be updated. Feel free to use a more recent commit.
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.

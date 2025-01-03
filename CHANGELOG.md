@@ -47,6 +47,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   and `maxQuantizerAlpha` fields. `quality` and `qualityAlpha` should be used
   instead. Deprecate `avifenc`'s `--min`, `--max`, `--minalpha` and `--maxalpha`
   flags. `-q` or `--qcolor` and `--qalpha` should be used instead.
+* For dependencies, the deprecated way of setting AVIF_LOCAL_* to ON is
+  removed. Dependency options can now only be set to OFF/LOCAL/SYSTEM.
 
 ## [1.1.1] - 2024-07-30
 
