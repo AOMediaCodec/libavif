@@ -1,0 +1,62 @@
+# Workflow that builds libabvif with aom and dav1d, runs tests and generates coverage report.
+
+name: CI Linux Code Coverage
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-shared-run-golden-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-linux
+        id: setup
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+          libxml2: "LOCAL"
+
+      - name: Install LLVM
+        run:  sudo apt install -y llvm
+
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
+          -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBXML2=LOCAL
+          -DAVIF_LIBYUV=OFF
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
+          -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
+          -DAVIF_ENABLE_WERROR=ON -DAVIF_ENABLE_COVERAGE=ON
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF coverage
+        working-directory: ./build
+        run: ninja avif_coverage
+
+      # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
+      - name: Archive coverage output
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: coverage-output
+          path:  |
+            ./build/tests/coverage/*
+            ./build/tests/coverage/**/*
