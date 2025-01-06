@@ -4,16 +4,26 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
 
-#define MAX_ASSOCIATIONS 16
-struct ipmaArray
+// Section 8.11.14.2 of ISO/IEC 14496-12 (ItemPropertyAssociationBox 'ipma' syntax):
+//   if (flags & 1)
+//     unsigned int(15) property_index;
+//   else
+//     unsigned int(7) property_index;
+//
+// libavif writes 'ipma' with flags set to 0.
+#define MAX_PROPERTY_INDEX (1 << 7) - 1
+
+// The indices of the properties associated with an item.
+typedef struct avifItemPropertyAssociation
 {
-    uint8_t associations[MAX_ASSOCIATIONS];
-    avifBool essential[MAX_ASSOCIATIONS];
-    uint8_t count;
-};
+    uint8_t property_index; // 1-indexed
+    avifBool essential;
+} avifItemPropertyAssociation;
+AVIF_ARRAY_DECLARE(avifItemPropertyAssociationArray, avifItemPropertyAssociation, association);
 
 // Used to store offsets in meta boxes which need to point at mdat offsets that
 // aren't known yet. When an item's mdat payload is written, all registered fixups
@@ -182,7 +192,7 @@ typedef struct avifEncoderItem
 
     uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
-    struct ipmaArray ipma;
+    avifItemPropertyAssociationArray associations; // 'ipma'
 } avifEncoderItem;
 AVIF_ARRAY_DECLARE(avifEncoderItemArray, avifEncoderItem, item);
 
@@ -294,12 +304,16 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     if (!avifArrayCreate(&item->mdatFixups, sizeof(avifOffsetFixup), 4)) {
         goto error;
     }
+    if (!avifArrayCreate(&item->associations, sizeof(avifItemPropertyAssociation), 4)) {
+        goto error;
+    }
     return item;
 
 error:
     if (item->encodeOutput != NULL) {
         avifCodecEncodeOutputDestroy(item->encodeOutput);
     }
+    avifArrayDestroy(&item->mdatFixups);
     --data->lastItemID;
     avifArrayPop(&data->items);
     return NULL;
@@ -326,6 +340,7 @@ static void avifEncoderDataDestroy(avifEncoderData * data)
         avifCodecEncodeOutputDestroy(item->encodeOutput);
         avifRWDataFree(&item->metadataPayload);
         avifArrayDestroy(&item->mdatFixups);
+        avifArrayDestroy(&item->associations);
     }
     if (data->imageMetadata) {
         avifImageDestroy(data->imageMetadata);
@@ -406,7 +421,10 @@ static void avifItemPropertyDedupStart(avifItemPropertyDedup * dedup)
 //
 // On success, this function adds to the given ipma box a property association linking the reused
 // or newly created property with the item.
-static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avifRWStream * outputStream, struct ipmaArray * ipma, avifBool essential)
+static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup,
+                                              avifRWStream * outputStream,
+                                              avifItemPropertyAssociationArray * associations,
+                                              avifBool essential)
 {
     uint8_t propertyIndex = 0;
     const size_t newPropertySize = avifRWStreamOffset(&dedup->s);
@@ -426,6 +444,7 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avi
         // Write a new property, and remember its location in the output stream for future deduplication
         avifItemProperty * property = (avifItemProperty *)avifArrayPush(&dedup->properties);
         AVIF_CHECKERR(property != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        AVIF_CHECKERR(dedup->nextIndex < MAX_PROPERTY_INDEX, AVIF_RESULT_INVALID_ARGUMENT);
         property->index = ++dedup->nextIndex; // preincrement so the first new index is 1 (as ipma is 1-indexed)
         property->size = newPropertySize;
         property->offset = avifRWStreamOffset(outputStream);
@@ -433,10 +452,10 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup, avi
         propertyIndex = property->index;
     }
 
-    AVIF_CHECKERR(ipma->count < MAX_ASSOCIATIONS, AVIF_RESULT_UNKNOWN_ERROR);
-    ipma->associations[ipma->count] = propertyIndex;
-    ipma->essential[ipma->count] = essential;
-    ++ipma->count;
+    avifItemPropertyAssociation * association = (avifItemPropertyAssociation *)avifArrayPush(associations);
+    AVIF_CHECKERR(association != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    association->property_index = propertyIndex;
+    association->essential = essential;
     return AVIF_RESULT_OK;
 }
 
@@ -589,7 +608,7 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
 static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
                                                avifRWStream * outputStream,
                                                const avifImage * imageMetadata,
-                                               struct ipmaArray * ipma,
+                                               avifItemPropertyAssociationArray * associations,
                                                avifItemPropertyDedup * dedup)
 {
     if (dedup) {
@@ -605,7 +624,7 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
     AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, 0, /*bitCount=*/7)); // unsigned int(7) reserved = 0;
     avifRWStreamFinishBox(dedupStream, colr);
     if (dedup) {
-        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_FALSE));
     }
     return AVIF_RESULT_OK;
 }
@@ -613,12 +632,12 @@ static avifResult avifEncoderWriteNclxProperty(avifRWStream * dedupStream,
 static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
                                                avifRWStream * outputStream,
                                                const avifImage * imageMetadata,
-                                               struct ipmaArray * ipma,
+                                               avifItemPropertyAssociationArray * associations,
                                                avifItemPropertyDedup * dedup);
 static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupStream,
                                                            avifRWStream * outputStream,
                                                            const avifImage * imageMetadata,
-                                                           struct ipmaArray * ipma,
+                                                           avifItemPropertyAssociationArray * associations,
                                                            avifItemPropertyDedup * dedup);
 
 // This function is used in two codepaths:
@@ -634,7 +653,7 @@ static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupS
 // function will avoid using them.
 static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
                                                   const avifImage * imageMetadata,
-                                                  struct ipmaArray * ipma,
+                                                  avifItemPropertyAssociationArray * associations,
                                                   avifItemPropertyDedup * dedup)
 {
     // outputStream is the final bitstream that will be output by the libavif encoder API.
@@ -643,7 +662,7 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
     // of an already stored property.
     avifRWStream * dedupStream = outputStream;
     if (dedup) {
-        AVIF_ASSERT_OR_RETURN(ipma);
+        AVIF_ASSERT_OR_RETURN(associations);
 
         // Use the dedup's temporary stream for box writes.
         dedupStream = &dedup->s;
@@ -659,15 +678,15 @@ static avifResult avifEncoderWriteColorProperties(avifRWStream * outputStream,
         AVIF_CHECKRES(avifRWStreamWrite(dedupStream, imageMetadata->icc.data, imageMetadata->icc.size));
         avifRWStreamFinishBox(dedupStream, colr);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_FALSE));
         }
     }
 
     // HEIF 6.5.5.1, from Amendment 3 allows multiple colr boxes: "at most one for a given value of colour type"
     // Therefore, *always* writing an nclx box, even if a prof box was already written above.
-    AVIF_CHECKRES(avifEncoderWriteNclxProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
+    AVIF_CHECKRES(avifEncoderWriteNclxProperty(dedupStream, outputStream, imageMetadata, associations, dedup));
 
-    AVIF_CHECKRES(avifEncoderWritePaspProperty(dedupStream, outputStream, imageMetadata, ipma, dedup));
+    AVIF_CHECKRES(avifEncoderWritePaspProperty(dedupStream, outputStream, imageMetadata, associations, dedup));
 
     return AVIF_RESULT_OK;
 }
@@ -684,7 +703,7 @@ static avifResult avifEncoderWriteContentLightLevelInformation(avifRWStream * ou
 static avifResult avifEncoderWriteHDRProperties(avifRWStream * dedupStream,
                                                 avifRWStream * outputStream,
                                                 const avifImage * imageMetadata,
-                                                struct ipmaArray * ipma,
+                                                avifItemPropertyAssociationArray * associations,
                                                 avifItemPropertyDedup * dedup)
 {
     // Write Content Light Level Information, if present
@@ -697,7 +716,7 @@ static avifResult avifEncoderWriteHDRProperties(avifRWStream * dedupStream,
         AVIF_CHECKRES(avifEncoderWriteContentLightLevelInformation(dedupStream, &imageMetadata->clli));
         avifRWStreamFinishBox(dedupStream, clli);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_FALSE));
         }
     }
 
@@ -748,7 +767,7 @@ static avifResult avifEncoderWriteMiniHDRProperties(avifRWStream * outputStream,
 static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
                                                avifRWStream * outputStream,
                                                const avifImage * imageMetadata,
-                                               struct ipmaArray * ipma,
+                                               avifItemPropertyAssociationArray * associations,
                                                avifItemPropertyDedup * dedup)
 {
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_PASP) {
@@ -761,7 +780,7 @@ static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
         AVIF_CHECKRES(avifRWStreamWriteU32(dedupStream, imageMetadata->pasp.vSpacing)); // unsigned int(32) vSpacing;
         avifRWStreamFinishBox(dedupStream, pasp);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_FALSE));
         }
     }
     return AVIF_RESULT_OK;
@@ -770,7 +789,7 @@ static avifResult avifEncoderWritePaspProperty(avifRWStream * dedupStream,
 static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupStream,
                                                            avifRWStream * outputStream,
                                                            const avifImage * imageMetadata,
-                                                           struct ipmaArray * ipma,
+                                                           avifItemPropertyAssociationArray * associations,
                                                            avifItemPropertyDedup * dedup)
 {
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
@@ -789,7 +808,7 @@ static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupS
         AVIF_CHECKRES(avifRWStreamWriteU32(dedupStream, imageMetadata->clap.vertOffD));  // unsigned int(32) vertOffD;
         avifRWStreamFinishBox(dedupStream, clap);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_TRUE));
         }
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_IROT) {
@@ -802,7 +821,7 @@ static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupS
         AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->irot.angle & 0x3, /*bitCount=*/2)); // unsigned int (2) angle;
         avifRWStreamFinishBox(dedupStream, irot);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_TRUE));
         }
     }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_IMIR) {
@@ -815,7 +834,7 @@ static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupS
         AVIF_CHECKRES(avifRWStreamWriteBits(dedupStream, imageMetadata->imir.axis ? 1 : 0, /*bitCount=*/1)); // unsigned int(1) axis;
         avifRWStreamFinishBox(dedupStream, imir);
         if (dedup) {
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, ipma, AVIF_TRUE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, outputStream, associations, AVIF_TRUE));
         }
     }
     return AVIF_RESULT_OK;
@@ -2833,7 +2852,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             hasIpmaToWrite = AVIF_TRUE;
         }
 #endif
-        memset(&item->ipma, 0, sizeof(item->ipma));
+        item->associations.count = 0;
         if (!hasIpmaToWrite) {
             continue;
         }
@@ -2851,7 +2870,12 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                     avifEncoderItem * dedupItem = &encoder->data->items.item[dedupIndex];
                     if ((item->dimgFromID == dedupItem->dimgFromID) && (dedupItem->extraLayerCount == 0)) {
                         // We've already written dedup's items out. Steal their ipma indices and move on!
-                        item->ipma = dedupItem->ipma;
+                        item->associations.count = 0;
+                        for (uint32_t associationIndex = 0; associationIndex < dedupItem->associations.count; ++associationIndex) {
+                            avifItemPropertyAssociation * association = (avifItemPropertyAssociation *)avifArrayPush(&item->associations);
+                            AVIF_CHECKERR(association != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                            *association = dedupItem->associations.association[associationIndex];
+                        }
                         foundPreviousCell = AVIF_TRUE;
                         break;
                     }
@@ -2890,7 +2914,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageWidth));  // unsigned int(32) image_width;
         AVIF_CHECKRES(avifRWStreamWriteU32(&dedup->s, imageHeight)); // unsigned int(32) image_height;
         avifRWStreamFinishBox(&dedup->s, ispe);
-        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+        AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_FALSE));
 
         // pixi = pixel information (depth, channel count)
         avifBool hasPixi = AVIF_TRUE;
@@ -2933,14 +2957,14 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                 AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, depth)); // unsigned int (8) bits_per_channel;
             }
             avifRWStreamFinishBox(&dedup->s, pixi);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_FALSE));
         }
 
         // Codec configuration box ('av1C' or 'av2C')
         if (item->codec) {
             avifItemPropertyDedupStart(dedup);
             AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_TRUE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_TRUE));
         }
 
         if (isAlpha) {
@@ -2951,20 +2975,20 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "auxC", AVIF_BOX_SIZE_TBD, 0, 0, &auxC));
             AVIF_CHECKRES(avifRWStreamWriteChars(&dedup->s, alphaURN, alphaURNSize)); //  string aux_type;
             avifRWStreamFinishBox(&dedup->s, auxC);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_FALSE));
         } else if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
             // Note the 'tmap' (tone mapped image) item when a gain map is present also has itemCategory AVIF_ITEM_COLOR.
 
-            AVIF_CHECKRES(avifEncoderWriteColorProperties(s, itemMetadata, &item->ipma, dedup));
-            AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteColorProperties(s, itemMetadata, &item->associations, dedup));
+            AVIF_CHECKRES(avifEncoderWriteHDRProperties(&dedup->s, s, itemMetadata, &item->associations, dedup));
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
             // Write the colr nclx box.
-            AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteNclxProperty(&dedup->s, s, itemMetadata, &item->associations, dedup));
 
-            AVIF_CHECKRES(avifEncoderWritePaspProperty(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWritePaspProperty(&dedup->s, s, imageMetadata, &item->associations, dedup));
         }
 
         if (item->extraLayerCount > 0) {
@@ -2997,7 +3021,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                 }
             }
             avifRWStreamFinishBox(&dedup->s, a1lx);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_FALSE));
 
             // We don't add an 'lsel' property since many decoders do not support it and will reject the image,
             // see https://github.com/AOMediaCodec/libavif/pull/2429
@@ -3014,7 +3038,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             }
             AVIF_CHECKRES(avifRWStreamWrite(&dedup->s, prop->boxPayload.data, prop->boxPayload.size));
             avifRWStreamFinishBox(&dedup->s, propMarker);
-            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->ipma, AVIF_FALSE));
+            AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, AVIF_FALSE));
         }
 
         // Also write the transformative properties.
@@ -3022,7 +3046,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         if (item->itemCategory == AVIF_ITEM_COLOR) {
             // Color specific properties
             // Note the 'tmap' (tone mapped image) item when a gain map is present also has itemCategory AVIF_ITEM_COLOR.
-            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, itemMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, itemMetadata, &item->associations, dedup));
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
@@ -3059,7 +3083,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // gain map image items in the container part of the encoded file.
             // To enforce that, the transformative and 'pasp' properties of the gain map cannot be set explicitly in the API.
             AVIF_CHECKERR(itemMetadata->transformFlags == AVIF_TRANSFORM_NONE, AVIF_RESULT_ENCODE_GAIN_MAP_FAILED);
-            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, imageMetadata, &item->ipma, dedup));
+            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, imageMetadata, &item->associations, dedup));
         }
     }
     return AVIF_RESULT_OK;
@@ -3397,10 +3421,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     avifBoxMarker ipma;
     AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "ipma", AVIF_BOX_SIZE_TBD, 0, 0, &ipma));
     {
-        int ipmaCount = 0;
+        uint32_t ipmaCount = 0;
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            if (item->ipma.count > 0) {
+            if (item->associations.count > 0) {
+                AVIF_CHECKERR(ipmaCount < UINT32_MAX, AVIF_RESULT_INVALID_ARGUMENT);
                 ++ipmaCount;
             }
         }
@@ -3408,15 +3433,18 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
             avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-            if (item->ipma.count == 0) {
+            if (item->associations.count == 0) {
                 continue;
             }
 
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id));        // unsigned int(16) item_ID;
-            AVIF_CHECKRES(avifRWStreamWriteU8(&s, item->ipma.count)); // unsigned int(8) association_count;
-            for (int i = 0; i < item->ipma.count; ++i) {
-                AVIF_CHECKRES(avifRWStreamWriteBits(&s, item->ipma.essential[i] ? 1 : 0, /*bitCount=*/1)); // bit(1) essential;
-                AVIF_CHECKRES(avifRWStreamWriteBits(&s, item->ipma.associations[i], /*bitCount=*/7)); // unsigned int(7) property_index;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id)); // unsigned int(16) item_ID;
+            AVIF_ASSERT_OR_RETURN(item->associations.count < (1 << 8));
+            AVIF_CHECKRES(avifRWStreamWriteU8(&s, (uint8_t)item->associations.count)); // unsigned int(8) association_count;
+            for (uint32_t i = 0; i < item->associations.count; ++i) {
+                const avifItemPropertyAssociation * association = &item->associations.association[i];
+                AVIF_CHECKRES(avifRWStreamWriteBits(&s, association->essential ? 1 : 0, /*bitCount=*/1)); // bit(1) essential;
+                AVIF_ASSERT_OR_RETURN(association->property_index <= MAX_PROPERTY_INDEX);
+                AVIF_CHECKRES(avifRWStreamWriteBits(&s, association->property_index, /*bitCount=*/7)); // unsigned int(7) property_index;
             }
         }
     }

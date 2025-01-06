@@ -48,6 +48,8 @@ TEST(AvifPropertyTest, Parse) {
 TEST(AvifPropertyTest, Serialise) {
   ImagePtr image = testutil::CreateImage(128, 30, 8, AVIF_PIXEL_FORMAT_YUV420,
                                          AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
   std::vector<uint8_t> abcd_data({0, 0, 0, 1, 'a', 'b', 'c'});
   std::vector<uint8_t> efgh_data({'e', 'h'});
   uint8_t uuid[16] = {0x95, 0x96, 0xf1, 0xad, 0xb8, 0xab, 0x4a, 0xfc,
@@ -66,8 +68,6 @@ TEST(AvifPropertyTest, Serialise) {
   ASSERT_EQ(avifImageAddUUIDProperty(image.get(), uuid, uuid_data.data(),
                                      uuid_data.size()),
             AVIF_RESULT_OK);
-  ASSERT_NE(image, nullptr);
-  testutil::FillImageGradient(image.get());
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
@@ -102,6 +102,42 @@ TEST(AvifPropertyTest, Serialise) {
       std::vector<uint8_t>(uuidProp.boxPayload.data,
                            uuidProp.boxPayload.data + uuidProp.boxPayload.size),
       uuid_data);
+}
+
+TEST(AvifPropertyTest, TooManyUniqueProperties) {
+  ImagePtr image = testutil::CreateImage(128, 30, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  for (uint8_t i = 0; i < 128; ++i) {
+    ASSERT_EQ(avifImageAddOpaqueProperty(image.get(), (uint8_t*)"abcd", &i, 1),
+              AVIF_RESULT_OK);
+  }
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_INVALID_ARGUMENT);
+}
+
+TEST(AvifPropertyTest, ManyTimesTheSameProperty) {
+  ImagePtr image = testutil::CreateImage(128, 30, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  for (uint8_t i = 0; i < 128; ++i) {
+    const uint8_t sameData = 42;
+    ASSERT_EQ(
+        avifImageAddOpaqueProperty(image.get(), (uint8_t*)"abcd", &sameData, 1),
+        AVIF_RESULT_OK);
+  }
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
 }
 
 //------------------------------------------------------------------------------
