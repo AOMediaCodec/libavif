@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_LIBGAV1_GIT_TAG "v0.19.0")
+set(AVIF_LIBGAV1_GIT_TAG "v0.19.0")
 
 set(AVIF_LIBGAV1_BUILD_DIR "${AVIF_SOURCE_DIR}/ext/libgav1/build")
 # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
@@ -37,7 +37,7 @@ else()
         libgav1
         GIT_REPOSITORY "https://chromium.googlesource.com/codecs/libgav1"
         BINARY_DIR "${LIBGAV1_BINARY_DIR}"
-        GIT_TAG "${AVIF_LOCAL_LIBGAV1_GIT_TAG}"
+        GIT_TAG "${AVIF_LIBGAV1_GIT_TAG}"
         GIT_SHALLOW ON
         UPDATE_COMMAND ""
     )

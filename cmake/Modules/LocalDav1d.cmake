@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_DAV1D_TAG "1.5.0")
+set(AVIF_DAV1D_TAG "1.5.0")
 
 function(avif_build_local_dav1d)
     set(download_step_args)
@@ -8,8 +8,8 @@ function(avif_build_local_dav1d)
     else()
         message(STATUS "libavif(AVIF_CODEC_DAV1D=LOCAL): ext/dav1d not found, fetching")
         set(source_dir "${FETCHCONTENT_BASE_DIR}/dav1d-src")
-        list(APPEND download_step_args GIT_REPOSITORY https://code.videolan.org/videolan/dav1d.git GIT_TAG
-             ${AVIF_LOCAL_DAV1D_TAG} GIT_SHALLOW ON
+        list(APPEND download_step_args GIT_REPOSITORY https://code.videolan.org/videolan/dav1d.git GIT_TAG ${AVIF_DAV1D_TAG}
+             GIT_SHALLOW ON
         )
     endif()
 

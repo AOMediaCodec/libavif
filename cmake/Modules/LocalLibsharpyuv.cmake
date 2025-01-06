@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_LIBSHARPYUV_GIT_TAG v1.4.0)
+set(AVIF_LIBSHARPYUV_GIT_TAG v1.4.0)
 
 set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/libwebp/build/libsharpyuv${CMAKE_STATIC_LIBRARY_SUFFIX}")
 if(EXISTS "${LIB_FILENAME}")
@@ -39,7 +39,7 @@ else()
         libwebp
         GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
         BINARY_DIR "${LIBSHARPYUV_BINARY_DIR}"
-        GIT_TAG "${AVIF_LOCAL_LIBSHARPYUV_GIT_TAG}"
+        GIT_TAG "${AVIF_LIBSHARPYUV_GIT_TAG}"
         GIT_SHALLOW ON
         UPDATE_COMMAND ""
     )

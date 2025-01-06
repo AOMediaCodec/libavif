@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_JPEG_TAG "3.0.4")
+set(AVIF_JPEG_TAG "3.0.4")
 
 add_library(JPEG::JPEG STATIC IMPORTED GLOBAL)
 
@@ -33,7 +33,7 @@ else()
         libjpeg
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libjpeg
         GIT_REPOSITORY "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-        GIT_TAG "${AVIF_LOCAL_JPEG_TAG}"
+        GIT_TAG "${AVIF_JPEG_TAG}"
         LIST_SEPARATOR |
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG> --target jpeg-static
         CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

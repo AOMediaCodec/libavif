@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_GTEST_GIT_TAG v1.14.0)
+set(AVIF_GTEST_GIT_TAG v1.14.0)
 
 set(GTest_FOUND ON CACHE BOOL "")
 set(GTEST_INCLUDE_DIRS ${AVIF_SOURCE_DIR}/ext/googletest/googletest/include)
@@ -27,15 +27,15 @@ else()
     if(EXISTS "${AVIF_SOURCE_DIR}/ext/googletest")
         message(STATUS "libavif(AVIF_GTEST=LOCAL): ext/googletest found; using as FetchContent SOURCE_DIR")
         set(FETCHCONTENT_SOURCE_DIR_GOOGLETEST "${AVIF_SOURCE_DIR}/ext/googletest")
-        message(CHECK_START "libavif(AVIF_LOCAL_GTEST): configuring googletest")
+        message(CHECK_START "libavif(AVIF_GTEST): configuring googletest")
     else()
-        message(CHECK_START "libavif(AVIF_LOCAL_GTEST): fetching and configuring googletest")
+        message(CHECK_START "libavif(AVIF_GTEST): fetching and configuring googletest")
     endif()
 
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG ${AVIF_LOCAL_GTEST_GIT_TAG}
+        GIT_TAG ${AVIF_GTEST_GIT_TAG}
         GIT_SHALLOW ON
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

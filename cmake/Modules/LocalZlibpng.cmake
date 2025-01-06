@@ -1,7 +1,7 @@
 # To upgrade libpng to > v1.6.40, you need zlib containing f1f503da85d52e56aae11557b4d79a42bcaa2b86
 # hence a version > v1.3.1 .
-set(AVIF_LOCAL_ZLIB_GIT_TAG v1.3.1)
-set(AVIF_LOCAL_LIBPNG_GIT_TAG v1.6.40)
+set(AVIF_ZLIB_GIT_TAG v1.3.1)
+set(AVIF_LIBPNG_GIT_TAG v1.6.40)
 
 if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
     message(STATUS "libavif(AVIF_ZLIBPNG=LOCAL): ext/zlib found; using as FetchContent SOURCE_DIR")
@@ -22,7 +22,7 @@ FetchContent_Declare(
     zlib
     GIT_REPOSITORY "https://github.com/madler/zlib.git"
     SOURCE_DIR "${ZLIB_SOURCE_DIR}" BINARY_DIR "${ZLIB_BINARY_DIR}"
-    GIT_TAG "${AVIF_LOCAL_ZLIB_GIT_TAG}"
+    GIT_TAG "${AVIF_ZLIB_GIT_TAG}"
     GIT_SHALLOW ON
     UPDATE_COMMAND ""
 )
@@ -90,7 +90,7 @@ FetchContent_Declare(
     libpng
     GIT_REPOSITORY "https://github.com/glennrp/libpng.git"
     BINARY_DIR "${LIBPNG_BINARY_DIR}"
-    GIT_TAG "${AVIF_LOCAL_LIBPNG_GIT_TAG}"
+    GIT_TAG "${AVIF_LIBPNG_GIT_TAG}"
     GIT_SHALLOW ON
     UPDATE_COMMAND ""
 )
