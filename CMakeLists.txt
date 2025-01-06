@@ -71,6 +71,8 @@ option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample tra
 set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "")
 set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "")
 
+# Creates an option that can take the values 'OFF', 'SYSTEM' or 'LOCAL'.
+# The prefix 'AVIF_' is added to the option name automatically.
 function(set_local_or_system_option VAR DEFAULT TEXT)
     if(DEFINED AVIF_${VAR})
         set(DEFAULT ${AVIF_${VAR}})
@@ -121,7 +123,7 @@ option(
     OFF
 )
 set_local_or_system_option(
-    "AVIF_FUZZTEST" OFF "Build the Google FuzzTest framework. Only OFF and LOCAL are supported. CMake must be at least 3.25."
+    "FUZZTEST" OFF "Build the Google FuzzTest framework. Only OFF and LOCAL are supported. CMake must be at least 3.25."
 )
 
 # Whether the libavif library uses c++ indirectly (e.g. through linking to libyuv).
