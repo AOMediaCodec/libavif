@@ -1,6 +1,6 @@
-set(AVIF_LOCAL_RAV1E_GIT_TAG v0.7.1)
-set(AVIF_LOCAL_CORROSION_GIT_TAG v0.5.0)
-set(AVIF_LOCAL_CARGOC_GIT_TAG v0.10.2)
+set(AVIF_RAV1E_GIT_TAG v0.7.1)
+set(AVIF_CORROSION_GIT_TAG v0.5.0)
+set(AVIF_CARGOC_GIT_TAG v0.10.2)
 
 set(RAV1E_LIB_FILENAME
     "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
@@ -26,7 +26,7 @@ else()
     FetchContent_Declare(
         Corrosion
         GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
-        GIT_TAG ${AVIF_LOCAL_CORROSION_GIT_TAG}
+        GIT_TAG ${AVIF_CORROSION_GIT_TAG}
         GIT_SHALLOW ON
     )
 
@@ -49,7 +49,7 @@ else()
         FetchContent_Declare(
             cargoc
             GIT_REPOSITORY https://github.com/lu-zero/cargo-c.git
-            GIT_TAG "${AVIF_LOCAL_CARGOC_GIT_TAG}"
+            GIT_TAG "${AVIF_CARGOC_GIT_TAG}"
             GIT_SHALLOW ON
         )
         FetchContent_MakeAvailable(cargoc)
@@ -65,7 +65,7 @@ else()
     FetchContent_Declare(
         rav1e
         GIT_REPOSITORY https://github.com/xiph/rav1e.git
-        GIT_TAG "${AVIF_LOCAL_RAV1E_GIT_TAG}"
+        GIT_TAG "${AVIF_RAV1E_GIT_TAG}"
         GIT_SHALLOW ON
     )
     FetchContent_MakeAvailable(rav1e)

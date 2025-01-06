@@ -1,4 +1,4 @@
-set(AVIF_LOCAL_LIBYUV_TAG "a6a2ec654b1be1166b376476a7555c89eca0c275")
+set(AVIF_LIBYUV_TAG "a6a2ec654b1be1166b376476a7555c89eca0c275")
 
 set(AVIF_LIBYUV_BUILD_DIR "${AVIF_SOURCE_DIR}/ext/libyuv/build")
 # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
@@ -39,7 +39,7 @@ else()
         libyuv
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
         BINARY_DIR "${LIBYUV_BINARY_DIR}"
-        GIT_TAG "${AVIF_LOCAL_LIBYUV_TAG}"
+        GIT_TAG "${AVIF_LIBYUV_TAG}"
         UPDATE_COMMAND ""
     )
 
