@@ -62,7 +62,7 @@ if [[ "$SANITIZER" == "memory" ]]; then
 fi
 
 # Prepare dependencies.
-cd ext && bash aom.cmd && bash dav1d.cmd && bash fuzztest.cmd && bash libjpeg.cmd &&
+cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd &&
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
