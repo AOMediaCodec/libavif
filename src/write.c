@@ -3438,7 +3438,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
 
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id)); // unsigned int(16) item_ID;
-            AVIF_ASSERT_OR_RETURN(item->associations.count < 1 << 8);
+            AVIF_ASSERT_OR_RETURN(item->associations.count < (1 << 8));
             AVIF_CHECKRES(avifRWStreamWriteU8(&s, (uint8_t)item->associations.count)); // unsigned int(8) association_count;
             for (uint32_t i = 0; i < item->associations.count; ++i) {
                 const avifItemPropertyAssociation * association = &item->associations.association[i];
