@@ -807,7 +807,6 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 
 #define INVALID_QUALITY (-1)
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
-#define DEFAULT_QUALITY_ALPHA AVIF_QUALITY_LOSSLESS
 #define DEFAULT_QUALITY_GAIN_MAP DEFAULT_QUALITY
 #define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto automatic layered encoding below this quality
 #define PROGRESSIVE_START_QUALITY 2  // First layer use this quality
@@ -925,12 +924,6 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
     while ((nextFile = avifInputGetFile(input, imageIndex)) != NULL) {
         uint64_t nextDurationInTimescales = nextFile->duration ? nextFile->duration : settings->outputTiming.duration;
 
-        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
-               imageIndex,
-               nextDurationInTimescales,
-               settings->outputTiming.timescale,
-               nextFile->filename);
-
         if (nextImage) {
             avifImageDestroy(nextImage);
         }
@@ -969,6 +962,17 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
         if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
             goto cleanup;
         }
+
+        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
+               imageIndex,
+               nextDurationInTimescales,
+               settings->outputTiming.timescale,
+               encoder->quality,
+               qualityString(encoder->quality),
+               encoder->qualityAlpha,
+               qualityString(encoder->qualityAlpha),
+               nextFile->filename);
+
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
         if (nextImageResult != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to encode image: %s\n", avifResultToString(nextImageResult));
@@ -1150,7 +1154,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 #endif
 
-    printf("Encoding with codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
+    printf("Encoding with initial settings: codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
            speedStr,
            encoder->quality,
@@ -1195,10 +1199,14 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
         if (input->useStdin || (settings->layers == 1 && input->filesCount > 1)) {
-            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts]: %s\n",
+            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
                    0,
                    firstDurationInTimescales,
                    settings->outputTiming.timescale,
+                   encoder->quality,
+                   qualityString(encoder->quality),
+                   encoder->qualityAlpha,
+                   qualityString(encoder->qualityAlpha),
                    firstFile->filename);
         }
         const avifResult addImageResult = avifEncoderAddImage(encoder, firstImage, firstDurationInTimescales, addImageFlags);
@@ -1898,6 +1906,15 @@ int main(int argc, char * argv[])
         ++argIndex;
     }
 
+    // Alpha quality defaults to the same value as (color) quality until the first time it's explicitly set.
+    for (int i = 0; i < input.filesCount; ++i) {
+        avifInputFileSettings * fileSettings = &input.files[i].settings;
+        if (fileSettings->qualityAlpha.set) {
+            break;
+        }
+        fileSettings->qualityAlpha = fileSettings->quality;
+    }
+
     if (settings.jobs == -1) {
         settings.jobs = avifQueryCPUCount();
     }
@@ -2146,7 +2163,7 @@ int main(int argc, char * argv[])
                 } else {
                     assert(!fileSettings->maxQuantizerAlpha.set);
                     if (!fileSettings->qualityAlpha.set) {
-                        fileSettings->qualityAlpha = intSettingsEntryOf(DEFAULT_QUALITY_ALPHA);
+                        fileSettings->qualityAlpha = fileSettings->quality;
                     }
                     fileSettings->minQuantizerAlpha = intSettingsEntryOf(AVIF_QUANTIZER_BEST_QUALITY);
                     fileSettings->maxQuantizerAlpha = intSettingsEntryOf(AVIF_QUANTIZER_WORST_QUALITY);
