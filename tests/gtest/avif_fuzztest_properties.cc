@@ -94,7 +94,10 @@ inline auto ArbitraryUUIDProp() {
 
 inline auto ArbitraryProps() {
   return fuzztest::VectorOf(
-      fuzztest::OneOf(ArbitraryProp(), ArbitraryUUIDProp()));
+             fuzztest::OneOf(ArbitraryProp(), ArbitraryUUIDProp()))
+      .WithMaxSize(
+          /*maximum unique property count for an avifEncoder instance*/ 127 -
+          /*maximum unique property count used by libavif*/ 16);
 }
 
 FUZZ_TEST(PropertiesAvifFuzzTest, EncodeDecode)

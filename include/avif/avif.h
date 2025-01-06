@@ -862,7 +862,7 @@ AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, a
 // the data argument, and those four bytes included in the dataSize.
 // Any properties will be added after the usual libavif descriptive properties, and before the libavif
 // transformative properties (e.g. irot, imir, clap). Be aware that readers will apply transformative
-// properties in the order they occur.
+// properties in the order they occur. An avifEncoder instance supports up to 127 unique properties.
 // Users of this API should consider calling avifParse() on the resulting file (i.e. the encoder output) to
 // check that the arbitrary properties have not resulted in an invalid file.
 AVIF_API avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize);
