@@ -14,27 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-set -ex
-
-if [[ "$#" -ge 1 ]]; then
-  BINARY_DIR="$(eval echo "$1")"
-else
-  BINARY_DIR="$(pwd)/.."
-fi
-if [[ "$#" -ge 2 ]]; then
-  TESTDATA_DIR="$(eval echo "$2")"
-else
-  TESTDATA_DIR="$(pwd)/data"
-fi
-if [[ "$#" -ge 3 ]]; then
-  TMP_DIR="$(eval echo "$3")"
-else
-  TMP_DIR="$(mktemp -d)"
-fi
-
-AVIFENC="${BINARY_DIR}/avifenc"
-AVIFDEC="${BINARY_DIR}/avifdec"
-ARE_IMAGES_EQUAL="${BINARY_DIR}/tests/are_images_equal"
+source $(dirname "$0")/cmd_test_common.sh
 
 # Input file paths.
 INPUT_Y4M_0="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"

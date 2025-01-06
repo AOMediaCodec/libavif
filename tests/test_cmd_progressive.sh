@@ -14,29 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-# Very verbose but useful for debugging.
-set -ex
-
-if [[ "$#" -ge 1 ]]; then
-  # eval so that the passed in directory can contain variables.
-  BINARY_DIR="$(eval echo "$1")"
-else
-  # Assume "tests" is the current directory.
-  BINARY_DIR="$(pwd)/.."
-fi
-if [[ "$#" -ge 2 ]]; then
-  TESTDATA_DIR="$(eval echo "$2")"
-else
-  TESTDATA_DIR="$(pwd)/data"
-fi
-if [[ "$#" -ge 3 ]]; then
-  TMP_DIR="$(eval echo "$3")"
-else
-  TMP_DIR="$(mktemp -d)"
-fi
-
-AVIFENC="${BINARY_DIR}/avifenc"
-AVIFDEC="${BINARY_DIR}/avifdec"
+source $(dirname "$0")/cmd_test_common.sh
 
 # Basic calls.
 "${AVIFENC}" --version
