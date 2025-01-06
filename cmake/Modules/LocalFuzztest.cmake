@@ -5,6 +5,7 @@ set(FUZZTEST_SOURCE_DIR "${AVIF_SOURCE_DIR}/ext/fuzztest")
 if(EXISTS "${FUZZTEST_SOURCE_DIR}")
     message(STATUS "libavif(AVIF_FUZZTEST=LOCAL): folder found at ${FUZZTEST_SOURCE_DIR}")
     set(FUZZTEST_BINARY_DIR "${FUZZTEST_SOURCE_DIR}/build.libavif")
+    add_subdirectory(${FUZZTEST_SOURCE_DIR} ${FUZZTEST_BINARY_DIR} EXCLUDE_FROM_ALL)
 else()
     message(STATUS "libavif(AVIF_FUZZTEST=LOCAL): compiled library not found at ${LIB_FILENAME}; using FetchContent")
 
@@ -26,7 +27,7 @@ else()
             && sed -i.bak -e "s/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/" cmake/BuildDependencies.cmake
     )
 
+    avif_fetchcontent_populate_cmake(fuzztest)
+
     message(CHECK_PASS "complete")
 endif()
-
-avif_fetchcontent_populate_cmake(fuzztest)
