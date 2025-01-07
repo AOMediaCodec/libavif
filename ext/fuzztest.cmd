@@ -9,7 +9,7 @@
 
 git clone https://github.com/google/fuzztest.git
 cd fuzztest
-: # There is no tagged release as of 2024/01/06. Pick the latest commit that works.
+: # There is no tagged release as of 2025/01/06. Pick the latest commit that works.
 git checkout 3b4a590f7fc75a77823580c4c4e19d1c7bd6da52
 : # Fixes for https://github.com/google/fuzztest/issues/1124
 sed -i 's/-fsanitize=address//g' ./cmake/FuzzTestFlagSetup.cmake
