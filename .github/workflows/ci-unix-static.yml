@@ -78,6 +78,7 @@ jobs:
       - name: Check static link bundling
         run: |
           ${{ env.CC }} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
+            -I/opt/homebrew/include/ -L/opt/homebrew/lib \
             apps/shared/*.c third_party/iccjpeg/iccjpeg.c build/libavif.a \
             -lpng -ljpeg -lz -lm -ldl -lstdc++
 
