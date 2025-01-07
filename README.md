@@ -132,6 +132,11 @@ and can be built by enabling `AVIF_BUILD_TESTS` and setting `AVIF_GTEST` to
 Additionally, fuzzing tests require [fuzztest](https://github.com/google/fuzztest),
 see also fuzzing test instructions in `ext/oss-fuzz/README.md`.
 
+Code coverage is available by enabling `AVIF_ENABLE_COVERAGE` then building
+the `avif_coverage` target, e.g. `make avif_coverage -j`. It requires
+compiling with clang (`-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++`)
+and LLVM must be installed on the system.
+
 ### Build Command Lines {#build-command-lines}
 
 The following instructions can be used to build the libavif library and the

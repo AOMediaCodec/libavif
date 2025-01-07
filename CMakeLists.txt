@@ -321,6 +321,11 @@ endif()
 
 target_link_libraries(avif_obj PRIVATE avif_enable_warnings)
 
+option(
+    AVIF_ENABLE_COVERAGE
+    "Enable code coverage. Requires LLVM and clang as compiler. Has no effect unless AVIF_BUILD_TESTS is ON. Use the 'avif_coverage' target to generate a coverage report."
+    OFF
+)
 if(AVIF_ENABLE_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         message(STATUS "libavif: Enabling coverage for Clang")
