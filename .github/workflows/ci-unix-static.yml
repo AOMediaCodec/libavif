@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-13]
+        os: [ubuntu-24.04, macos-latest]
         build-type: [Release, Debug]
         include:
           - runs-on: ubuntu-24.04
@@ -78,6 +78,7 @@ jobs:
       - name: Check static link bundling
         run: |
           ${{ env.CC }} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
+            -I/opt/homebrew/include/ -L/opt/homebrew/lib \
             apps/shared/*.c third_party/iccjpeg/iccjpeg.c build/libavif.a \
             -lpng -ljpeg -lz -lm -ldl -lstdc++
 
