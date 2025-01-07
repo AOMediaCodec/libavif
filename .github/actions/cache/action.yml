@@ -42,7 +42,6 @@ runs:
       if: ${{ inputs.use-rust == 'true' }}
       run: |
         echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/action/**', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> $GITHUB_ENV
-        echo "CARGO_CACHE_KEY=${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}" >> $GITHUB_ENV
       shell: bash
     - name: Generate empty cargo cache key
       if: ${{ inputs.use-rust != 'true' }}
@@ -57,6 +56,8 @@ runs:
         path: ~/.cargo
         key: ${{ env.CARGO_CACHE_KEY }}-${{ github.run_id }}
         restore-keys: ${{ env.CARGO_CACHE_KEY }}
+      env:
+        CARGO_CACHE_KEY: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}
     - name: Cache external dependencies in ext
       id: cache-ext
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
