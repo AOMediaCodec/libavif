@@ -9,6 +9,7 @@ on:
   push:
   pull_request:
     paths:
+      - ".github/actions/**"
       - ".github/workflows/ci-disable-gtest.yml"
       - "**CMakeLists.txt"
       - "cmake/**"

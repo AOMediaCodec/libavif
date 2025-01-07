@@ -5,6 +5,7 @@ on:
   push:
   pull_request:
     paths:
+      - ".github/actions/**"
       - ".github/workflows/ci-windows-shared-local.yml"
       - "**CMakeLists.txt"
       - "cmake/**"

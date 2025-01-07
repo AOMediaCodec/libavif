@@ -3,6 +3,7 @@ on:
   push:
   pull_request:
     paths:
+      - ".github/actions/**"
       - ".github/workflows/ci-unix-static-av2.yml"
       - "**CMakeLists.txt"
       - "cmake/**"
