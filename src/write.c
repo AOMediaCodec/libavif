@@ -15,7 +15,7 @@
 //     unsigned int(7) property_index;
 //
 // libavif writes 'ipma' with flags set to 0.
-#define MAX_PROPERTY_INDEX (1 << 7) - 1
+#define MAX_PROPERTY_INDEX ((1 << 7) - 1)
 
 // The indices of the properties associated with an item.
 typedef struct avifItemPropertyAssociation
