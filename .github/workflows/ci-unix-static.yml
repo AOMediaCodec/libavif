@@ -71,7 +71,7 @@ jobs:
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
       - name: Check static link bundling
         run: |
-          cc -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
+          $CC -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
             apps/shared/*.c third_party/iccjpeg/iccjpeg.c build/libavif.a \
             -lpng -ljpeg -lz -lm -ldl -lstdc++
 
