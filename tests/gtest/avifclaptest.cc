@@ -150,7 +150,7 @@ using ValidClapPropertyTest = ::testing::TestWithParam<ValidClapPropertyParam>;
 INSTANTIATE_TEST_SUITE_P(Parameterized, ValidClapPropertyTest,
                          ::testing::ValuesIn(kValidClapPropertyTestParams));
 
-// Positive tests for the avifCropRectFromCleanApertureBox() and 
+// Positive tests for the avifCropRectFromCleanApertureBox() and
 // avifCleanApertureBoxFromCropRect() functions.
 TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
   const ValidClapPropertyParam& param = GetParam();
