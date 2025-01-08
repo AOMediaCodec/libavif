@@ -58,6 +58,9 @@ ImagePtr CreateAvifImage(size_t width, size_t height, int depth,
 ImagePtr CreateAvifImage8b(size_t width, size_t height,
                            avifPixelFormat pixel_format, bool has_alpha,
                            const std::vector<uint8_t>& samples) {
+  // Make sure WithSize() works.
+  assert(samples.size() == GetNumSamples(/*num_frames=*/1, width, height,
+                                         pixel_format, has_alpha));
   return CreateAvifImage(width, height, 8, pixel_format, has_alpha,
                          samples.data());
 }
@@ -65,6 +68,9 @@ ImagePtr CreateAvifImage8b(size_t width, size_t height,
 ImagePtr CreateAvifImage16b(size_t width, size_t height, int depth,
                             avifPixelFormat pixel_format, bool has_alpha,
                             const std::vector<uint16_t>& samples) {
+  // Make sure WithSize() works.
+  assert(samples.size() == GetNumSamples(/*num_frames=*/1, width, height,
+                                         pixel_format, has_alpha));
   return CreateAvifImage(width, height, depth, pixel_format, has_alpha,
                          reinterpret_cast<const uint8_t*>(samples.data()));
 }
@@ -74,6 +80,9 @@ std::vector<ImagePtr> CreateAvifAnim8b(size_t num_frames, size_t width,
                                        avifPixelFormat pixel_format,
                                        bool has_alpha,
                                        const std::vector<uint8_t>& samples) {
+  // Make sure WithSize() works.
+  assert(samples.size() ==
+         GetNumSamples(num_frames, width, height, pixel_format, has_alpha));
   std::vector<ImagePtr> frames;
   frames.reserve(num_frames);
   const uint8_t* frame_samples = samples.data();
@@ -91,6 +100,9 @@ std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
                                         avifPixelFormat pixel_format,
                                         bool has_alpha,
                                         const std::vector<uint16_t>& samples) {
+  // Make sure WithSize() works.
+  assert(samples.size() ==
+         GetNumSamples(num_frames, width, height, pixel_format, has_alpha));
   std::vector<ImagePtr> frames;
   frames.reserve(num_frames);
   const uint16_t* frame_samples = samples.data();

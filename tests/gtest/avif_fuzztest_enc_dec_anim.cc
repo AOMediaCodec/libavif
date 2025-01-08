@@ -25,6 +25,9 @@ struct FrameOptions {
 void EncodeDecodeAnimation(std::vector<ImagePtr> frames,
                            const std::vector<FrameOptions>& frame_options,
                            EncoderPtr encoder, DecoderPtr decoder) {
+  // Make sure WithSize() works.
+  ASSERT_EQ(frame_options.size(), kMaxNumFrames);
+
   ASSERT_NE(encoder, nullptr);
   ASSERT_NE(decoder, nullptr);
   ImagePtr decoded_image(avifImageCreateEmpty());
