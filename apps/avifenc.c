@@ -388,7 +388,7 @@ static avifBool strpre(const char * str, const char * prefix)
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
-static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat yuvFormat, uint32_t clapValues[8])
+static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, uint32_t clapValues[8])
 {
     avifCleanApertureBox clap;
     avifCropRect cropRect;
@@ -399,13 +399,12 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, avifPixelFormat 
 
     avifDiagnostics diag;
     avifDiagnosticsClearError(&diag);
-    avifBool convertResult = avifCleanApertureBoxConvertCropRect(&clap, &cropRect, srcW, srcH, yuvFormat, &diag);
+    avifBool convertResult = avifCleanApertureBoxFromCropRect(&clap, &cropRect, srcW, srcH, &diag);
     if (!convertResult) {
         fprintf(stderr,
-                "ERROR: Impossible crop rect: imageSize:[%ux%u], pixelFormat:%s, cropRect:[%u,%u, %ux%u] - %s\n",
+                "ERROR: Impossible crop rect: imageSize:[%ux%u], cropRect:[%u,%u, %ux%u] - %s\n",
                 srcW,
                 srcH,
-                avifPixelFormatToString(yuvFormat),
                 cropRect.x,
                 cropRect.y,
                 cropRect.width,
@@ -2298,7 +2297,7 @@ int main(int argc, char * argv[])
         image->pasp.vSpacing = settings.paspValues[1];
     }
     if (cropConversionRequired) {
-        if (!convertCropToClap(image->width, image->height, image->yuvFormat, settings.clapValues)) {
+        if (!convertCropToClap(image->width, image->height, settings.clapValues)) {
             goto cleanup;
         }
         settings.clapValid = AVIF_TRUE;
@@ -2332,7 +2331,6 @@ int main(int argc, char * argv[])
                     diag.error);
             goto cleanup;
         }
-        // avifCropRectRequiresUpsampling() does not need to be called for clap validation.
     }
     if (irotAngle != 0xff) {
         image->transformFlags |= AVIF_TRANSFORM_IROT;

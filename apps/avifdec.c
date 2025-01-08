@@ -349,17 +349,11 @@ int main(int argc, char * argv[])
 
     if (decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) {
         avifCropRect cropRect;
-        if (avifCropRectFromCleanApertureBox(&cropRect,
-                                             &decoder->image->clap,
-                                             decoder->image->width,
-                                             decoder->image->height,
-                                             &decoder->diag)) {
-            if (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != decoder->image->width ||
-                cropRect.height != decoder->image->height) {
-                // TODO: Implement, see https://github.com/AOMediaCodec/libavif/issues/2427
-                fprintf(stderr, "Warning: Clean Aperture values were ignored, the output image was NOT cropped\n");
-            }
-        } else {
+        if (!avifCropRectFromCleanApertureBox(&cropRect,
+                                              &decoder->image->clap,
+                                              decoder->image->width,
+                                              decoder->image->height,
+                                              &decoder->diag)) {
             // Should happen only if AVIF_STRICT_CLAP_VALID is disabled.
             fprintf(stderr, "Warning: Invalid Clean Aperture values\n");
         }

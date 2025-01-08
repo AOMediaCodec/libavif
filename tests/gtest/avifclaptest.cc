@@ -133,10 +133,10 @@ constexpr ValidClapPropertyParam kValidClapPropertyTestParams[] = {
      {99, 1, 99, 1, static_cast<uint32_t>(-1), 2, static_cast<uint32_t>(-1), 2},
      {0, 0, 99, 99},
      false},
-    // pcX = -1/2 + (100 - 1)/2 = 49
-    // pcY = -1/2 + (100 - 1)/2 = 49
-    // leftmost = 49 - (99 - 1)/2 = 0
-    // topmost = 49 - (99 - 1)/2 = 0
+    // pcX = 1/2 + (100 - 1)/2 = 50
+    // pcY = 1/2 + (100 - 1)/2 = 50
+    // leftmost = 50 - (99 - 1)/2 = 1
+    // topmost = 50 - (99 - 1)/2 = 1
     {100,
      100,
      AVIF_PIXEL_FORMAT_YUV420,
@@ -150,7 +150,8 @@ using ValidClapPropertyTest = ::testing::TestWithParam<ValidClapPropertyParam>;
 INSTANTIATE_TEST_SUITE_P(Parameterized, ValidClapPropertyTest,
                          ::testing::ValuesIn(kValidClapPropertyTestParams));
 
-// Positive tests for the avifCropRectFromCleanApertureBox() function.
+// Positive tests for the avifCropRectFromCleanApertureBox() and 
+// avifCleanApertureBoxFromCropRect() functions.
 TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
   const ValidClapPropertyParam& param = GetParam();
   avifCropRect crop_rect;
@@ -167,10 +168,45 @@ TEST_P(ValidClapPropertyTest, ValidateClapProperty) {
   EXPECT_EQ(upsample_before_cropping, param.expected_upsample_before_cropping);
 
   // Deprecated function coverage.
-  EXPECT_EQ(avifCropRectConvertCleanApertureBox(&crop_rect, &param.clap,
-                                                param.width, param.height,
-                                                param.yuv_format, &diag),
-            !upsample_before_cropping);
+  avifBool success = avifCropRectConvertCleanApertureBox(
+      &crop_rect, &param.clap, param.width, param.height, param.yuv_format,
+      &diag);
+  EXPECT_EQ(success, !upsample_before_cropping);
+  if (success) {
+    EXPECT_EQ(crop_rect.x, param.expected_crop_rect.x);
+    EXPECT_EQ(crop_rect.y, param.expected_crop_rect.y);
+    EXPECT_EQ(crop_rect.width, param.expected_crop_rect.width);
+    EXPECT_EQ(crop_rect.height, param.expected_crop_rect.height);
+  }
+
+  avifCleanApertureBox clap;
+  ASSERT_TRUE(avifCleanApertureBoxFromCropRect(
+      &clap, &param.expected_crop_rect, param.width, param.height, &diag))
+      << diag.error;
+  EXPECT_EQ(clap.widthN, param.clap.widthN);
+  EXPECT_EQ(clap.widthD, param.clap.widthD);
+  EXPECT_EQ(clap.heightN, param.clap.heightN);
+  EXPECT_EQ(clap.heightD, param.clap.heightD);
+  EXPECT_EQ(clap.horizOffN, param.clap.horizOffN);
+  EXPECT_EQ(clap.horizOffD, param.clap.horizOffD);
+  EXPECT_EQ(clap.vertOffN, param.clap.vertOffN);
+  EXPECT_EQ(clap.vertOffD, param.clap.vertOffD);
+
+  // Deprecated function coverage.
+  success = avifCleanApertureBoxConvertCropRect(
+      &clap, &param.expected_crop_rect, param.width, param.height,
+      param.yuv_format, &diag);
+  EXPECT_EQ(success, !upsample_before_cropping);
+  if (success) {
+    EXPECT_EQ(clap.widthN, param.clap.widthN);
+    EXPECT_EQ(clap.widthD, param.clap.widthD);
+    EXPECT_EQ(clap.heightN, param.clap.heightN);
+    EXPECT_EQ(clap.heightD, param.clap.heightD);
+    EXPECT_EQ(clap.horizOffN, param.clap.horizOffN);
+    EXPECT_EQ(clap.horizOffD, param.clap.horizOffD);
+    EXPECT_EQ(clap.vertOffN, param.clap.vertOffN);
+    EXPECT_EQ(clap.vertOffD, param.clap.vertOffD);
+  }
 }
 
 }  // namespace
