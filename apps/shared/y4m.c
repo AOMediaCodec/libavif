@@ -4,6 +4,7 @@
 // This is a barebones y4m reader/writer for basic libavif testing. It is NOT comprehensive!
 
 #include "y4m.h"
+#include "avifexif.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -490,6 +491,27 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 
     if (hasAlpha && ((avif->depth != 8) || (avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV444))) {
         fprintf(stderr, "WARNING: writing alpha is currently only supported in 8bpc YUV444, ignoring alpha channel: %s\n", outputFilename);
+    }
+
+    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        if (avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag) &&
+            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+            // TODO: Implement, see https://github.com/AOMediaCodec/libavif/issues/2427
+            fprintf(stderr,
+                    "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
+                    cropRect.x,
+                    cropRect.y,
+                    cropRect.width,
+                    cropRect.height);
+        }
+    }
+    if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+        // TODO: Rotate the samples.
+        fprintf(stderr,
+                "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
+                avifImageGetExifOrientationFromIrotImir(avif));
     }
 
     switch (avif->depth) {
