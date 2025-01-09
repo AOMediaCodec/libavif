@@ -486,8 +486,8 @@ typedef struct avifCleanApertureBox
     // 'clap' from ISO/IEC 14496-12:2022 12.1.4.3
     // Note that ISO/IEC 23000-22:2024 7.3.6.7 requires the decoded image to be upsampled to 4:4:4 before
     // clean aperture is applied if a clean aperture size or offset is odd in a subsampled dimension.
-    // However, AV1 supports odd dimensions with chroma subsampling in those directions, so mostly watch
-    // for offsets.
+    // However, AV1 supports odd dimensions with chroma subsampling in those directions, so only apply the
+    // requirements to offsets.
 
     // a fractional number which defines the width of the clean aperture image
     uint32_t widthN;
