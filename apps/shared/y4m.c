@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "avif/avif.h"
+#include "avifexif.h"
 #include "avifutil.h"
 
 #define Y4M_MAX_LINE_SIZE 2048 // Arbitrary limit. Y4M headers should be much smaller than this
@@ -490,6 +491,27 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 
     if (hasAlpha && ((avif->depth != 8) || (avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV444))) {
         fprintf(stderr, "WARNING: writing alpha is currently only supported in 8bpc YUV444, ignoring alpha channel: %s\n", outputFilename);
+    }
+
+    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        if (avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag) &&
+            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
+            fprintf(stderr,
+                    "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
+                    cropRect.x,
+                    cropRect.y,
+                    cropRect.width,
+                    cropRect.height);
+        }
+    }
+    if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
+        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Rotate the samples.
+        fprintf(stderr,
+                "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
+                avifImageGetExifOrientationFromIrotImir(avif));
     }
 
     switch (avif->depth) {

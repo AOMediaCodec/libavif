@@ -1297,6 +1297,21 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 
+    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        if (avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag) &&
+            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
+            fprintf(stderr,
+                    "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
+                    cropRect.x,
+                    cropRect.y,
+                    cropRect.width,
+                    cropRect.height);
+        }
+    }
+
     if (avif->exif.data && (avif->exif.size > 0)) {
         size_t exifTiffHeaderOffset;
         avifResult result = avifGetExifTiffHeaderOffset(avif->exif.data, avif->exif.size, &exifTiffHeaderOffset);
@@ -1337,7 +1352,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         avifRWDataFree(&exif);
     } else if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
         // There is no Exif yet, but we need to store the orientation.
-        // TODO(yguyon): Add a valid Exif payload or rotate the samples.
+        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Add a valid Exif payload or rotate the samples.
+        fprintf(stderr,
+                "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
+                avifImageGetExifOrientationFromIrotImir(avif));
     }
 
     if (avif->xmp.data && (avif->xmp.size > 0)) {

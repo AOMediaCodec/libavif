@@ -376,7 +376,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (decoder->image->icc.size || decoder->image->exif.size || decoder->image->xmp.size) {
-            printf("Warning: metadata dropped when saving to y4m.\n");
+            fprintf(stderr, "Warning: metadata dropped when saving to y4m.\n");
         }
         if (!y4mWrite(outputFilename, decoder->image)) {
             goto cleanup;
