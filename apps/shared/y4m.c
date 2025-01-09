@@ -4,7 +4,6 @@
 // This is a barebones y4m reader/writer for basic libavif testing. It is NOT comprehensive!
 
 #include "y4m.h"
-#include "avifexif.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -14,6 +13,7 @@
 #include <string.h>
 
 #include "avif/avif.h"
+#include "avifexif.h"
 #include "avifutil.h"
 
 #define Y4M_MAX_LINE_SIZE 2048 // Arbitrary limit. Y4M headers should be much smaller than this
@@ -498,7 +498,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         avifDiagnostics diag;
         if (avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag) &&
             (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            // TODO: Implement, see https://github.com/AOMediaCodec/libavif/issues/2427
+            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
             fprintf(stderr,
                     "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
                     cropRect.x,
@@ -508,7 +508,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         }
     }
     if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
-        // TODO: Rotate the samples.
+        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Rotate the samples.
         fprintf(stderr,
                 "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
                 avifImageGetExifOrientationFromIrotImir(avif));

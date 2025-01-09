@@ -733,7 +733,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         avifDiagnostics diag;
         if (avifCropRectConvertCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, avif->yuvFormat, &diag) &&
             (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            // TODO: Implement, see https://github.com/AOMediaCodec/libavif/issues/2427
+            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
             fprintf(stderr,
                     "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
                     cropRect.x,
@@ -743,7 +743,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         }
     }
     if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
-        // TODO(yguyon): Rotate the samples.
+        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Rotate the samples.
         fprintf(stderr,
                 "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
                 avifImageGetExifOrientationFromIrotImir(avif));
