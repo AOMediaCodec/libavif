@@ -557,7 +557,8 @@ AVIF_NODISCARD AVIF_API avifBool avifCleanApertureBoxFromCropRect(avifCleanApert
                                                                   uint32_t imageH,
                                                                   avifDiagnostics * diag);
 // If this function returns true, the image must be upsampled from 4:2:0 or 4:2:2 to 4:4:4 before
-// Clean Aperture values are applied.
+// Clean Aperture values are applied. This can be done by converting the avifImage to RGB using
+// avifImageYUVToRGB() and only using the cropRect region of the avifRGBImage.
 AVIF_NODISCARD AVIF_API avifBool avifCropRectRequiresUpsampling(const avifCropRect * cropRect, avifPixelFormat yuvFormat);
 
 // Deprecated. Use avifCropRectFromCleanApertureBox() instead.
@@ -1309,6 +1310,10 @@ typedef struct avifDecoder
     // legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(), but use
     // avifImageCopy() if you want to make a complete, permanent copy of this image's YUV content or
     // metadata.
+    //
+    // For each field among clap, irot and imir, if the corresponding avifTransformFlag is set, the
+    // transform must be applied before rendering or converting the image, or forwarded along as
+    // attached metadata.
     avifImage * image;
 
     // Counts and timing for the current image in an image sequence. Uninteresting for single image files.
