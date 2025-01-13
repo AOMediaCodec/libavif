@@ -54,6 +54,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Deprecate avifCropRectConvertCleanApertureBox() and
   avifCleanApertureBoxConvertCropRect(). Replace them with
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
+* Add avifCropRectRequiresUpsampling().
 
 ## [1.1.1] - 2024-07-30
 
