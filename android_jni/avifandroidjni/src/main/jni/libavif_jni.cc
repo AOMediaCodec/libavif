@@ -85,12 +85,15 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
   avifDiagnostics diag;
   // If the image does not have a valid 'clap' property, then we simply display
   // the whole image.
-  // TODO: Use avifCropRectFromCleanApertureBox() instead.
+  // TODO(vigneshv): Handle the case of avifCropRectRequiresUpsampling()
+  //                 returning true.
   if (!(decoder->decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) ||
-      !avifCropRectConvertCleanApertureBox(
+      !avifCropRectFromCleanApertureBox(
           &decoder->crop, &decoder->decoder->image->clap,
           decoder->decoder->image->width, decoder->decoder->image->height,
-          decoder->decoder->image->yuvFormat, &diag)) {
+          &diag) ||
+      avifCropRectRequiresUpsampling(&decoder->crop,
+                                     decoder->decoder->image->yuvFormat)) {
     decoder->crop.width = decoder->decoder->image->width;
     decoder->crop.height = decoder->decoder->image->height;
     decoder->crop.x = 0;
@@ -415,9 +418,8 @@ FUNC(jstring, versionString) {
     libyuv_version[0] = '\0';
   }
   char version_string[512];
-  snprintf(version_string, sizeof(version_string),
-           "libavif: %s. Codecs: %s.%s", avifVersion(),
-           codec_versions, libyuv_version);
+  snprintf(version_string, sizeof(version_string), "libavif: %s. Codecs: %s.%s",
+           avifVersion(), codec_versions, libyuv_version);
   return env->NewStringUTF(version_string);
 }
 
