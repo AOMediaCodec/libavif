@@ -45,13 +45,12 @@ static float avifGetGainMapWeight(float hdrHeadroom, const avifGainMap * gainMap
 {
     const float baseHdrHeadroom = avifUnsignedFractionToFloat(gainMap->baseHdrHeadroom);
     const float alternateHdrHeadroom = avifUnsignedFractionToFloat(gainMap->alternateHdrHeadroom);
-    const float diffHdrHeadroom = alternateHdrHeadroom - baseHdrHeadroom;
-    if (diffHdrHeadroom == 0.f) {
+    if (baseHdrHeadroom == alternateHdrHeadroom) {
         // Do not apply the gain map if the HDR headroom is the same.
         // This case is not handled in the specification and does not make practical sense.
         return 0.0f;
     }
-    const float w = AVIF_CLAMP((hdrHeadroom - baseHdrHeadroom) / diffHdrHeadroom, 0.0f, 1.0f);
+    const float w = AVIF_CLAMP((hdrHeadroom - baseHdrHeadroom) / (alternateHdrHeadroom - baseHdrHeadroom), 0.0f, 1.0f);
     return (alternateHdrHeadroom < baseHdrHeadroom) ? -w : w;
 }
 

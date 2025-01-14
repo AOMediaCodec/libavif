@@ -1125,7 +1125,7 @@ static avifResult avifDecoderItemMaxExtent(const avifDecoderItem * item, const a
 
     outExtent->offset = minOffset;
     const uint64_t extentLength = maxOffset - minOffset;
-#if UINT64_MAX != SIZE_MAX
+#if UINT64_MAX > SIZE_MAX
     if (extentLength > SIZE_MAX) {
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
@@ -1954,7 +1954,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             }
             uint64_t offset = baseOffset + extentOffset;
             extent->offset = offset;
-#if UINT64_MAX != SIZE_MAX
+#if UINT64_MAX > SIZE_MAX
             if (extentLength > SIZE_MAX) {
                 avifDiagnosticsPrintf(diag, "Item ID [%u] contains an extent length which overflows: [%" PRIu64 "]", itemID, extentLength);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -4798,7 +4798,7 @@ static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
     const uint64_t maxExtent2 = src->offset + src->size;
     dst->offset = AVIF_MIN(minExtent1, minExtent2);
     const uint64_t extentLength = AVIF_MAX(maxExtent1, maxExtent2) - dst->offset;
-#if UINT64_MAX != SIZE_MAX
+#if UINT64_MAX > SIZE_MAX
     if (extentLength > SIZE_MAX) {
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
@@ -4872,7 +4872,7 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
             avifDecoderItem * item;
             AVIF_CHECKRES(avifMetaFindOrCreateItem(decoder->data->meta, sample->itemID, &item));
             avifROData itemContents;
-#if UINT64_MAX != SIZE_MAX
+#if UINT64_MAX > SIZE_MAX
             if (sample->offset > SIZE_MAX) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
