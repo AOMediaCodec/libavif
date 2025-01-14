@@ -2731,6 +2731,7 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
         uint8_t associationCount;
         AVIF_CHECKERR(avifROStreamRead(&s, &associationCount, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+        avifBool transformativePropertySeen = AVIF_FALSE;
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             uint8_t essential;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &essential, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) essential;
@@ -2738,8 +2739,13 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &propertyIndex, /*bitCount=*/propertyIndexIsU15 ? 15 : 7),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(7/15) property_index;
 
+            // ISO/IEC 14496-12 Section 8.11.14.3:
+            //   0 indicating that no property is associated (the essential indicator shall also be 0)
             if (propertyIndex == 0) {
-                // Not associated with any item
+                if (essential) {
+                    avifDiagnosticsPrintf(diag, "Box[ipma] for item ID [%u] contains an illegal essential property index 0", itemID);
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
                 continue;
             }
             --propertyIndex; // 1-indexed
@@ -2755,6 +2761,23 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
+
+            // ISO/IEC 23000-22 Section 6.5.1:
+            //   All transformative properties associated with coded and derived images shall be marked as essential,
+            //   and shall be from the set defined in 7.3.6.7 or the applicable MIAF profile. No other essential
+            //   transformative property shall be associated with such images.
+            const avifBool isTransformative = !memcmp(srcProp->type, "clap", 4) || !memcmp(srcProp->type, "irot", 4) ||
+                                              !memcmp(srcProp->type, "imir", 4);
+            // ISO/IEC 23008-12 Section 3.1.29:
+            //   item property: descriptive or transformative information
+            const avifBool isDescriptive = !isTransformative;
+            // ISO/IEC 23008-12 Section 7.3.9 :
+            //   Readers shall allow and ignore descriptive properties following the first transformative or
+            //   unrecognized property, whichever is earlier, in the sequence associating properties with an item.
+            // No need to check for unrecognized properties as they cannot be transformative according to MIAF.
+            if (transformativePropertySeen && isDescriptive) {
+                continue;
+            }
 
             // Some properties are supported and parsed by libavif.
             // Other properties are forwarded to the user as opaque blobs.
@@ -2790,7 +2813,15 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                         "a1op",
 
                         // HEIF: Section 6.5.11.1: "essential shall be equal to 1 for an 'lsel' item property."
-                        "lsel"
+                        "lsel",
+
+                        // MIAF: Section 7.3.9: "All transformative properties associated with coded and derived
+                        //                      images shall be marked as essential"
+                        // It makes no sense to allow for non-essential crop/orientation associated with an item
+                        // that is not a coded or derived image, so for simplicity 'item' is not checked here.
+                        "clap",
+                        "irot",
+                        "imir"
 
                     };
                     size_t essentialTypesCount = sizeof(essentialTypes) / sizeof(essentialTypes[0]);
@@ -2809,8 +2840,23 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                 avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
                 AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
                 *dstProp = *srcProp;
+
+                if (isTransformative) {
+                    transformativePropertySeen = AVIF_TRUE;
+                }
             } else {
+                AVIF_ASSERT_OR_RETURN(!isTransformative);
+
                 if (essential) {
+                    // ISO/IEC 23008-12 Section 10.2.1:
+                    //   Under any brand, the primary item (or an alternative if alternative support is required)
+                    //   shall be processable by a reader implementing only the required features of that brand.
+                    //   Specifically, given that each brand has a set of properties that a reader is required to
+                    //   support: the item shall not have properties that are marked as essential and are outside
+                    //   this set.
+                    // Assuming this rule also applies to items whose primary item depends on (such as the cells
+                    // of a grid).
+
                     // Discovered an essential item property that libavif doesn't support!
                     // Make a note to ignore this item later.
                     item->hasUnsupportedEssentialProperty = AVIF_TRUE;
