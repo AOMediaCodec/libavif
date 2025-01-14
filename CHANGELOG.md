@@ -12,6 +12,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add the properties and numProperties fields to avifImage. They are filled by
   the avifDecoder instance with the properties unrecognized by libavif. They are
   written by the avifEncoder.
+* Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
+  utility functions.
+* Add 'avifgainmaputil' command line tool to installed apps.
+* Add avifCropRectRequiresUpsampling().
 
 ### Changed since 1.1.1
 * avifenc: Allow large images to be encoded.
@@ -36,13 +40,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.3.0
 * Change experimental gainmap API: remove avifGainMapMetadata and
   avifGainMapMetadataDouble structs.
-* Add avif(Un)SignedFraction structs and avifDoubleTo(Un)SignedFraction
-  utility functions.
 * Turn on the gain map API. Remove the
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
-* Add 'avifgainmaputil' command line tool to installed apps.
 * Deprecate `avifEncoder`'s `minQuantizer`, `maxQuantizer`, `minQuantizerAlpha`,
   and `maxQuantizerAlpha` fields. `quality` and `qualityAlpha` should be used
   instead. Deprecate `avifenc`'s `--min`, `--max`, `--minalpha` and `--maxalpha`
@@ -54,7 +55,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Deprecate avifCropRectConvertCleanApertureBox() and
   avifCleanApertureBoxConvertCropRect(). Replace them with
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
-* Add avifCropRectRequiresUpsampling().
 
 ## [1.1.1] - 2024-07-30
 
