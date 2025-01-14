@@ -14,6 +14,10 @@ const char* data_path = nullptr;
 //------------------------------------------------------------------------------
 
 TEST(TransformTest, ClapIrotImir) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+
   avifDiagnostics diag{};
   ImagePtr image =
       testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/10,
