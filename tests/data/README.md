@@ -35,6 +35,27 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 Source: `avifenc circle-trns-after-plte.png` with custom properties added in
 `avifRWStreamWriteProperties()`: FullBox `1234`, Box `abcd` and Box `uuid`.
 
+### File [clap_irot_imir_non_essential.avif](clap_irot_imir_non_essential.avif)
+
+![](clap_irot_imir_non_essential.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: File generated with `TransformTest.ClapIrotImir` from
+`aviftransformtest.cc`, where `clap`, `irot` and `imir` are tagged as
+non-essential.
+
+### File [clop_irot_imor.avif](clop_irot_imor.avif)
+
+![](clop_irot_imor.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: File generated with `TransformTest.ClapIrotImir` from
+`aviftransformtest.cc`, where essential `clap` property was replaced by made-up
+non-essential `clop` property and essential `imir` property was replaced by
+made-up non-essential `imor` property.
+
 ### File [draw_points.png](draw_points.png)
 
 ![](draw_points.png)
