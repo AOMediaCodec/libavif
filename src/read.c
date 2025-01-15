@@ -2762,16 +2762,16 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
 
-            // ISO/IEC 23000-22 Section 6.5.1:
+            // ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.9:
             //   All transformative properties associated with coded and derived images shall be marked as essential,
             //   and shall be from the set defined in 7.3.6.7 or the applicable MIAF profile. No other essential
             //   transformative property shall be associated with such images.
             const avifBool isTransformative = !memcmp(srcProp->type, "clap", 4) || !memcmp(srcProp->type, "irot", 4) ||
                                               !memcmp(srcProp->type, "imir", 4);
-            // ISO/IEC 23008-12 Section 3.1.29:
+            // ISO/IEC 23008-12:2022 Section 3.1.28:
             //   item property: descriptive or transformative information
             const avifBool isDescriptive = !isTransformative;
-            // ISO/IEC 23008-12 Section 7.3.9 :
+            // ISO/IEC 23008-12:2022 Section 6.5.1:
             //   Readers shall allow and ignore descriptive properties following the first transformative or
             //   unrecognized property, whichever is earlier, in the sequence associating properties with an item.
             // No need to check for unrecognized properties as they cannot be transformative according to MIAF.
@@ -2815,8 +2815,9 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                         // HEIF: Section 6.5.11.1: "essential shall be equal to 1 for an 'lsel' item property."
                         "lsel",
 
-                        // MIAF: Section 7.3.9: "All transformative properties associated with coded and derived
-                        //                      images shall be marked as essential"
+                        // MIAF 2019/Amd. 2:2021: Section 7.3.9:
+                        //   All transformative properties associated with coded and derived images shall be
+                        //   marked as essential
                         // It makes no sense to allow for non-essential crop/orientation associated with an item
                         // that is not a coded or derived image, so for simplicity 'item' is not checked here.
                         "clap",
@@ -2840,13 +2841,7 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                 avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
                 AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
                 *dstProp = *srcProp;
-
-                if (isTransformative) {
-                    transformativePropertySeen = AVIF_TRUE;
-                }
             } else {
-                AVIF_ASSERT_OR_RETURN(!isTransformative);
-
                 if (essential) {
                     // ISO/IEC 23008-12 Section 10.2.1:
                     //   Under any brand, the primary item (or an alternative if alternative support is required)
@@ -2854,8 +2849,8 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                     //   Specifically, given that each brand has a set of properties that a reader is required to
                     //   support: the item shall not have properties that are marked as essential and are outside
                     //   this set.
-                    // Assuming this rule also applies to items whose primary item depends on (such as the cells
-                    // of a grid).
+                    // It is assumed that this rule also applies to items the primary item depends on (such as
+                    // the cells of a grid).
 
                     // Discovered an essential item property that libavif doesn't support!
                     // Make a note to ignore this item later.
@@ -2870,6 +2865,11 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                 memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
                 AVIF_CHECKRES(
                     avifRWDataSet(&dstProp->u.opaque.boxPayload, srcProp->u.opaque.boxPayload.data, srcProp->u.opaque.boxPayload.size));
+            }
+
+            if (isTransformative) {
+                AVIF_ASSERT_OR_RETURN(supportedType);
+                transformativePropertySeen = AVIF_TRUE;
             }
         }
     }
