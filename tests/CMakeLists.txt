@@ -259,6 +259,9 @@ if(AVIF_BUILD_APPS)
     add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
                                                ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
+    add_test(NAME test_cmd_stdin COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_stdin.sh ${CMAKE_BINARY_DIR}
+                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
+    )
     add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
     )
@@ -378,7 +381,9 @@ if(AVIF_CODEC_AVM_ENABLED)
 
         if(AVIF_BUILD_APPS)
             # Disable all tests that use avifenc without explicitly setting --codec=avm.
-            set_tests_properties(test_cmd test_cmd_animation test_cmd_grid test_cmd_targetsize PROPERTIES DISABLED True)
+            set_tests_properties(
+                test_cmd test_cmd_animation test_cmd_grid test_cmd_stdin test_cmd_targetsize PROPERTIES DISABLED True
+            )
         endif()
     endif()
 endif()
