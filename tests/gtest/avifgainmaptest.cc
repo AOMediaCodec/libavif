@@ -1292,8 +1292,7 @@ TEST_P(CreateGainMapTest, Create) {
       (uint32_t)std::round((float)image1->width / downscaling), 1u);
   const uint32_t gain_map_height = std::max<uint32_t>(
       (uint32_t)std::round((float)image1->height / downscaling), 1u);
-  std::unique_ptr<avifGainMap, decltype(&avifGainMapDestroy)> gain_map(
-      avifGainMapCreate(), avifGainMapDestroy);
+  GainMapPtr gain_map(avifGainMapCreate());
   gain_map->image = avifImageCreate(gain_map_width, gain_map_height,
                                     gain_map_depth, gain_map_format);
 
@@ -1441,10 +1440,32 @@ INSTANTIATE_TEST_SUITE_P(
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
                         /*min_psnr=*/55.0f, /*max_psnr=*/80.0f)));
 
+TEST(GainMapTest, CreateGainMapConstantFactor) {
+  // Used only to initialize rgb images.
+  ImagePtr yuv(avifImageCreate(10, 10, 8, AVIF_PIXEL_FORMAT_YUV444));
+  testutil::AvifRgbImage base_image(yuv.get(), 8, AVIF_RGB_FORMAT_RGB);
+  testutil::AvifRgbImage alt_image(yuv.get(), 8, AVIF_RGB_FORMAT_RGB);
+  for (uint32_t i = 0; i < base_image.width * base_image.height * 3; ++i) {
+    base_image.pixels[i] = 10;
+    alt_image.pixels[i] = 200;  // 20x factor compared to the base image.
+  }
+  GainMapPtr gain_map(avifGainMapCreate());
+  gain_map->image = avifImageCreate(5, 5, 8, AVIF_PIXEL_FORMAT_YUV444);
+  avifDiagnostics diag;
+  avifResult result = avifRGBImageComputeGainMap(
+      &base_image, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_SRGB, &alt_image, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_SRGB, gain_map.get(), &diag);
+
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << " " << diag.error;
+}
+
 TEST(FindMinMaxWithoutOutliers, AllSame) {
   constexpr int kNumValues = 10000;
 
   for (float v : {0.0f, 42.f, -12.f, 1.52f}) {
+    SCOPED_TRACE(v);
     std::vector<float> values(kNumValues, v);
 
     float min, max;
@@ -1456,10 +1477,58 @@ TEST(FindMinMaxWithoutOutliers, AllSame) {
   }
 }
 
+TEST(FindMinMaxWithoutOutliers, AllSameExceptOne) {
+  constexpr int kNumValues = 10000;
+
+  for (float v : {42.f, -12.f, 1.52f}) {
+    SCOPED_TRACE(v);
+    std::vector<float> values(kNumValues, v);
+    values[42] = v * 2;
+
+    float min, max;
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
+    constexpr float kBucketSize = 0.01f;  // Should match the value in gainmap.c
+    const float kEpsilon = 0.00001f;
+    if (v > 0) {
+      EXPECT_NEAR(min, v, kEpsilon);
+      EXPECT_NEAR(max, v + kBucketSize, kEpsilon);
+    } else {
+      EXPECT_NEAR(min, v - kBucketSize, kEpsilon);
+      EXPECT_NEAR(max, v, kEpsilon);
+    }
+  }
+}
+
+TEST(FindMinMaxWithoutOutliers, AllSameExceptOneFewValues) {
+  constexpr int kNumValues = 100;  // Not enough values to remove outliers.
+
+  for (float v : {42.f, -12.f, 1.52f}) {
+    SCOPED_TRACE(v);
+    std::vector<float> values(kNumValues, v);
+    values[42] = v * 2;
+
+    float min, max;
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
+    const float kEpsilon = 0.00001f;
+    if (v > 0) {
+      EXPECT_NEAR(min, v, kEpsilon);
+      EXPECT_NEAR(max, v * 2, kEpsilon);  // Outlier is kept.
+    } else {
+      EXPECT_NEAR(min, v * 2, kEpsilon);  // Outlier is kept.
+      EXPECT_NEAR(max, v, kEpsilon);
+    }
+  }
+}
+
 TEST(FindMinMaxWithoutOutliers, Test) {
   constexpr int kNumValues = 10000;
 
   for (const float value_shift : {0.0f, -20.0f, 20.0f}) {
+    SCOPED_TRACE(value_shift);
     SCOPED_TRACE("value_shift: " + std::to_string(value_shift));
     std::vector<float> values(kNumValues, value_shift + 2.0f);
     int k = 0;
