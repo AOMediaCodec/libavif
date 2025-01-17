@@ -363,7 +363,7 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
 
     float min = gainMapF[0];
     float max = gainMapF[0];
-    for (int i = 0; i < numPixels; ++i) {
+    for (int i = 1; i < numPixels; ++i) {
         min = AVIF_MIN(min, gainMapF[i]);
         max = AVIF_MAX(max, gainMapF[i]);
     }
