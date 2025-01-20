@@ -163,11 +163,10 @@ DecoderPtr AddGainMapOptionsToDecoder(
 }
 
 ImagePtr AddGainMapToImage(
-    ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
-    int32_t gain_map_min_n1, int32_t gain_map_min_n2, uint32_t gain_map_min_d0,
-    uint32_t gain_map_min_d1, uint32_t gain_map_min_d2, int32_t gain_map_max_n0,
-    int32_t gain_map_max_n1, int32_t gain_map_max_n2, uint32_t gain_map_max_d0,
-    uint32_t gain_map_max_d1, uint32_t gain_map_max_d2,
+    ImagePtr image, ImagePtr gain_map,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max0,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max1,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max2,
     uint32_t gain_map_gamma_n0, uint32_t gain_map_gamma_n1,
     uint32_t gain_map_gamma_n2, uint32_t gain_map_gamma_d0,
     uint32_t gain_map_gamma_d1, uint32_t gain_map_gamma_d2,
@@ -182,13 +181,13 @@ ImagePtr AddGainMapToImage(
   image->gainMap = avifGainMapCreate();
   image->gainMap->image = gain_map.release();
 
-  image->gainMap->gainMapMin[0] = {gain_map_min_n0, gain_map_min_d0};
-  image->gainMap->gainMapMin[1] = {gain_map_min_n1, gain_map_min_d1};
-  image->gainMap->gainMapMin[2] = {gain_map_min_n2, gain_map_min_d2};
+  image->gainMap->gainMapMin[0] = gain_map_min_max0.first;
+  image->gainMap->gainMapMin[1] = gain_map_min_max1.first;
+  image->gainMap->gainMapMin[2] = gain_map_min_max2.first;
 
-  image->gainMap->gainMapMax[0] = {gain_map_max_n0, gain_map_max_d0};
-  image->gainMap->gainMapMax[1] = {gain_map_max_n1, gain_map_max_d1};
-  image->gainMap->gainMapMax[2] = {gain_map_max_n2, gain_map_max_d2};
+  image->gainMap->gainMapMax[0] = gain_map_min_max0.second;
+  image->gainMap->gainMapMax[1] = gain_map_min_max1.second;
+  image->gainMap->gainMapMax[2] = gain_map_min_max2.second;
 
   image->gainMap->gainMapGamma[0] = {gain_map_gamma_n0, gain_map_gamma_d0};
   image->gainMap->gainMapGamma[1] = {gain_map_gamma_n1, gain_map_gamma_d1};
