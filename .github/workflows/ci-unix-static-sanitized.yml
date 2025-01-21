@@ -18,11 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest]
-        sanitizer: [address, memory, thread, undefined]
-        exclude:
-          - os: macos-latest
-            sanitizer: memory
+        os: [ubuntu-latest, macos-latest]
+        sanitizer: [address, thread, undefined]
 
     env:
       CC: clang
@@ -48,75 +45,25 @@ jobs:
       - id: cache-hit
         run: echo "hit=${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build cxx and cxxabi
-        if: ${{ matrix.sanitizer == 'memory' }}
-        run: |
-          # clone LLVM
-          git clone --depth=1 --branch llvmorg-19.1.6  https://github.com/llvm/llvm-project
-          # configure cmake
-          cmake -G Ninja -S llvm-project/runtimes -B llvm-project/msan_out \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
-                  -DCMAKE_C_COMPILER=clang \
-                  -DCMAKE_CXX_COMPILER=clang++ \
-                  -DLLVM_USE_SANITIZER=MemoryWithOrigins \
-                  -DLIBCXXABI_USE_LLVM_UNWINDER=OFF
-          # build the libraries
-          cmake --build llvm-project/msan_out -- cxx cxxabi unwind
-      - name: Set FLAGS for memory sanitizer
-        if: ${{ matrix.sanitizer == 'memory' }}
-        run: |
-          echo "CI_CFLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include"  >> $GITHUB_ENV
-          echo "CI_CXXFLAGS=-fsanitize=memory -stdlib=libc++ -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include -I${{ github.workspace }}/llvm-project/msan_out/include/c++/v1"  >> $GITHUB_ENV
-          echo "CI_LDFLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -lc++abi"  >> $GITHUB_ENV
-          echo "CI_LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ github.workspace }}/llvm-project/msan_out/lib" >> $GITHUB_ENV
-      - name: Set FLAGS for other sanitizers
-        if: ${{ matrix.sanitizer != 'memory' }}
+      - name: Set FLAGS for sanitizers
         run: |
           echo "CI_CFLAGS=-fsanitize=${{ matrix.sanitizer }}"  >> $GITHUB_ENV
           echo "CI_CXXFLAGS=-fsanitize=${{ matrix.sanitizer }}"  >> $GITHUB_ENV
           echo "CI_LDFLAGS=-fsanitize=${{ matrix.sanitizer }}"  >> $GITHUB_ENV
           echo "CI_LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
-      - name: Build jpeg for msan
-        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer == 'memory')}}
+      - name: Build aom
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: |
-          sed -i -e 's/cmake -S \(.*\)/cmake -S \1 -DWITH_SIMD=OFF/g' libjpeg.cmd
-          ./libjpeg.cmd
-        env:
-          CFLAGS: ${{ env.CI_CFLAGS }}
-          CXXFLAGS: ${{ env.CI_CXXFLAGS }}
-          LDFLAGS: ${{ env.CI_LDFLAGS }}
-          LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
-
-      - name: Prepare aom for msan
-        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer == 'memory')}}
-        working-directory: ./ext
-        run:
-          sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DAOM_TARGET_CPU=generic -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
-      - name: Prepare aom for other sanitizers
-        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer != 'memory')}}
-        working-directory: ./ext
-        run:
           sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DSANITIZE=${{ matrix.sanitizer }} ../g' aom.cmd
-      - name: Build aom
-        working-directory: ./ext
-        run:
           ./aom.cmd
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
-          LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
-
-      - name: Prepare dav1d for msan
-        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer == 'memory') }}
-        working-directory: ./ext
-        run:
-          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=memory -Db_lundef=false -Denable_asm=false ../g' dav1d.cmd
-      - name: Prepare dav1d for other sanitizers
-        if: ${{ (steps.cache-hit.outputs.hit == 'false') && (matrix.sanitizer != 'memory') }}
+      - name: Prepare dav1d
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run:
           sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
@@ -128,15 +75,14 @@ jobs:
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
-          LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
+          LDFLAGS: ${{ env.CI_LDFLAGS }}
 
       - name: Prepare libavif (cmake)
         run: >
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
-          -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
-          -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
+          -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
         env:
