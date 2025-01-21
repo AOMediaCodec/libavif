@@ -189,7 +189,6 @@ TEST(EncodingTest, MaximumInvalidDimensions) {
 }
 
 #if defined(__clang__) && defined(__has_feature)
-// has to be on a different line for Windows.
 #if __has_feature(memory_sanitizer)
 #define TEST_EXTREMES 0
 #else
