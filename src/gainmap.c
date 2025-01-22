@@ -705,7 +705,6 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     // Scale the gain map values to map [min, max] range to [0, 1].
     for (int c = 0; c < numGainMapChannels; ++c) {
         const float range = AVIF_MAX(gainMapMaxLog2[c] - gainMapMinLog2[c], 0.0f);
-        const float gainMapGamma = avifUnsignedFractionToFloat(gainMap->gainMapGamma[c]);
 
         if (range == 0.0f) {
             for (int j = 0; j < height; ++j) {
@@ -717,6 +716,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
             }
         } else {
             // Remap [min; max] range to [0; 1]
+            const float gainMapGamma = avifUnsignedFractionToFloat(gainMap->gainMapGamma[c]);
             for (int j = 0; j < height; ++j) {
                 for (int i = 0; i < width; ++i) {
                     float v = gainMapF[c][j * width + i];
