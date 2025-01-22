@@ -707,16 +707,22 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         const float range = AVIF_MAX(gainMapMaxLog2[c] - gainMapMinLog2[c], 0.0f);
         const float gainMapGamma = avifUnsignedFractionToFloat(gainMap->gainMapGamma[c]);
 
-        for (int j = 0; j < height; ++j) {
-            for (int i = 0; i < width; ++i) {
-                // Remap [min; max] range to [0; 1]
-                if (range == 0.0f) {
+        if (range == 0.0f) {
+            for (int j = 0; j < height; ++j) {
+                for (int i = 0; i < width; ++i) {
                     // If the range is 0, the gain map values will be multiplied by zero when tonemapping so the values
                     // don't matter, but we still need to make sure that gainMapF is in [0,1].
                     gainMapF[c][j * width + i] = 0.0f;
-                } else {
-                    const float v = AVIF_CLAMP(gainMapF[c][j * width + i], gainMapMinLog2[c], gainMapMaxLog2[c]);
-                    gainMapF[c][j * width + i] = AVIF_CLAMP(powf((v - gainMapMinLog2[c]) / range, gainMapGamma), 0.0f, 1.0f);
+                }
+            }
+        } else {
+            // Remap [min; max] range to [0; 1]
+            for (int j = 0; j < height; ++j) {
+                for (int i = 0; i < width; ++i) {
+                    float v = gainMapF[c][j * width + i];
+                    v = AVIF_CLAMP(v, gainMapMinLog2[c], gainMapMaxLog2[c]);
+                    v = powf((v - gainMapMinLog2[c]) / range, gainMapGamma);
+                    gainMapF[c][j * width + i] = AVIF_CLAMP(v, 0.0f, 1.0f);
                 }
             }
         }
