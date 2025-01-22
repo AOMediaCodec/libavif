@@ -188,6 +188,17 @@ TEST(EncodingTest, MaximumInvalidDimensions) {
                AVIF_RESULT_UNSUPPORTED_DEPTH);
 }
 
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+#define TEST_EXTREMES 0
+#else
+#define TEST_EXTREMES 1
+#endif
+#else
+#define TEST_EXTREMES 1
+#endif
+
+#if TEST_EXTREMES
 TEST(AvifAllocTest, Extremes) {
   void* p1 = avifAlloc(1);
   EXPECT_NE(p1, nullptr);
@@ -195,6 +206,7 @@ TEST(AvifAllocTest, Extremes) {
 
   EXPECT_EQ(avifAlloc(std::numeric_limits<size_t>::max()), nullptr);
 }
+#endif
 
 }  // namespace
 }  // namespace avif

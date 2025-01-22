@@ -1,0 +1,111 @@
+# Memory sanitizer needs to be in its own file because it is slower than other sanitizers.
+name: CI Unix Static Sanitized Memory
+on:
+  push:
+  pull_request:
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/ci-unix-static-sanitized-memory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-static-sanitized-memory:
+    runs-on: ubuntu-latest
+
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-linux
+        if: runner.os == 'Linux'
+        id: setup_linux
+        with:
+          codec-aom: "LOCAL"
+          codec-dav1d: "LOCAL"
+          libyuv: "LOCAL"
+          extra-cache-key: memory
+      - id: cache-hit
+        run: echo "hit=${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build cxx and cxxabi
+        run: |
+          # clone LLVM
+          git clone --depth=1 --branch llvmorg-19.1.7  https://github.com/llvm/llvm-project
+          # configure cmake
+          cmake -G Ninja -S llvm-project/runtimes -B llvm-project/msan_out \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
+                  -DCMAKE_C_COMPILER=clang \
+                  -DCMAKE_CXX_COMPILER=clang++ \
+                  -DLLVM_USE_SANITIZER=MemoryWithOrigins \
+                  -DLIBCXXABI_USE_LLVM_UNWINDER=OFF
+          # build the libraries
+          cmake --build llvm-project/msan_out -- cxx cxxabi unwind
+      - name: Set FLAGS for memory sanitizer
+        run: |
+          echo "CI_CFLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include"  >> $GITHUB_ENV
+          echo "CI_CXXFLAGS=-fsanitize=memory -stdlib=libc++ -L${{ github.workspace }}/llvm-project/msan_out/lib -I${{ github.workspace }}/llvm-project/msan_out/include -I${{ github.workspace }}/llvm-project/msan_out/include/c++/v1"  >> $GITHUB_ENV
+          echo "CI_LDFLAGS=-fsanitize=memory -L${{ github.workspace }}/llvm-project/msan_out/lib -lc++abi"  >> $GITHUB_ENV
+          echo "CI_LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ github.workspace }}/llvm-project/msan_out/lib" >> $GITHUB_ENV
+
+      - name: Build jpeg
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
+        working-directory: ./ext
+        run: |
+          sed -i -e 's/cmake -S \(.*\)/cmake -S \1 -DWITH_SIMD=OFF/g' libjpeg.cmd
+          ./libjpeg.cmd
+        env:
+          CFLAGS: ${{ env.CI_CFLAGS }}
+          CXXFLAGS: ${{ env.CI_CXXFLAGS }}
+          LDFLAGS: ${{ env.CI_LDFLAGS }}
+          LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
+
+      - name: Build aom
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
+        working-directory: ./ext
+        run: |
+          sed -i -e 's/cmake -G Ninja \(.*\) \.\./cmake -G Ninja \1 -DAOM_TARGET_CPU=generic -DSANITIZE=memory ../g' aom.cmd
+          ./aom.cmd
+        env:
+          CFLAGS: ${{ env.CI_CFLAGS }}
+          CXXFLAGS: ${{ env.CI_CXXFLAGS }}
+          LDFLAGS: ${{ env.CI_LDFLAGS }}
+          LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
+
+      - name: Build dav1d
+        if: ${{ steps.cache-hit.outputs.hit == 'false' }}
+        working-directory: ./ext
+        run: |
+          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=memory -Db_lundef=false -Denable_asm=false ../g' dav1d.cmd
+          ./dav1d.cmd
+        env:
+          CFLAGS: ${{ env.CI_CFLAGS }}
+          CXXFLAGS: ${{ env.CI_CXXFLAGS }}
+          LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
+
+      - name: Prepare libavif (cmake)
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF
+          -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
+          -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL
+          -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
+          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
+          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
+        env:
+          CFLAGS: ${{ env.CI_CFLAGS }}
+          CXXFLAGS: ${{ env.CI_CXXFLAGS }}
+          LDFLAGS: ${{ env.CI_LDFLAGS }}
+      - name: Build libavif (ninja)
+        working-directory: ./build
+        run: ninja
+      - name: Run AVIF Tests
+        working-directory: ./build
+        run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
+        env:
+          MSAN_OPTIONS: allocator_may_return_null=1
+          LD_LIBRARY_PATH: ${{ env.CI_LD_LIBRARY_PATH }}
