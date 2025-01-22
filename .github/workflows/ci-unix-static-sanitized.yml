@@ -19,6 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        # Memory sanitizer needs to be in its own file because it is slower than other sanitizers.
         sanitizer: [address, thread, undefined]
 
     env:

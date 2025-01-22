@@ -188,7 +188,7 @@ TEST(EncodingTest, MaximumInvalidDimensions) {
                AVIF_RESULT_UNSUPPORTED_DEPTH);
 }
 
-#if defined(__clang__) && defined(__has_feature)
+#if defined(__has_feature)
 #if __has_feature(memory_sanitizer)
 #define TEST_EXTREMES 0
 #else
