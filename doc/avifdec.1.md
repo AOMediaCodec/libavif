@@ -31,7 +31,7 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Show the version number.
 
 **-j**, **\--jobs** _J_
-:   Number of jobs (worker threads). Use "all" to potentially use as many cores as possible (default: all).
+:   Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all).
 
 **-c**, **\--codec** _C_
 :   Codec to use.
@@ -47,16 +47,16 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
         - **libgav1**
 
 **-d**, **\--depth** _D_
-:   Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc).
+:   Output depth, either 8 or 16. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc).
 
 **-q**, **\--quality** _Q_
-:   Output quality [0-100]. (JPEG only, default: 90).
+:   Output quality in 0..100. (JPEG only, default: 90).
 
 **\--png-compress** _L_
-:   PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.
+:   PNG compression level in 0..9 (PNG only; 0=none, 9=max). Defaults to libpng's builtin default.
 
 **-u**, **\--upsampling** _U_
-:   Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear.
+:   Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'.
 
 **-r**, **\--raw-color**
 :   Output raw RGB values instead of multiplying by alpha when saving to opaque formats
@@ -83,11 +83,11 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--size-limit** _C_
 :   Maximum image size (in total pixels) that should be tolerated.
-    Default: 268435456, set to a smaller value to further restrict.
+    (Default: 268435456).
 
 **\--dimension-limit** _C_
 :   Maximum image dimension (width or height) that should be tolerated.
-    Default: 32768, set to 0 to ignore.
+    Set to 0 to ignore. (Default: 32768).
 
 **\--**
 :   Signal the end of options. Everything after this is interpreted as file names.

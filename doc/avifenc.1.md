@@ -31,18 +31,18 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 ## BASIC OPTIONS
 
 **-q**, **\--qcolor** _Q_
-:   Quality for color (0-100, where 100 is lossless).
+:   Quality for color in 0..100 where 100 is lossless.
 
 **\--qalpha** _Q_
-:   Quality for alpha (0-100, where 100 is lossless).
+:   Quality for alpha in 0..100 where 100 is lossless.
 
 **-s**, **\--speed** _S_
-:   Encoder speed (0-10, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6).
+:   Encoder speed in 0..10 where 0 is the slowest, 10 is the fastest. Or 'default' or 'd' for codec internal defaults. (Default: 6).
 
 ## ADVANCED OPTIONS
 
 **-j**, **\--jobs** _J_
-:   Number of jobs (worker threads). Use "all" to potentially use as many cores as possible (default: all).
+:   Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all).
 
 **\--no-overwrite**
 :   Never overwrite existing output file.
@@ -54,10 +54,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it.
 
 **-d**, **\--depth** _D_
-:   Output depth [8, 10, 12]. (JPEG/PNG only; For y4m or stdin, depth is retained).
+:   Output depth, one of 8, 10 or 12. (JPEG/PNG only; For y4m or stdin, depth is retained).
 
 **-y**, **\--yuv** _FORMAT_
-:   Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained).
+:   Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained).
 
     For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400.\
     For all other cases, auto defaults to 444.
@@ -72,7 +72,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename.
 
 **\--cicp**, **\--nclx** _P_/_T_/_M_
-:   Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag).
+:   Set CICP values (nclx colr box) (3 raw numbers, use **-r** to set range flag).
 
     - _P_ = color primaries
     - _T_ = transfer characteristics
@@ -81,7 +81,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     Use 2 for any you wish to leave unspecified.
 
 **-r**, **\--range** _RANGE_
-:   YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained).
+:   YUV range, one of 'limited' or 'l', 'full' or 'f'. (JPEG/PNG only, default: full; For y4m or stdin, range is retained).
 
 **\--target-size** _S_
 :   Set target file size in bytes (up to 7 times slower)
@@ -120,7 +120,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Provide an ICC profile payload to be associated with the primary item (implies \--ignore-icc).
 
 **\--timescale**, **\--fps** _V_
-:   Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)
+:   Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second. (Default: 30)
     If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.
 
 **-k**, **\--keyframe** _INTERVAL_
@@ -139,7 +139,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   If the input file contains an embedded gain map, ignore it (no-op if absent).
 
 **\--qgain-map** _Q_
-:   Quality for the gain map (0-100, where 100 is lossless).
+:   Quality for the gain map in 0..100 where 100 is lossless.
 
 **\--pasp** _H_,_V_
 :   Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing.
@@ -148,10 +148,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Add clap property (clean aperture), but calculated from a crop rectangle.
 
 **\--clap** _WN_,_WD_,_HN_,_HD_,_HON_,_HOD_,_VON_,_VOD_
-:   Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs).
+:   Add clap property (clean aperture). Width, Height, HOffset, VOffset (in numerator/denominator pairs).
 
 **\--irot** _ANGLE_
-:   Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise.
+:   Add irot property (rotation) in 0..3. Makes (90 * ANGLE) degree rotation anti-clockwise.
 
 **\--imir** _AXIS_
 :   Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right.
@@ -159,36 +159,36 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--clli** _MaxCLL_,_MaxPALL_
 :   Add clli property (content light level information).
 
-**\--repetition-count** _N_ or infinite
-:   Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite).
+**\--repetition-count** _N_
+:   Number of times an animated image sequence will be repeated, or 'infinite' for infinite repetitions. (Default: infinite).
 
 **\--**
 :   Signal the end of options. Everything after this is interpreted as file names.
 
 ## UPDATABLE OPTIONS
 
-The following options can optionally have a :u (or :update) suffix like **-q:u _Q_**, to apply only to input files appearing after the option:
+The following options can optionally have a **:u** (or **:update**) suffix like **-q:u _Q_**, to apply only to input files appearing after the option:
 
 **-q**, **\--qcolor** _Q_
-:   Quality for color (0-100, where 100 is lossless).
+:   Quality for color in 0..100 where 100 is lossless.
 
 **\--qalpha** _Q_
-:   Quality for alpha (0-100, where 100 is lossless).
+:   Quality for alpha in 0..100 where 100 is lossless.
 
 **\--qgain-map** _Q_
-:   Quality for the gain map (0-100, where 100 is lossless).
+:   Quality for the gain map in 0..100 where 100 is lossless.
 
 **\--tilerowslog2** _R_
-:   log2 of number of tile rows (0-6, default: 0).
+:   log2 of number of tile rows in 0..6. (Default: 0).
 
 **\--tilecolslog2** _C_
-:   log2 of number of tile columns (0-6, default: 0).
+:   log2 of number of tile columns in 0..6. (Default: 0).
 
 **\--autotiling**
 :   Set \--tilerowslog2 and \--tilecolslog2 automatically.
 
 **\--scaling-mode** _N_[/_D_]
-:   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1).
+:   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1).
 
 **\--duration** _D_
 :   Frame durations (in timescales) (default: 1). This option always applies to following inputs with or without the `:u` suffix.
@@ -209,25 +209,25 @@ When used with libaom 3.0.0 or later, any key-value pairs supported by the aom_c
 can be used. When used with libaom 2.0.x or older, the following key-value pairs can be used:
 
 **aq-mode=_M_**
-:   Adaptive quantization mode (0: off (default), 1: variance, 2: complexity, 3: cyclic refresh).
+:   Adaptive quantization mode. 0=off (default), 1=variance, 2=complexity, 3=cyclic refresh.
 
 **cq-level=_Q_**
-:   Constant/Constrained Quality level (0-63, end-usage must be set to cq or q).
+:   Constant/Constrained Quality level in 0..63, end-usage must be set to cq or q.
 
 **enable-chroma-deltaq=_B_**
-:   Enable delta quantization in chroma planes (0: disable (default), 1: enable).
+:   Enable delta quantization in chroma planes. 0=disable (default), 1=enable.
 
 **end-usage=_MODE_**
-:   Rate control mode (vbr, cbr, cq, or q)
+:   Rate control mode, one of 'vbr', 'cbr', 'cq', or 'q'
 
 **sharpness=_S_**
-:   Bias towards block sharpness in rate-distortion optimization of transform coefficients (0-7, default: 0).
+:   Bias towards block sharpness in rate-distortion optimization of transform coefficients in  0..7. (Default: 0).
 
 **tune=_METRIC_**
-:   Tune the encoder for distortion metric (psnr or ssim, default: psnr).
+:   Tune the encoder for distortion metric, one of 'psnr' or 'ssim'. (Default: psnr).
 
 **film-grain-test=_TEST_**
-:   Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16).
+:   Film grain test vectors in 0..16. 0=none (default), 1=test1, 2=test2, ... 16=test16.
 
 **film-grain-table=_FILENAME_**
 :   Path to file containing film grain parameters.

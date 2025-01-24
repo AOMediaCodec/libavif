@@ -190,28 +190,28 @@ static void syntaxLong(void)
     printf("    -V,--version                      : Show the version number\n");
     printf("\n");
     printf("Basic options:\n");
-    printf("    -q,--qcolor Q                     : Quality for color (%d-%d, where %d is lossless)\n",
+    printf("    -q,--qcolor Q                     : Quality for color in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    --qalpha Q                        : Quality for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --qalpha Q                        : Quality for alpha in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    -s,--speed S                      : Encoder speed (%d-%d, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6)\n",
+    printf("    -s,--speed S                      : Encoder speed in %d..%d where 0 is the slowest, 10 is the fastest. Or 'default' or 'd' for codec internal defaults. (Default: 6)\n",
            AVIF_SPEED_SLOWEST,
            AVIF_SPEED_FASTEST);
     printf("\n");
     printf("Advanced options:\n");
-    printf("    -j,--jobs J                       : Number of jobs (worker threads). Use \"all\" to potentially use as many cores as possible (default: all)\n");
+    printf("    -j,--jobs J                       : Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all)\n");
     printf("    --no-overwrite                    : Never overwrite existing output file\n");
     printf("    -o,--output FILENAME              : Instead of using the last filename given as output, use this filename\n");
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
-    printf("    --mini                            : Use reduced header if possible (experimental, backward-incompatible)\n");
+    printf("    --mini                            : EXPERIMENTAL: Use reduced header if possible (backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D                      : Output depth [8, 10, 12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
-    printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
+    printf("    -d,--depth D                      : Output depth, one of 8, 10 or 12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    -y,--yuv FORMAT                   : Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
@@ -221,7 +221,7 @@ static void syntaxLong(void)
     printf("                                        T = transfer characteristics\n");
     printf("                                        M = matrix coefficients\n");
     printf("                                        Use 2 for any you wish to leave unspecified\n");
-    printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
+    printf("    -r,--range RANGE                  : YUV range, one of 'limited' or 'l', 'full' or 'f'. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
     printf("    --progressive                     : EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
     printf("    --layered                         : EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most %d layers can be encoded.\n",
@@ -233,7 +233,7 @@ static void syntaxLong(void)
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
-    printf("    --timescale,--fps V               : Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
+    printf("    --timescale,--fps V               : Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second. (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    -k,--keyframe INTERVAL            : Maximum keyframe interval for image sequences (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
@@ -241,44 +241,44 @@ static void syntaxLong(void)
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
-    printf("    --qgain-map Q                     : Quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                     : Quality for the gain map in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
 #endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
-    printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in num/denom pairs)\n");
-    printf("    --irot ANGLE                      : Add irot property (rotation). [0-3], makes (90 * ANGLE) degree rotation anti-clockwise\n");
+    printf("    --clap WN,WD,HN,HD,HON,HOD,VON,VOD: Add clap property (clean aperture). Width, Height, HOffset, VOffset (in numerator/denominator pairs)\n");
+    printf("    --irot ANGLE                      : Add irot property (rotation), in 0..3. Makes (90 * ANGLE) degree rotation anti-clockwise\n");
     printf("    --imir AXIS                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
-    printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
+    printf("    --repetition-count N              : Number of times an animated image sequence will be repeated, or 'infinite' for infinite repetitions. (Default: infinite)\n");
     printf("    --                                : Signal the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     printf("Updatable options:\n");
     printf("  The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:\n");
-    printf("    -q,--qcolor Q                     : Quality for color (%d-%d, where %d is lossless)\n",
+    printf("    -q,--qcolor Q                     : Quality for color in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    --qalpha Q                        : Quality for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --qalpha Q                        : Quality for alpha in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-    printf("    --qgain-map Q                     : Quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                     : Quality for the gain map in %d..%d where %d is lossless\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
 #endif
-    printf("    --tilerowslog2 R                  : log2 of number of tile rows (0-6, default: 0)\n");
-    printf("    --tilecolslog2 C                  : log2 of number of tile columns (0-6, default: 0)\n");
+    printf("    --tilerowslog2 R                  : log2 of number of tile rows in 0..6. (Default: 0)\n");
+    printf("    --tilecolslog2 C                  : log2 of number of tile columns 0..6. (Default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
-    printf("    --min QP                          : Deprecated, use -q [0-100] instead\n");
-    printf("    --max QP                          : Deprecated, use -q [0-100] instead\n");
-    printf("    --minalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
-    printf("    --maxalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
-    printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
+    printf("    --min QP                          : Deprecated, use -q 0..100 instead\n");
+    printf("    --max QP                          : Deprecated, use -q 0..100 instead\n");
+    printf("    --minalpha QP                     : Deprecated, use --qalpha 0..100 instead\n");
+    printf("    --maxalpha QP                     : Deprecated, use --qalpha 0..100 instead\n");
+    printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1)\n");
     printf("    --duration D                      : Frame durations (in timescales) (default: 1). This option always applies to following inputs with or without the `:u` suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");
@@ -294,13 +294,13 @@ static void syntaxLong(void)
         printf("    When used with libaom 3.0.0 or later, any key-value pairs supported by the aom_codec_set_option() function\n");
         printf("    can be used. When used with libaom 2.0.x or older, the following key-value pairs can be used:\n");
         printf("\n");
-        printf("    aq-mode=M                         : Adaptive quantization mode (0: off (default), 1: variance, 2: complexity, 3: cyclic refresh)\n");
-        printf("    cq-level=Q                        : Constant/Constrained Quality level (0-63, end-usage must be set to cq or q)\n");
-        printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes (0: disable (default), 1: enable)\n");
-        printf("    end-usage=MODE                    : Rate control mode (vbr, cbr, cq, or q)\n");
-        printf("    sharpness=S                       : Bias towards block sharpness in rate-distortion optimization of transform coefficients (0-7, default: 0)\n");
-        printf("    tune=METRIC                       : Tune the encoder for distortion metric (psnr or ssim, default: psnr)\n");
-        printf("    film-grain-test=TEST              : Film grain test vectors (0: none (default), 1: test-1  2: test-2, ... 16: test-16)\n");
+        printf("    aq-mode=M                         : Adaptive quantization mode. 0=off (default), 1=variance, 2=complexity, 3=cyclic refresh\n");
+        printf("    cq-level=Q                        : Constant/Constrained Quality level in 0..63, end-usage must be set to cq or q\n");
+        printf("    enable-chroma-deltaq=B            : Enable delta quantization in chroma planes. 0=disable (default), 1=enable\n");
+        printf("    end-usage=MODE                    : Rate control mode, one of 'vbr', 'cbr', 'cq', or 'q'\n");
+        printf("    sharpness=S                       : Bias towards block sharpness in rate-distortion optimization of transform coefficients in 0..7. (Default: 0)\n");
+        printf("    tune=METRIC                       : Tune the encoder for distortion metric, one of 'psnr' or 'ssim'. (Default: psnr)\n");
+        printf("    film-grain-test=TEST              : Film grain test vectors in 0..16. 0=none (default), 1=test1, 2=test2, ... 16=test16\n");
         printf("    film-grain-table=FILENAME         : Path to file containing film grain parameters\n");
         printf("\n");
     }
@@ -2103,7 +2103,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
                 fprintf(stderr,
-                        "WARNING: --min and --max are deprecated, please use --q [0-100] instead. "
+                        "WARNING: --min and --max are deprecated, please use --q 0..100 instead. "
                         "--min %d --max %d is equivalent to -q %d\n",
                         fileSettings->minQuantizer.value,
                         fileSettings->maxQuantizer.value,
@@ -2111,7 +2111,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.set) {
                 fprintf(stderr,
-                        "WARNING: --minalpha and --maxalpha are deprecated, please use --qalpha [0-100] instead. "
+                        "WARNING: --minalpha and --maxalpha are deprecated, please use --qalpha 0..100 instead. "
                         "--minalpha %d --maxalpha %d is equivalent to --qalpha %d\n",
                         fileSettings->minQuantizerAlpha.value,
                         fileSettings->maxQuantizerAlpha.value,
