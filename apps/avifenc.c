@@ -190,11 +190,11 @@ static void syntaxLong(void)
     printf("    -V,--version                      : Show the version number\n");
     printf("\n");
     printf("Basic options:\n");
-    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
+    printf("    -q,--qcolor Q                     : Quality for color (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --qalpha Q                        : Quality for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
@@ -210,7 +210,7 @@ static void syntaxLong(void)
     printf("    --mini                            : Use reduced header if possible (experimental, backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D                      : Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    -d,--depth D                      : Output depth [8, 10, 12]. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
     printf("    -y,--yuv FORMAT                   : Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
@@ -233,15 +233,15 @@ static void syntaxLong(void)
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
-    printf("    --timescale,--fps V               : Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
+    printf("    --timescale,--fps V               : Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
-    printf("    -k,--keyframe INTERVAL            : Set the maximum keyframe interval (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
+    printf("    -k,--keyframe INTERVAL            : Maximum keyframe interval for image sequences (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
-    printf("    --qgain-map Q                     : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                     : Quality for the gain map (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
@@ -253,33 +253,33 @@ static void syntaxLong(void)
     printf("    --imir AXIS                       : Add imir property (mirroring). 0=top-to-bottom, 1=left-to-right\n");
     printf("    --clli MaxCLL,MaxPALL             : Add clli property (content light level information).\n");
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
-    printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
+    printf("    --                                : Signal the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     printf("Updatable options:\n");
     printf("  The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:\n");
-    printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
+    printf("    -q,--qcolor Q                     : Quality for color (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    printf("    --qalpha Q                        : Set quality for alpha (%d-%d, where %d is lossless)\n",
+    printf("    --qalpha Q                        : Quality for alpha (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-    printf("    --qgain-map Q                     : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                     : Quality for the gain map (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
 #endif
-    printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
-    printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
+    printf("    --tilerowslog2 R                  : log2 of number of tile rows (0-6, default: 0)\n");
+    printf("    --tilecolslog2 C                  : log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
     printf("    --min QP                          : Deprecated, use -q [0-100] instead\n");
     printf("    --max QP                          : Deprecated, use -q [0-100] instead\n");
     printf("    --minalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
     printf("    --maxalpha QP                     : Deprecated, use --qalpha [0-100] instead\n");
     printf("    --scaling-mode N[/D]              : EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1)\n");
-    printf("    --duration D                      : Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.\n");
+    printf("    --duration D                      : Frame durations (in timescales) (default: 1). This option always applies to following inputs with or without the `:u` suffix.\n");
     printf("    -a,--advanced KEY[=VALUE]         : Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.\n");
     printf("\n");
     if (avifCodecName(AVIF_CODEC_CHOICE_AOM, 0)) {

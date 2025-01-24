@@ -34,7 +34,7 @@ static void syntax(void)
     printf("    -c,--codec C      : Codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth [8,16]. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
     printf("    -q,--quality Q    : Output quality [0-100]. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
-    printf("    --png-compress L  : Set PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.\n");
+    printf("    --png-compress L  : PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.\n");
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
@@ -45,11 +45,11 @@ static void syntax(void)
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --icc FILENAME    : Provide an ICC profile payload (implies --ignore-icc)\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
-    printf("    --size-limit C    : Specifies the image size limit (in total pixels) that should be tolerated.\n");
+    printf("    --size-limit C    : Maximum image size (in total pixels) that should be tolerated.\n");
     printf("                        Default: %u, set to a smaller value to further restrict.\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
-    printf("  --dimension-limit C : Specifies the image dimension limit (width or height) that should be tolerated.\n");
+    printf("  --dimension-limit C : Maximum image dimension (width or height) that should be tolerated.\n");
     printf("                        Default: %u, set to 0 to ignore.\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
-    printf("    --                : Signals the end of options. Everything after this is interpreted as file names.\n");
+    printf("    --                : Signal the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();
 }

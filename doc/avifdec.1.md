@@ -53,7 +53,7 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Output quality [0-100]. (JPEG only, default: 90).
 
 **\--png-compress** _L_
-:   Set PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.
+:   PNG compression level (PNG only; 0-9, 0=none, 9=max). Defaults to libpng's builtin default.
 
 **-u**, **\--upsampling** _U_
 :   Chroma upsampling (for 420/422). automatic (default), fastest, best, nearest, or bilinear.
@@ -82,15 +82,15 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   If the input file contains an embedded ICC profile, ignore it (no-op if absent).
 
 **\--size-limit** _C_
-:   Specifies the image size limit (in total pixels) that should be tolerated.
+:   Maximum image size (in total pixels) that should be tolerated.
     Default: 268435456, set to a smaller value to further restrict.
 
 **\--dimension-limit** _C_
-:   Specifies the image dimension limit (width or height) that should be tolerated.
+:   Maximum image dimension (width or height) that should be tolerated.
     Default: 32768, set to 0 to ignore.
 
 **\--**
-:   Signals the end of options. Everything after this is interpreted as file names.
+:   Signal the end of options. Everything after this is interpreted as file names.
 
 # EXAMPLES
 

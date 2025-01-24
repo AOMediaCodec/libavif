@@ -31,13 +31,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 ## BASIC OPTIONS
 
 **-q**, **\--qcolor** _Q_
-:   Set quality for color (0-100, where 100 is lossless).
+:   Quality for color (0-100, where 100 is lossless).
 
 **\--qalpha** _Q_
-:   Set quality for alpha (0-100, where 100 is lossless).
-
-**\--qgain-map** _Q_
-:   Set quality for the gain map (0-100, where 100 is lossless).
+:   Quality for alpha (0-100, where 100 is lossless).
 
 **-s**, **\--speed** _S_
 :   Encoder speed (0-10, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6).
@@ -57,7 +54,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it.
 
 **-d**, **\--depth** _D_
-:   Output depth [8,10,12]. (JPEG/PNG only; For y4m or stdin, depth is retained).
+:   Output depth [8, 10, 12]. (JPEG/PNG only; For y4m or stdin, depth is retained).
 
 **-y**, **\--yuv** _FORMAT_
 :   Output format [default=auto, 444, 422, 420, 400]. Ignored for y4m or stdin (y4m format is retained).
@@ -123,11 +120,11 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Provide an ICC profile payload to be associated with the primary item (implies \--ignore-icc).
 
 **\--timescale**, **\--fps** _V_
-:   Set the timescale to V. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)
+:   Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second (Default: 30)
     If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.
 
 **-k**, **\--keyframe** _INTERVAL_
-:   Set the maximum keyframe interval (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).
+:   Maximum keyframe interval for image sequences (any set of _INTERVAL_ consecutive frames will have at least one keyframe). Set to 0 to disable (default).
 
 **\--ignore-exif**
 :   If the input file contains embedded Exif metadata, ignore it (no-op if absent).
@@ -142,7 +139,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   If the input file contains an embedded gain map, ignore it (no-op if absent).
 
 **\--qgain-map** _Q_
-:   Set quality for the gain map (0-100, where 100 is lossless).
+:   Quality for the gain map (0-100, where 100 is lossless).
 
 **\--pasp** _H_,_V_
 :   Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing.
@@ -166,23 +163,26 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite).
 
 **\--**
-:   Signals the end of options. Everything after this is interpreted as file names.
+:   Signal the end of options. Everything after this is interpreted as file names.
 
 ## UPDATABLE OPTIONS
 
-The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:
+The following options can optionally have a :u (or :update) suffix like **-q:u _Q_**, to apply only to input files appearing after the option:
 
 **-q**, **\--qcolor** _Q_
-:   Set quality for color (0-100, where 100 is lossless).
+:   Quality for color (0-100, where 100 is lossless).
 
 **\--qalpha** _Q_
-:   Set quality for alpha (0-100, where 100 is lossless).
+:   Quality for alpha (0-100, where 100 is lossless).
+
+**\--qgain-map** _Q_
+:   Quality for the gain map (0-100, where 100 is lossless).
 
 **\--tilerowslog2** _R_
-:   Set log2 of number of tile rows (0-6, default: 0).
+:   log2 of number of tile rows (0-6, default: 0).
 
 **\--tilecolslog2** _C_
-:   Set log2 of number of tile columns (0-6, default: 0).
+:   log2 of number of tile columns (0-6, default: 0).
 
 **\--autotiling**
 :   Set \--tilerowslog2 and \--tilecolslog2 automatically.
@@ -191,7 +191,7 @@ The following options can optionally have a :u (or :update) suffix like `-q:u Q`
 :   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, D default to 1. (Default: 1/1).
 
 **\--duration** _D_
-:   Set frame durations (in timescales) to D; default 1. This option always apply to following inputs with or without suffix.
+:   Frame durations (in timescales) (default: 1). This option always applies to following inputs with or without the `:u` suffix.
 
 **-a**, **\--advanced** _KEY_[=_VALUE_]
 :   Pass an advanced, codec-specific key/value string pair directly to the codec. avifenc will warn on any not used by the codec.
