@@ -36,6 +36,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--qalpha** _Q_
 :   Set quality for alpha (0-100, where 100 is lossless).
 
+**\--qgain-map** _Q_
+:   Set quality for the gain map (0-100, where 100 is lossless).
+
 **-s**, **\--speed** _S_
 :   Encoder speed (0-10, slowest-fastest, 'default' or 'd' for codec internal defaults. default speed: 6).
 
@@ -74,11 +77,11 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--cicp**, **\--nclx** _P_/_T_/_M_
 :   Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag).
 
-    - P = color primaries
-    - T = transfer characteristics
-    - M = matrix coefficients
-     
-    (use 2 for any you wish to leave unspecified)
+    - _P_ = color primaries
+    - _T_ = transfer characteristics
+    - _M_ = matrix coefficients
+
+    Use 2 for any you wish to leave unspecified.
 
 **-r**, **\--range** _RANGE_
 :   YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained).
@@ -165,6 +168,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--**
 :   Signals the end of options. Everything after this is interpreted as file names.
 
+## UPDATABLE OPTIONS
 
 The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:
 

@@ -220,7 +220,7 @@ static void syntaxLong(void)
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
     printf("                                        M = matrix coefficients\n");
-    printf("                                        (use 2 for any you wish to leave unspecified)\n");
+    printf("                                        Use 2 for any you wish to leave unspecified\n");
     printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
     printf("    --progressive                     : EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
@@ -241,11 +241,10 @@ static void syntaxLong(void)
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
-    printf("    --qgain-map Q                      : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+    printf("    --qgain-map Q                     : Set quality for the gain map (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
-    // TODO(maryla): add quality setting for the gain map.
 #endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
@@ -256,6 +255,7 @@ static void syntaxLong(void)
     printf("    --repetition-count N or infinite  : Number of times an animated image sequence will be repeated. Use 'infinite' for infinite repetitions (Default: infinite)\n");
     printf("    --                                : Signals the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
+    printf("Updatable options:\n");
     printf("  The following options can optionally have a :u (or :update) suffix like `-q:u Q`, to apply only to input files appearing after the option:\n");
     printf("    -q,--qcolor Q                     : Set quality for color (%d-%d, where %d is lossless)\n",
            AVIF_QUALITY_WORST,
@@ -265,6 +265,12 @@ static void syntaxLong(void)
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
+    printf("    --qgain-map Q                     : Set quality for the gain map (%d-%d, where %d is lossless)\n",
+           AVIF_QUALITY_WORST,
+           AVIF_QUALITY_BEST,
+           AVIF_QUALITY_LOSSLESS);
+#endif
     printf("    --tilerowslog2 R                  : Set log2 of number of tile rows (0-6, default: 0)\n");
     printf("    --tilecolslog2 C                  : Set log2 of number of tile columns (0-6, default: 0)\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
