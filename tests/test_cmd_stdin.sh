@@ -93,9 +93,9 @@ test_stdin() {
 
   # ERROR: there cannot be any other input if --stdin is specified
   "${AVIFENC}" --stdin && exit 1
-  "${AVIFENC}" --stdin "${ENCODED_FILE_STDIN}" "${ENCODED_FILE_STDIN}" && exit 1
-  "${AVIFENC}" "${ENCODED_FILE_STDIN}" --stdin "${ENCODED_FILE_STDIN}" && exit 1
-  "${AVIFENC}" "${ENCODED_FILE_STDIN}" "${ENCODED_FILE_STDIN}" --stdin && exit 1
+  "${AVIFENC}" --stdin "${INPUT_Y4M}" "${ENCODED_FILE_STDIN}" && exit 1
+  "${AVIFENC}" "${INPUT_Y4M}" --stdin "${ENCODED_FILE_STDIN}" && exit 1
+  "${AVIFENC}" "${INPUT_Y4M}" "${ENCODED_FILE_STDIN}" --stdin && exit 1
 
   return 0
 }

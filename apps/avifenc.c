@@ -495,7 +495,7 @@ static avifBool avifInputHasRemainingData(const avifInput * input, int imageInde
         return AVIF_FALSE;
     }
     if (input->files[input->fileIndex].filename == AVIF_FILENAME_STDIN) {
-        return !feof(stdin); // stdin
+        return !feof(stdin);
     }
     return AVIF_TRUE;
 }
@@ -653,6 +653,7 @@ static char * avifStrdup(const char * str)
     return dup;
 }
 
+// key is not null-terminated. value is null-terminated.
 static avifBool avifCodecSpecificOptionsAddKeyValue(avifCodecSpecificOptions * options, const char * key, size_t keyLength, const char * value)
 {
     avifBool success = AVIF_FALSE;
@@ -686,13 +687,14 @@ cleanup:
     free(oldValues);
     return success;
 }
+
 static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
 {
     const char * value = strchr(keyValue, '=');
     if (value) {
         // Keep the parts on the left and on the right of the equal sign,
         // but not the equal sign itself.
-        const size_t keyLength = strlen(keyValue) - strlen(value);
+        const size_t keyLength = value - keyValue;
         return avifCodecSpecificOptionsAddKeyValue(options, keyValue, keyLength, value + 1);
     }
     // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
@@ -719,6 +721,7 @@ static void avifSettingsEntryIntOverwrite(avifSettingsEntryInt * dst, const avif
         dst->value = src->value;
     }
 }
+
 static avifBool avifInputFileSettingsOverwrite(avifInputFileSettings * dst, const avifInputFileSettings * src)
 {
     avifSettingsEntryIntOverwrite(&dst->quality, &src->quality);
@@ -738,6 +741,7 @@ static avifBool avifInputFileSettingsOverwrite(avifInputFileSettings * dst, cons
         const char * key = src->codecSpecificOptions.keys[i];
         const char * value = src->codecSpecificOptions.values[i];
         if (!avifCodecSpecificOptionsAddKeyValue(&dst->codecSpecificOptions, key, strlen(key), value)) {
+            fprintf(stderr, "ERROR: Failed to copy codec specific option: %s = %s\n", key, value);
             return AVIF_FALSE;
         }
     }
@@ -1390,6 +1394,15 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
+static void avifInputAdd(avifInput * input, const char * file_path, uint64_t duration, avifInputFileSettings * pendingSettings)
+{
+    input->files[input->filesCount].filename = file_path;
+    input->files[input->filesCount].duration = duration;
+    input->files[input->filesCount].settings = *pendingSettings;
+    memset(pendingSettings, 0, sizeof(*pendingSettings));
+    ++input->filesCount;
+}
+
 static int quantizerToQuality(int minQuantizer, int maxQuantizer)
 {
     const int quantizer = (minQuantizer + maxQuantizer) / 2;
@@ -1479,11 +1492,7 @@ int main(int argc, char * argv[])
             // Parse additional positional arguments if any
             while (argIndex < argc) {
                 arg = argv[argIndex];
-                input.files[input.filesCount].filename = arg;
-                input.files[input.filesCount].duration = settings.outputTiming.duration;
-                input.files[input.filesCount].settings = pendingSettings;
-                memset(&pendingSettings, 0, sizeof(pendingSettings));
-                ++input.filesCount;
+                avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
                 ++argIndex;
             }
             break;
@@ -1508,11 +1517,7 @@ int main(int argc, char * argv[])
                 }
             }
         } else if (!strcmp(arg, "--stdin")) {
-            input.files[input.filesCount].filename = AVIF_FILENAME_STDIN;
-            input.files[input.filesCount].duration = settings.outputTiming.duration;
-            input.files[input.filesCount].settings = pendingSettings;
-            memset(&pendingSettings, 0, sizeof(pendingSettings));
-            ++input.filesCount;
+            avifInputAdd(&input, AVIF_FILENAME_STDIN, settings.outputTiming.duration, &pendingSettings);
 
             if (input.filesCount == 2) {
                 // The only valid pattern here is
@@ -1521,7 +1526,7 @@ int main(int argc, char * argv[])
                 // there must be an output file specified with or without --output.
                 // Invalid patterns will be rejected later on.
 
-                // Merge all the settings seen so far and associate them to stdin only.
+                // Merge all the settings seen so far and associate them with stdin only.
                 if (!avifInputFileSettingsOverwrite(/*dst=*/&input.files[0].settings, /*src=*/&input.files[1].settings)) {
                     fprintf(stderr, "ERROR: memory allocation failure\n");
                     goto cleanup;
@@ -1963,11 +1968,7 @@ int main(int argc, char * argv[])
             goto cleanup;
         } else {
             // Positional argument
-            input.files[input.filesCount].filename = arg;
-            input.files[input.filesCount].duration = settings.outputTiming.duration;
-            input.files[input.filesCount].settings = pendingSettings;
-            memset(&pendingSettings, 0, sizeof(pendingSettings));
-            ++input.filesCount;
+            avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
         }
 
         ++argIndex;
