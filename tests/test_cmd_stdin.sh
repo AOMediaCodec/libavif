@@ -96,7 +96,7 @@ test_stdin() {
   "${AVIFENC}" --stdin "${ENCODED_FILE_STDIN}" "${ENCODED_FILE_STDIN}" && exit 1
   "${AVIFENC}" "${ENCODED_FILE_STDIN}" --stdin "${ENCODED_FILE_STDIN}" && exit 1
   "${AVIFENC}" "${ENCODED_FILE_STDIN}" "${ENCODED_FILE_STDIN}" --stdin && exit 1
-  
+
   return 0
 }
 
