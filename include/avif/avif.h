@@ -1528,7 +1528,7 @@ typedef struct avifEncoder
     int minQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
     int maxQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
 
-    // Tiling splits the image into a grid of smaller images (tiles), allowing parralelization of
+    // Tiling splits the image into a grid of smaller images (tiles), allowing parallelization of
     // encoding/decoding and/or incremental decoding. Tiling also allows encoding larger images.
     // To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0, or set autoTiling to AVIF_TRUE.
     // Range: [0-6], where the value indicates a request for 2^n tiles in that dimension.
