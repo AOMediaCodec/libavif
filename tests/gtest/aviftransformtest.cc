@@ -85,11 +85,15 @@ TEST(TransformTest, ClopIrotImor) {
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(), path.c_str()), AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
 
-  // 'imor' shall be ignored by libavif as it is after a transformative property
-  // in the 'ipma' association order.
-  ASSERT_EQ(decoder->image->numProperties, 1u);
+  // 'imor' should be ignored as it is after a transformative property in the
+  // 'ipma' association order. libavif still surfaces it because this constraint
+  // is relaxed in Amd2 of HEIF ISO/IEC 23008-12.
+  // See https://github.com/MPEGGroup/FileFormat/issues/113.
+  ASSERT_EQ(decoder->image->numProperties, 2u);
   const avifImageItemProperty& clop = decoder->image->properties[0];
   EXPECT_EQ(std::string(clop.boxtype, clop.boxtype + 4), "clop");
+  const avifImageItemProperty& imor = decoder->image->properties[1];
+  EXPECT_EQ(std::string(imor.boxtype, imor.boxtype + 4), "imor");
 }
 
 //------------------------------------------------------------------------------
