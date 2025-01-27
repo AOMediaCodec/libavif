@@ -31,13 +31,11 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Show the version number.
 
 **-j**, **\--jobs** _J_
-:   Number of jobs (worker threads).
-    1 or less means single-threaded.
-    Default is 1.
-    Use **all** to use all available cores.
+:   Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all).
 
 **-c**, **\--codec** _C_
-:   AV1 codec to use.
+:   Codec to use.
+
     Possible values depend on the codecs enabled at build time (see **\--help**
     or **\--version** for the available codecs).
     Default is auto-selected from the available codecs.
@@ -49,76 +47,50 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
         - **libgav1**
 
 **-d**, **\--depth** _D_
-:   Output PNG depth.
-    Ignored when the output format is JPEG (always 8 bits per channel) or Y4M
-    (input depth is retained).
-
-    Possible values are:
-
-    :   - **8**
-        - **16**
+:   Output depth, either 8 or 16. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc).
 
 **-q**, **\--quality** _Q_
-:   Output JPEG quality in the range **0**-**100**.
-    Default is 90.
-    Ignored if the output format is not JPEG.
+:   Output quality in 0..100. (JPEG only, default: 90).
 
 **\--png-compress** _L_
-:   Output PNG compression level in the range **0**-**9** (fastest to maximum
-    compression).
-    Default is libpng's built-in default.
-    Ignored if the output format is not PNG.
+:   PNG compression level in 0..9 (PNG only; 0=none, 9=max). Defaults to libpng's builtin default.
 
 **-u**, **\--upsampling** _U_
-:   Chroma upsampling method.
-    Ignored unless the input format is 4:2:0 or 4:2:2.
-
-    Possible values are:
-
-    :   - **automatic** (default)
-        - **fastest**
-        - **best**
-        - **nearest**
-        - **bilinear**
+:   Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'.
 
 **-r**, **\--raw-color**
-:   Output raw RGB values instead of multiplying by alpha when saving to opaque
-    formats.
-    This is available if the output format is JPEG, and not applicable to y4m.
+:   Output raw RGB values instead of multiplying by alpha when saving to opaque formats
+    (JPEG only; not applicable to y4m).
 
 **\--index** _I_
-:   When decoding an image sequence or progressive image, specify which frame
-    index to decode.
-    Default is 0.
+:   When decoding an image sequence or progressive image, specify which frame index to decode (Default: 0).
 
 **\--progressive**
-:   Enable progressive AVIF processing.
-    If a progressive image is encountered and **\--progressive** is passed,
-    **avifdec** will use **\--index** to choose which layer to decode (in
-    progressive order).
+:   Enable progressive AVIF processing. If a progressive image is encountered and \--progressive is passed,
+    avifdec will use \--index to choose which layer to decode (in progressive order).
 
 **\--no-strict**
 :   Disable strict decoding, which disables strict validation checks and errors.
 
 **-i**, **\--info**
-:   Decode all frames and display all image information instead of saving to
-    disk.
+:   Decode all frames and display all image information instead of saving to disk.
+
+**\--icc** _FILENAME_
+:   Provide an ICC profile payload (implies \--ignore-icc).
 
 **\--ignore-icc**
-:   If the input file contains an embedded ICC profile, ignore it (no-op if
-    absent).
+:   If the input file contains an embedded ICC profile, ignore it (no-op if absent).
 
 **\--size-limit** _C_
-:   Specifies the image size limit (in total pixels) that should be tolerated.
-    Default is 268,435,456 pixels (16,384 by 16,384 pixels for a square image).
+:   Maximum image size (in total pixels) that should be tolerated.
+    (Default: 268435456).
 
 **\--dimension-limit** _C_
-:   Specifies the image dimension limit (width or height) that should be
-    tolerated.
-    Default is 32,768. Set it to 0 to ignore the limit.
+:   Maximum image dimension (width or height) that should be tolerated.
+    Set to 0 to ignore. (Default: 32768).
 
 **\--**
-:   Signals the end of options. Everything after this is interpreted as file names.
+:   Signal the end of options. Everything after this is interpreted as file names.
 
 # EXAMPLES
 
