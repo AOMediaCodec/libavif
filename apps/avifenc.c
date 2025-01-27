@@ -1400,9 +1400,9 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
-static void avifInputAdd(avifInput * input, const char * file_path, uint64_t duration, avifInputFileSettings * pendingSettings)
+static void avifInputAdd(avifInput * input, const char * filePath, uint64_t duration, avifInputFileSettings * pendingSettings)
 {
-    input->files[input->filesCount].filename = file_path;
+    input->files[input->filesCount].filename = filePath;
     input->files[input->filesCount].duration = duration;
     input->files[input->filesCount].settings = *pendingSettings;
     memset(pendingSettings, 0, sizeof(*pendingSettings));
@@ -1498,7 +1498,7 @@ int main(int argc, char * argv[])
             // Parse additional positional arguments if any
             while (argIndex < argc) {
                 arg = argv[argIndex];
-                avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
+                avifInputAdd(&input, /*filePath=*/arg, settings.outputTiming.duration, &pendingSettings);
                 ++argIndex;
             }
             break;
@@ -1974,7 +1974,7 @@ int main(int argc, char * argv[])
             goto cleanup;
         } else {
             // Positional argument
-            avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
+            avifInputAdd(&input, /*filePath=*/arg, settings.outputTiming.duration, &pendingSettings);
         }
 
         ++argIndex;
