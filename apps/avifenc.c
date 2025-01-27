@@ -134,13 +134,21 @@ typedef struct avifInputFileSettings
     avifCodecSpecificOptions codecSpecificOptions;
 } avifInputFileSettings;
 
+#define AVIF_FILENAME_STDIN NULL
+static const char * avifPrettyFilename(const char * filename)
+{
+    if (filename == AVIF_FILENAME_STDIN) {
+        return "(stdin)";
+    }
+    return filename;
+}
+
 typedef struct avifInputFile
 {
-    const char * filename;
-    uint64_t duration; // If 0, use the default duration
+    const char * filename; // If AVIF_FILENAME_STDIN, use stdin (y4m)
+    uint64_t duration;     // If 0, use the default duration
     avifInputFileSettings settings;
 } avifInputFile;
-static avifInputFile stdinFile;
 
 typedef struct
 {
@@ -160,7 +168,6 @@ typedef struct avifInput
     struct y4mFrameIterator * frameIter;
     avifPixelFormat requestedFormat;
     int requestedDepth;
-    avifBool useStdin;
 
     avifBool cacheEnabled;
     avifInputCacheEntry * cache;
@@ -215,7 +222,7 @@ static void syntaxLong(void)
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
-    printf("    --stdin                           : Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename\n");
+    printf("    --stdin                           : Read y4m frames from stdin instead of file paths. No other input is allowed. The output file path must still be provided.\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
@@ -469,19 +476,19 @@ static const avifInputFile * avifInputGetFile(const avifInput * input, int image
     if (imageIndex < input->cacheCount) {
         return &input->files[input->cache[imageIndex].fileIndex];
     }
+    if (input->fileIndex >= input->filesCount) {
+        return NULL;
+    }
 
-    if (input->useStdin) {
+    if (input->files[input->fileIndex].filename == AVIF_FILENAME_STDIN) {
+        assert(input->fileIndex == 0);
         ungetc(fgetc(stdin), stdin); // Kick stdin to force EOF
 
         if (feof(stdin)) {
             return NULL;
         }
-        return &stdinFile;
     }
 
-    if (input->fileIndex >= input->filesCount) {
-        return NULL;
-    }
     return &input->files[input->fileIndex];
 }
 
@@ -490,11 +497,13 @@ static avifBool avifInputHasRemainingData(const avifInput * input, int imageInde
     if (imageIndex < input->cacheCount) {
         return AVIF_TRUE;
     }
-
-    if (input->useStdin) {
+    if (input->fileIndex >= input->filesCount) {
+        return AVIF_FALSE;
+    }
+    if (input->files[input->fileIndex].filename == AVIF_FILENAME_STDIN) {
         return !feof(stdin);
     }
-    return (input->fileIndex < input->filesCount);
+    return AVIF_TRUE;
 }
 
 static avifBool avifInputReadImage(avifInput * input,
@@ -570,7 +579,13 @@ static avifBool avifInputReadImage(avifInput * input,
         memset(dstSourceTiming, 0, sizeof(avifAppSourceTiming));
     }
 
-    if (input->useStdin) {
+    if (input->fileIndex >= input->filesCount) {
+        return AVIF_FALSE;
+    }
+    const avifInputFile * currentFile = &input->files[input->fileIndex];
+    avifAppFileFormat inputFormat;
+    if (currentFile->filename == AVIF_FILENAME_STDIN) {
+        inputFormat = AVIF_APP_FILE_FORMAT_Y4M;
         if (feof(stdin)) {
             return AVIF_FALSE;
         }
@@ -578,52 +593,39 @@ static avifBool avifInputReadImage(avifInput * input,
             fprintf(stderr, "ERROR: Cannot read y4m through standard input");
             return AVIF_FALSE;
         }
-        if (dstSettings) {
-            *dstSettings = &input->files[0].settings;
-        }
         if (dstDepth) {
             *dstDepth = dstImage->depth;
         }
-        assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
-        if (dstSourceIsRGB) {
-            *dstSourceIsRGB = AVIF_FALSE;
-        }
     } else {
-        if (input->fileIndex >= input->filesCount) {
-            return AVIF_FALSE;
-        }
-
-        const avifInputFile * currentFile = &input->files[input->fileIndex];
-        const avifAppFileFormat inputFormat = avifReadImage(currentFile->filename,
-                                                            input->requestedFormat,
-                                                            input->requestedDepth,
-                                                            chromaDownsampling,
-                                                            ignoreColorProfile,
-                                                            ignoreExif,
-                                                            ignoreXMP,
-                                                            allowChangingCicp,
-                                                            ignoreGainMap,
-                                                            UINT32_MAX,
-                                                            dstImage,
-                                                            dstDepth,
-                                                            dstSourceTiming,
-                                                            &input->frameIter);
+        inputFormat = avifReadImage(currentFile->filename,
+                                    input->requestedFormat,
+                                    input->requestedDepth,
+                                    chromaDownsampling,
+                                    ignoreColorProfile,
+                                    ignoreExif,
+                                    ignoreXMP,
+                                    allowChangingCicp,
+                                    ignoreGainMap,
+                                    UINT32_MAX,
+                                    dstImage,
+                                    dstDepth,
+                                    dstSourceTiming,
+                                    &input->frameIter);
         if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
             fprintf(stderr, "Cannot read input file: %s\n", currentFile->filename);
             return AVIF_FALSE;
         }
-        if (dstSourceIsRGB) {
-            *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
-        }
         if (!input->frameIter) {
             ++input->fileIndex;
         }
-        if (dstSettings) {
-            *dstSettings = &currentFile->settings;
-        }
-
-        assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
     }
+    if (dstSourceIsRGB) {
+        *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
+    }
+    if (dstSettings) {
+        *dstSettings = &currentFile->settings;
+    }
+    assert(dstImage->yuvFormat != AVIF_PIXEL_FORMAT_NONE);
 
     if (input->cacheEnabled) {
         // Reuse the just created cache entry.
@@ -657,7 +659,8 @@ static char * avifStrdup(const char * str)
     return dup;
 }
 
-static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
+// key is not null-terminated. value is null-terminated.
+static avifBool avifCodecSpecificOptionsAddKeyValue(avifCodecSpecificOptions * options, const char * key, size_t keyLength, const char * value)
 {
     avifBool success = AVIF_FALSE;
     char ** oldKeys = options->keys;
@@ -676,32 +679,32 @@ static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, 
         memcpy(options->values, oldValues, options->count * sizeof(*options->values));
     }
 
-    const char * value = strchr(keyValue, '=');
-    if (value) {
-        // Keep the parts on the left and on the right of the equal sign,
-        // but not the equal sign itself.
-        options->values[options->count] = avifStrdup(value + 1);
-        const size_t keyLength = strlen(keyValue) - strlen(value);
-        options->keys[options->count] = malloc(keyLength + 1);
-        if (!options->values[options->count] || !options->keys[options->count]) {
-            goto cleanup;
-        }
-        memcpy(options->keys[options->count], keyValue, keyLength);
-        options->keys[options->count][keyLength] = '\0';
-    } else {
-        // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
-        options->values[options->count] = avifStrdup("");
-        options->keys[options->count] = avifStrdup(keyValue);
-        if (!options->values[options->count] || !options->keys[options->count]) {
-            goto cleanup;
-        }
+    options->values[options->count] = avifStrdup(value);
+    options->keys[options->count] = malloc(keyLength + 1);
+    if (!options->values[options->count] || !options->keys[options->count]) {
+        goto cleanup;
     }
+    memcpy(options->keys[options->count], key, keyLength);
+    options->keys[options->count][keyLength] = '\0';
     success = AVIF_TRUE;
 cleanup:
     ++options->count;
     free(oldKeys);
     free(oldValues);
     return success;
+}
+
+static avifBool avifCodecSpecificOptionsAdd(avifCodecSpecificOptions * options, const char * keyValue)
+{
+    const char * value = strchr(keyValue, '=');
+    if (value) {
+        // Keep the parts on the left and on the right of the equal sign,
+        // but not the equal sign itself.
+        const size_t keyLength = value - keyValue;
+        return avifCodecSpecificOptionsAddKeyValue(options, keyValue, keyLength, value + 1);
+    }
+    // Pass in a non-NULL, empty string. Codecs can use the mere existence of a key as a boolean value.
+    return avifCodecSpecificOptionsAddKeyValue(options, keyValue, strlen(keyValue), "");
 }
 
 static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions * options)
@@ -715,6 +718,40 @@ static void avifCodecSpecificOptionsFree(avifCodecSpecificOptions * options)
     free(options->values);
     options->keys = NULL;
     options->values = NULL;
+}
+
+static void avifSettingsEntryIntOverwrite(avifSettingsEntryInt * dst, const avifSettingsEntryInt * src)
+{
+    if (src->set) {
+        dst->set = AVIF_TRUE;
+        dst->value = src->value;
+    }
+}
+
+static avifBool avifInputFileSettingsOverwrite(avifInputFileSettings * dst, const avifInputFileSettings * src)
+{
+    avifSettingsEntryIntOverwrite(&dst->quality, &src->quality);
+    avifSettingsEntryIntOverwrite(&dst->qualityAlpha, &src->qualityAlpha);
+    avifSettingsEntryIntOverwrite(&dst->minQuantizer, &src->minQuantizer);
+    avifSettingsEntryIntOverwrite(&dst->maxQuantizer, &src->maxQuantizer);
+    avifSettingsEntryIntOverwrite(&dst->minQuantizerAlpha, &src->minQuantizerAlpha);
+    avifSettingsEntryIntOverwrite(&dst->maxQuantizerAlpha, &src->maxQuantizerAlpha);
+    avifSettingsEntryIntOverwrite(&dst->tileRowsLog2, &src->tileRowsLog2);
+    avifSettingsEntryIntOverwrite(&dst->tileColsLog2, &src->tileColsLog2);
+    avifSettingsEntryIntOverwrite(&dst->autoTiling, &src->autoTiling);
+    if (src->scalingMode.set) {
+        dst->scalingMode.set = AVIF_TRUE;
+        dst->scalingMode.value = src->scalingMode.value;
+    }
+    for (int i = 0; i < src->codecSpecificOptions.count; ++i) {
+        const char * key = src->codecSpecificOptions.keys[i];
+        const char * value = src->codecSpecificOptions.values[i];
+        if (!avifCodecSpecificOptionsAddKeyValue(&dst->codecSpecificOptions, key, strlen(key), value)) {
+            fprintf(stderr, "ERROR: Failed to copy codec specific option: %s = %s\n", key, value);
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
 }
 
 // Returns the best cell size for a given horizontal or vertical dimension.
@@ -961,7 +998,7 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 settings->chromaDownsampling)) {
             goto cleanup;
         }
-        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", nextFile->filename)) {
+        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", avifPrettyFilename(nextFile->filename))) {
             goto cleanup;
         }
         if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -976,7 +1013,7 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                qualityString(encoder->quality),
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha),
-               nextFile->filename);
+               avifPrettyFilename(nextFile->filename));
 
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
         if (nextImageResult != AVIF_RESULT_OK) {
@@ -1060,10 +1097,12 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
             }
             // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
             if (input->frameIter) {
-                fprintf(stderr, "ERROR: Layered encoding does not support input with multiple frames: %s.\n", nextFile->filename);
+                fprintf(stderr,
+                        "ERROR: Layered encoding does not support input with multiple frames: %s.\n",
+                        avifPrettyFilename(nextFile->filename));
                 goto cleanup;
             }
-            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", nextFile->filename)) {
+            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", avifPrettyFilename(nextFile->filename))) {
                 goto cleanup;
             }
             if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -1203,7 +1242,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         }
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
-        if (input->useStdin || (settings->layers == 1 && input->filesCount > 1)) {
+        if (firstFile->filename == AVIF_FILENAME_STDIN || (settings->layers == 1 && input->filesCount > 1)) {
             printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
                    0,
                    firstDurationInTimescales,
@@ -1212,7 +1251,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                    qualityString(encoder->quality),
                    encoder->qualityAlpha,
                    qualityString(encoder->qualityAlpha),
-                   firstFile->filename);
+                   avifPrettyFilename(firstFile->filename));
         }
         const avifResult addImageResult = avifEncoderAddImage(encoder, firstImage, firstDurationInTimescales, addImageFlags);
         if (addImageResult != AVIF_RESULT_OK) {
@@ -1361,6 +1400,15 @@ static avifBool avifEncodeImages(avifSettings * settings,
     return AVIF_TRUE;
 }
 
+static void avifInputAdd(avifInput * input, const char * file_path, uint64_t duration, avifInputFileSettings * pendingSettings)
+{
+    input->files[input->filesCount].filename = file_path;
+    input->files[input->filesCount].duration = duration;
+    input->files[input->filesCount].settings = *pendingSettings;
+    memset(pendingSettings, 0, sizeof(*pendingSettings));
+    ++input->filesCount;
+}
+
 static int quantizerToQuality(int minQuantizer, int maxQuantizer)
 {
     const int quantizer = (minQuantizer + maxQuantizer) / 2;
@@ -1450,11 +1498,7 @@ int main(int argc, char * argv[])
             // Parse additional positional arguments if any
             while (argIndex < argc) {
                 arg = argv[argIndex];
-                input.files[input.filesCount].filename = arg;
-                input.files[input.filesCount].duration = settings.outputTiming.duration;
-                input.files[input.filesCount].settings = pendingSettings;
-                memset(&pendingSettings, 0, sizeof(pendingSettings));
-                ++input.filesCount;
+                avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
                 ++argIndex;
             }
             break;
@@ -1479,7 +1523,36 @@ int main(int argc, char * argv[])
                 }
             }
         } else if (!strcmp(arg, "--stdin")) {
-            input.useStdin = AVIF_TRUE;
+            avifInputAdd(&input, AVIF_FILENAME_STDIN, settings.outputTiming.duration, &pendingSettings);
+
+            if (input.filesCount == 2) {
+                // The only valid pattern here is
+                //   avifenc [settings...] output.avif [more_settings...] --stdin
+                // because multiple input files are forbidden with --stdin and
+                // there must be an output file specified with or without --output.
+                // Invalid patterns will be rejected later on.
+
+                // Merge all the settings seen so far and associate them with stdin only.
+                if (!avifInputFileSettingsOverwrite(/*dst=*/&input.files[0].settings, /*src=*/&input.files[1].settings)) {
+                    fprintf(stderr, "ERROR: memory allocation failure\n");
+                    goto cleanup;
+                }
+                avifCodecSpecificOptionsFree(&input.files[1].settings.codecSpecificOptions);
+                input.files[1].settings = input.files[0].settings;
+                memset(&input.files[0].settings, 0, sizeof(input.files[0].settings));
+
+                // Swap the file and stdin so that the file is last and picked as output later on.
+                const avifInputFile output = input.files[0];
+                input.files[0] = input.files[1];
+                input.files[1] = output;
+
+                // This should now be equivalent to:
+                //   avifenc [settings...] [more_settings...] --stdin output.avif
+
+            } else if (input.filesCount > 2) {
+                fprintf(stderr, "ERROR: there cannot be any other input if --stdin is specified\n");
+                goto cleanup;
+            }
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
             NEXTARG();
             outputFilename = arg;
@@ -1901,11 +1974,7 @@ int main(int argc, char * argv[])
             goto cleanup;
         } else {
             // Positional argument
-            input.files[input.filesCount].filename = arg;
-            input.files[input.filesCount].duration = settings.outputTiming.duration;
-            input.files[input.filesCount].settings = pendingSettings;
-            memset(&pendingSettings, 0, sizeof(pendingSettings));
-            ++input.filesCount;
+            avifInputAdd(&input, /*file_path=*/arg, settings.outputTiming.duration, &pendingSettings);
         }
 
         ++argIndex;
@@ -1971,24 +2040,29 @@ int main(int argc, char * argv[])
         }
     }
 
-    stdinFile.filename = "(stdin)";
-    stdinFile.duration = settings.outputTiming.duration;
-
     avifInputFileSettings emptySettingsReference;
     memset(&emptySettingsReference, 0, sizeof(emptySettingsReference));
 
-    if (!outputFilename) {
-        if (((input.useStdin && (input.filesCount == 1)) || (!input.useStdin && (input.filesCount > 1)))) {
-            --input.filesCount;
-            outputFilename = input.files[input.filesCount].filename;
-            if (memcmp(&input.files[input.filesCount].settings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
-                fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
-            }
+    if (!outputFilename && input.filesCount > 1 && input.files[input.filesCount - 1].filename != AVIF_FILENAME_STDIN) {
+        --input.filesCount;
+        outputFilename = input.files[input.filesCount].filename;
+        if (memcmp(&input.files[input.filesCount].settings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
+            fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
         }
     }
 
-    if (!outputFilename || (input.useStdin && (input.filesCount > 0)) || (!input.useStdin && (input.filesCount < 1))) {
-        syntaxShort();
+    if (input.filesCount < 1) {
+        fprintf(stderr, "ERROR: no input specified\n");
+        goto cleanup;
+    }
+
+    if (input.files[0].filename == AVIF_FILENAME_STDIN && input.filesCount > 1) {
+        fprintf(stderr, "ERROR: there cannot be any other input if --stdin is specified\n");
+        goto cleanup;
+    }
+
+    if (!outputFilename) {
+        fprintf(stderr, "ERROR: no output specified\n");
         goto cleanup;
     }
 
@@ -1998,7 +2072,7 @@ int main(int argc, char * argv[])
     }
 
 #if defined(_WIN32)
-    if (input.useStdin) {
+    if (input.files[0].filename == AVIF_FILENAME_STDIN) {
         setmode(fileno(stdin), O_BINARY);
     }
 #endif
@@ -2092,13 +2166,15 @@ int main(int argc, char * argv[])
             // This check only applies to the first input.
             // Following inputs can change only one and leave the other unchanged.
             if (fileSettings->minQuantizer.set != fileSettings->maxQuantizer.set) {
-                fprintf(stderr, "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n", file->filename);
+                fprintf(stderr,
+                        "ERROR: --min and --max must be either both specified or both unspecified for input %s.\n",
+                        avifPrettyFilename(file->filename));
                 goto cleanup;
             }
             if (fileSettings->minQuantizerAlpha.set != fileSettings->maxQuantizerAlpha.set) {
                 fprintf(stderr,
                         "ERROR: --minalpha and --maxalpha must be either both specified or both unspecified for input %s.\n",
-                        file->filename);
+                        avifPrettyFilename(file->filename));
                 goto cleanup;
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
@@ -2251,7 +2327,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    printf("Successfully loaded: %s\n", firstFile->filename);
+    printf("Successfully loaded: %s\n", avifPrettyFilename(firstFile->filename));
 
     // Prepare image timings
     if ((settings.outputTiming.duration == 0) && (settings.outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&

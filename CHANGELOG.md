@@ -56,6 +56,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifCleanApertureBoxConvertCropRect(). Replace them with
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
 * Reject non-essential transformative properties.
+* Treat avifenc --stdin as a regular positional file path argument.
 
 ## [1.1.1] - 2024-07-30
 

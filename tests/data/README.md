@@ -839,6 +839,18 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Random frames generated with libavif.
 
+### File [webp_logo_animated.y4m](webp_logo_animated.y4m)
+
+![](webp_logo_animated.y4m)
+
+License: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/),
+[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+Attribution: Google LLC
+
+Source: https://en.wikipedia.org/wiki/File:WebPLogo.svg with text stripped and
+animated effects.
+
 # Other Test Files
 
 ### File [sRGB2014.icc](sRGB2014.icc)

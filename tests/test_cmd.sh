@@ -37,7 +37,9 @@ OUT_MSG="avif_test_cmd_out_msg.txt"
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -f -- "${ENCODED_FILE}" "${ENCODED_FILE_WITH_DASH}" "${DECODED_FILE}" "${OUT_MSG}"
+    rm -f -- "${ENCODED_FILE}" "${ENCODED_UTF8_FILE}" "${ENCODED_FILE_REFERENCE}" \
+             "${ENCODED_FILE_WITH_DASH}" "${DECODED_FILE}" "${DECODED_UTF8_FILE}" \
+             "${OUT_MSG}"
   popd
 }
 trap cleanup EXIT
