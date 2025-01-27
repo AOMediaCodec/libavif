@@ -55,7 +55,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Deprecate avifCropRectConvertCleanApertureBox() and
   avifCleanApertureBoxConvertCropRect(). Replace them with
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
-* Ignore descriptive properties associated after transformative ones.
 * Reject non-essential transformative properties.
 
 ## [1.1.1] - 2024-07-30

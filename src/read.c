@@ -2735,7 +2735,6 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
         uint8_t associationCount;
         AVIF_CHECKERR(avifROStreamRead(&s, &associationCount, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
-        avifBool transformativePropertySeen = AVIF_FALSE;
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             uint8_t essential;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &essential, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) essential;
@@ -2765,23 +2764,6 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
             // Copy property to item
             const avifProperty * srcProp = &meta->properties.prop[propertyIndex];
-
-            // ISO/IEC 23000-22:2019/Amd. 2:2021 Section 7.3.9:
-            //   All transformative properties associated with coded and derived images shall be marked as essential,
-            //   and shall be from the set defined in 7.3.6.7 or the applicable MIAF profile. No other essential
-            //   transformative property shall be associated with such images.
-            const avifBool isTransformative = !memcmp(srcProp->type, "clap", 4) || !memcmp(srcProp->type, "irot", 4) ||
-                                              !memcmp(srcProp->type, "imir", 4);
-            // ISO/IEC 23008-12:2022 Section 3.1.28:
-            //   item property: descriptive or transformative information
-            const avifBool isDescriptive = !isTransformative;
-            // ISO/IEC 23008-12:2022 Section 6.5.1:
-            //   Readers shall allow and ignore descriptive properties following the first transformative or
-            //   unrecognized property, whichever is earlier, in the sequence associating properties with an item.
-            // No need to check for unrecognized properties as they cannot be transformative according to MIAF.
-            if (transformativePropertySeen && isDescriptive) {
-                continue;
-            }
 
             // Some properties are supported and parsed by libavif.
             // Other properties are forwarded to the user as opaque blobs.
@@ -2869,11 +2851,6 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                 memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
                 AVIF_CHECKRES(
                     avifRWDataSet(&dstProp->u.opaque.boxPayload, srcProp->u.opaque.boxPayload.data, srcProp->u.opaque.boxPayload.size));
-            }
-
-            if (isTransformative) {
-                AVIF_ASSERT_OR_RETURN(supportedType);
-                transformativePropertySeen = AVIF_TRUE;
             }
         }
     }
