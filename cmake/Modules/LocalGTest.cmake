@@ -27,9 +27,9 @@ else()
     if(EXISTS "${AVIF_SOURCE_DIR}/ext/googletest")
         message(STATUS "libavif(AVIF_GTEST=LOCAL): ext/googletest found; using as FetchContent SOURCE_DIR")
         set(FETCHCONTENT_SOURCE_DIR_GOOGLETEST "${AVIF_SOURCE_DIR}/ext/googletest")
-        message(CHECK_START "libavif(AVIF_GTEST): configuring googletest")
+        message(CHECK_START "libavif(AVIF_GTEST=LOCAL): configuring googletest")
     else()
-        message(CHECK_START "libavif(AVIF_GTEST): fetching and configuring googletest")
+        message(CHECK_START "libavif(AVIF_GTEST=LOCAL): fetching and configuring googletest")
     endif()
 
     FetchContent_Declare(
