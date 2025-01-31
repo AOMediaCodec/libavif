@@ -30,7 +30,7 @@ class AvifExpression : public avifSampleTransformExpression {
   }
   void AddOperator(avifSampleTransformTokenType op) {
     avifSampleTransformToken& token = AddToken();
-    token.type = static_cast<uint8_t>(op);
+    token.type = op;
   }
 
   int32_t Apply() const {
@@ -158,10 +158,10 @@ TEST_P(SampleTransformOperationTest, Apply) {
 
 INSTANTIATE_TEST_SUITE_P(
     Operations, SampleTransformOperationTest,
-    testing::Values(Op(AVIF_SAMPLE_TRANSFORM_NEGATE, 1, 0),
-                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, -1, 1),
-                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, 0, 0),
-                    Op(AVIF_SAMPLE_TRANSFORM_NEGATE, -256, 255),
+    testing::Values(Op(AVIF_SAMPLE_TRANSFORM_NEGATION, 1, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATION, -1, 1),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATION, 0, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_NEGATION, -256, 255),
                     Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, 1, 1),
                     Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, -1, 1),
                     Op(AVIF_SAMPLE_TRANSFORM_ABSOLUTE, 256, 255),
@@ -176,8 +176,8 @@ INSTANTIATE_TEST_SUITE_P(
                     Op(-1, AVIF_SAMPLE_TRANSFORM_DIFFERENCE, 1, 0),
                     Op(1, AVIF_SAMPLE_TRANSFORM_PRODUCT, 1, 1),
                     Op(2, AVIF_SAMPLE_TRANSFORM_PRODUCT, 3, 6),
-                    Op(1, AVIF_SAMPLE_TRANSFORM_DIVIDE, 1, 1),
-                    Op(2, AVIF_SAMPLE_TRANSFORM_DIVIDE, 3, 0),
+                    Op(1, AVIF_SAMPLE_TRANSFORM_QUOTIENT, 1, 1),
+                    Op(2, AVIF_SAMPLE_TRANSFORM_QUOTIENT, 3, 0),
                     Op(1, AVIF_SAMPLE_TRANSFORM_AND, 1, 1),
                     Op(1, AVIF_SAMPLE_TRANSFORM_AND, 2, 0),
                     Op(7, AVIF_SAMPLE_TRANSFORM_AND, 15, 7),
@@ -186,10 +186,10 @@ INSTANTIATE_TEST_SUITE_P(
                     Op(1, AVIF_SAMPLE_TRANSFORM_XOR, 3, 2),
                     Op(AVIF_SAMPLE_TRANSFORM_NOT, 254, 0),
                     Op(AVIF_SAMPLE_TRANSFORM_NOT, -1, 0),
-                    Op(AVIF_SAMPLE_TRANSFORM_MSB, 0, 0),
-                    Op(AVIF_SAMPLE_TRANSFORM_MSB, -1, 0),
-                    Op(AVIF_SAMPLE_TRANSFORM_MSB, 61, 5),
-                    Op(AVIF_SAMPLE_TRANSFORM_MSB,
+                    Op(AVIF_SAMPLE_TRANSFORM_BSR, 0, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_BSR, -1, 0),
+                    Op(AVIF_SAMPLE_TRANSFORM_BSR, 61, 5),
+                    Op(AVIF_SAMPLE_TRANSFORM_BSR,
                        std::numeric_limits<int32_t>::max(), 30),
                     Op(2, AVIF_SAMPLE_TRANSFORM_POW, 4, 16),
                     Op(4, AVIF_SAMPLE_TRANSFORM_POW, 2, 16),

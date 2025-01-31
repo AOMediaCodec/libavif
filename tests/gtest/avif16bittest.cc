@@ -87,7 +87,7 @@ TEST_P(SampleTransformTest, Avif16bit) {
         {AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0,
          /*inputImageItemIndex=*/1},
         {AVIF_SAMPLE_TRANSFORM_CONSTANT, 1 << shift, 0},
-        {AVIF_SAMPLE_TRANSFORM_DIVIDE, 0, 0}};
+        {AVIF_SAMPLE_TRANSFORM_QUOTIENT, 0, 0}};
     ASSERT_EQ(avifImageApplyOperations(
                   image_no_sato.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
                   /*numTokens=*/3, tokens, /*numInputImageItems=*/1,

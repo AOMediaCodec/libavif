@@ -2115,14 +2115,24 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
         avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
         AVIF_CHECKERR(token != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
-        AVIF_CHECKERR(avifROStreamRead(s, &token->type, /*size=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) token;
-        if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
+        uint8_t tokenValue = AVIF_SAMPLE_TRANSFORM_RESERVED;
+        AVIF_CHECKERR(avifROStreamRead(s, &tokenValue, /*size=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) token;
+        if (tokenValue == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
+            token->type = AVIF_SAMPLE_TRANSFORM_CONSTANT;
             // Two's complement representation is assumed here.
             uint32_t constant;
             AVIF_CHECKERR(avifROStreamReadU32(s, &constant), AVIF_RESULT_BMFF_PARSE_FAILED); // signed int(1<<(bit_depth+3)) constant;
-            token->constant = *(int32_t *)&constant; // maybe =(int32_t)constant; is enough
-        } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
-            AVIF_CHECKERR(avifROStreamRead(s, &token->inputImageItemIndex, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) input_image_item_index;
+            token->constant = (int32_t)constant;
+        } else if (tokenValue <= AVIF_SAMPLE_TRANSFORM_LAST_INPUT_IMAGE_ITEM_INDEX) {
+            AVIF_ASSERT_OR_RETURN(tokenValue >= AVIF_SAMPLE_TRANSFORM_FIRST_INPUT_IMAGE_ITEM_INDEX);
+            token->type = AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX;
+            token->inputImageItemIndex = tokenValue;
+        } else if (tokenValue >= AVIF_SAMPLE_TRANSFORM_FIRST_UNARY_OPERATOR && tokenValue <= AVIF_SAMPLE_TRANSFORM_LAST_UNARY_OPERATOR) {
+            token->type = (avifSampleTransformTokenType)tokenValue; // unary operator
+        } else if (tokenValue >= AVIF_SAMPLE_TRANSFORM_FIRST_BINARY_OPERATOR && tokenValue <= AVIF_SAMPLE_TRANSFORM_LAST_BINARY_OPERATOR) {
+            token->type = (avifSampleTransformTokenType)tokenValue; // binary operator
+        } else {
+            token->type = AVIF_SAMPLE_TRANSFORM_RESERVED;
         }
     }
     AVIF_CHECKERR(avifROStreamRemainingBytes(s) == 0, AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -2138,8 +2148,9 @@ static avifResult avifParseSampleTransformImageBox(const uint8_t * raw,
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[sato]");
 
-    uint8_t version, bitDepth;
-    AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &version, /*bitCount=*/6), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(6) version = 0;
+    uint8_t version, reserved, bitDepth;
+    AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &version, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) version = 0;
+    AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &reserved, /*bitCount=*/4), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) reserved;
     AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &bitDepth, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) bit_depth;
     AVIF_CHECKERR(version == 0, AVIF_RESULT_NOT_IMPLEMENTED);
     AVIF_CHECKERR(bitDepth == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, AVIF_RESULT_NOT_IMPLEMENTED);
