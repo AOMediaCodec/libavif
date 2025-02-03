@@ -72,6 +72,14 @@ Source: Generated with ImageMagick's `convert` command:
 
 It is of color type 3 (PNG_COLOR_TYPE_PALETTE) and has a tRNS chunk.
 
+### File [extended_pixi.avif](extended_pixi.avif)
+
+![](extended_pixi.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Generated with `avifpixitest` (4:2:0, vertical chroma sample position).
+
 ### File [white_1x1.avif](white_1x1.avif)
 
 ![](white_1x1.avif)

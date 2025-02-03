@@ -2950,12 +2950,44 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         if (hasPixi) {
             avifItemPropertyDedupStart(dedup);
             uint8_t channelCount = (isAlpha || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
+            // See ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
             avifBoxMarker pixi;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, 0, &pixi));
+            uint32_t flags = 0;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+            if (encoder->headerFormat == AVIF_HEADER_FULL_WITH_EXTENDED_PIXI) {
+                flags |= 1;
+            }
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, flags, &pixi));
             AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
             for (uint8_t chan = 0; chan < channelCount; ++chan) {
                 AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, depth)); // unsigned int (8) bits_per_channel;
             }
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+            if (flags & 1) {
+                AVIF_ASSERT_OR_RETURN(item->av1C.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_RESERVED);
+                // Do not signal any subsampling information if the sample position is unknown because the 'pixi' box
+                // does not have an enum entry for "unknown subsampling location".
+                const uint8_t subsampling_flag = item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL ||
+                                                 item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+                for (uint8_t chan = 0; chan < channelCount; ++chan) {
+                    AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/3)); // unsigned int(3) channel_idc;
+                    AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/1)); // unsigned int(1) reserved;
+                    AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/2)); // unsigned int(2) component_format;
+                    AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, subsampling_flag, /*bitCount=*/1)); // unsigned int(1) subsampling_flag;
+                    AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/1)); // unsigned int(1) channel_label_flag;
+                    if (subsampling_flag) {
+                        const uint8_t subsamplingType = avifCodecConfigurationBoxGetSubsamplingType(&item->av1C, chan);
+                        const uint8_t subsamplingLocation = subsamplingType == 0 ? 0
+                                                            : item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
+                                                                ? 0
+                                                                : 2;
+                        AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, subsamplingType, /*bitCount=*/4)); // unsigned int(4) subsampling_type;
+                        AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, subsamplingLocation, /*bitCount=*/4)); // unsigned int(4) subsampling_location;
+                    }
+                }
+            }
+#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
             avifRWStreamFinishBox(&dedup->s, pixi);
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, /*essential=*/AVIF_FALSE));
         }

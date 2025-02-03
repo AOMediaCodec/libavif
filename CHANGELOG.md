@@ -268,6 +268,8 @@ List of incompatible ABI changes in this release:
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add avifenc --clli flag to set clli.
 * Add support for all transfer functions when using libsharpyuv.
+* Add experimental support for PixelInformationProperty syntax from HEIF 3rd Ed.
+  Amd2 behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI.
 
 ### Changed
 * Enable the libaom AV1E_SET_SKIP_POSTPROC_FILTERING codec control by default.

@@ -133,6 +133,12 @@ if(AVIF_GTEST)
     endif()
 
     add_avif_gtest(avifopaquetest)
+
+    add_avif_gtest_with_data(avifpixitest)
+    if(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+        target_compile_definitions(avifpixitest PRIVATE AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+    endif()
+
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest_with_data(avifprogressivetest)
     add_avif_gtest_with_data(avifpropertytest)

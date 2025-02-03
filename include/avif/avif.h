@@ -220,6 +220,11 @@ typedef enum avifHeaderFormat
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
     AVIF_HEADER_REDUCED,
 #endif
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+    // Use the full syntax of the PixelInformationProperty from HEIF 3rd edition Amendment 2.
+    // WARNING: Experimental feature. Produces files that may be incompatible with older decoders.
+    AVIF_HEADER_FULL_WITH_EXTENDED_PIXI,
+#endif
 } avifHeaderFormat;
 
 // ---------------------------------------------------------------------------
