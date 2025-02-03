@@ -49,12 +49,12 @@ void EncodeDecodeValid(ImagePtr image, EncoderPtr encoder, DecoderPtr decoder) {
   const avifResult encoder_result =
       avifEncoderWrite(encoder.get(), image.get(), &encoded_data);
   ASSERT_EQ(encoder_result, AVIF_RESULT_OK)
-      << avifResultToString(encoder_result);
+      << avifResultToString(encoder_result) << " " << encoder->diag.error;
 
   const avifResult decoder_result = avifDecoderReadMemory(
       decoder.get(), decoded_image.get(), encoded_data.data, encoded_data.size);
   ASSERT_EQ(decoder_result, AVIF_RESULT_OK)
-      << avifResultToString(decoder_result);
+      << avifResultToString(decoder_result) << " " << decoder->diag.error;
 
   EXPECT_EQ(decoded_image->width, image->width);
   EXPECT_EQ(decoded_image->height, image->height);

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include "avif/avif.h"
@@ -167,13 +168,31 @@ inline auto ArbitraryAvifAnim() {
   return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
 
-// TODO: Try StructOf<Metadata>(StructOf<uint32_t[3]>())?
+// Generates two signed fractions where the first one is smaller than the second
+// one.
+inline auto ArbitraryMinMaxSignedFraction() {
+  return fuzztest::FlatMap(
+      [](int32_t max_n, uint32_t max_d) {
+        return fuzztest::Map(
+            [max_n, max_d](int32_t min_n) {
+              // For simplicity, use the same denominator for both fractions.
+              // This does not cover all possible fractions but makes it easy
+              // to gurantee that the fraction is smaller.
+              return std::pair<avifSignedFraction, avifSignedFraction>(
+                  {min_n, max_d}, {max_n, max_d});
+            },
+            fuzztest::InRange<int32_t>(std::numeric_limits<int32_t>::min(),
+                                       max_n));
+      },
+      fuzztest::Arbitrary<int32_t>(),
+      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()));
+}
+
 ImagePtr AddGainMapToImage(
-    ImagePtr image, ImagePtr gain_map, int32_t gain_map_min_n0,
-    int32_t gain_map_min_n1, int32_t gain_map_min_n2, uint32_t gain_map_min_d0,
-    uint32_t gain_map_min_d1, uint32_t gain_map_min_d2, int32_t gain_map_max_n0,
-    int32_t gain_map_max_n1, int32_t gain_map_max_n2, uint32_t gain_map_max_d0,
-    uint32_t gain_map_max_d1, uint32_t gain_map_max_d2,
+    ImagePtr image, ImagePtr gain_map,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max0,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max1,
+    const std::pair<avifSignedFraction, avifSignedFraction>& gain_map_min_max2,
     uint32_t gain_map_gamma_n0, uint32_t gain_map_gamma_n1,
     uint32_t gain_map_gamma_n2, uint32_t gain_map_gamma_d0,
     uint32_t gain_map_gamma_d1, uint32_t gain_map_gamma_d2,
@@ -189,16 +208,8 @@ ImagePtr AddGainMapToImage(
 inline auto ArbitraryAvifImageWithGainMap() {
   return fuzztest::Map(
       AddGainMapToImage, ArbitraryAvifImage(), ArbitraryAvifImage(),
-      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
-      fuzztest::Arbitrary<int32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
-      fuzztest::Arbitrary<int32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
+      ArbitraryMinMaxSignedFraction(), ArbitraryMinMaxSignedFraction(),
+      ArbitraryMinMaxSignedFraction(),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
       fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
