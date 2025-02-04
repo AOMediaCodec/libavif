@@ -2953,17 +2953,17 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // See ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
             avifBoxMarker pixi;
             uint32_t flags = 0;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
             if (encoder->headerFormat == AVIF_HEADER_FULL_WITH_EXTENDED_PIXI) {
                 flags |= 1;
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
             AVIF_CHECKRES(avifRWStreamWriteFullBox(&dedup->s, "pixi", AVIF_BOX_SIZE_TBD, 0, flags, &pixi));
             AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, channelCount)); // unsigned int (8) num_channels;
             for (uint8_t chan = 0; chan < channelCount; ++chan) {
                 AVIF_CHECKRES(avifRWStreamWriteU8(&dedup->s, depth)); // unsigned int (8) bits_per_channel;
             }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
             if (flags & 1) {
                 AVIF_ASSERT_OR_RETURN(item->av1C.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_RESERVED);
                 // Do not signal any subsampling information if the sample position is unknown because the 'pixi' box
@@ -2987,7 +2987,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                     }
                 }
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
             avifRWStreamFinishBox(&dedup->s, pixi);
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, /*essential=*/AVIF_FALSE));
         }

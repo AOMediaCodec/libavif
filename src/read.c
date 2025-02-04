@@ -371,7 +371,7 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
     return 8;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
 uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex)
 {
     // See ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
@@ -429,7 +429,7 @@ static uint8_t avifSubsamplingLocationToChromaSamplePosition(uint8_t subsampling
     }
     return AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
 
 static const avifPropertyArray * avifSampleTableGetProperties(const avifSampleTable * sampleTable, avifCodecType codecType)
 {
@@ -1285,7 +1285,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                       configDepth);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
             if (pixiProp->u.pixi.subsamplingFlag[i]) {
                 if (pixiProp->u.pixi.subsamplingType[i] != avifCodecConfigurationBoxGetSubsamplingType(&configProp->u.av1C, i)) {
                     avifDiagnosticsPrintf(diag,
@@ -1316,7 +1316,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                     }
                 }
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
         }
     }
 

@@ -779,7 +779,7 @@ typedef struct avifSequenceHeader
 
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
 uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex);
 #endif
 
