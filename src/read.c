@@ -372,39 +372,49 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+// Subsampling type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
+typedef enum avifPixiSubsamplingType
+{
+    AVIF_PIXI_444 = 0,
+    AVIF_PIXI_422 = 1,
+    AVIF_PIXI_420 = 2,
+    AVIF_PIXI_411 = 3,
+    AVIF_PIXI_440 = 4,
+    AVIF_PIXI_SUBSAMPLING_RESERVED = 5,
+} avifPixiSubsamplingType;
+
+// Mapping from subsampling_x, subsampling_y as defined in AV1 specification Section 6.4.2
+// to PixelInformationBox subsampling_type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
 uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex)
 {
-    // See ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
     if (channelIndex == 0) {
-        return 0; // 4:4:4
+        return AVIF_PIXI_444;
     }
     if (av1C->chromaSubsamplingX == 0) {
         if (av1C->chromaSubsamplingY == 0) {
-            return 0; // 4:4:4
+            return AVIF_PIXI_444;
         }
-        return 4; // 4:4:0
+        return AVIF_PIXI_440;
     }
     if (av1C->chromaSubsamplingY == 0) {
-        return 1; // 4:2:2
+        return AVIF_PIXI_422;
     }
-    return 2; // 4:2:0
+    return AVIF_PIXI_420;
 }
 
+// Mapping from PixelInformationBox subsampling_type and subsampling_location as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3
+// to chroma_sample_position as defined in AV1 specification Section 6.4.2.
 static uint8_t avifSubsamplingLocationToChromaSamplePosition(uint8_t subsamplingType, uint8_t subsamplingLocation)
 {
-    // See ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
-    if (subsamplingType == 0) {
-        // 4:4:4
+    if (subsamplingType == AVIF_PIXI_444) {
         return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     }
-    if (subsamplingType == 1) {
-        // 4:2:2
+    if (subsamplingType == AVIF_PIXI_422) {
         if (subsamplingLocation == 0 || subsamplingLocation == 2 || subsamplingLocation == 4) {
             return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         }
     }
-    if (subsamplingType == 2) {
-        // 4:2:2
+    if (subsamplingType == AVIF_PIXI_420) {
         if (subsamplingLocation == 0) {
             return AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
         }
@@ -412,14 +422,12 @@ static uint8_t avifSubsamplingLocationToChromaSamplePosition(uint8_t subsampling
             return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         }
     }
-    if (subsamplingType == 3) {
-        // 4:1:1
+    if (subsamplingType == AVIF_PIXI_411) {
         if (subsamplingLocation == 0 || subsamplingLocation == 2 || subsamplingLocation == 4) {
             return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         }
     }
-    if (subsamplingType == 4) {
-        // 4:4:0
+    if (subsamplingType == AVIF_PIXI_440) {
         if (subsamplingLocation == 0 || subsamplingLocation == 1) {
             return AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
         }
@@ -2641,24 +2649,24 @@ static avifBool avifParseImageMirrorProperty(avifProperty * prop, const uint8_t 
     return AVIF_TRUE;
 }
 
-static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParsePixelInformationProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[pixi]");
     uint32_t flags = 0; // px_flags
-    AVIF_CHECK(avifROStreamReadAndEnforceVersion(&s, /*enforcedVersion=*/0, &flags));
+    AVIF_CHECKERR(avifROStreamReadAndEnforceVersion(&s, /*enforcedVersion=*/0, &flags), AVIF_RESULT_BMFF_PARSE_FAILED);
 
     avifPixelInformationProperty * pixi = &prop->u.pixi;
-    AVIF_CHECK(avifROStreamRead(&s, &pixi->planeCount, 1)); // unsigned int (8) num_channels;
+    AVIF_CHECKERR(avifROStreamRead(&s, &pixi->planeCount, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int (8) num_channels;
     if (pixi->planeCount < 1 || pixi->planeCount > MAX_PIXI_PLANE_DEPTHS) {
         avifDiagnosticsPrintf(diag, "Box[pixi] contains unsupported plane count [%u]", pixi->planeCount);
-        return AVIF_FALSE;
+        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
     for (uint8_t i = 0; i < pixi->planeCount; ++i) {
-        AVIF_CHECK(avifROStreamRead(&s, &pixi->planeDepths[i], 1)); // unsigned int (8) bits_per_channel;
+        AVIF_CHECKERR(avifROStreamRead(&s, &pixi->planeDepths[i], 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int (8) bits_per_channel;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
         if (pixi->planeDepths[i] == 0) {
             avifDiagnosticsPrintf(diag, "Box[pixi] plane depth shall not be 0 for channel %u", i);
-            return AVIF_FALSE;
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
         if (pixi->planeDepths[i] != pixi->planeDepths[0]) {
@@ -2666,21 +2674,25 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
                                   "Box[pixi] contains unsupported mismatched plane depths [%u != %u]",
                                   pixi->planeDepths[i],
                                   pixi->planeDepths[0]);
-            return AVIF_FALSE;
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
     if (flags & 1) {
         for (uint8_t i = 0; i < pixi->planeCount; ++i) {
             uint8_t channelIdc, reserved, componentFormat, channelLabelFlag;
-            AVIF_CHECK(avifROStreamReadBitsU8(&s, &channelIdc, /*bitCount=*/3));      // unsigned int(3) channel_idc;
-            AVIF_CHECK(avifROStreamReadBitsU8(&s, &reserved, /*bitCount=*/1));        // unsigned int(1) reserved = 0;
-            AVIF_CHECK(avifROStreamReadBitsU8(&s, &componentFormat, /*bitCount=*/2)); // unsigned int(3) component_format;
-            AVIF_CHECK(avifROStreamReadBitsU8(&s, &pixi->subsamplingFlag[i], /*bitCount=*/1)); // unsigned int(3) subsampling_flag;
-            AVIF_CHECK(avifROStreamReadBitsU8(&s, &channelLabelFlag, /*bitCount=*/1)); // unsigned int(3) channel_label_flag;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &channelIdc, /*bitCount=*/3), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) channel_idc;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &reserved, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &componentFormat, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) component_format;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &pixi->subsamplingFlag[i], /*bitCount=*/1),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) subsampling_flag;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &channelLabelFlag, /*bitCount=*/1),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) channel_label_flag;
             if (pixi->subsamplingFlag[i]) {
-                AVIF_CHECK(avifROStreamReadBitsU8(&s, &pixi->subsamplingType[i], /*bitCount=*/4)); // unsigned int(4) subsampling_type;
-                AVIF_CHECK(avifROStreamReadBitsU8(&s, &pixi->subsamplingLocation[i], /*bitCount=*/4)); // unsigned int(4) subsampling_location;
+                AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &pixi->subsamplingType[i], /*bitCount=*/4),
+                              AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) subsampling_type;
+                AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &pixi->subsamplingLocation[i], /*bitCount=*/4),
+                              AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) subsampling_location;
             }
 
             // ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3:
@@ -2689,11 +2701,11 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
             //   channel shall have a channel_idc of 1.
             if (channelIdc != 0) {
                 avifDiagnosticsPrintf(diag, "Box[pixi] contains unsupported channel_idc %u for channel %u", channelIdc, i);
-                return AVIF_FALSE;
+                return AVIF_RESULT_NOT_IMPLEMENTED;
             }
             if (reserved != 0) {
                 avifDiagnosticsPrintf(diag, "Box[pixi] contains non-zero reserved field %u for channel %u", reserved, i);
-                return AVIF_FALSE;
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
             // ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3:
             //   component_format: This field indicates the data type of the channel as defined by the component_format
@@ -2702,22 +2714,22 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
             //   component_format: When equal to 0, component value is an unsigned integer coded on component_bit_depth bits.
             if (componentFormat != 0) {
                 avifDiagnosticsPrintf(diag, "Box[pixi] contains unsupported component_format %u for channel %u", componentFormat, i);
-                return AVIF_FALSE;
+                return AVIF_RESULT_NOT_IMPLEMENTED;
             }
             if (pixi->subsamplingFlag[i]) {
-                if (pixi->subsamplingType[i] > 4) {
+                if (pixi->subsamplingType[i] >= AVIF_PIXI_SUBSAMPLING_RESERVED) {
                     avifDiagnosticsPrintf(diag,
                                           "Box[pixi] contains reserved subsampling_type %u for channel %u",
                                           pixi->subsamplingType[i],
                                           i);
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 if (pixi->subsamplingLocation[i] > 4) {
                     avifDiagnosticsPrintf(diag,
                                           "Box[pixi] contains reserved subsampling_location %u for channel %u",
                                           pixi->subsamplingLocation[i],
                                           i);
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
             }
             if (channelLabelFlag) {
@@ -2726,7 +2738,7 @@ static avifBool avifParsePixelInformationProperty(avifProperty * prop, const uin
         }
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 static avifBool avifParseOperatingPointSelectorProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
@@ -2825,8 +2837,7 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
         } else if (!memcmp(header.type, "imir", 4)) {
             AVIF_CHECKERR(avifParseImageMirrorProperty(prop, avifROStreamCurrent(&s), header.size, diag), AVIF_RESULT_BMFF_PARSE_FAILED);
         } else if (!memcmp(header.type, "pixi", 4)) {
-            AVIF_CHECKERR(avifParsePixelInformationProperty(prop, avifROStreamCurrent(&s), header.size, diag),
-                          AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKRES(avifParsePixelInformationProperty(prop, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "a1op", 4)) {
             AVIF_CHECKERR(avifParseOperatingPointSelectorProperty(prop, avifROStreamCurrent(&s), header.size, diag),
                           AVIF_RESULT_BMFF_PARSE_FAILED);

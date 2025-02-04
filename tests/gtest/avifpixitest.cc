@@ -45,6 +45,7 @@ TEST(AvifPixiTest, SameOutput) {
   ASSERT_EQ(avifEncoderWrite(encoder_extended_pixi.get(), image.get(),
                              &encoded_extended_pixi),
             AVIF_RESULT_OK);
+  EXPECT_LT(encoded_regular_pixi.size, encoded_extended_pixi.size);
 
   // Decode.
 
