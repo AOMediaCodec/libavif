@@ -780,6 +780,19 @@ typedef struct avifSequenceHeader
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+// Subsampling type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
+typedef enum avifPixiSubsamplingType
+{
+    AVIF_PIXI_444 = 0,
+    AVIF_PIXI_422 = 1,
+    AVIF_PIXI_420 = 2,
+    AVIF_PIXI_411 = 3,
+    AVIF_PIXI_440 = 4,
+    AVIF_PIXI_SUBSAMPLING_RESERVED = 5,
+} avifPixiSubsamplingType;
+
+// Mapping from subsampling_x, subsampling_y as defined in AV1 specification Section 6.4.2
+// to PixelInformationBox subsampling_type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
 uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex);
 #endif
 

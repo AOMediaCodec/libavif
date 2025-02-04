@@ -2978,7 +2978,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                     AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/1)); // unsigned int(1) channel_label_flag;
                     if (subsampling_flag) {
                         const uint8_t subsamplingType = avifCodecConfigurationBoxGetSubsamplingType(&item->av1C, chan);
-                        const uint8_t subsamplingLocation = subsamplingType == 0 ? 0
+                        const uint8_t subsamplingLocation = subsamplingType == AVIF_PIXI_444 ? 0
                                                             : item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
                                                                 ? 0
                                                                 : 2;

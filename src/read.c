@@ -122,10 +122,12 @@ typedef struct avifPixelInformationProperty
 {
     uint8_t planeDepths[MAX_PIXI_PLANE_DEPTHS];
     uint8_t planeCount;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
     avifBool hasExtendedFields;                     // The fields below were signaled if this is true.
     uint8_t subsamplingFlag[MAX_PIXI_PLANE_DEPTHS]; // The fields below were signaled if this is true for a given channel.
     uint8_t subsamplingType[MAX_PIXI_PLANE_DEPTHS];
     uint8_t subsamplingLocation[MAX_PIXI_PLANE_DEPTHS];
+#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
 } avifPixelInformationProperty;
 
 typedef struct avifOperatingPointSelectorProperty
@@ -372,19 +374,6 @@ static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBo
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
-// Subsampling type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
-typedef enum avifPixiSubsamplingType
-{
-    AVIF_PIXI_444 = 0,
-    AVIF_PIXI_422 = 1,
-    AVIF_PIXI_420 = 2,
-    AVIF_PIXI_411 = 3,
-    AVIF_PIXI_440 = 4,
-    AVIF_PIXI_SUBSAMPLING_RESERVED = 5,
-} avifPixiSubsamplingType;
-
-// Mapping from subsampling_x, subsampling_y as defined in AV1 specification Section 6.4.2
-// to PixelInformationBox subsampling_type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
 uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex)
 {
     if (channelIndex == 0) {
@@ -2683,11 +2672,11 @@ static avifResult avifParsePixelInformationProperty(avifProperty * prop, const u
             uint8_t channelIdc, reserved, componentFormat, channelLabelFlag;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &channelIdc, /*bitCount=*/3), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) channel_idc;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &reserved, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) reserved = 0;
-            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &componentFormat, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) component_format;
+            AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &componentFormat, /*bitCount=*/2), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(2) component_format;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &pixi->subsamplingFlag[i], /*bitCount=*/1),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) subsampling_flag;
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) subsampling_flag;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &channelLabelFlag, /*bitCount=*/1),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(3) channel_label_flag;
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) channel_label_flag;
             if (pixi->subsamplingFlag[i]) {
                 AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &pixi->subsamplingType[i], /*bitCount=*/4),
                               AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) subsampling_type;
