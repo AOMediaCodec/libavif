@@ -1066,19 +1066,21 @@ static avifResult avifImageCopyAltImageMetadata(avifImage * altImageMetadata, co
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 static avifResult avifEncoderWriteSampleTransformTokens(avifRWStream * s, const avifSampleTransformExpression * expression)
 {
-    AVIF_ASSERT_OR_RETURN(expression->count <= 256);
+    AVIF_ASSERT_OR_RETURN(expression->count <= 255);
     AVIF_CHECKRES(avifRWStreamWriteU8(s, (uint8_t)expression->count)); // unsigned int(8) token_count;
 
     for (uint32_t t = 0; t < expression->count; ++t) {
         const avifSampleTransformToken * token = &expression->tokens[t];
-        AVIF_CHECKRES(avifRWStreamWriteU8(s, token->type)); // unsigned int(8) token;
 
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
-            // TODO(yguyon): Verify two's complement representation is guaranteed here.
-            const uint32_t constant = *(const uint32_t *)&token->constant;
+            AVIF_CHECKRES(avifRWStreamWriteU8(s, token->type)); // unsigned int(8) token;
+            const uint32_t constant = (uint32_t)token->constant;
             AVIF_CHECKRES(avifRWStreamWriteU32(s, constant)); // signed int(1<<(bit_depth+3)) constant;
         } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
-            AVIF_CHECKRES(avifRWStreamWriteU8(s, token->inputImageItemIndex)); // unsigned int(8) input_image_item_index;
+            AVIF_CHECKRES(avifRWStreamWriteU8(s, token->inputImageItemIndex)); // unsigned int(8) token;
+        } else {
+            // Operator.
+            AVIF_CHECKRES(avifRWStreamWriteU8(s, token->type)); // unsigned int(8) token;
         }
     }
     return AVIF_RESULT_OK;
@@ -1088,7 +1090,8 @@ static avifResult avifEncoderWriteSampleTransformPayload(avifEncoder * encoder, 
 {
     avifRWStream s;
     avifRWStreamStart(&s, data);
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/6)); // unsigned int(6) version = 0;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/2)); // unsigned int(2) version = 0;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4)); // unsigned int(4) reserved;
     // AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32 is necessary because the two input images
     // once combined use 16-bit unsigned values, but intermediate results are stored in signed integers.
     AVIF_CHECKRES(avifRWStreamWriteBits(&s, AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32, /*bitCount=*/2)); // unsigned int(2) bit_depth;
@@ -1450,7 +1453,7 @@ static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
     if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B) {
         if (isBase) {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
-            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 256, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_QUOTIENT, 256, planes));
         } else {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 255, planes));
@@ -1458,7 +1461,7 @@ static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
     } else if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
         if (isBase) {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
-            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_QUOTIENT, 16, planes));
         } else {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
             AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_AND, 15, planes));
@@ -1487,7 +1490,7 @@ static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
                       AVIF_RESULT_NOT_IMPLEMENTED);
         if (isBase) {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 12, planes));
-            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_DIVIDE, 16, planes));
+            AVIF_CHECKRES(avifImageApplyImgOpConst(*sampleTransformedImage, image, AVIF_SAMPLE_TRANSFORM_QUOTIENT, 16, planes));
         } else {
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
             avifCodec * codec = NULL;

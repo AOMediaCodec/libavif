@@ -21,13 +21,15 @@ avifBool avifSampleTransformExpressionIsValid(const avifSampleTransformExpressio
             AVIF_CHECK(token->inputImageItemIndex != 0);
             AVIF_CHECK(token->inputImageItemIndex <= numInputImageItems);
         }
-        if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT || token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
+        if (token->type < AVIF_SAMPLE_TRANSFORM_FIRST_UNARY_OPERATOR) {
+            // Likely an operand.
             ++stackSize;
-        } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATE || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
-                   token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_MSB) {
+        } else if (token->type < AVIF_SAMPLE_TRANSFORM_FIRST_BINARY_OPERATOR) {
+            // Likely a unary operator.
             AVIF_CHECK(stackSize >= 1);
             // Pop one and push one.
         } else {
+            // Likely a binary operator.
             AVIF_CHECK(stackSize >= 2);
             --stackSize; // Pop two and push one.
         }
@@ -131,7 +133,7 @@ avifResult avifSampleTransformRecipeToExpression(avifSampleTransformRecipe recip
             // The second image represents the 4 least significant bits of the reconstructed, bit-depth-extended output image.
             AVIF_ASSERT_OR_RETURN(avifPushInputImageItem(expression, 2));
             AVIF_ASSERT_OR_RETURN(avifPushConstant(expression, 16));
-            AVIF_ASSERT_OR_RETURN(avifPushOperator(expression, AVIF_SAMPLE_TRANSFORM_DIVIDE));
+            AVIF_ASSERT_OR_RETURN(avifPushOperator(expression, AVIF_SAMPLE_TRANSFORM_QUOTIENT));
         }
         AVIF_ASSERT_OR_RETURN(avifPushOperator(expression, AVIF_SAMPLE_TRANSFORM_SUM));
         return AVIF_RESULT_OK;
@@ -198,13 +200,13 @@ static int32_t avifSampleTransformClamp32b(int64_t value)
 static int32_t avifSampleTransformOperation32bOneOperand(int32_t operand, uint8_t operator)
 {
     switch (operator) {
-        case AVIF_SAMPLE_TRANSFORM_NEGATE:
+        case AVIF_SAMPLE_TRANSFORM_NEGATION:
             return avifSampleTransformClamp32b(-(int64_t)operand);
         case AVIF_SAMPLE_TRANSFORM_ABSOLUTE:
             return operand >= 0 ? operand : avifSampleTransformClamp32b(-(int64_t)operand);
         case AVIF_SAMPLE_TRANSFORM_NOT:
             return ~operand;
-        case AVIF_SAMPLE_TRANSFORM_MSB: {
+        case AVIF_SAMPLE_TRANSFORM_BSR: {
             if (operand <= 0) {
                 return 0;
             }
@@ -230,7 +232,7 @@ static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, i
             return avifSampleTransformClamp32b(leftOperand - rightOperand);
         case AVIF_SAMPLE_TRANSFORM_PRODUCT:
             return avifSampleTransformClamp32b(leftOperand * rightOperand);
-        case AVIF_SAMPLE_TRANSFORM_DIVIDE:
+        case AVIF_SAMPLE_TRANSFORM_QUOTIENT:
             return rightOperand == 0 ? leftOperand : leftOperand / rightOperand;
         case AVIF_SAMPLE_TRANSFORM_AND:
             return leftOperand & rightOperand;
@@ -315,8 +317,8 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                         const uint8_t * row = avifImagePlane(image, c) + avifImagePlaneRowBytes(image, c) * y;
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = avifImageUsesU16(image) ? ((const uint16_t *)row)[x] : row[x];
-                    } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATE || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
-                               token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_MSB) {
+                    } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATION || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
+                               token->type == AVIF_SAMPLE_TRANSFORM_NOT || token->type == AVIF_SAMPLE_TRANSFORM_BSR) {
                         AVIF_ASSERT_OR_RETURN(stackSize >= 1);
                         stack[stackSize - 1] = avifSampleTransformOperation32bOneOperand(stack[stackSize - 1], token->type);
                         // Pop one and push one.
