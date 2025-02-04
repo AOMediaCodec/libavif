@@ -1,8 +1,6 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <fstream>
-
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -74,7 +72,7 @@ TEST(AvifPixiTest, SameOutput) {
 }
 #endif  // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
 
-TEST(AvifPixiTest, ExtendedPixiWorksWithoutCMakeFlagOn) {
+TEST(AvifPixiTest, ExtendedPixiWorksEvenWithoutCMakeFlagOn) {
   const testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "extended_pixi.avif");
   ASSERT_NE(avif.size, 0u);
