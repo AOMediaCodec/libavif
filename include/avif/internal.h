@@ -182,12 +182,12 @@ typedef enum avifSampleTransformTokenType
     AVIF_SAMPLE_TRANSFORM_FIRST_INPUT_IMAGE_ITEM_INDEX = 1,
     AVIF_SAMPLE_TRANSFORM_LAST_INPUT_IMAGE_ITEM_INDEX = 32,
 
-    // Unary operators. L is the left operand.
+    // Unary operators. L is the operand.
     AVIF_SAMPLE_TRANSFORM_FIRST_UNARY_OPERATOR = 64,
     AVIF_SAMPLE_TRANSFORM_NEGATION = 64, // S = -L
     AVIF_SAMPLE_TRANSFORM_ABSOLUTE = 65, // S = |L|
     AVIF_SAMPLE_TRANSFORM_NOT = 66,      // S = ~L
-    AVIF_SAMPLE_TRANSFORM_BSR = 67,      // S = L<=0 ? 0 : floor(log2(L))
+    AVIF_SAMPLE_TRANSFORM_BSR = 67,      // S = L<=0 ? 0 : truncate(log2(L))
     AVIF_SAMPLE_TRANSFORM_LAST_UNARY_OPERATOR = 67,
 
     // Binary operators. L is the left operand. R is the right operand.
@@ -195,11 +195,11 @@ typedef enum avifSampleTransformTokenType
     AVIF_SAMPLE_TRANSFORM_SUM = 128,        // S = L + R
     AVIF_SAMPLE_TRANSFORM_DIFFERENCE = 129, // S = L - R
     AVIF_SAMPLE_TRANSFORM_PRODUCT = 130,    // S = L * R
-    AVIF_SAMPLE_TRANSFORM_QUOTIENT = 131,   // S = R==0 ? L : floor(L / R)
+    AVIF_SAMPLE_TRANSFORM_QUOTIENT = 131,   // S = R==0 ? L : truncate(L / R)
     AVIF_SAMPLE_TRANSFORM_AND = 132,        // S = L & R
     AVIF_SAMPLE_TRANSFORM_OR = 133,         // S = L | R
     AVIF_SAMPLE_TRANSFORM_XOR = 134,        // S = L ^ R
-    AVIF_SAMPLE_TRANSFORM_POW = 135,        // S = L==0 ? 0 : pow(L, R)
+    AVIF_SAMPLE_TRANSFORM_POW = 135,        // S = L==0 ? 0 : truncate(pow(L, R))
     AVIF_SAMPLE_TRANSFORM_MIN = 136,        // S = L<=R ? L : R
     AVIF_SAMPLE_TRANSFORM_MAX = 137,        // S = L<=R ? R : L
     AVIF_SAMPLE_TRANSFORM_LAST_BINARY_OPERATOR = 137,

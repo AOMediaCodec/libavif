@@ -1074,7 +1074,6 @@ static avifResult avifEncoderWriteSampleTransformTokens(avifRWStream * s, const 
 
         if (token->type == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
             AVIF_CHECKRES(avifRWStreamWriteU8(s, token->type)); // unsigned int(8) token;
-            // TODO(yguyon): Verify two's complement representation is guaranteed here.
             const uint32_t constant = (uint32_t)token->constant;
             AVIF_CHECKRES(avifRWStreamWriteU32(s, constant)); // signed int(1<<(bit_depth+3)) constant;
         } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {

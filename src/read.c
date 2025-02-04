@@ -2115,7 +2115,7 @@ static avifResult avifParseSampleTransformTokens(avifROStream * s, avifSampleTra
         avifSampleTransformToken * token = (avifSampleTransformToken *)avifArrayPush(expression);
         AVIF_CHECKERR(token != NULL, AVIF_RESULT_OUT_OF_MEMORY);
 
-        uint8_t tokenValue = AVIF_SAMPLE_TRANSFORM_RESERVED;
+        uint8_t tokenValue;
         AVIF_CHECKERR(avifROStreamRead(s, &tokenValue, /*size=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) token;
         if (tokenValue == AVIF_SAMPLE_TRANSFORM_CONSTANT) {
             token->type = AVIF_SAMPLE_TRANSFORM_CONSTANT;
