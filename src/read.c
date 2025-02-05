@@ -3957,13 +3957,13 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     ++orientation;
 
     // Spatial extents
-    uint32_t smallDimensionsFlag, width, height;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &smallDimensionsFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) small_dimensions_flag;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &width, smallDimensionsFlag ? 7 : 15),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) width_minus1;
+    uint32_t largeDimensionsFlag, width, height;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &largeDimensionsFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) small_dimensions_flag;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &width, largeDimensionsFlag ? 15 : 7),
+                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) width_minus1;
     ++width;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &height, smallDimensionsFlag ? 7 : 15),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) height_minus1;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &height, largeDimensionsFlag ? 15 : 7),
+                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) height_minus1;
     ++height;
 
     // Pixel information
@@ -4067,11 +4067,11 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
             AVIF_CHECKERR(brand != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             memcpy(brand, "tmap", sizeof(avifBrand));
 
-            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapWidth, smallDimensionsFlag ? 7 : 15),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) gainmap_width_minus1;
+            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapWidth, largeDimensionsFlag ? 15 : 7),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_width_minus1;
             ++gainmapWidth;
-            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapHeight, smallDimensionsFlag ? 7 : 15),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(small_dimensions_flag ? 7 : 15) gainmap_height_minus1;
+            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapHeight, largeDimensionsFlag ? 15 : 7),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_height_minus1;
             ++gainmapHeight;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &gainmapMatrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) gainmap_matrix_coefficients;
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapFullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_full_range_flag;
@@ -4125,65 +4125,71 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     }
 
     // Chunk sizes
-    uint32_t fewMetadataBytesFlag = 0, fewCodecConfigBytesFlag = 0, fewItemDataBytesFlag = 0;
+    uint32_t largeMetadataFlag = 0, largeCodecConfigFlag = 0, largeItemDataFlag = 0;
     if (hasIcc || hasExif || hasXmp || (hasHdr && hasGainmap)) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &fewMetadataBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_metadata_bytes_flag;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &largeMetadataFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) large_metadata_flag;
     }
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &fewCodecConfigBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_codec_config_bytes_flag;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &fewItemDataBytesFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) few_item_data_bytes_flag;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &largeCodecConfigFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) large_codec_config_flag;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &largeItemDataFlag, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) large_item_data_flag;
 
     uint32_t iccDataSize = 0;
     if (hasIcc) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &iccDataSize, fewMetadataBytesFlag ? 10 : 20),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) icc_data_size_minus1;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &iccDataSize, largeMetadataFlag ? 20 : 10),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) icc_data_size_minus1;
         ++iccDataSize;
     }
     uint32_t tmapIccDataSize = 0;
     if (hasHdr && hasGainmap && tmapHasIcc) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &tmapIccDataSize, fewMetadataBytesFlag ? 10 : 20),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) tmap_icc_data_size_minus1;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &tmapIccDataSize, largeMetadataFlag ? 20 : 10),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) tmap_icc_data_size_minus1;
         ++tmapIccDataSize;
     }
 
     uint32_t gainmapMetadataSize = 0, gainmapItemDataSize = 0, gainmapItemCodecConfigSize = 0;
     if (hasHdr && hasGainmap) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapMetadataSize, fewMetadataBytesFlag ? 10 : 20),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) gainmap_metadata_size;
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemDataSize, fewItemDataBytesFlag ? 15 : 28),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_item_data_bytes_flag ? 15 : 28) gainmap_item_data_size;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapMetadataSize, largeMetadataFlag ? 20 : 10),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) gainmap_metadata_size;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemDataSize, largeItemDataFlag ? 28 : 15),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_item_data_flag ? 28 : 15) gainmap_item_data_size;
         if (gainmapItemDataSize > 0) {
-            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemCodecConfigSize, fewCodecConfigBytesFlag ? 3 : 12),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_codec_config_bytes_flag ? 3 : 12) gainmap_item_codec_config_size;
+            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemCodecConfigSize, largeCodecConfigFlag ? 12 : 3),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_codec_config_flag ? 12 : 3) gainmap_item_codec_config_size;
         }
     }
 
     uint32_t mainItemCodecConfigSize, mainItemDataSize;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &mainItemCodecConfigSize, fewCodecConfigBytesFlag ? 3 : 12),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_codec_config_bytes_flag ? 3 : 12) main_item_codec_config_size;
-    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &mainItemDataSize, fewItemDataBytesFlag ? 15 : 28),
-                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_item_data_bytes_flag ? 15 : 28) main_item_data_size_minus1;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &mainItemCodecConfigSize, largeCodecConfigFlag ? 12 : 3),
+                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_codec_config_flag ? 12 : 3) main_item_codec_config_size;
+    AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &mainItemDataSize, largeItemDataFlag ? 28 : 15),
+                  AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_item_data_flag ? 28 : 15) main_item_data_size_minus1;
     ++mainItemDataSize;
 
     uint32_t alphaItemCodecConfigSize = 0, alphaItemDataSize = 0;
     if (hasAlpha) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &alphaItemDataSize, fewItemDataBytesFlag ? 15 : 28),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_item_data_bytes_flag ? 15 : 28) alpha_item_data_size;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &alphaItemDataSize, largeItemDataFlag ? 28 : 15),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_item_data_flag ? 28 : 15) alpha_item_data_size;
     }
     if (hasAlpha && alphaItemDataSize != 0) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &alphaItemCodecConfigSize, fewCodecConfigBytesFlag ? 3 : 12),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_codec_config_bytes_flag ? 3 : 12) alpha_item_codec_config_size;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &alphaItemCodecConfigSize, largeCodecConfigFlag ? 12 : 3),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_codec_config_flag ? 12 : 3) alpha_item_codec_config_size;
     }
 
+    if (hasExif || hasXmp) {
+        uint8_t exifXmpCompressedFlag;
+        AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &exifXmpCompressedFlag, 1),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(1) exif_xmp_compressed_flag;
+        AVIF_CHECKERR(!exifXmpCompressedFlag, AVIF_RESULT_NOT_IMPLEMENTED);
+    }
     uint32_t exifDataSize = 0;
     if (hasExif) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &exifDataSize, fewMetadataBytesFlag ? 10 : 20),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) exif_data_size_minus_one;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &exifDataSize, largeMetadataFlag ? 20 : 10),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) exif_data_size_minus_one;
         ++exifDataSize;
     }
     uint32_t xmpDataSize = 0;
     if (hasXmp) {
-        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &xmpDataSize, fewMetadataBytesFlag ? 10 : 20),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(few_metadata_bytes_flag ? 10 : 20) xmp_data_size_minus_one;
+        AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &xmpDataSize, largeMetadataFlag ? 20 : 10),
+                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) xmp_data_size_minus_one;
         ++xmpDataSize;
     }
 
@@ -4195,22 +4201,32 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     }
 
     // Codec configuration ('av1C' always uses 4 bytes)
-    avifCodecConfigurationBox alphaItemCodecConfig = { 0 };
-    if (hasAlpha && alphaItemDataSize != 0 && alphaItemCodecConfigSize != 0) {
-        AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
-        AVIF_CHECKERR(avifParseCodecConfiguration(&s, &alphaItemCodecConfig, (const char *)codecConfigType, diag),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
-    }
-    avifCodecConfigurationBox gainmapItemCodecConfig = { 0 };
-    if (hasHdr && hasGainmap && gainmapItemCodecConfigSize != 0) {
-        AVIF_CHECKERR(gainmapItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
-        AVIF_CHECKERR(avifParseCodecConfiguration(&s, &gainmapItemCodecConfig, (const char *)codecConfigType, diag),
-                      AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
-    }
     avifCodecConfigurationBox mainItemCodecConfig;
     AVIF_CHECKERR(mainItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
     AVIF_CHECKERR(avifParseCodecConfiguration(&s, &mainItemCodecConfig, (const char *)codecConfigType, diag),
                   AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) main_item_codec_config[main_item_codec_config_size];
+    avifCodecConfigurationBox alphaItemCodecConfig = { 0 };
+    if (hasAlpha && alphaItemDataSize != 0) {
+        if (alphaItemCodecConfigSize == 0) {
+            alphaItemCodecConfigSize = mainItemCodecConfigSize;
+            alphaItemCodecConfig = mainItemCodecConfig;
+        } else {
+            AVIF_CHECKERR(alphaItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKERR(avifParseCodecConfiguration(&s, &alphaItemCodecConfig, (const char *)codecConfigType, diag),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
+        }
+    }
+    avifCodecConfigurationBox gainmapItemCodecConfig = { 0 };
+    if (hasHdr && hasGainmap) {
+        if (gainmapItemCodecConfigSize == 0) {
+            gainmapItemCodecConfigSize = mainItemCodecConfigSize;
+            gainmapItemCodecConfig = mainItemCodecConfig;
+        } else {
+            AVIF_CHECKERR(gainmapItemCodecConfigSize == 4, AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKERR(avifParseCodecConfiguration(&s, &gainmapItemCodecConfig, (const char *)codecConfigType, diag),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
+        }
+    }
 
     // Make sure all metadata and coded chunks fit into the 'meta' box whose size is rawLen.
     // There should be no missing nor unused byte.
