@@ -62,6 +62,7 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
+          -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
       - name: Build libavif (ninja)
         working-directory: ./build

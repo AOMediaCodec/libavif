@@ -317,10 +317,10 @@ avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * versio
     return AVIF_TRUE;
 }
 
-avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion)
+avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforcedVersion, uint32_t * flags)
 {
     uint8_t version;
-    AVIF_CHECK(avifROStreamReadVersionAndFlags(stream, &version, NULL));
+    AVIF_CHECK(avifROStreamReadVersionAndFlags(stream, &version, flags));
     if (version != enforcedVersion) {
         avifDiagnosticsPrintf(stream->diag, "%s: Expecting box version %u, got version %u", stream->diagContext, enforcedVersion, version);
         return AVIF_FALSE;

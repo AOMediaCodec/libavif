@@ -67,6 +67,7 @@ option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
+option(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI "Enable experimental PixelInformationProperty syntax from HEIF 3rd Ed. Amd2" OFF)
 
 set(AVIF_PKG_CONFIG_EXTRA_LIBS_PRIVATE "")
 set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "")
@@ -349,6 +350,10 @@ endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+endif()
+
+if(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
 endif()
 
 set(AVIF_SRCS
