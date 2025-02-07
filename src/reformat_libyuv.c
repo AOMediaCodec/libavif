@@ -81,6 +81,10 @@ unsigned int avifLibYUVVersion(void)
 // did not exist prior to a particular version of libyuv.
 // Versions prior to 1755 are considered too old and not used (see CMakeLists.txt).
 #if LIBYUV_VERSION < 1902
+// RAWToJ444 was added in libyuv version 1902.
+// See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6207845.
+// NEON was added afterward, but the version was not increased.
+// See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6220890
 #define RAWToJ444 NULL
 #endif
 #if LIBYUV_VERSION < 1844
@@ -222,6 +226,8 @@ static int avifReorderARGBThenConvertToYUV(int (*ReorderARGB)(const uint8_t *, i
 
 #if LIBYUV_VERSION < 1903
 // AVIF_RGB_FORMAT_RGB
+// RAWToI444 was added in libyuv version 1903.
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6223658
 AVIF_DEFINE_CONVERSION(RAWToI444, RAWToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
 #endif
 #if LIBYUV_VERSION < 1840
