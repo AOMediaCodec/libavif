@@ -991,6 +991,8 @@ void ToneMapImageAndCompareToReference(
       &tone_mapped->clli, &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
+  // libyuv RAWToJ444 uses BT.601 coefficients.
+  tone_mapped_rgb.avoidLibYUV = AVIF_TRUE;
   ASSERT_EQ(avifImageRGBToYUV(tone_mapped.get(), &tone_mapped_rgb),
             AVIF_RESULT_OK);
   if (reference_image != nullptr) {
