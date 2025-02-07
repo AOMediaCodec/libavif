@@ -59,7 +59,7 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
 
 #if !defined(AVIF_ENABLE_YCGCO_R_ENCODING)
       if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
-        ASSERT_NE(result, AVIF_RESULT_OK);
+        EXPECT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED);
         continue;
       }
 #endif

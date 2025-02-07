@@ -938,20 +938,19 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
-        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
-                                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+            fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
+            goto cleanup;
+        }
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
             // Identity and YCgCo-R are only valid with YUV444.
-            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY || useYCgCoR)
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
+                               avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE)
                                   ? AVIF_PIXEL_FORMAT_YUV444
                                   : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }
         avif->depth = requestedDepth ? requestedDepth : 8;
-        if (useYCgCoR) {
-            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
-                fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
-                goto cleanup;
-            }
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
             if (requestedDepth && requestedDepth != 10) {
                 fprintf(stderr, "Cannot request %u bits for YCgCo-Re as it uses 2 extra bits.\n", requestedDepth);
                 goto cleanup;
