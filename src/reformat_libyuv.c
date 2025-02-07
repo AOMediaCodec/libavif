@@ -80,7 +80,7 @@ unsigned int avifLibYUVVersion(void)
 // These defines are used to create a NULL reference to libyuv functions that
 // did not exist prior to a particular version of libyuv.
 // Versions prior to 1755 are considered too old and not used (see CMakeLists.txt).
-#if LIBYUV_VERSION < 1903
+#if LIBYUV_VERSION < 1902
 #define RAWToJ444 NULL
 #endif
 #if LIBYUV_VERSION < 1844
