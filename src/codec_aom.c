@@ -397,6 +397,9 @@ struct aomOptionDef
 static const struct aomOptionEnumList tuningEnum[] = { //
     { "psnr", AOM_TUNE_PSNR },                         //
     { "ssim", AOM_TUNE_SSIM },                         //
+#if defined(AOM_HAVE_TUNE_IQ)
+    { "iq", AOM_TUNE_IQ }, //
+#endif
     { NULL, 0 }
 };
 
@@ -871,8 +874,14 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
-        if (!codec->internal->tuningSet) {
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
+        if (!lossless && !codec->internal->tuningSet) {
+#if defined(AOM_HAVE_TUNE_IQ)
+            if (aomUsage == AOM_USAGE_ALL_INTRA &&
+                aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_IQ) != AOM_CODEC_OK) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            } else
+#endif
+                if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
