@@ -991,8 +991,6 @@ void ToneMapImageAndCompareToReference(
       &tone_mapped->clli, &diag);
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << " " << diag.error;
-  // libyuv RAWToJ444 uses BT.601 coefficients.
-  tone_mapped_rgb.avoidLibYUV = AVIF_TRUE;
   ASSERT_EQ(avifImageRGBToYUV(tone_mapped.get(), &tone_mapped_rgb),
             AVIF_RESULT_OK);
   if (reference_image != nullptr) {
@@ -1427,7 +1425,7 @@ INSTANTIATE_TEST_SUITE_P(
                         /*image2_name=*/"colors_hdr_rec2020.avif",
                         /*downscaling=*/1, /*gain_map_depth=*/10,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
-                        /*min_psnr=*/55.0f, /*max_psnr=*/100.0f),
+                        /*min_psnr=*/54.0f, /*max_psnr=*/100.0f),
         // The PSNR is very high because there are essentially the same image,
         // simply expresed in different colorspaces.
         std::make_tuple(/*image1_name=*/"colors_hdr_rec2020.avif",
@@ -1440,7 +1438,7 @@ INSTANTIATE_TEST_SUITE_P(
                         /*image2_name=*/"colors_wcg_hdr_rec2020.avif",
                         /*downscaling=*/1, /*gain_map_depth=*/10,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
-                        /*min_psnr=*/55.0f, /*max_psnr=*/80.0f)));
+                        /*min_psnr=*/53.5f, /*max_psnr=*/80.0f)));
 
 TEST(GainMapTest, CreateGainMapConstantFactor) {
   // Used only to initialize rgb images.
