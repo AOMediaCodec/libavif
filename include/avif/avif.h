@@ -833,7 +833,7 @@ typedef struct avifImage
                      // byte sequence, can be retrieved by calling avifGetExifTiffHeaderOffset(avifImage.exif).
     avifRWData xmp;
 
-    // Version 1.0.0 ends here. Add any new members after this line.
+    // Version 1.0.0 ends here.
 
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
@@ -846,6 +846,8 @@ typedef struct avifImage
     // Owned by the avifImage and gets freed when calling avifImageDestroy().
     // gainMap->image->transformFlags is always AVIF_TRANSFORM_NONE.
     avifGainMap * gainMap;
+
+    // Version 1.2.0 ends here. Add any new members after this line.
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
@@ -1363,11 +1365,14 @@ typedef struct avifDecoder
     // to the appropriate source.
     avifBool imageSequenceTrackPresent; // Output data field.
 
-    // Version 1.1.0 ends here. Add any new members after this line.
+    // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------
 
     // Image content to decode (if present). Defaults to AVIF_IMAGE_CONTENT_DECODE_DEFAULT.
     avifImageContentTypeFlags imageContentToDecode; // Changeable decoder setting.
+
+    // Version 1.2.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 } avifDecoder;
 
 // Creates a decoder initialized with default settings values.
@@ -1567,11 +1572,14 @@ typedef struct avifEncoder
     // Defaults to AVIF_HEADER_FULL
     avifHeaderFormat headerFormat; // Changeable encoder setting.
 
-    // Version 1.1.0 ends here. Add any new members after this line.
+    // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------
 
     // Encode quality for the gain map image if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityGainMap; // Changeable encoder setting.
+
+    // Version 1.2.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
