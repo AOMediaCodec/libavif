@@ -2492,7 +2492,7 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
 
 static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * s);
 
-static avifResult avifEncoderWriteFileTypeBoxAndMetaBoxV1(avifEncoder * encoder, avifRWData * output)
+static avifResult avifEncoderWriteFileTypeBoxAndMiniBox(avifEncoder * encoder, avifRWData * output)
 {
     avifRWStream s;
     avifRWStreamStart(&s, output);
@@ -3181,7 +3181,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // Decide whether to go for a reduced MinimizedImageBox or a full regular MetaBox.
     if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsMiniCompatible(encoder)) {
-        AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndMetaBoxV1(encoder, output));
+        AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndMiniBox(encoder, output));
         return AVIF_RESULT_OK;
     }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
