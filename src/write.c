@@ -2591,25 +2591,33 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         hasExplicitCodecTypes = AVIF_FALSE;
     }
 
-    uint32_t largeDimensionsFlag = image->width > (1 << 7) || image->height > (1 << 7); // _minus1 is encoded
-    const uint32_t codecConfigSize = 4;                                                 // 'av1C' always uses 4 bytes.
+    // _minus1 is encoded for these fields.
+    AVIF_ASSERT_OR_RETURN(image->width != 0 && image->height != 0);
+    AVIF_ASSERT_OR_RETURN(colorData->size != 0);
+
+    uint32_t largeDimensionsFlag = image->width - 1 >= (1 << 7) || image->height - 1 >= (1 << 7);
+    const uint32_t codecConfigSize = 4;  // 'av1C' always uses 4 bytes.
     uint32_t alphaCodecConfigSize = 0;   // 0 if same codec config as main. Equal to codecConfigSize otherwise.
     uint32_t gainmapCodecConfigSize = 0; // 0 if same codec config as main. Equal to codecConfigSize otherwise.
     uint32_t gainmapMetadataSize = 0;
     const uint32_t largeCodecConfigFlag = codecConfigSize >= (1 << 3);
-    uint32_t largeItemDataFlag = colorData->size > (1 << 15) // _minus1 is encoded
-                                 || (alphaData && alphaData->size >= (1 << 15));
-    uint32_t largeMetadataFlag = image->icc.size > (1 << 10) || image->exif.size > (1 << 10) || image->xmp.size > (1 << 10); // _minus1 is encoded
+    uint32_t largeItemDataFlag = colorData->size - 1 >= (1 << 15) || (alphaData && alphaData->size >= (1 << 15));
+    uint32_t largeMetadataFlag = (hasIcc && image->icc.size - 1 >= (1 << 10)) ||
+                                 (image->exif.size != 0 && image->exif.size - 1 >= (1 << 10)) ||
+                                 (image->xmp.size != 0 && image->xmp.size - 1 >= (1 << 10));
 
     if (hasGainmap) {
         AVIF_ASSERT_OR_RETURN(image->gainMap != NULL && image->gainMap->image != NULL);
         gainmapMetadataSize = avifGainMapMetadataSize(image->gainMap);
         AVIF_ASSERT_OR_RETURN(gainmapData != NULL);
 
-        largeDimensionsFlag |= image->gainMap->image->width > (1 << 7) || image->gainMap->image->height > (1 << 7); // _minus1 is encoded
+        // _minus1 is encoded for these fields.
+        AVIF_ASSERT_OR_RETURN(image->gainMap->image->width != 0 && image->gainMap->image->height != 0);
+        AVIF_ASSERT_OR_RETURN(encoder->data->altImageMetadata->icc.size != 0);
+
+        largeDimensionsFlag |= image->gainMap->image->width - 1 >= (1 << 7) || image->gainMap->image->height - 1 >= (1 << 7);
         largeItemDataFlag |= gainmapData->size >= (1 << 15);
-        largeMetadataFlag |= encoder->data->altImageMetadata->icc.size > (1 << 10) // _minus1 is encoded
-                             || gainmapMetadataSize >= (1 << 10);
+        largeMetadataFlag |= encoder->data->altImageMetadata->icc.size - 1 >= (1 << 10) || gainmapMetadataSize >= (1 << 10);
         // image->gainMap->image->icc is ignored.
     }
 
