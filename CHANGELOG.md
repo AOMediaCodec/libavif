@@ -58,8 +58,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
 * Reject non-essential transformative properties.
 * Treat avifenc --stdin as a regular positional file path argument.
-* Allow YCgCo_Re and YCgCo_Ro decoding by default. Encoding is still conditioned
-  to the AVIF_ENABLE_YCGCO_R_ENCODING CMake option.
+* Allow YCgCo_Re and YCgCo_Ro encoding/decoding.
 
 ## [1.1.1] - 2024-07-30
 
