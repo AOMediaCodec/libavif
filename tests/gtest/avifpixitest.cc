@@ -1,7 +1,11 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <iostream>
+#include <string>
+
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
