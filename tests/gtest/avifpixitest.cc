@@ -9,9 +9,6 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-using ::testing::Combine;
-using ::testing::Values;
-
 namespace avif {
 namespace {
 
