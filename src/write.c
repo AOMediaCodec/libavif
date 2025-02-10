@@ -2613,11 +2613,12 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
         // _minus1 is encoded for these fields.
         AVIF_ASSERT_OR_RETURN(image->gainMap->image->width != 0 && image->gainMap->image->height != 0);
-        AVIF_ASSERT_OR_RETURN(encoder->data->altImageMetadata->icc.size != 0);
 
         largeDimensionsFlag |= image->gainMap->image->width - 1 >= (1 << 7) || image->gainMap->image->height - 1 >= (1 << 7);
         largeItemDataFlag |= gainmapData->size >= (1 << 15);
-        largeMetadataFlag |= encoder->data->altImageMetadata->icc.size - 1 >= (1 << 10) || gainmapMetadataSize >= (1 << 10);
+        largeMetadataFlag |=
+            (encoder->data->altImageMetadata->icc.size != 0 && encoder->data->altImageMetadata->icc.size - 1 >= (1 << 10)) ||
+            gainmapMetadataSize >= (1 << 10);
         // image->gainMap->image->icc is ignored.
     }
 
