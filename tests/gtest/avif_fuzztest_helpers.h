@@ -168,8 +168,8 @@ inline auto ArbitraryAvifAnim() {
   return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
 
-// Generates two signed fractions where the first one is smaller than the second
-// one.
+// Generates two signed fractions where the first one is smaller than or equal
+// to the second one.
 inline auto ArbitraryMinMaxSignedFraction() {
   return fuzztest::FlatMap(
       [](int32_t max_n, uint32_t max_d) {
@@ -177,15 +177,14 @@ inline auto ArbitraryMinMaxSignedFraction() {
             [max_n, max_d](int32_t min_n) {
               // For simplicity, use the same denominator for both fractions.
               // This does not cover all possible fractions but makes it easy
-              // to gurantee that the fraction is smaller.
+              // to guarantee that the first fraction is smaller.
               return std::pair<avifSignedFraction, avifSignedFraction>(
                   {min_n, max_d}, {max_n, max_d});
             },
             fuzztest::InRange<int32_t>(std::numeric_limits<int32_t>::min(),
                                        max_n));
       },
-      fuzztest::Arbitrary<int32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()));
+      fuzztest::Arbitrary<int32_t>(), fuzztest::NonZero<uint32_t>());
 }
 
 ImagePtr AddGainMapToImage(
@@ -207,30 +206,34 @@ ImagePtr AddGainMapToImage(
 
 inline auto ArbitraryAvifImageWithGainMap() {
   return fuzztest::Map(
-      AddGainMapToImage, ArbitraryAvifImage(), ArbitraryAvifImage(),
-      ArbitraryMinMaxSignedFraction(), ArbitraryMinMaxSignedFraction(),
-      ArbitraryMinMaxSignedFraction(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
-      fuzztest::Arbitrary<int32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<int32_t>(), fuzztest::Arbitrary<int32_t>(),
-      fuzztest::Arbitrary<int32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<uint32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<uint32_t>(),
-      fuzztest::InRange<uint32_t>(1, std::numeric_limits<uint32_t>::max()),
-      fuzztest::Arbitrary<bool>());
+      AddGainMapToImage, ArbitraryAvifImage(),
+      /*gain_map=*/ArbitraryAvifImage(),
+      /*gain_map_min_max0=*/ArbitraryMinMaxSignedFraction(),
+      /*gain_map_min_max1=*/ArbitraryMinMaxSignedFraction(),
+      /*gain_map_min_max2=*/ArbitraryMinMaxSignedFraction(),
+      /*gain_map_gamma_n0=*/fuzztest::NonZero<uint32_t>(),
+      /*gain_map_gamma_n1=*/fuzztest::NonZero<uint32_t>(),
+      /*gain_map_gamma_n2=*/fuzztest::NonZero<uint32_t>(),
+      /*gain_map_gamma_d0=*/fuzztest::NonZero<uint32_t>(),
+      /*gain_map_gamma_d1=*/fuzztest::NonZero<uint32_t>(),
+      /*gain_map_gamma_d2=*/fuzztest::NonZero<uint32_t>(),
+      /*base_offset_n0=*/fuzztest::Arbitrary<int32_t>(),
+      /*base_offset_n1=*/fuzztest::Arbitrary<int32_t>(),
+      /*base_offset_n2=*/fuzztest::Arbitrary<int32_t>(),
+      /*base_offset_d0=*/fuzztest::NonZero<uint32_t>(),
+      /*base_offset_d1=*/fuzztest::NonZero<uint32_t>(),
+      /*base_offset_d2=*/fuzztest::NonZero<uint32_t>(),
+      /*alternate_offset_n0=*/fuzztest::Arbitrary<int32_t>(),
+      /*alternate_offset_n1=*/fuzztest::Arbitrary<int32_t>(),
+      /*alternate_offset_n2=*/fuzztest::Arbitrary<int32_t>(),
+      /*alternate_offset_d0=*/fuzztest::NonZero<uint32_t>(),
+      /*alternate_offset_d1=*/fuzztest::NonZero<uint32_t>(),
+      /*alternate_offset_d2=*/fuzztest::NonZero<uint32_t>(),
+      /*base_hdr_headroom_n=*/fuzztest::Arbitrary<uint32_t>(),
+      /*base_hdr_headroom_d=*/fuzztest::NonZero<uint32_t>(),
+      /*alternate_hdr_headroom_n=*/fuzztest::Arbitrary<uint32_t>(),
+      /*alternate_hdr_headroom_d=*/fuzztest::NonZero<uint32_t>(),
+      /*use_base_color_space=*/fuzztest::Arbitrary<bool>());
 }
 
 // Generator for an arbitrary EncoderPtr.

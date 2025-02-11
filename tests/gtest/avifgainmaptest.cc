@@ -118,7 +118,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
@@ -126,12 +126,12 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
 
   result = avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Just parse the image first.
   result = avifDecoderParse(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
   avifImage* decoded = decoder->image;
   ASSERT_NE(decoded, nullptr);
 
@@ -157,7 +157,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
@@ -178,7 +178,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -188,7 +188,7 @@ TEST(GainMapTest, EncodeDecodeBaseImageHdr) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
@@ -278,7 +278,7 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -287,7 +287,7 @@ TEST(GainMapTest, EncodeDecodeMetadataSameDenominator) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the gain map metadata matches the input.
   CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
@@ -310,7 +310,7 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -319,7 +319,7 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the gain map metadata matches the input.
   CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
@@ -366,10 +366,10 @@ TEST(GainMapTest, EncodeDecodeGrid) {
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
   result = avifEncoderFinish(encoder.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -379,7 +379,7 @@ TEST(GainMapTest, EncodeDecodeGrid) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   ImagePtr merged = testutil::CreateImage(
       static_cast<int>(decoded->width), static_cast<int>(decoded->height),
@@ -461,7 +461,7 @@ TEST(GainMapTest, InvalidGrid) {
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   EXPECT_EQ(result, AVIF_RESULT_INVALID_IMAGE_GRID)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
   cells[1]->gainMap->image->height =
       cells[0]->gainMap->image->height;  // Revert.
 
@@ -471,7 +471,7 @@ TEST(GainMapTest, InvalidGrid) {
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   EXPECT_EQ(result, AVIF_RESULT_INVALID_IMAGE_GRID)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
   cells[1]->gainMap->image->depth = cells[0]->gainMap->image->depth;  // Revert.
 
   // Invalid: one cell has different gain map metadata
@@ -480,7 +480,7 @@ TEST(GainMapTest, InvalidGrid) {
       avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
                               cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE);
   EXPECT_EQ(result, AVIF_RESULT_INVALID_IMAGE_GRID)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
   cells[1]->gainMap->gainMapGamma[0].n =
       cells[0]->gainMap->gainMapGamma[0].n;  // Revert.
 }
@@ -509,14 +509,14 @@ TEST(GainMapTest, SequenceNotSupported) {
       avifEncoderAddImage(encoder.get(), image.get(),
                           /*durationInTimescales=*/2, AVIF_ADD_IMAGE_FLAG_NONE);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
   // Add a second frame.
   result =
       avifEncoderAddImage(encoder.get(), image.get(),
                           /*durationInTimescales=*/2, AVIF_ADD_IMAGE_FLAG_NONE);
   // Image sequences with gain maps are not supported.
   ASSERT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 }
 
 TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
@@ -528,7 +528,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   // Decode image, with the gain map not decoded by default.
   ImagePtr decoded(avifImageCreateEmpty());
@@ -538,7 +538,7 @@ TEST(GainMapTest, IgnoreGainMapButReadMetadata) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
@@ -567,7 +567,7 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -578,7 +578,7 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Main image metadata is available.
   EXPECT_EQ(decoder->image->width, 12u);
@@ -605,7 +605,7 @@ TEST(GainMapTest, IgnoreAll) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
@@ -639,7 +639,7 @@ TEST(GainMapTest, NoGainMap) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
@@ -650,7 +650,7 @@ TEST(GainMapTest, NoGainMap) {
   result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                  encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Verify that the input and decoded images are close.
   EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
@@ -667,12 +667,12 @@ TEST(GainMapTest, DecodeGainMapGrid) {
 
   avifResult result = avifDecoderSetIOFile(decoder.get(), path.c_str());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Just parse the image first.
   result = avifDecoderParse(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
   avifImage* decoded = decoder->image;
   ASSERT_NE(decoded, nullptr);
 
@@ -694,7 +694,7 @@ TEST(GainMapTest, DecodeGainMapGrid) {
   // Decode the image.
   result = avifDecoderNextImage(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 }
 
 TEST(GainMapTest, DecodeColorGridGainMapNoGrid) {
@@ -874,7 +874,7 @@ TEST(GainMapTest, CreateTestImages) {
     avifResult result =
         avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
     ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << decoder->diag.error;
+        << avifResultToString(result) << ": " << decoder->diag.error;
     ASSERT_NE(image->gainMap, nullptr);
     ASSERT_NE(image->gainMap->image, nullptr);
 
@@ -883,7 +883,7 @@ TEST(GainMapTest, CreateTestImages) {
         avifImageScale(image->gainMap->image, image->gainMap->image->width * 2,
                        image->gainMap->image->height * 2, &diag);
     ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << decoder->diag.error;
+        << avifResultToString(result) << ": " << decoder->diag.error;
 
     const testutil::AvifRwData encoded =
         testutil::Encode(image.get(), /*speed=*/9, /*quality=*/90);
@@ -911,7 +911,7 @@ TEST(GainMapTest, CreateTestImages) {
     avifResult result = avifDecoderReadFile(
         decoder.get(), sdr_with_gainmap.get(), sdr_path.c_str());
     ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << decoder->diag.error;
+        << avifResultToString(result) << ": " << decoder->diag.error;
     ASSERT_NE(sdr_with_gainmap->gainMap->image, nullptr);
 
     // Move the gain map from the sdr image to the hdr image.
@@ -940,7 +940,7 @@ TEST(GainMapTest, CreateTestImages) {
                             hdr_image->gainMap->image->width / 2,
                             hdr_image->gainMap->image->height / 2, &diag);
     ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << decoder->diag.error;
+        << avifResultToString(result) << ": " << decoder->diag.error;
 
     const testutil::AvifRwData encoded_small_gainmap =
         testutil::Encode(hdr_image.get(), /*speed=*/9, /*quality=*/90);
@@ -1041,7 +1041,7 @@ TEST_P(ToneMapTest, ToneMapImage) {
   avifResult result =
       avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
   ASSERT_NE(image->gainMap, nullptr);
   ASSERT_NE(image->gainMap->image, nullptr);
 
@@ -1168,7 +1168,7 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   avifResult result =
       avifDecoderReadFile(decoder.get(), image.get(), path.c_str());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   ASSERT_NE(image->gainMap, nullptr);
   ASSERT_NE(image->gainMap->image, nullptr);
@@ -1222,7 +1222,7 @@ TEST(GainMapTest, OpaqueProperties) {
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
@@ -1230,11 +1230,11 @@ TEST(GainMapTest, OpaqueProperties) {
 
   result = avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   result = avifDecoderParse(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
   ASSERT_NE(decoder->image, nullptr);
   ASSERT_EQ(decoder->image->numProperties, 1u);
 
