@@ -1,4 +1,4 @@
-set(AVIF_AOM_GIT_TAG v3.11.0)
+set(AVIF_AOM_GIT_TAG v3.12.0)
 set(AVIF_AVM_GIT_TAG research-v9.0.0)
 
 if(AVIF_CODEC_AVM)
