@@ -273,10 +273,8 @@ typedef enum avifReformatMode
     AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
     AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
     AVIF_REFORMAT_MODE_YCGCO,                // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    AVIF_REFORMAT_MODE_YCGCO_RE, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
-    AVIF_REFORMAT_MODE_YCGCO_RO, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
-#endif
+    AVIF_REFORMAT_MODE_YCGCO_RE,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
+    AVIF_REFORMAT_MODE_YCGCO_RO,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
 } avifReformatMode;
 
 typedef enum avifAlphaMultiplyMode

@@ -55,6 +55,14 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_PNG}" "${DECODED_FILE_LOSSLESS}" 0
 
+  echo "Testing YCgCo-Re lossless"
+  "${AVIFENC}" -s 10 -l --cicp 2/2/16 "${INPUT_PNG}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_LOSSLESS}"
+  "${ARE_IMAGES_EQUAL}" "${INPUT_PNG}" "${DECODED_FILE_LOSSLESS}" 0
+
+  echo "Testing YCgCo-Ro lossless fails because the input bit depth is even"
+  "${AVIFENC}" -s 10 -l --cicp 2/2/17 "${INPUT_PNG}" -o "${ENCODED_FILE}" && exit 1
+
   # 400 test.
   echo "Testing 400 lossless"
   "${AVIFENC}" -y 400 -s 10 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
