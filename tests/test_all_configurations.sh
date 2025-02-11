@@ -21,72 +21,52 @@
 #   cd libavif
 #   tests/test_all_configurations.sh
 
-set -e
-
-pushd ext
-  rm -rf googletest
-  ./googletest.cmd
-popd
+set -eu
 
 rm -rf build_*
 
 for BUILD_TYPE in Debug Release; do
-  pushd ext
-    rm -rf aom
-    ./aom.cmd
-    rm -rf dav1d
-    ./dav1d.cmd
-    rm -rf libyuv
-    ./libyuv.cmd
-    rm -rf libwebp
-    ./libsharpyuv.cmd
-  popd
-
-  mkdir build_${BUILD_TYPE}
-  pushd build_${BUILD_TYPE}
-    cmake .. \
-     -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_EXAMPLES=ON \
-     -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL \
-     -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
-     -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL \
-     -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=OFF
-    cmake --build . --parallel
-    ctest . -j $(nproc)
-  popd
-
-  # The memory sanitizer triggers too many use-of-uninitialized-value errors
-  # (possibly false positives because standard libraries were not instrumented).
-  for SANITIZER in address thread undefined; do
-    pushd ext
-      rm -rf aom
-      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
-      ./aom.cmd
-      rm -rf dav1d
-      cp dav1d.cmd dav1d_sanitized.cmd
-      sed -i 's/meson setup \(.*\) \.\./meson setup \1 '"-Db_sanitize=${SANITIZER} -Db_lundef=false"' ../g' dav1d_sanitized.cmd
-      CC=clang CXX=clang++ ./dav1d_sanitized.cmd
-      rm -rf libyuv
-      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
-      ./libyuv.cmd
-      rm -rf libwebp
-      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
-      ./libsharpyuv.cmd
-    popd
-
-    mkdir build_${BUILD_TYPE}_${SANITIZER}
-    pushd build_${BUILD_TYPE}_${SANITIZER}
-      CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
+  for EXPERIMENTAL in ON OFF; do
+    mkdir build_${BUILD_TYPE}_exp${EXPERIMENTAL}
+    pushd build_${BUILD_TYPE}_exp${EXPERIMENTAL}
       cmake .. \
+       -DAVIF_ENABLE_NODISCARD=ON \
+       -DAVIF_ENABLE_WERROR=ON \
+       -DAVIF_ENABLE_EXPERIMENTAL_MINI=${EXPERIMENTAL} \
+       -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=${EXPERIMENTAL} \
+       -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=${EXPERIMENTAL} \
        -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_EXAMPLES=ON \
        -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL \
        -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
        -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL \
        -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=OFF
       cmake --build . --parallel
-      ASAN_OPTIONS=allocator_may_return_null=1:detect_odr_violation=0 \
-      TSAN_OPTIONS=allocator_may_return_null=1 \
       ctest . -j $(nproc)
     popd
+
+    # The memory sanitizer triggers too many use-of-uninitialized-value errors
+    # (possibly false positives because standard libraries were not instrumented).
+    for SANITIZER in address thread undefined; do
+      mkdir build_${BUILD_TYPE}_exp${EXPERIMENTAL}_${SANITIZER}
+      pushd build_${BUILD_TYPE}_exp${EXPERIMENTAL}_${SANITIZER}
+        CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
+        cmake .. \
+         -DAVIF_ENABLE_NODISCARD=ON \
+         -DAVIF_ENABLE_WERROR=ON \
+         -DAVIF_ENABLE_EXPERIMENTAL_MINI=${EXPERIMENTAL} \
+         -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=${EXPERIMENTAL} \
+         -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=${EXPERIMENTAL} \
+         -DAVIF_BUILD_APPS=ON -DAVIF_BUILD_EXAMPLES=ON \
+         -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL \
+         -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
+         -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL \
+         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_SHARED_LIBS=OFF
+        cmake --build . --parallel
+        ASAN_OPTIONS=allocator_may_return_null=1:detect_odr_violation=0 \
+        TSAN_OPTIONS=allocator_may_return_null=1 \
+        ctest . -j $(nproc)
+      popd
+    done
   done
 done
 
