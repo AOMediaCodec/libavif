@@ -9,6 +9,11 @@ The changes are relative to the previous release, unless the baseline is specifi
 ## [Unreleased]
 
 ### Added since 1.1.1
+* Turn on the gain map API. Remove the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP CMake
+  flag.
+* Allow YCgCo_Re and YCgCo_Ro encoding/decoding and update the enum values to
+  the latest CICP specification. Remove the AVIF_ENABLE_EXPERIMENTAL_YCGCO_R
+  CMake flag.
 * Add the properties and numProperties fields to avifImage. They are filled by
   the avifDecoder instance with the properties unrecognized by libavif. They are
   written by the avifEncoder.
@@ -42,15 +47,14 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
 * Check for FileTypeBox precedence in avifParse().
 * Do not write an alternative group with the same ID as an item.
-* Update aom.cmd/LocalAom.cmake: v3.12.0
+* Update aom.cmd/LocalAom.cmake: v3.12.0. The new codec-specific option tune=iq
+  (image quality) is added in libaom v3.12.0.
 * Update parseAV2SequenceHeader() and avm.cmd: research-v9.0.0
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.1
 * Update libjpeg.cmd/LocalJpeg.cmake: v3.0.4
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.13.5
 * Update libyuv.cmd: ccdf87034 (1903)
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.3.0
-* Turn on the gain map API. Remove the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile
-  flag.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
 * Deprecate `avifEncoder`'s `minQuantizer`, `maxQuantizer`, `minQuantizerAlpha`,
@@ -67,8 +71,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Write descriptive properties before transformative properties.
 * Reject non-essential transformative properties.
 * Treat avifenc --stdin as a regular positional file path argument.
-* Allow YCgCo_Re and YCgCo_Ro encoding/decoding and update the enum values to
-  the latest CICP specification draft.
 * Update man pages based on avifenc/dec's --help message.
 * android_jni: Support 16kb page size
 * android_jni: Set threads to 2 instead of CPU count
