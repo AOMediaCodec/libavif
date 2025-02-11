@@ -16,33 +16,41 @@ The changes are relative to the previous release, unless the baseline is specifi
   utility functions.
 * Add 'avifgainmaputil' command line tool to installed apps.
 * Add avifCropRectRequiresUpsampling().
+* Add experimental support for PixelInformationProperty syntax from HEIF 3rd Ed.
+  Amd2 behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI.
+* Add experimental Sample Transform recipe
+  BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B.
 
 ### Changed since 1.1.1
 * avifenc: Allow large images to be encoded.
 * Fix empty CMAKE_CXX_FLAGS_RELEASE if -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=OFF
   is specified. https://github.com/AOMediaCodec/libavif/issues/2365.
-* Renamed AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
-  updated the experimental reduced header feature to the latest specification
+* Rename AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
+  update the experimental reduced header feature to the latest specification
   draft.
+* Update the experimental Sample Transform feature behind the
+  AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag to the latest
+  specification draft.
 * Ignore gain maps with unsupported metadata. Handle gain maps with
   writer_version > 0 correctly.
-  Simplify gain map API: remove the enableParsingGainMapMetadata setting, now gain
-  map metadata is always parsed if present and if this feature is compiled in.
-  Replace enableDecodingGainMap and ignoreColorAndAlpha with a bit field to choose
-  image content to decode. Remove gainMapPresent: users can check if
-  decoder->image->gainMap != NULL instead.
+* Simplify gain map API: remove the enableParsingGainMapMetadata setting, now
+  gain map metadata is always parsed if present and if this feature is compiled
+  in. Replace enableDecodingGainMap and ignoreColorAndAlpha with a bit field to
+  choose image content to decode. Remove gainMapPresent: users can check if
+  decoder->image->gainMap != NULL instead. Remove avifGainMapMetadata and
+  avifGainMapMetadataDouble structs.
 * Write an empty HandlerBox name field instead of "libavif" (saves 7 bytes).
+* Check for FileTypeBox precedence in avifParse().
+* Do not write an alternative group with the same ID as an item.
 * Update aom.cmd/LocalAom.cmake: v3.12.0
-* Update avm.cmd: research-v9.0.0
+* Update parseAV2SequenceHeader() and avm.cmd: research-v9.0.0
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.1
 * Update libjpeg.cmd/LocalJpeg.cmake: v3.0.4
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.13.5
 * Update libyuv.cmd: ccdf87034 (1903)
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v2.3.0
-* Change experimental gainmap API: remove avifGainMapMetadata and
-  avifGainMapMetadataDouble structs.
-* Turn on the gain map API. Remove the
-  AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
+* Turn on the gain map API. Remove the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile
+  flag.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
 * Deprecate `avifEncoder`'s `minQuantizer`, `maxQuantizer`, `minQuantizerAlpha`,
@@ -56,9 +64,16 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Deprecate avifCropRectConvertCleanApertureBox() and
   avifCleanApertureBoxConvertCropRect(). Replace them with
   avifCropRectFromCleanApertureBox() and avifCleanApertureBoxFromCropRect().
+* Write descriptive properties before transformative properties.
 * Reject non-essential transformative properties.
 * Treat avifenc --stdin as a regular positional file path argument.
-* Allow YCgCo_Re and YCgCo_Ro encoding/decoding.
+* Allow YCgCo_Re and YCgCo_Ro encoding/decoding and update the enum values to
+  the latest CICP specification draft.
+* Update man pages based on avifenc/dec's --help message.
+* android_jni: Support 16kb page size
+* android_jni: Set threads to 2 instead of CPU count
+* Fix overflows when dealing with alpha during YUV/RGB conversions and in
+  avifRGBImageAllocatePixels().
 
 ## [1.1.1] - 2024-07-30
 
@@ -270,8 +285,6 @@ List of incompatible ABI changes in this release:
 * Add avifenc --no-overwrite flag to avoid overwriting output file.
 * Add avifenc --clli flag to set clli.
 * Add support for all transfer functions when using libsharpyuv.
-* Add experimental support for PixelInformationProperty syntax from HEIF 3rd Ed.
-  Amd2 behind the compilation flag AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI.
 
 ### Changed
 * Enable the libaom AV1E_SET_SKIP_POSTPROC_FILTERING codec control by default.
