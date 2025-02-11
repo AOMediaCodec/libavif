@@ -77,7 +77,7 @@ jobs:
         run: ninja
       - name: Run AVIF Tests
         working-directory: ./build
-        run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+        run: ctest -V --output-on-failure
       - name: Check static link bundling
         run: >
           cl .\apps\avifenc.c .\apps\shared\*.c .\third_party\iccjpeg\iccjpeg.c /nologo
