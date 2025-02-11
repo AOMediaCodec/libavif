@@ -420,6 +420,11 @@ avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnost
             avifDiagnosticsPrintf(diag, "Per-channel denominator is 0 in gain map metadata");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
+        if ((int64_t)gainMap->gainMapMax[i].n * gainMap->gainMapMin[i].d <
+            (int64_t)gainMap->gainMapMin[i].n * gainMap->gainMapMax[i].d) {
+            avifDiagnosticsPrintf(diag, "Per-channel max is less than per-channel min in gain map metadata");
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
         if (gainMap->gainMapGamma[i].n == 0) {
             avifDiagnosticsPrintf(diag, "Per-channel gamma is 0 in gain map metadata");
             return AVIF_RESULT_INVALID_ARGUMENT;
