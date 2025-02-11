@@ -624,7 +624,9 @@ typedef struct avifContentLightLevelInformationBox
 struct avifImage;
 
 // Gain map image and associated metadata.
-// Must be allocated by calling avifGainMapCreate().
+//
+// NOTE: The avifGainMap struct may be extended in a future release. Code outside the libavif
+// library must allocate avifGainMap by calling the avifGainMapCreate() function.
 typedef struct avifGainMap
 {
     // Gain map pixels.
@@ -705,6 +707,8 @@ typedef struct avifGainMap
     // Optimal viewing conditions of the alternate image ('clli' box content
     // of the alternate image that the gain map was created from).
     avifContentLightLevelInformationBox altCLLI;
+
+    // Version 1.2.0 ends here. Add any new members after this line.
 } avifGainMap;
 
 // Allocates a gain map. Returns NULL if a memory allocation failed.
