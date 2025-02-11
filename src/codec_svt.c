@@ -114,7 +114,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         // See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1697.
         memset(svt_config, 0, sizeof(EbSvtAv1EncConfiguration));
 
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, svt_config);
+#else
         res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
+#endif
         if (res != EB_ErrorNone) {
             goto cleanup;
         }
@@ -125,14 +129,18 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->is_16bit_pipeline = image->depth > 8;
 #endif
 
+#if !SVT_AV1_CHECK_VERSION(1, 5, 0)
         // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084 (PQ).
         svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
                                                 image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 &&
                                                 image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL);
+#endif
 
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
-        svt_config->logical_processors = encoder->maxThreads;
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        svt_config->level_of_parallelism = encoder->maxThreads;
+#endif
         svt_config->enable_adaptive_quantization = 2;
         // disable 2-pass
 #if SVT_AV1_CHECK_VERSION(0, 9, 0)

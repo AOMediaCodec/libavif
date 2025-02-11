@@ -1,4 +1,4 @@
-set(AVIF_SVT_GIT_TAG "v2.3.0")
+set(AVIF_SVT_GIT_TAG "38bc2f92f0360f8280858f40f3229f796c70b9c5")
 
 set(LIB_FILENAME "${AVIF_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
@@ -45,6 +45,7 @@ else()
         GIT_TAG "${AVIF_SVT_GIT_TAG}"
         UPDATE_COMMAND ""
         GIT_SHALLOW ON
+        PATCH_COMMAND sed -i.bak -e "s/SVT_AV1_VERSION_MAJOR 2/SVT_AV1_VERSION_MAJOR 3/g" Source/API/EbSvtAv1.h
     )
 
     set(BUILD_DEC OFF CACHE BOOL "")
@@ -56,6 +57,11 @@ else()
 
     set(CMAKE_OUTPUT_DIRECTORY_ORIG "${CMAKE_OUTPUT_DIRECTORY}")
     set(CMAKE_OUTPUT_DIRECTORY "${SVT_BINARY_DIR}" CACHE INTERNAL "")
+
+    # For now, this creates compilation issues:
+    # _deps/svt-build/libSvtAv1Enc.a: error adding symbols: file format not recognized
+    # clang: error: linker command failed with exit code 1 (use -v to see invocation)
+    set(SVT_AV1_LTO OFF)
 
     avif_fetchcontent_populate_cmake(svt)
 
