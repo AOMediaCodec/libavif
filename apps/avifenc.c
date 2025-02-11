@@ -2019,10 +2019,9 @@ int main(int argc, char * argv[])
         }
         // Matrix coefficients.
         if (settings.cicpExplicitlySet) {
-            avifBool incompatibleMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY) &&
-                                      (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
-                                       settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-            if (incompatibleMC) {
+            if (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
                 fprintf(stderr, "Matrix coefficients have to be identity, YCgCo-Re, or YCgCo-Ro in lossless mode.\n");
                 goto cleanup;
             }
@@ -2475,8 +2474,8 @@ int main(int argc, char * argv[])
             }
 
             avifBool matrixCoefficientsAreLosslessCompatible = usingIdentityMatrix ||
-                                                               (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
-                                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
+                                                               image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                                               image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO;
             if (!matrixCoefficientsAreLosslessCompatible && !using400) {
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0) or YCgCo-Re/Ro (--cicp x/x/16 or x/x/17); Output might not be lossless.\n");
                 lossless = AVIF_FALSE;
