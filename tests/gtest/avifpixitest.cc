@@ -31,7 +31,7 @@ TEST(AvifPixiTest, SameOutput) {
   EncoderPtr encoder_regular_pixi(avifEncoderCreate());
   ASSERT_NE(encoder_regular_pixi, nullptr);
   encoder_regular_pixi->speed = AVIF_SPEED_FASTEST;
-  encoder_regular_pixi->headerFormat = AVIF_HEADER_FULL;
+  encoder_regular_pixi->headerFormat = AVIF_HEADER_DEFAULT;
   ASSERT_EQ(avifEncoderWrite(encoder_regular_pixi.get(), image.get(),
                              &encoded_regular_pixi),
             AVIF_RESULT_OK);
@@ -40,7 +40,7 @@ TEST(AvifPixiTest, SameOutput) {
   EncoderPtr encoder_extended_pixi(avifEncoderCreate());
   ASSERT_NE(encoder_extended_pixi, nullptr);
   encoder_extended_pixi->speed = AVIF_SPEED_FASTEST;
-  encoder_extended_pixi->headerFormat = AVIF_HEADER_FULL_WITH_EXTENDED_PIXI;
+  encoder_extended_pixi->headerFormat = AVIF_HEADER_EXTENDED_PIXI;
   ASSERT_EQ(avifEncoderWrite(encoder_extended_pixi.get(), image.get(),
                              &encoded_extended_pixi),
             AVIF_RESULT_OK);

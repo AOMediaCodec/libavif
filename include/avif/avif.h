@@ -210,22 +210,29 @@ AVIF_API const char * avifResultToString(avifResult result);
 // ---------------------------------------------------------------------------
 // avifHeaderFormat
 
+// Combinatorial flag for selecting container strategies when encoding an image.
 typedef enum avifHeaderFormat
 {
-    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
-    AVIF_HEADER_FULL,
+    AVIF_HEADER_DEFAULT = 0x0,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // AVIF file with a "mif3" brand and a MinimizedImageBox to reduce the encoded file size.
     // This is based on the w24144 "Low-overhead image file format" MPEG proposal for HEIF.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_HEADER_REDUCED,
+    // If this flag is omitted or if MinimizedImageBox cannot be used at encoding, falls back to an
+    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
+    AVIF_HEADER_MINI = 0x1,
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
     // Use the full syntax of the PixelInformationProperty from HEIF 3rd edition Amendment 2.
     // WARNING: Experimental feature. Produces files that may be incompatible with older decoders.
-    AVIF_HEADER_FULL_WITH_EXTENDED_PIXI,
+    // Only relevant if a MetaBox is used. No effect if a MinimizedImageBox is used.
+    AVIF_HEADER_EXTENDED_PIXI = 0x2,
 #endif
+
+    // Deprecated.
+    AVIF_HEADER_FULL = AVIF_HEADER_DEFAULT,
 } avifHeaderFormat;
+typedef avifHeaderFormat avifHeaderFormatFlags;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
@@ -1567,8 +1574,8 @@ typedef struct avifEncoder
     // Version 1.0.0 ends here.
     // --------------------------------------------------------------------------------------------
 
-    // Defaults to AVIF_HEADER_FULL
-    avifHeaderFormat headerFormat; // Changeable encoder setting.
+    // Defaults to AVIF_HEADER_DEFAULT
+    avifHeaderFormatFlags headerFormat; // Changeable encoder setting.
 
     // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------

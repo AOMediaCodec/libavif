@@ -493,7 +493,7 @@ avifEncoder * avifEncoderCreate(void)
         avifEncoderDestroy(encoder);
         return NULL;
     }
-    encoder->headerFormat = AVIF_HEADER_FULL;
+    encoder->headerFormat = AVIF_HEADER_DEFAULT;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_NONE;
 #endif
@@ -2986,7 +2986,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             avifBoxMarker pixi;
             uint32_t flags = 0;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
-            if (encoder->headerFormat == AVIF_HEADER_FULL_WITH_EXTENDED_PIXI) {
+            if (encoder->headerFormat & AVIF_HEADER_EXTENDED_PIXI) {
                 flags |= 1;
             }
 #endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
@@ -3209,7 +3209,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // Decide whether to go for a reduced MinimizedImageBox or a full regular MetaBox.
-    if ((encoder->headerFormat == AVIF_HEADER_REDUCED) && avifEncoderIsMiniCompatible(encoder)) {
+    if ((encoder->headerFormat & AVIF_HEADER_MINI) && avifEncoderIsMiniCompatible(encoder)) {
         AVIF_CHECKRES(avifEncoderWriteFileTypeBoxAndMiniBox(encoder, output));
         return AVIF_RESULT_OK;
     }
