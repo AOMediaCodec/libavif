@@ -49,6 +49,7 @@ for BUILD_TYPE in Debug Release; do
     for SANITIZER in address thread undefined; do
       mkdir build_${BUILD_TYPE}_exp${EXPERIMENTAL}_${SANITIZER}
       pushd build_${BUILD_TYPE}_exp${EXPERIMENTAL}_${SANITIZER}
+        # TODO: This does not apply to the dav1d dependency which is built with meson. Fix.
         CC=clang CXX=clang++ CFLAGS=-fsanitize=${SANITIZER} CXXFLAGS=-fsanitize=${SANITIZER} LDFLAGS=-fsanitize=${SANITIZER} \
         cmake .. \
          -DAVIF_ENABLE_NODISCARD=ON \
