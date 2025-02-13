@@ -57,6 +57,12 @@ else()
     set(CMAKE_OUTPUT_DIRECTORY_ORIG "${CMAKE_OUTPUT_DIRECTORY}")
     set(CMAKE_OUTPUT_DIRECTORY "${SVT_BINARY_DIR}" CACHE INTERNAL "")
 
+    if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(SVT_AV1_LTO ON)
+    else()
+        set(SVT_AV1_LTO OFF)
+    endif()
+
     avif_fetchcontent_populate_cmake(svt)
 
     set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_ORIG} CACHE STRING "" FORCE)
