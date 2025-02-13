@@ -89,6 +89,24 @@ TEST(AvifPixiTest, ExtendedPixiWorksEvenWithoutCMakeFlagOn) {
             AVIF_CHROMA_SAMPLE_POSITION_VERTICAL);
 }
 
+TEST(AvifHeaderFormatTest, ABI) {
+  // avifEncoder::headerFormat was of type avifHeaderFormat in libavif
+  // version 1.1.1:
+  //   https://github.com/AOMediaCodec/libavif/blob/v1.1.1/include/avif/avif.h#L1498
+  // It was later changed to avifHeaderFormatFlags to be able to combine
+  // multiple avifHeaderFormat features. Check that it was not an ABI
+  // incompatible change.
+  EXPECT_EQ(sizeof(avifEncoder::headerFormat), sizeof(avifHeaderFormat));
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+  // Check that the field can be assigned with a combination of flags without
+  // compile errors:
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->headerFormat = AVIF_HEADER_DEFAULT | AVIF_HEADER_EXTENDED_PIXI;
+#endif  // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

@@ -232,7 +232,7 @@ typedef enum avifHeaderFormat
     // Deprecated.
     AVIF_HEADER_FULL = AVIF_HEADER_DEFAULT,
 } avifHeaderFormat;
-typedef avifHeaderFormat avifHeaderFormatFlags;
+typedef int avifHeaderFormatFlags;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
