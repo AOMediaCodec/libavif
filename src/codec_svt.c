@@ -7,11 +7,9 @@
 
 #include "svt-av1/EbSvtAv1Enc.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#if SVT_AV1_CHECK_VERSION(3, 0, 0)
-#include <stdbool.h>
-#endif
 
 // The SVT_AV1_VERSION_MAJOR, SVT_AV1_VERSION_MINOR, SVT_AV1_VERSION_PATCHLEVEL, and
 // SVT_AV1_CHECK_VERSION macros were added in SVT-AV1 v0.9.0. Define these macros for older
@@ -131,14 +129,6 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
 #endif
-
-#if !SVT_AV1_CHECK_VERSION(3, 0, 0)
-        // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084 (PQ).
-        svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
-                                                image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 &&
-                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL);
-#endif
-
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
 #if SVT_AV1_CHECK_VERSION(3, 0, 0)
@@ -188,11 +178,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
         // In order for SVT-AV1 to force keyframes by setting pic_type to
         // EB_AV1_KEY_PICTURE on any frame, force_key_frames has to be set.
-#if SVT_AV1_CHECK_VERSION(3, 0, 0)
         svt_config->force_key_frames = true;
-#else
-        svt_config->force_key_frames = TRUE;
-#endif
 
         // keyframeInterval == 1 case is handled when encoding each frame by
         // setting pic_type to EB_AV1_KEY_PICTURE. For keyframeInterval > 1,

@@ -57,10 +57,11 @@ else()
     set(CMAKE_OUTPUT_DIRECTORY_ORIG "${CMAKE_OUTPUT_DIRECTORY}")
     set(CMAKE_OUTPUT_DIRECTORY "${SVT_BINARY_DIR}" CACHE INTERNAL "")
 
-    # For now, this creates compilation issues:
-    # _deps/svt-build/libSvtAv1Enc.a: error adding symbols: file format not recognized
-    # clang: error: linker command failed with exit code 1 (use -v to see invocation)
-    set(SVT_AV1_LTO OFF)
+    if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(SVT_AV1_LTO ON)
+    else()
+        set(SVT_AV1_LTO OFF)
+    endif()
 
     avif_fetchcontent_populate_cmake(svt)
 
