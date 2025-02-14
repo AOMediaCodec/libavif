@@ -2172,7 +2172,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
                 fprintf(stderr,
-                        "WARNING: --min and --max are deprecated, please use --q 0..100 instead. "
+                        "WARNING: --min and --max are deprecated, please use -q 0..100 instead. "
                         "--min %d --max %d is equivalent to -q %d\n",
                         fileSettings->minQuantizer.value,
                         fileSettings->maxQuantizer.value,
