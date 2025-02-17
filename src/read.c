@@ -7175,3 +7175,45 @@ avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const c
     }
     return avifDecoderRead(decoder, image);
 }
+
+// ---------------------------------------------------------------------------
+
+avifResult avifGetTopLevelUUID(const uint8_t * fileData, size_t fileSize, const uint8_t usertype[16], size_t * uuidOffset, size_t * uuidSize)
+{
+    if (uuidOffset != NULL) {
+        *uuidOffset = 0;
+    }
+    if (uuidSize != NULL) {
+        *uuidSize = 0;
+    }
+    AVIF_CHECKERR(fileData != NULL, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(fileSize != 0, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(usertype != NULL, AVIF_RESULT_INVALID_ARGUMENT);
+
+    for (size_t fileOffset = 0; fileOffset < fileSize;) {
+        // Parse the header, and find out how many bytes it actually was
+        BEGIN_STREAM(headerStream, fileData + fileOffset, fileSize - fileOffset, NULL, "File-level box header");
+        avifBoxHeader header;
+        AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header, /*topLevel=*/AVIF_TRUE), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(fileOffset <= SIZE_MAX - headerStream.offset, AVIF_RESULT_BMFF_PARSE_FAILED);
+        fileOffset += headerStream.offset;
+        AVIF_ASSERT_OR_RETURN(fileOffset <= fileSize);
+        const size_t remainingBytes = fileSize - fileOffset;
+        if (header.isSizeZeroBox) {
+            header.size = remainingBytes;
+        } else {
+            AVIF_CHECKERR(header.size <= remainingBytes, AVIF_RESULT_TRUNCATED_DATA);
+        }
+        if (!memcmp(header.type, "uuid", 4) && !memcmp(header.usertype, usertype, 16)) {
+            if (uuidOffset != NULL) {
+                *uuidOffset = fileOffset;
+            }
+            if (uuidSize != NULL) {
+                *uuidSize = header.size;
+            }
+            return AVIF_RESULT_OK;
+        }
+        fileOffset += header.size;
+    }
+    return AVIF_RESULT_NO_CONTENT;
+}
