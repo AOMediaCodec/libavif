@@ -17,23 +17,31 @@ TEST(AvifDecodeTest, AnimatedImage) {
   if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
-  const char* file_name = "colors-animated-8bpc.avif";
-  DecoderPtr decoder(avifDecoderCreate());
-  ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
-            AVIF_RESULT_OK);
-  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
-  EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
-  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
-  EXPECT_EQ(decoder->imageCount, 5);
-  EXPECT_EQ(decoder->repetitionCount, 0);
-  for (int i = 0; i < 5; ++i) {
-    EXPECT_EQ(avifDecoderIsKeyframe(decoder.get(), i), i == 0);
-    EXPECT_EQ(avifDecoderNearestKeyframe(decoder.get(), i), 0);
-  }
-  for (int i = 0; i < 5; ++i) {
-    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  // Both files should give exactly the same result: the audio is ignored
+  // in 'colors-animated-8bpc-audio.avif' but shouldn't prevent the file from
+  // decoding.
+  for (const char* file_name :
+       {"colors-animated-8bpc.avif", "colors-animated-8bpc-audio.avif"}) {
+    SCOPED_TRACE(file_name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(), (std::string(data_path) + file_name).c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+        << decoder->diag.error;
+    ;
+    EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
+    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+    EXPECT_EQ(decoder->imageCount, 5);
+    EXPECT_EQ(decoder->repetitionCount, 0);
+    for (int i = 0; i < 5; ++i) {
+      EXPECT_EQ(avifDecoderIsKeyframe(decoder.get(), i), i == 0);
+      EXPECT_EQ(avifDecoderNearestKeyframe(decoder.get(), i), 0);
+    }
+    for (int i = 0; i < 5; ++i) {
+      EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    }
   }
 }
 

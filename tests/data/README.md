@@ -830,6 +830,16 @@ An animated AVIF image file with the following attributes:
 * Repetition Count: 0
 * Frame count: 5
 
+### File [colors-animated-8bpc-audio.avif](colors-animated-8bpc-audio.avif)
+
+![](colors-animated-8bpc-audio.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Same as `colors-animated-8bpc.avif` but with an audio track added using MP4Box:
+
+`MP4Box -add audio.aac colors-animated-8bpc-audio.avif`
+
 ### File [colors-animated-8bpc-alpha-exif-xmp.avif](colors-animated-8bpc-alpha-exif-xmp.avif)
 
 ![](colors-animated-8bpc-alpha-exif-xmp.avif)
