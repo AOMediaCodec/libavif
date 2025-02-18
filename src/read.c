@@ -3320,6 +3320,8 @@ static avifResult avifParseMetaBox(avifMeta * meta, uint64_t rawOffset, const ui
             if (!memcmp(header.type, "hdlr", 4)) {
                 uint8_t handlerType[4];
                 AVIF_CHECKERR(avifParseHandlerBox(avifROStreamCurrent(&s), header.size, handlerType, diag), AVIF_RESULT_BMFF_PARSE_FAILED);
+                // HEIF (ISO/IEC 23008-12:2022), Section 6.2:
+                //   The handler type for the MetaBox shall be 'pict'.
                 if (memcmp(handlerType, "pict", 4) != 0) {
                     avifDiagnosticsPrintf(diag, "Box[hdlr] handler_type is not 'pict'");
                     return AVIF_FALSE;
@@ -5818,7 +5820,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (track->auxForID != 0) {
                 continue;
             }
-            // HEIF (ISO/IEC 23008-12:2017), Section 7.1:
+            // HEIF (ISO/IEC 23008-12:2022), Section 7.1:
             //   In order to distinguish image sequences from video, the handler type in the
             //   HandlerBox of the track is 'pict' to indicate an image sequence track.
             if (memcmp(track->handlerType, "pict", 4)) {
@@ -5875,7 +5877,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (auxiProp && !isAlphaURN(auxiProp->u.auxC.auxType)) {
                 continue;
             }
-            // Do not check the track's handlerType. It should be "auxv" but old versions of libavif used to write
+            // Do not check the track's handlerType. It should be "auxv" according to
+            // HEIF (ISO/IEC 23008-12:2022), Section 7.5.3.1, but old versions of libavif used to write
             // "pict" instead. See https://github.com/AOMediaCodec/libavif/commit/65d0af9
 
             if (track->auxForID == colorTrack->id) {
