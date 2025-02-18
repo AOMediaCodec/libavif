@@ -99,6 +99,9 @@ TEST(AvifDecodeTest, AnimatedImageWithDepthAndMetadata) {
 
 TEST(AvifDecodeTest,
      AnimatedImageWithDepthAndMetadataWithSourceSetToPrimaryItem) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
   // Depth is not supported and should be ignored.
   const char* file_name = "colors-animated-8bpc-depth-exif-xmp.avif";
   DecoderPtr decoder(avifDecoderCreate());
