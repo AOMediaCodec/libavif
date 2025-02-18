@@ -839,6 +839,15 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 Source: `colors-animated-8bpc.avif` but translucent and with the Exif/XMP chunks of
 `paris_exif_xmp_icc.jpg`. The repetition is infinite.
 
+### File [colors-animated-8bpc-depth-exif-xmp.avif](colors-animated-8bpc-depth-exif-xmp.avif)
+
+![](colors-animated-8bpc-depth-exif-xmp.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `colors-animated-8bpc-alpha-exif-xmp.avif` but with the alpha URI manually
+changed to depth using a hex editor.
+
 ### File [colors-animated-12bpc-keyframes-0-2-3.avif](colors-animated-12bpc-keyframes-0-2-3.avif)
 
 ![](colors-animated-12bpc-keyframes-0-2-3.avif)
