@@ -5818,6 +5818,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (track->auxForID != 0) {
                 continue;
             }
+            // HEIF (ISO/IEC 23008-12:2017), Section 7.1:
+            //   In order to distinguish image sequences from video, the handler type in the
+            //   HandlerBox of the track is 'pict' to indicate an image sequence track.
             if (memcmp(track->handlerType, "pict", 4)) {
                 continue;
             }
@@ -5865,9 +5868,16 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
             const avifPropertyArray * alphaProperties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
             const avifProperty * auxiProp = alphaProperties ? avifPropertyArrayFind(alphaProperties, "auxi") : NULL;
-            if (!auxiProp || !isAlphaURN(auxiProp->u.auxC.auxType)) {
+            // If auxi is present, check that it contains the alpha URN.
+            // If auxi is not present, assume that the track is alpha. This is for backward compatibility with
+            // old versions of libavif that did not write this property, see
+            // https://github.com/AOMediaCodec/libavif/commit/98faa17
+            if (auxiProp && !isAlphaURN(auxiProp->u.auxC.auxType)) {
                 continue;
             }
+            // Do not check the track's handlerType. It should be "auxv" but old versions of libavif used to write
+            // "pict" instead. See https://github.com/AOMediaCodec/libavif/commit/65d0af9
+
             if (track->auxForID == colorTrack->id) {
                 // Found it!
                 break;
