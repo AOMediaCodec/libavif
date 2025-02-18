@@ -99,7 +99,8 @@ else()
             UPDATE_COMMAND ""
         )
         # This will disable the tensorflow dependency.
-        set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
+        #set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/)
     else()
         FetchContent_Declare(
             libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz" BINARY_DIR "${AOM_BINARY_DIR}"
@@ -168,6 +169,9 @@ else()
             file(WRITE ${AOM_BINARY_DIR}/config/aom_config.h "${AOM_CONFIG_H}")
         endif()
         target_link_libraries(aom PRIVATE $<TARGET_FILE:yuv::yuv>)
+    endif()
+    if(AVIF_CODEC_AVM)
+        target_link_libraries(aom PRIVATE tensorflow-lite)
     endif()
 
     set_property(TARGET aom PROPERTY AVIF_LOCAL ON)
