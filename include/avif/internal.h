@@ -418,6 +418,7 @@ typedef enum avifItemCategory
 avifBool avifIsAlpha(avifItemCategory itemCategory);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// AVIF allows up to 32 inputs for sample transforms but we only support a smaller number.
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS \
     (AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA - AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR)
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS \
