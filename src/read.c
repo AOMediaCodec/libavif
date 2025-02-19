@@ -5823,9 +5823,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // HEIF (ISO/IEC 23008-12:2022), Section 7.1:
             //   In order to distinguish image sequences from video, the handler type in the
             //   HandlerBox of the track is 'pict' to indicate an image sequence track.
-            if (memcmp(track->handlerType, "pict", 4)) {
-                continue;
-            }
+            // But we do not check the handler type because it may break some existing files.
 
             // Found one!
             break;
