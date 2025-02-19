@@ -205,6 +205,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
 #endif
 
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        svt_config->lossless = quantizer == AVIF_QUANTIZER_LOSSLESS;
+        svt_config->avif = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) != 0;
+#endif
+
         res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
         if (res == EB_ErrorBadParameter) {
             goto cleanup;
