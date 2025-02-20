@@ -32,7 +32,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   is specified. https://github.com/AOMediaCodec/libavif/issues/2365.
 * Rename AVIF_ENABLE_EXPERIMENTAL_METAV1 to AVIF_ENABLE_EXPERIMENTAL_MINI and
   update the experimental reduced header feature to the latest specification
-  draft.
+  draft. Rename AVIF_HEADER_REDUCED to AVIF_HEADER_MINI.
 * Update the experimental Sample Transform feature behind the
   AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag to the latest
   specification draft.
@@ -76,6 +76,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * android_jni: Set threads to 2 instead of CPU count
 * Fix overflows when dealing with alpha during YUV/RGB conversions and in
   avifRGBImageAllocatePixels().
+* Make avifEncoder.headerFormat a flag combination for future features.
+* Rename AVIF_HEADER_FULL to AVIF_HEADER_DEFAULT. Deprecate AVIF_HEADER_FULL.
 
 ## [1.1.1] - 2024-07-30
 
