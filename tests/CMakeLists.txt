@@ -152,6 +152,7 @@ if(AVIF_GTEST)
     add_avif_gtest_with_data(avifsize0test)
     add_avif_internal_gtest(avifstreamtest)
     add_avif_gtest(avifsvttest)
+    target_include_directories(avifsvttest PRIVATE ${SVT_INCLUDE_DIR}) # To be able to check the SVT-AV1 version in test.
     add_avif_internal_gtest(aviftilingtest)
     add_avif_gtest_with_data(aviftransformtest)
     add_avif_internal_gtest(avifutilstest)

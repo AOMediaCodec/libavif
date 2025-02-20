@@ -1,11 +1,40 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <tuple>
 #include <vector>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
+
+#if defined(__has_include)
+#if __has_include("svt-av1/EbSvtAv1Enc.h")
+#include "svt-av1/EbSvtAv1Enc.h"
+
+// Copied from src/codec_svt.c.
+#ifndef SVT_AV1_VERSION_MAJOR
+#define SVT_AV1_VERSION_MAJOR SVT_VERSION_MAJOR
+#define SVT_AV1_VERSION_MINOR SVT_VERSION_MINOR
+#define SVT_AV1_VERSION_PATCHLEVEL SVT_VERSION_PATCHLEVEL
+#define SVT_AV1_CHECK_VERSION(major, minor, patch)                          \
+  (SVT_AV1_VERSION_MAJOR > (major) ||                                       \
+   (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR > (minor)) || \
+   (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR == (minor) && \
+    SVT_AV1_VERSION_PATCHLEVEL >= (patch)))
+#endif
+
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+constexpr bool kSvtAv1SupportsLossless = true;
+#else
+constexpr bool kSvtAv1SupportsLossless = false;
+#endif
+#else
+constexpr bool kSvtAv1SupportsLossless = false;
+#endif
+#else
+constexpr bool kSvtAv1SupportsLossless = false;
+#endif
 
 namespace avif {
 namespace {
@@ -25,7 +54,7 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
   // AVIF_CODEC_CHOICE_SVT requires dimensions to be at least 64 pixels.
   ImagePtr image =
       testutil::CreateImage(/*width=*/64, /*height=*/64, /*depth=*/8,
-                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
+                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
   if (quality == AVIF_QUALITY_LOSSLESS) {
@@ -53,7 +82,9 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
     // Lossless is not supported in SVT-AV1 2.3.0.
     EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 60.0);
     // The following should pass starting with SVT-AV1 version 3.0.0.
-    // EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
+    if (kSvtAv1SupportsLossless) {
+      EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
+    }
   } else {
     EXPECT_GT(testutil::GetPsnr(*image, *decoded), 20.0);
   }
@@ -109,7 +140,9 @@ TEST_P(SvtAv1Test, EncodeDecodeSequence) {
       // Lossless is not supported in SVT-AV1 2.3.0.
       EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 30.0);
       // The following should pass starting with SVT-AV1 version 3.0.0.
-      // EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoder->image));
+      if (kSvtAv1SupportsLossless) {
+        EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoder->image));
+      }
     } else {
       EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 20.0);
     }
