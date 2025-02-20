@@ -210,7 +210,7 @@ AVIF_API const char * avifResultToString(avifResult result);
 // ---------------------------------------------------------------------------
 // avifHeaderFormat
 
-// Combinatorial flag for selecting container strategies when encoding an image.
+// Bit flag for selecting container strategies when encoding an image.
 typedef enum avifHeaderFormat
 {
     AVIF_HEADER_DEFAULT = 0x0,
