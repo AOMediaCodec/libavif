@@ -64,7 +64,7 @@ jobs:
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
           -DAVIF_CODEC_LIBGAV1=LOCAL
           -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBXML2=LOCAL
-          -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
+          -DAVIF_LIBYUV=0 -DAVIF_ZLIBPNG=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
@@ -76,7 +76,7 @@ jobs:
         run: ninja
       - name: Run AVIF Tests
         working-directory: ./build
-        run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+        run: ctest -V --output-on-failure
       - name: Check static link bundling
         run: >
           cl .\apps\avifenc.c .\apps\shared\*.c .\third_party\iccjpeg\iccjpeg.c /nologo
