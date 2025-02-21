@@ -924,6 +924,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 quantizerUpdated = AVIF_TRUE;
             }
         }
+        if (quantizerUpdated) {
+            // Make sure that maxQuantizer >= quantizer >= minQuantizer.
+            cfg->rc_min_quantizer = AVIF_MIN(cfg->rc_min_quantizer, (unsigned int)quantizer);
+            cfg->rc_max_quantizer = AVIF_MAX(cfg->rc_max_quantizer, (unsigned int)quantizer);
+        }
         if (quantizerUpdated || dimensionsChanged) {
             aom_codec_err_t err = aom_codec_enc_config_set(&codec->internal->encoder, cfg);
             if (err != AOM_CODEC_OK) {
