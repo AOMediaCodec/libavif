@@ -5,39 +5,20 @@
 #include <vector>
 
 #include "avif/avif.h"
+#include "avif/internal.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-#if defined(__has_include)
-#if __has_include("svt-av1/EbSvtAv1Enc.h")
-#include "svt-av1/EbSvtAv1Enc.h"
-
-// Copied from src/codec_svt.c.
-#ifndef SVT_AV1_VERSION_MAJOR
-#define SVT_AV1_VERSION_MAJOR SVT_VERSION_MAJOR
-#define SVT_AV1_VERSION_MINOR SVT_VERSION_MINOR
-#define SVT_AV1_VERSION_PATCHLEVEL SVT_VERSION_PATCHLEVEL
-#define SVT_AV1_CHECK_VERSION(major, minor, patch)                          \
-  (SVT_AV1_VERSION_MAJOR > (major) ||                                       \
-   (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR > (minor)) || \
-   (SVT_AV1_VERSION_MAJOR == (major) && SVT_AV1_VERSION_MINOR == (minor) && \
-    SVT_AV1_VERSION_PATCHLEVEL >= (patch)))
-#endif
-
-#if SVT_AV1_CHECK_VERSION(3, 0, 0)
-constexpr bool kSvtAv1SupportsLossless = true;
-#else
-constexpr bool kSvtAv1SupportsLossless = false;
-#endif
-#else
-constexpr bool kSvtAv1SupportsLossless = false;
-#endif
-#else
-constexpr bool kSvtAv1SupportsLossless = false;
-#endif
-
 namespace avif {
 namespace {
+
+bool SvtAv1SupportsLossless() {
+  const char* version = avifCodecVersionSvt();  // "vX.Y.Z" expected.
+  if (version == nullptr || version[0] != 'v') return false;
+  const int major_version = std::atoi(version + 1);
+  // EbSvtAv1EncConfiguration::lossless was introduced in SVT-AV1 version 3.0.0.
+  return major_version >= 3;
+}
 
 class SvtAv1Test : public testing::TestWithParam<std::tuple</*quality=*/int>> {
 };
@@ -45,9 +26,9 @@ class SvtAv1Test : public testing::TestWithParam<std::tuple</*quality=*/int>> {
 TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
   const int quality = std::get<0>(GetParam());
 
-  if (avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE) ==
-          nullptr ||
-      !testutil::Av1DecoderAvailable()) {
+  ASSERT_NE(avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE),
+            nullptr);
+  if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
@@ -78,13 +59,8 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
                                   encoded.size),
             AVIF_RESULT_OK);
 
-  if (quality == AVIF_QUALITY_LOSSLESS) {
-    // Lossless is not supported in SVT-AV1 2.3.0.
-    EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 60.0);
-    // The following should pass starting with SVT-AV1 version 3.0.0.
-    if (kSvtAv1SupportsLossless) {
-      EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
-    }
+  if (quality == AVIF_QUALITY_LOSSLESS && SvtAv1SupportsLossless()) {
+    EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
   } else {
     EXPECT_GT(testutil::GetPsnr(*image, *decoded), 20.0);
   }
@@ -93,9 +69,9 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
 TEST_P(SvtAv1Test, EncodeDecodeSequence) {
   const int quality = std::get<0>(GetParam());
 
-  if (avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE) ==
-          nullptr ||
-      !testutil::Av1DecoderAvailable()) {
+  ASSERT_NE(avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE),
+            nullptr);
+  if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "Codec unavailable, skip test.";
   }
 
@@ -136,13 +112,8 @@ TEST_P(SvtAv1Test, EncodeDecodeSequence) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   for (const ImagePtr& image : sequence) {
     ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-    if (quality == AVIF_QUALITY_LOSSLESS) {
-      // Lossless is not supported in SVT-AV1 2.3.0.
-      EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 30.0);
-      // The following should pass starting with SVT-AV1 version 3.0.0.
-      if (kSvtAv1SupportsLossless) {
-        EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoder->image));
-      }
+    if (quality == AVIF_QUALITY_LOSSLESS && SvtAv1SupportsLossless()) {
+      EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoder->image));
     } else {
       EXPECT_GT(testutil::GetPsnr(*image, *decoder->image), 20.0);
     }
