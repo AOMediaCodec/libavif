@@ -2014,6 +2014,8 @@ int main(int argc, char * argv[])
             const char svtVersionPrefix[] = "svt [enc]:v";
             const char * svtVersionPrefixPos = strstr(versions, svtVersionPrefix);
             if (svtVersionPrefixPos == NULL) {
+                // Make sure the syntax returned by avifCodecVersions() did not change.
+                assert(strstr(versions, "svt") == NULL && strstr(versions, "SVT") == NULL);
                 // Let the encode fail later because SVT was not included in the build.
             } else {
                 const char * svtVersion = svtVersionPrefixPos + strlen(svtVersionPrefix);
