@@ -85,7 +85,7 @@ TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
 // before a PLTE chunk, with no MSan use-of-uninitialized-value warnings in
 // avifImageRGBToYUV(). libpng 1.6.46 or older considers the tRNS chunk as
 // invalid and ignores it, so the decoded image has no alpha. The behavior
-// changed starting with libpng 1.6.47.
+// changed starting with libpng 1.6.47 (the decoded image has alpha).
 // See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
 TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   const ImagePtr image = testutil::ReadImage(
