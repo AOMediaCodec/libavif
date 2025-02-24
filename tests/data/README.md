@@ -23,8 +23,9 @@ An opaque blue circle on a transparent green background.
 
 It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk before a PLTE
 chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
-follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
-ignores it.
+follow the PLTE chunk, if any", libpng 1.6.46 or older considers the tRNS chunk
+as invalid and ignores it. The behavior changed starting with libpng 1.6.47.
+See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
 
 ### File [circle_custom_properties.avif](circle_custom_properties.avif)
 
