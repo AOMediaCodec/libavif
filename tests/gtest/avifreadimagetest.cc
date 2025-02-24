@@ -84,7 +84,10 @@ TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
 // Verify we can read a PNG file with PNG_COLOR_TYPE_RGB and a tRNS chunk
 // before a PLTE chunk. libpng considers the tRNS chunk as invalid and ignores
 // it, so the decoded image should have no alpha.
-TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
+// This test is disabled because the behavior seemed to have changed starting
+// with libpng 1.6.47.
+// See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
+TEST(PngTest, DISABLED_RgbColorTypeWithTrnsBeforePlte) {
   const ImagePtr image = testutil::ReadImage(
       data_path, "circle-trns-before-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
   ASSERT_NE(image, nullptr);
