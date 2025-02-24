@@ -1,6 +1,7 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstdlib>
 #include <tuple>
 #include <vector>
 
@@ -29,7 +30,7 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
   ASSERT_NE(avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE),
             nullptr);
   if (!testutil::Av1DecoderAvailable()) {
-    GTEST_SKIP() << "Codec unavailable, skip test.";
+    GTEST_SKIP() << "Decoder unavailable, skip test.";
   }
 
   // AVIF_CODEC_CHOICE_SVT requires dimensions to be at least 64 pixels.
@@ -72,7 +73,7 @@ TEST_P(SvtAv1Test, EncodeDecodeSequence) {
   ASSERT_NE(avifCodecName(AVIF_CODEC_CHOICE_SVT, AVIF_CODEC_FLAG_CAN_ENCODE),
             nullptr);
   if (!testutil::Av1DecoderAvailable()) {
-    GTEST_SKIP() << "Codec unavailable, skip test.";
+    GTEST_SKIP() << "Decoder unavailable, skip test.";
   }
 
   std::vector<ImagePtr> sequence;
