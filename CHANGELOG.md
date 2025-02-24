@@ -78,6 +78,10 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifRGBImageAllocatePixels().
 * Make avifEncoder.headerFormat a flag combination for future features.
 * Rename AVIF_HEADER_FULL to AVIF_HEADER_DEFAULT. Deprecate AVIF_HEADER_FULL.
+* Fix decoding image sequences with non video tracks (such as audio or subtitles).
+* Fix type checking of auxiliary tracks: previously any auxiliary track was
+  assumed to be alpha, even if it was a different type. If the aux type is absent,
+  it is assumed to be alpha.
 
 ## [1.1.1] - 2024-07-30
 
