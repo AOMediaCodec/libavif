@@ -82,18 +82,17 @@ TEST(PngTest, RgbColorTypeWithTrnsAfterPlte) {
 }
 
 // Verify we can read a PNG file with PNG_COLOR_TYPE_RGB and a tRNS chunk
-// before a PLTE chunk. libpng considers the tRNS chunk as invalid and ignores
-// it, so the decoded image should have no alpha.
-// This test is disabled because the behavior seemed to have changed starting
-// with libpng 1.6.47.
+// before a PLTE chunk, with no MSan use-of-uninitialized-value warnings in
+// avifImageRGBToYUV(). libpng 1.6.46 or older considers the tRNS chunk as
+// invalid and ignores it, so the decoded image has no alpha. The behavior
+// changed starting with libpng 1.6.47.
 // See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
-TEST(PngTest, DISABLED_RgbColorTypeWithTrnsBeforePlte) {
+TEST(PngTest, RgbColorTypeWithTrnsBeforePlte) {
   const ImagePtr image = testutil::ReadImage(
       data_path, "circle-trns-before-plte.png", AVIF_PIXEL_FORMAT_YUV444, 8);
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->width, 100u);
   EXPECT_EQ(image->height, 60u);
-  EXPECT_EQ(image->alphaPlane, nullptr);
 }
 
 constexpr size_t kColorProfileSize = 376;
