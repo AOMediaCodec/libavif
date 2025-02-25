@@ -2009,8 +2009,22 @@ int main(int argc, char * argv[])
             fprintf(stderr, "rav1e doesn't support lossless encoding yet: https://github.com/xiph/rav1e/issues/151\n");
             goto cleanup;
         } else if (codecName && !strcmp(codecName, "svt")) {
-            fprintf(stderr, "SVT-AV1 doesn't support lossless encoding yet: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636\n");
-            goto cleanup;
+            char versions[256];
+            avifCodecVersions(versions);
+            const char svtVersionPrefix[] = "svt [enc]:v";
+            const char * svtVersionPrefixPos = strstr(versions, svtVersionPrefix);
+            if (svtVersionPrefixPos == NULL) {
+                // Make sure the syntax returned by avifCodecVersions() did not change.
+                assert(strstr(versions, "svt") == NULL && strstr(versions, "SVT") == NULL);
+                // Let the encode fail later because SVT was not included in the build.
+            } else {
+                const char * svtVersion = svtVersionPrefixPos + strlen(svtVersionPrefix);
+                const int svtMajorVersion = atoi(svtVersion);
+                if (svtMajorVersion < 3) {
+                    fprintf(stderr, "SVT-AV1 lossless support was added in version 3.0.0, current major version is only %d\n", svtMajorVersion);
+                    goto cleanup;
+                }
+            }
         }
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
