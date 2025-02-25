@@ -26,6 +26,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
+          CFLAGS=-static CXXFLAGS=-static LDFLAGS=-static
           cmake -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
@@ -35,7 +36,6 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-          -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
       - name: Build libavif (ninja)
         working-directory: ./build
         run: ninja
