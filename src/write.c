@@ -1833,12 +1833,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     // -----------------------------------------------------------------------
     // Map quality settings to quantizer values.
     encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
-    // If alpha quality, and min and max quantizer have their default values, default to the same quality as color.
+    // If alpha quality, and min and max alpha quantizer have their default values, default to the same quality as color.
     if (encoder->qualityAlpha == AVIF_QUALITY_DEFAULT && encoder->minQuantizerAlpha == AVIF_QUANTIZER_BEST_QUALITY &&
         encoder->maxQuantizerAlpha == AVIF_QUANTIZER_WORST_QUALITY) {
         encoder->data->quantizerAlpha = encoder->data->quantizer;
-        encoder->minQuantizerAlpha = encoder->minQuantizer;
-        encoder->maxQuantizerAlpha = encoder->maxQuantizer;
     } else {
         encoder->data->quantizerAlpha =
             avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
