@@ -74,9 +74,10 @@ pushd ${TMP_DIR}
   "${ARE_IMAGES_EQUAL}" "${INPUT_GRAY_PNG}" "${DECODED_FILE_LOSSLESS}" 0
 
   # SVT-AV1 supports 4:2:0 lossless starting with version 3.0.0.
-  if "${AVIFENC}" --help | grep 'svt \['; then
+  # SVT-AV1 does not support 4:4:4 so far, so use a 4:2:0 y4m as test input.
+  if "${AVIFENC}" --version | grep 'svt \['; then
     # Depending on the version, either succeeds or prints an error message.
-    if "${AVIFENC}" -c svt --lossless --cicp x/x/16 -s 9 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"; then
+    if "${AVIFENC}" -c svt --lossless --cicp 2/2/16 -s 9 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"; then
       "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE_Y4M}"
       "${ARE_IMAGES_EQUAL}" "${INPUT_Y4M}" "${DECODED_FILE_Y4M}" 0
     else
