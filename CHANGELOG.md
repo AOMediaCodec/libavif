@@ -54,8 +54,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libjpeg.cmd/LocalJpeg.cmake: v3.0.4
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.13.5
 * Update libyuv.cmd: ccdf87034 (1903)
-* Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.0 and use
-  EbSvtAv1EncConfiguration::lossless in libavif when available.
+* Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.0. When available, use
+  EbSvtAv1EncConfiguration::lossless and ::level_of_parallelism in libavif.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
 * Deprecate `avifEncoder`'s `minQuantizer`, `maxQuantizer`, `minQuantizerAlpha`,
