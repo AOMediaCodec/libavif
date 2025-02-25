@@ -8,6 +8,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-02-25
+
 ### Added since 1.1.1
 * Turn on the gain map API. Remove the AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP CMake
   flag.
@@ -1210,7 +1212,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/AOMediaCodec/libavif/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/AOMediaCodec/libavif/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.1.0
 [1.0.4]: https://github.com/AOMediaCodec/libavif/compare/v1.0.3...v1.0.4
