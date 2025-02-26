@@ -163,14 +163,6 @@ cmake -S libavif -B libavif/build -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=O
 cmake --build libavif/build --parallel
 ```
 
-To generate fully static binaries:
-
-```sh
-git clone -b v1.2.0 https://github.com/AOMediaCodec/libavif.git
-CFLAGS=-static CXXFLAGS=-static LDFLAGS=-static cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON
-cmake --build libavif/build --parallel
-```
-
 ## Prebuilt Binaries (Windows)
 
 Statically-linked `avifenc.exe` and `avifdec.exe` can be downloaded from the
