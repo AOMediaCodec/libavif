@@ -26,7 +26,6 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          CFLAGS=-static CXXFLAGS=-static LDFLAGS=-static
           cmake -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_AOM_ENCODE=ON
