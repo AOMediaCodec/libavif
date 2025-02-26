@@ -72,11 +72,6 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
         frame->depth = 10;
         return AVIF_TRUE;
     }
-    if (!strcmp(formatString, "C422p10")) {
-        frame->format = AVIF_PIXEL_FORMAT_YUV422;
-        frame->depth = 10;
-        return AVIF_TRUE;
-    }
     if (!strcmp(formatString, "C444p12")) {
         frame->format = AVIF_PIXEL_FORMAT_YUV444;
         frame->depth = 12;
@@ -89,11 +84,6 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
     }
     if (!strcmp(formatString, "C420p12")) {
         frame->format = AVIF_PIXEL_FORMAT_YUV420;
-        frame->depth = 12;
-        return AVIF_TRUE;
-    }
-    if (!strcmp(formatString, "C422p12")) {
-        frame->format = AVIF_PIXEL_FORMAT_YUV422;
         frame->depth = 12;
         return AVIF_TRUE;
     }
