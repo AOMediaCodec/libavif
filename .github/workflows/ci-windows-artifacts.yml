@@ -64,7 +64,7 @@ jobs:
           -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
-          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION=5
+          -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION=10
       - name: Build libavif (ninja)
         working-directory: ./build
         run: ninja
