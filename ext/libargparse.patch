@@ -1,0 +1,14 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8ca16ae..605a062 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -21,7 +21,8 @@ add_library(libargparse STATIC
+ set_target_properties(libargparse PROPERTIES PREFIX "") #Avoid extra 'lib' prefix
+ set_target_properties(libargparse PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
+ target_include_directories(libargparse PUBLIC ${LIB_INCLUDE_DIRS})
+-install(TARGETS libargparse)
++include(GNUInstallDirs)
++install(TARGETS libargparse RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+ 
+ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+     #Create the test executable
