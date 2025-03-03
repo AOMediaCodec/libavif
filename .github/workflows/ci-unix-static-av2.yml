@@ -66,8 +66,12 @@ jobs:
         shell: bash
       - name: Check static link bundling
         run: |
+          # The tensorflow-lite dependency is added because of a temporary bad linkage in libavm.
           ${{ env.CC }} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
             apps/shared/*.c third_party/iccjpeg/iccjpeg.c build/libavif.a \
+            `ls build/_deps/ruy-build/ruy/libruy_*.a` \
+            build/_deps/avm-build/third_party/tensorflow/tensorflow/lite/c/tensorflow-lite/libtensorflow-lite.a \
+            build/_deps/xnnpack-build/libXNNPACK.a \
             -lpng -ljpeg -lz -lm -ldl -lstdc++
 
           ./avifenc --help
