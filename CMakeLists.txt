@@ -546,7 +546,7 @@ if(AVIF_CODEC_AVM_ENABLED)
     target_sources(avif_obj PRIVATE src/codec_avm.c)
 
     avif_target_link_library(aom)
-    # C++ is needed because of tflite.
+    # C++ is needed because of tensorflow-lite.
     set(AVIF_LIB_USE_CXX ON)
 
     message(STATUS "libavif: Codec enabled: avm (encode/decode)")
@@ -563,7 +563,7 @@ endif()
 if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD OR AVIF_CODEC_AVM_ENABLED)
-        # [[nodiscard]] and tflite require C++17.
+        # [[nodiscard]] and tensorflow-lite require C++17.
         set(CMAKE_CXX_STANDARD 17)
         set(CMAKE_CXX_STANDARD_REQUIRED ON)
     else()

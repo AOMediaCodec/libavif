@@ -65,7 +65,7 @@ jobs:
           echo "CC=cc" >> $GITHUB_ENV
         shell: bash
       - name: Check static link bundling
-        # Disabled until libavm properly depends on tensorflow.
+        # Disabled until libavm properly depends on tensorflow-lite.
         if: ${{ false }}
         run: |
           ${{ env.CC }} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
