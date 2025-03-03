@@ -98,8 +98,6 @@ else()
             GIT_SHALLOW ON
             UPDATE_COMMAND ""
         )
-        # This will disable the tensorflow dependency.
-        #set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
         set(RUY_FIND_CPUINFO ON CACHE INTERNAL "")
         include_directories(${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/)
     else()
@@ -172,7 +170,7 @@ else()
         target_link_libraries(aom PRIVATE $<TARGET_FILE:yuv::yuv>)
     endif()
     if(AVIF_CODEC_AVM)
-        target_link_libraries(avif_obj PRIVATE tensorflow-lite)
+        target_link_libraries(aom PRIVATE tensorflow-lite)
     endif()
 
     set_property(TARGET aom PROPERTY AVIF_LOCAL ON)
