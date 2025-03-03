@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5df76856..1ac840fb 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -112,7 +112,7 @@ if(NOT MSVC)
+       ${ly_src_dir}/rotate_neon64.cc
+       ${ly_src_dir}/row_neon64.cc
+       ${ly_src_dir}/scale_neon64.cc)
+-    target_compile_options(${ly_lib_name}_neon64 PRIVATE -march=armv8-a+dotprod+i8mm)
++    target_compile_options(${ly_lib_name}_neon64 PRIVATE -march=armv8.2-a+dotprod+i8mm)
+     list(APPEND ly_lib_parts $<TARGET_OBJECTS:${ly_lib_name}_neon64>)
+ 
+     # Enable AArch64 SVE kernels.
