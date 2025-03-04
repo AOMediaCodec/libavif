@@ -19,6 +19,8 @@ cd libyuv
 : # It can be looked up at https://source.chromium.org/chromium/chromium/src/+/main:DEPS?q=libyuv.
 git checkout ccdf87034
 
+git apply --ignore-whitespace ../libyuv.patch
+
 mkdir build
 cd build
 
