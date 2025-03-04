@@ -1,6 +1,6 @@
 : # If you want to use a local build of SVT-AV1, you must clone the SVT-AV1 repo in this directory first,
 : # then set CMake's AVIF_CODEC_SVT to LOCAL.
-: # cmake and ninja must be in your PATH.
+: # cmake must be in your PATH.
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 

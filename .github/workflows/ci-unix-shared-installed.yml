@@ -57,7 +57,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G Ninja -S . -B build
+          cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
           -DAVIF_CODEC_AOM=SYSTEM
           -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -66,15 +66,14 @@ jobs:
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=SYSTEM
           -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./build/install
           -DAVIF_ENABLE_WERROR=ON ${{ env.CMAKE_AVIF_FLAGS }}
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
       - name: Install AVIF
-        working-directory: ./build
-        run: ninja install
+        # cmake --install was introduced in CMake version 3.15.
+        run: cmake --build build --target install
       - name: Test installed cmake
         working-directory: ./build
         run: >
@@ -95,7 +94,7 @@ jobs:
         # CMake 3.21 is needed to force C23 for [[nodiscard]].
         if: runner.oldest-cmake == 'false'
         run: >
-          cmake -G Ninja -S . -B build_nodiscard
+          cmake -S . -B build_nodiscard
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
           -DAVIF_CODEC_AOM=SYSTEM
           -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -104,7 +103,6 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
           -DAVIF_BUILD_GDK_PIXBUF=ON ${{ env.CMAKE_AVIF_FLAGS }}
-      - name: Build libavif with [[nodiscard]] (ninja)
+      - name: Build libavif with [[nodiscard]]
         if: runner.oldest-cmake == 'false'
-        working-directory: ./build_nodiscard
-        run: ninja
+        run: cmake --build build_nodiscard --parallel 4

@@ -42,7 +42,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G Ninja -S . -B build
+          cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
@@ -50,9 +50,8 @@ jobs:
           -DAVIF_BUILD_TESTS=ON -DAVIF_ENABLE_GOLDEN_TESTS=ON
           -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
           -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --parallel 4
       - name: Run AVIF golden tests
         working-directory: ./build
         # Runs test that have "golden" in their name.

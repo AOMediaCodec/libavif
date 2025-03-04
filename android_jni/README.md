@@ -9,7 +9,6 @@ This subdirectory contains Android JNI bindings that will enable use of the liba
 * [Android NDK](https://developer.android.com/ndk/downloads) - For building the decoder (in the examples, we use dav1d).
 * [Gradle](https://gradle.org/).
 * CMake.
-* Ninja.
 
 ## Generate the AAR package
 
