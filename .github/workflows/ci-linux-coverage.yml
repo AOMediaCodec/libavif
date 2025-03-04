@@ -33,7 +33,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G Ninja -S . -B build
+          cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
           -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBXML2=LOCAL
@@ -46,12 +46,10 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON -DAVIF_ENABLE_COVERAGE=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --parallel 4
       - name: Run AVIF coverage
-        working-directory: ./build
-        run: ninja avif_coverage
+        run: cmake --build build --target avif_coverage --parallel 4
 
       # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
       - name: Archive coverage output
