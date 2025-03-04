@@ -416,7 +416,7 @@ int avifQueryCPUCount(void)
 
 #include <sys/sysctl.h>
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     int mib[4];
     int numCPU;
@@ -442,7 +442,7 @@ int avifQueryCPUCount()
 
 // Emscripten
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     return 1;
 }
@@ -453,7 +453,7 @@ int avifQueryCPUCount()
 
 #include <unistd.h>
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     int numCPU = (int)sysconf(_SC_NPROCESSORS_ONLN);
     return (numCPU > 0) ? numCPU : 1;
