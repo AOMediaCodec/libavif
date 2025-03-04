@@ -144,7 +144,7 @@ The following instructions can be used to build the libavif library and the
 
 #### Build using installed dependencies
 
-To link against the already installed `aom`, `libjpeg` and `libpng` dependency
+To link against the already installed `aom`, `libjpeg`, `libpng` and `libyuv` dependency
 libraries (recommended):
 
 ```sh
