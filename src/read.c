@@ -4060,7 +4060,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     uint8_t tmapMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
     uint32_t tmapFullRange = AVIF_FALSE;
     uint32_t hasClli = AVIF_FALSE, tmapHasClli = AVIF_FALSE;
-    avifContentLightLevelInformationBox clli = {}, tmapClli = {};
+    avifContentLightLevelInformationBox clli = { 0 }, tmapClli = { 0 };
     if (hasHdr) {
         AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &hasGainmap, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_flag;
         if (hasGainmap) {
