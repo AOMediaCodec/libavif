@@ -44,7 +44,7 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE_2x2}" "${DECODED_FILE_2x2}"
 
   echo "Testing monochrome grid with odd width (403 px)"
-  "${AVIFENC}" -s 8 "${INPUT_PNG}" --grid 2x2 --yuv 400 -o "${ENCODED_FILE_2x2}"
+  "${AVIFENC}" -s 8 "${INPUT_PNG}" --grid 2x2 --yuv 400 --ignore-icc -o "${ENCODED_FILE_2x2}"
   "${AVIFDEC}" "${ENCODED_FILE_2x2}" "${DECODED_FILE_2x2}"
 
   echo "Testing max grid"
