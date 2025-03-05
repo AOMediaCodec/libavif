@@ -154,6 +154,8 @@ if(AVIF_GTEST)
 
     if(AVIF_CODEC_SVT_ENABLED)
         add_avif_internal_gtest(avifsvttest)
+        # TODO: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/2251 - Remove when fixed upstream
+        set_property(TEST avifsvttest PROPERTY ENVIRONMENT "SVT_LOG=0")
     endif()
 
     add_avif_internal_gtest(aviftilingtest)
