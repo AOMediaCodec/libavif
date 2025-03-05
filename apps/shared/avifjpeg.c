@@ -908,11 +908,11 @@ static avifBool avifJPEGReadInternal(FILE * f,
         uint8_t * iccDataTmp;
         unsigned int iccDataLen;
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
+            iccData = iccDataTmp;
             if (requestedFormat == AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr, "The RGB ICC profile is asked to be kept while the output image is gray.\n");
                 goto cleanup;
             }
-            iccData = iccDataTmp;
             if (avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen) != AVIF_RESULT_OK) {
                 fprintf(stderr, "Setting ICC profile failed: %s (out of memory)\n", inputFilename);
                 goto cleanup;
