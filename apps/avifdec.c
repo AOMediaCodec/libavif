@@ -10,7 +10,6 @@
 
 #include <assert.h>
 #include <inttypes.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +38,7 @@ static void syntax(void)
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'\n");
     printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
     printf("                        (JPEG only; not applicable to y4m)\n");
-    printf("    --index I         : When decoding an image sequence or progressive image, specify which frame index to decode, where the first frame has index 0, or 'all' to decode all frames. (Default: all)\n");
+    printf("    --index I         : When decoding an image sequence or progressive image, specify which frame index to decode, where the first frame has index 0, or 'all' to decode all frames. (Default: 0)\n");
     printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
     printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
@@ -106,7 +105,8 @@ int main(int argc, char * argv[])
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
     avifStrictFlags strictFlags = AVIF_STRICT_ENABLED;
-    int frameIndex = -1; // Decode all frames by default.
+    int frameIndex = 0;                        // Decode the first frame by default.
+    avifBool frameIndexSpecified = AVIF_FALSE; // Whether the --index flag was passed.
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     avifRWData iccOverride = AVIF_DATA_EMPTY;
@@ -217,6 +217,7 @@ int main(int argc, char * argv[])
             } else {
                 frameIndex = (uint32_t)atoi(arg);
             }
+            frameIndexSpecified = AVIF_TRUE;
         } else if (!strcmp(arg, "--no-strict")) {
             strictFlags = AVIF_STRICT_DISABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
@@ -272,7 +273,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if ((!inputFilename)) {
+    if (!inputFilename) {
         fprintf(stderr, "Missing input filename\n");
         syntax();
         return 1;
@@ -358,10 +359,14 @@ int main(int argc, char * argv[])
         }
     }
 
-    const int specificFrameRequested = frameIndex >= 0;
-    int currIndex = specificFrameRequested ? frameIndex : 0;
-    while (1) {
-        result = specificFrameRequested ? avifDecoderNthImage(decoder, frameIndex) : avifDecoderNextImage(decoder);
+    if (infoOnly && !frameIndexSpecified) {
+        frameIndex = -1; // Decode all frames by default in 'info only' mode.
+    }
+
+    const avifBool decodeAllFrames = frameIndex == -1;
+    int currIndex = decodeAllFrames ? 0 : frameIndex;
+    while (AVIF_TRUE) {
+        result = decodeAllFrames ? avifDecoderNextImage(decoder) : avifDecoderNthImage(decoder, frameIndex);
         if (result != AVIF_RESULT_OK) {
             break;
         }
@@ -376,7 +381,11 @@ int main(int argc, char * argv[])
                decoder->image->height);
         if (infoOnly) {
             ++currIndex;
-            continue;
+            if (decodeAllFrames) {
+                continue;
+            } else {
+                break;
+            }
         }
 
         if (decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) {
@@ -407,26 +416,19 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (!isSequence || specificFrameRequested || (currIndex == 0)) {
-            if (!avifWriteToFile(outputFormat, outputFilename, decoder->image, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
-                goto cleanup;
-            }
-        }
-        if (isSequence && !specificFrameRequested) {
+        if (decodeAllFrames) {
             // Create filename for individual frames, in the form path/to/output-000.ext
             char * lastDot = strrchr(outputFilename, '.');
             const size_t dotPos = (lastDot != NULL) ? (size_t)(lastDot - outputFilename) : strlen(outputFilename);
             const char * extension = (lastDot != NULL) ? lastDot + 1 : "";
-            const int numDigits = (int)ceil(log10(decoder->imageCount));
             const int maxFilenameWithoutExtensionLength = 1000;
             const int maxExtensionLength = 10;
             char frameFilename[1024];
             int res = snprintf(frameFilename,
                                sizeof(frameFilename),
-                               "%.*s-%0*d.%.*s",
+                               "%.*s-%010d.%.*s",
                                ((int)dotPos > maxFilenameWithoutExtensionLength ? maxFilenameWithoutExtensionLength : (int)dotPos),
                                outputFilename,
-                               numDigits,
                                currIndex,
                                maxExtensionLength,
                                extension);
@@ -437,20 +439,26 @@ int main(int argc, char * argv[])
             if (!avifWriteToFile(outputFormat, frameFilename, decoder->image, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
                 goto cleanup;
             }
-        }
-
-        if (specificFrameRequested) {
+        } else {
+            if (!avifWriteToFile(outputFormat, outputFilename, decoder->image, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
+                goto cleanup;
+            }
+            if (isSequence && !frameIndexSpecified) {
+                fprintf(stderr,
+                        "INFO: Decoded the first frame of an image sequence with %d frames. To output all frames, use --index all. To silence this message, use --index 0.\n",
+                        decoder->imageCount);
+            }
             break;
         }
         ++currIndex;
     }
 
     if (result == AVIF_RESULT_NO_IMAGES_REMAINING) {
-        if (specificFrameRequested) {
+        if (decodeAllFrames) {
+            result = AVIF_RESULT_OK;
+        } else {
             fprintf(stderr, "ERROR: Frame at index %d requested but the file does not contain enough frames\n", frameIndex);
             goto cleanup;
-        } else {
-            result = AVIF_RESULT_OK;
         }
     }
     if (result != AVIF_RESULT_OK) {
