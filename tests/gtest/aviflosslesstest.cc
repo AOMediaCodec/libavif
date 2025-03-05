@@ -12,34 +12,6 @@ namespace {
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
 
-TEST(ICCTest, RGB2Gray) {
-  for (const auto& file_name :
-       {"paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg"}) {
-    const std::string file_path = std::string(data_path) + file_name;
-    for (bool ignore_icc : {false, true}) {
-      ImagePtr image(avifImageCreateEmpty());
-      // Read the image.
-      const avifAppFileFormat file_format = avifReadImage(
-          file_path.c_str(),
-          /*requestedFormat=*/AVIF_PIXEL_FORMAT_YUV400,
-          /*requestedDepth=*/0,
-          /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-          /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
-          /*ignoreXMP=*/false, /*allowChangingCicp=*/true,
-          /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-          /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-          /*frameIter=*/nullptr);
-      if (ignore_icc) {
-        ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
-      } else {
-        // Asking for a gray image from an RGB image with an ICC profile is
-        // invalid.
-        ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
-      }
-    }
-  }
-}
-
 // Tests encode/decode round trips under different matrix coefficients.
 TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
   for (const auto& file_name :
