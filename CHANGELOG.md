@@ -8,6 +8,12 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.2.0
+
+* Fix local libargparse dependency patch step on macOS 10.15 and earlier.
+* Patch local libyuv dependency for compatibility with gcc 10.
+* Use stricter C99 syntax to avoid related compilation issues.
+
 ## [1.2.0] - 2025-02-25
 
 ### Added since 1.1.1
