@@ -365,6 +365,13 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+            if (rawColorType != PNG_COLOR_TYPE_GRAY && rawColorType != PNG_COLOR_TYPE_GRAY_ALPHA &&
+                avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains an RGB ICC profile which is incompatible with the requested output "
+                        "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
             if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
                 fprintf(stderr, "Setting ICC profile failed: out of memory.\n");
                 goto cleanup;

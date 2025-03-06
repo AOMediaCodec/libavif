@@ -289,6 +289,34 @@ TEST(ICCTest, GeneratedICCHash) {
             0);
 }
 
+// Verify the invalidity of keeping the ICC profile for a gray image read from
+// an RGB image.
+TEST(ICCTest, RGB2Gray) {
+  for (const auto& file_name :
+       {"paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg"}) {
+    const std::string file_path = std::string(data_path) + file_name;
+    for (bool ignore_icc : {false, true}) {
+      ImagePtr image(avifImageCreateEmpty());
+      // Read the image.
+      const avifAppFileFormat file_format = avifReadImage(
+          file_path.c_str(),
+          /*requestedFormat=*/AVIF_PIXEL_FORMAT_YUV400,
+          /*requestedDepth=*/0,
+          /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+          /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
+          /*ignoreXMP=*/false, /*allowChangingCicp=*/true,
+          /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+          /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+          /*frameIter=*/nullptr);
+      if (ignore_icc) {
+        ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+      } else {
+        ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+      }
+    }
+  }
+}
+
 //------------------------------------------------------------------------------
 // Memory management tests
 
