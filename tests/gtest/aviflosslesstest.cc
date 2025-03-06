@@ -68,6 +68,14 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
     ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
     return;
   }
+  if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+      image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+    // 420 cannot be converted from RGB to YUV with
+    // AVIF_MATRIX_COEFFICIENTS_IDENTITY due to a decision taken in
+    // avifGetYUVColorSpaceInfo.
+    ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+    return;
+  }
   ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 
   // Encode.
@@ -75,13 +83,11 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->quality = AVIF_QUALITY_LOSSLESS;
-  encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
   testutil::AvifRwData encoded;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
 
   if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
-      pixel_format != AVIF_PIXEL_FORMAT_NONE &&
-      pixel_format != AVIF_PIXEL_FORMAT_YUV444) {
+      image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
     // The AV1 spec does not allow identity with subsampling.
     ASSERT_EQ(result, AVIF_RESULT_INVALID_ARGUMENT);
     return;
@@ -102,14 +108,24 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
 
   // Convert to a temporary PNG and read back, to have default matrix
   // coefficients.
-  const std::string tmp_path = testing::TempDir() + "decoded_default.png";
+  const std::string tmp_path =
+      testing::TempDir() + "decoded_EncodeDecodeMatrixCoefficients.png";
   ASSERT_TRUE(testutil::WriteImage(decoded.get(), tmp_path.c_str()));
   const ImagePtr decoded_lossless =
       ReadImageLossless(tmp_path, pixel_format, ignore_icc);
+  if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
+    // 420 cannot be converted from RGB to YUV with
+    // AVIF_MATRIX_COEFFICIENTS_IDENTITY due to a decision taken in
+    // avifGetYUVColorSpaceInfo.
+    ASSERT_EQ(decoded_lossless, nullptr);
+    return;
+  }
+  ASSERT_NE(decoded_lossless, nullptr);
 
   // Verify that the ground truth and decoded images are the same.
   const ImagePtr ground_truth_lossless =
       ReadImageLossless(file_path, pixel_format, ignore_icc);
+  ASSERT_NE(ground_truth_lossless, nullptr);
   const bool are_images_equal =
       testutil::AreImagesEqual(*ground_truth_lossless, *decoded_lossless);
 
@@ -117,6 +133,7 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
     // AVIF_MATRIX_COEFFICIENTS_YCGCO is not a lossless transform.
     ASSERT_FALSE(are_images_equal);
   } else if (pixel_format == AVIF_PIXEL_FORMAT_YUV400) {
+    ASSERT_EQ(matrix_coefficients, AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     // For gray images, information is lost.
     ASSERT_FALSE(are_images_equal);
   } else {
@@ -133,6 +150,8 @@ INSTANTIATE_TEST_SUITE_P(
                         static_cast<int>(AVIF_MATRIX_COEFFICIENTS_YCGCO_RE),
                         static_cast<int>(AVIF_MATRIX_COEFFICIENTS_YCGCO_RO)),
         testing::Values(static_cast<int>(AVIF_PIXEL_FORMAT_NONE),
+                        static_cast<int>(AVIF_PIXEL_FORMAT_YUV444),
+                        static_cast<int>(AVIF_PIXEL_FORMAT_YUV420),
                         static_cast<int>(AVIF_PIXEL_FORMAT_YUV400))));
 
 }  // namespace

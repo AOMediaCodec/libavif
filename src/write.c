@@ -1660,7 +1660,7 @@ static avifResult avifValidateGrid(uint32_t gridCols,
         // AV1 (Version 1.0.0 with Errata 1), Section 6.4.2. Color config semantics
         // If matrix coefficients is equal to MC_IDENTITY, it is a requirement of bitstream conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
         if (cellImage->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY && cellImage->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
-            avifDiagnosticsPrintf(diag, "subsampling must be 0 with identity matrix coefficients");
+            avifDiagnosticsPrintf(diag, "subsampling must be 0 (4:4:4) with identity matrix coefficients");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
 
