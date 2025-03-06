@@ -15,6 +15,7 @@
 #include <string.h>
 
 #define DEFAULT_JPEG_QUALITY 90
+#define DECODE_ALL_FRAMES -1
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
@@ -54,39 +55,32 @@ static void syntax(void)
     avifPrintVersions();
 }
 
-int avifWriteToFile(avifAppFileFormat outputFormat,
-                    const char * outputFilename,
-                    avifImage * image,
-                    avifBool rawColor,
-                    int jpegQuality,
-                    int pngCompressionLevel,
-                    int requestedDepth,
-                    int chromaUpsampling)
+avifBool avifWriteToFile(avifAppFileFormat outputFormat,
+                         const char * outputFilename,
+                         avifImage * image,
+                         avifBool rawColor,
+                         int jpegQuality,
+                         int pngCompressionLevel,
+                         int requestedDepth,
+                         int chromaUpsampling)
 {
     if (outputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (image->icc.size || image->exif.size || image->xmp.size) {
             fprintf(stderr, "Warning: metadata dropped when saving to y4m.\n");
         }
-        if (!y4mWrite(outputFilename, image)) {
-            return AVIF_FALSE;
-        }
+        return y4mWrite(outputFilename, image);
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // Bypass alpha multiply step during conversion
         if (rawColor) {
             image->alphaPremultiplied = AVIF_TRUE;
         }
-        if (!avifJPEGWrite(outputFilename, image, jpegQuality, chromaUpsampling)) {
-            return AVIF_FALSE;
-        }
+        return avifJPEGWrite(outputFilename, image, jpegQuality, chromaUpsampling);
     } else if (outputFormat == AVIF_APP_FILE_FORMAT_PNG) {
-        if (!avifPNGWrite(outputFilename, image, requestedDepth, chromaUpsampling, pngCompressionLevel)) {
-            return AVIF_FALSE;
-        }
+        return avifPNGWrite(outputFilename, image, requestedDepth, chromaUpsampling, pngCompressionLevel);
     } else {
         fprintf(stderr, "Unsupported output file extension: %s\n", outputFilename);
         return AVIF_FALSE;
     }
-    return AVIF_TRUE;
 }
 
 int main(int argc, char * argv[])
@@ -213,7 +207,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--index")) {
             NEXTARG();
             if (!strcmp(arg, "all")) {
-                frameIndex = -1;
+                frameIndex = DECODE_ALL_FRAMES;
             } else {
                 frameIndex = (uint32_t)atoi(arg);
             }
@@ -360,10 +354,10 @@ int main(int argc, char * argv[])
     }
 
     if (infoOnly && !frameIndexSpecified) {
-        frameIndex = -1; // Decode all frames by default in 'info only' mode.
+        frameIndex = DECODE_ALL_FRAMES; // Decode all frames by default in 'info only' mode.
     }
 
-    const avifBool decodeAllFrames = frameIndex == -1;
+    const avifBool decodeAllFrames = frameIndex == DECODE_ALL_FRAMES;
     int currIndex = decodeAllFrames ? 0 : frameIndex;
     while (AVIF_TRUE) {
         result = decodeAllFrames ? avifDecoderNextImage(decoder) : avifDecoderNthImage(decoder, frameIndex);
@@ -417,7 +411,7 @@ int main(int argc, char * argv[])
         }
 
         if (decodeAllFrames) {
-            // Create filename for individual frames, in the form path/to/output-000.ext
+            // Create filename for individual frames, in the form path/to/output-0000000000.ext
             char * lastDot = strrchr(outputFilename, '.');
             const size_t dotPos = (lastDot != NULL) ? (size_t)(lastDot - outputFilename) : strlen(outputFilename);
             const char * extension = (lastDot != NULL) ? lastDot + 1 : "";
@@ -457,7 +451,10 @@ int main(int argc, char * argv[])
         if (decodeAllFrames) {
             result = AVIF_RESULT_OK;
         } else {
-            fprintf(stderr, "ERROR: Frame at index %d requested but the file does not contain enough frames\n", frameIndex);
+            fprintf(stderr,
+                    "ERROR: Frame at index %d requested but the file does not contain enough frames (signalled frame count: %d)\n",
+                    frameIndex,
+                    decoder->imageCount);
             goto cleanup;
         }
     }
