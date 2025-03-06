@@ -2,8 +2,7 @@
 
 name: CI Windows Release Artifacts
 on:
-  release:
-    types: [created]
+  pull_request:
 
 permissions:
   contents: write
@@ -66,28 +65,16 @@ jobs:
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10
       - name: Build libavif
-        run: cmake --build build --parallel 4
+        run: cmake --build build --config=Release --parallel 4
       - name: Archive artifacts
         uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
         with:
           type: "zip"
           filename: "windows-artifacts.zip"
-          directory: "build/Debug"
+          directory: "build/Release"
           path: "*.exe"
       - name: Upload artifacts
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/Debug/windows-artifacts.zip
-          asset_name: windows-artifacts.zip
-          asset_content_type: application/zip
-
-    # Use the following instead of the above to test this workflow outside of a release event.
-    # - name: Upload artifacts
-    #   uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-    #   with:
-    #     name: windows-artifacts.zip
-    #     path: build/Debug/windows-artifacts.zip
+          name: windows-artifacts.zip
+          path: build/Release/windows-artifacts.zip
