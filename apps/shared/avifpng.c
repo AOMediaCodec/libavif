@@ -367,7 +367,9 @@ avifBool avifPNGRead(const char * inputFilename,
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             if (rawColorType != PNG_COLOR_TYPE_GRAY && rawColorType != PNG_COLOR_TYPE_GRAY_ALPHA &&
                 avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
-                fprintf(stderr, "The RGB ICC profile is asked to be kept while the output image is gray.\n");
+                fprintf(stderr,
+                        "The image contains an RGB ICC profile which is incompatible with the requested output "
+                        "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
                 goto cleanup;
             }
             if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
