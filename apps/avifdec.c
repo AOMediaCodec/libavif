@@ -330,7 +330,7 @@ int main(int argc, char * argv[])
     printf("Image decoded: %s\n", inputFilename);
     avifContainerDump(decoder);
 
-    const int isSequence = decoder->imageCount > 1;
+    const avifBool isSequence = decoder->imageCount > 1;
     printf(" * %" PRIu64 " timescales per second, %2.2f seconds (%" PRIu64 " timescales), %d frame%s\n",
            decoder->timescale,
            decoder->duration,
