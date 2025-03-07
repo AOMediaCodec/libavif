@@ -911,7 +911,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
             iccData = iccDataTmp;
             if (requestedFormat == AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr,
-                        "The image contains an RGB ICC profile which is incompatible with the requested output "
+                        "The image contains a color ICC profile which is incompatible with the requested output "
                         "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
                 goto cleanup;
             }
