@@ -8,6 +8,12 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.2.0
+
+* Add support for outputting all frames of an image sequence in `avifdec`. 
+  `avifdec --index all sequence.avif out.png` creates files named
+  `out-xxxxxxxxxx.png` where xxxxxxxxxx are the zero-padded frame indices.
+
 ### Changed since 1.2.0
 
 * Fix local libargparse dependency patch step on macOS 10.15 and earlier.
