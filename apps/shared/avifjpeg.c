@@ -909,10 +909,17 @@ static avifBool avifJPEGReadInternal(FILE * f,
         unsigned int iccDataLen;
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
-            if (requestedFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            const avifBool is_gray = (cinfo.jpeg_color_space == JCS_GRAYSCALE);
+            if (!is_gray && (requestedFormat == AVIF_PIXEL_FORMAT_YUV400)) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
                         "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
+            if (is_gray && requestedFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains a gray ICC profile which is incompatible with the requested output "
+                        "format YUV (color). Pass --ignore-icc to discard the ICC profile.\n");
                 goto cleanup;
             }
             if (avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen) != AVIF_RESULT_OK) {
@@ -1283,8 +1290,9 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     jpeg_stdio_dest(&cinfo, f);
     cinfo.image_width = avif->width;
     cinfo.image_height = avif->height;
-    cinfo.input_components = 3;
-    cinfo.in_color_space = JCS_RGB;
+    const avifBool is_gray = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
+    cinfo.input_components = is_gray ? 1 : 3;
+    cinfo.in_color_space = is_gray ? JCS_GRAYSCALE : JCS_RGB;
     jpeg_set_defaults(&cinfo);
     jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
