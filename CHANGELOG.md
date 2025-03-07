@@ -19,8 +19,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix local libargparse dependency patch step on macOS 10.15 and earlier.
 * Patch local libyuv dependency for compatibility with gcc 10.
 * Use stricter C99 syntax to avoid related compilation issues.
-* Reject the conversion in avifenc of non-monochrome input to monochrome when an
-  ICC profile is present and not explicitly discarded.
+* Reject the conversion in avifenc from non-monochrome/monochrome to
+  monochrome/non-monochrome when an ICC profile is present and not explicitly
+  discarded.
 
 ## [1.2.0] - 2025-02-25
 

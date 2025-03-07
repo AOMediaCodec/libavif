@@ -298,7 +298,8 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_tRNS_to_alpha(png);
     }
 
-    if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+    const avifBool rawColorTypeIsGray = (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA);
+    if (rawColorTypeIsGray) {
         png_set_gray_to_rgb(png);
     }
 
@@ -322,7 +323,7 @@ avifBool avifPNGRead(const char * inputFilename,
         goto cleanup;
     }
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+        if (rawColorTypeIsGray) {
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
@@ -365,11 +366,16 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            if (rawColorType != PNG_COLOR_TYPE_GRAY && rawColorType != PNG_COLOR_TYPE_GRAY_ALPHA &&
-                avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            if (!rawColorTypeIsGray && avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
                         "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
+            if (rawColorTypeIsGray && avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains a gray ICC profile which is incompatible with the requested output "
+                        "format YUV (color). Pass --ignore-icc to discard the ICC profile.\n");
                 goto cleanup;
             }
             if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
