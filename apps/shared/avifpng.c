@@ -298,8 +298,8 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_tRNS_to_alpha(png);
     }
 
-    const avifBool raw_color_type_is_gray = (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA);
-    if (raw_color_type_is_gray) {
+    const avifBool rawColorTypeIsGray = (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA);
+    if (rawColorTypeIsGray) {
         png_set_gray_to_rgb(png);
     }
 
@@ -323,7 +323,7 @@ avifBool avifPNGRead(const char * inputFilename,
         goto cleanup;
     }
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        if (raw_color_type_is_gray) {
+        if (rawColorTypeIsGray) {
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
@@ -366,13 +366,13 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-            if (!raw_color_type_is_gray && avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+            if (!rawColorTypeIsGray && avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
                         "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
                 goto cleanup;
             }
-            if (raw_color_type_is_gray && avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+            if (rawColorTypeIsGray && avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
                         "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
