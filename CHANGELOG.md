@@ -22,6 +22,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Reject the conversion in avifenc from non-monochrome/monochrome to
   monochrome/non-monochrome when an ICC profile is present and not explicitly
   discarded.
+* Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
+  AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible
 
 ## [1.2.0] - 2025-02-25
 
