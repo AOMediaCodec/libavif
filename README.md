@@ -144,22 +144,22 @@ The following instructions can be used to build the libavif library and the
 
 #### Build using installed dependencies
 
-To link against the already installed `aom`, `libjpeg` and `libpng` dependency
+To link against the already installed `aom`, `libjpeg`, `libpng` and `libyuv` dependency
 libraries (recommended):
 
 ```sh
-git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+git clone -b v1.2.0 https://github.com/AOMediaCodec/libavif.git
 cmake -S libavif -B libavif/build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
 cmake --build libavif/build --parallel
 ```
 
 #### Build everything from scratch
 
-For development and debugging purposes, or to generate fully static binaries:
+For development and debugging purposes:
 
 ```sh
-git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
-cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
+git clone -b v1.2.0 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON
 cmake --build libavif/build --parallel
 ```
 

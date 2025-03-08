@@ -273,10 +273,8 @@ typedef enum avifReformatMode
     AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
     AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
     AVIF_REFORMAT_MODE_YCGCO,                // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    AVIF_REFORMAT_MODE_YCGCO_RE, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
-    AVIF_REFORMAT_MODE_YCGCO_RO, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
-#endif
+    AVIF_REFORMAT_MODE_YCGCO_RE,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
+    AVIF_REFORMAT_MODE_YCGCO_RO,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
 } avifReformatMode;
 
 typedef enum avifAlphaMultiplyMode
@@ -420,6 +418,7 @@ typedef enum avifItemCategory
 avifBool avifIsAlpha(avifItemCategory itemCategory);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// AVIF allows up to 32 inputs for sample transforms but we only support a smaller number.
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS \
     (AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA - AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR)
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS \

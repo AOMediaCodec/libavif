@@ -7,6 +7,7 @@
 
 #include "svt-av1/EbSvtAv1Enc.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -114,7 +115,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         // See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1697.
         memset(svt_config, 0, sizeof(EbSvtAv1EncConfiguration));
 
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, svt_config);
+#else
         res = svt_av1_enc_init_handle(&codec->internal->svt_encoder, NULL, svt_config);
+#endif
         if (res != EB_ErrorNone) {
             goto cleanup;
         }
@@ -124,15 +129,13 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
 #endif
-
-        // Follow comment in svt header: set if input is HDR10 BT2020 using SMPTE ST2084 (PQ).
-        svt_config->high_dynamic_range_input = (image->depth == 10 && image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020 &&
-                                                image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 &&
-                                                image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_NCL);
-
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        svt_config->level_of_parallelism = encoder->maxThreads;
+#else
         svt_config->logical_processors = encoder->maxThreads;
+#endif
         svt_config->enable_adaptive_quantization = 2;
         // disable 2-pass
 #if SVT_AV1_CHECK_VERSION(0, 9, 0)
@@ -175,7 +178,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
         // In order for SVT-AV1 to force keyframes by setting pic_type to
         // EB_AV1_KEY_PICTURE on any frame, force_key_frames has to be set.
-        svt_config->force_key_frames = TRUE;
+        svt_config->force_key_frames = true;
 
         // keyframeInterval == 1 case is handled when encoding each frame by
         // setting pic_type to EB_AV1_KEY_PICTURE. For keyframeInterval > 1,
@@ -200,6 +203,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             result = AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
             goto cleanup;
         }
+#endif
+
+#if SVT_AV1_CHECK_VERSION(3, 0, 0)
+        svt_config->lossless = quantizer == AVIF_QUANTIZER_LOSSLESS;
+        // TODO: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/2245 - Enable when resolved.
+        // svt_config->avif = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) != 0;
 #endif
 
         res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);

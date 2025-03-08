@@ -40,6 +40,8 @@ else()
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
         BINARY_DIR "${LIBYUV_BINARY_DIR}"
         GIT_TAG "${AVIF_LIBYUV_TAG}"
+        # TODO: https://libyuv.issues.chromium.org/issues/399856238 - Remove when fixed upstream
+        PATCH_COMMAND git apply --ignore-whitespace "${AVIF_SOURCE_DIR}/ext/libyuv.patch"
         UPDATE_COMMAND ""
     )
 

@@ -31,20 +31,13 @@ FetchContent_Declare(
 # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
 # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
 set(ZLIB_INCLUDE_DIR "${ZLIB_SOURCE_DIR}" CACHE PATH "zlib include dir")
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "")
 # This include_directories() call must be before add_subdirectory(ext/zlib) to work around the
 # zlib/CMakeLists.txt bug fixed by https://github.com/madler/zlib/pull/818.
 include_directories(SYSTEM $<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>)
 
 if(NOT zlib_POPULATED)
     avif_fetchcontent_populate_cmake(zlib)
-
-    # Re-enable example and example64 targets, as these are used by tests
-    if(AVIF_BUILD_TESTS)
-        set_property(TARGET example PROPERTY EXCLUDE_FROM_ALL FALSE)
-        if(TARGET example64)
-            set_property(TARGET example64 PROPERTY EXCLUDE_FROM_ALL FALSE)
-        endif()
-    endif()
 endif()
 
 target_include_directories(zlibstatic INTERFACE $<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>)

@@ -760,6 +760,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
+        // Disabling these two gives 1.19% PSNR YUV loss in All-Intra config, but encode will be ~4X faster.
+        if (aom_codec_set_option(&codec->internal->encoder, "enable-ext-partitions", "0") != AOM_CODEC_OK ||
+            aom_codec_set_option(&codec->internal->encoder, "enable-uneven-4way-partitions", "0") != AOM_CODEC_OK) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
         if (!codec->internal->tuningSet) {
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;

@@ -40,7 +40,7 @@ typedef struct
     avifBool layered;     // manual layered encoding by specifying each layer
     int layers;
     int speed;
-    avifHeaderFormat headerFormat;
+    avifHeaderFormatFlags headerFormat;
 
     avifBool paspPresent;
     uint32_t paspValues[2];
@@ -1452,7 +1452,7 @@ int main(int argc, char * argv[])
     settings.layered = AVIF_FALSE;
     settings.layers = 0;
     settings.speed = 6;
-    settings.headerFormat = AVIF_HEADER_FULL;
+    settings.headerFormat = AVIF_HEADER_DEFAULT;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
@@ -1558,7 +1558,7 @@ int main(int argc, char * argv[])
             outputFilename = arg;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
         } else if (!strcmp(arg, "--mini")) {
-            settings.headerFormat = AVIF_HEADER_REDUCED;
+            settings.headerFormat |= AVIF_HEADER_MINI;
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
@@ -2009,8 +2009,22 @@ int main(int argc, char * argv[])
             fprintf(stderr, "rav1e doesn't support lossless encoding yet: https://github.com/xiph/rav1e/issues/151\n");
             goto cleanup;
         } else if (codecName && !strcmp(codecName, "svt")) {
-            fprintf(stderr, "SVT-AV1 doesn't support lossless encoding yet: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/1636\n");
-            goto cleanup;
+            char versions[256];
+            avifCodecVersions(versions);
+            const char svtVersionPrefix[] = "svt [enc]:v";
+            const char * svtVersionPrefixPos = strstr(versions, svtVersionPrefix);
+            if (svtVersionPrefixPos == NULL) {
+                // Make sure the syntax returned by avifCodecVersions() did not change.
+                assert(strstr(versions, "svt") == NULL && strstr(versions, "SVT") == NULL);
+                // Let the encode fail later because SVT was not included in the build.
+            } else {
+                const char * svtVersion = svtVersionPrefixPos + strlen(svtVersionPrefix);
+                const int svtMajorVersion = atoi(svtVersion);
+                if (svtMajorVersion < 3) {
+                    fprintf(stderr, "SVT-AV1 lossless support was added in version 3.0.0, current major version is only %d\n", svtMajorVersion);
+                    goto cleanup;
+                }
+            }
         }
         // Range.
         if (requestedRange != AVIF_RANGE_FULL) {
@@ -2019,17 +2033,10 @@ int main(int argc, char * argv[])
         }
         // Matrix coefficients.
         if (settings.cicpExplicitlySet) {
-            avifBool incompatibleMC = (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-            incompatibleMC &= (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
-                               settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#endif
-            if (incompatibleMC) {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
+            if (settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                settings.matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
                 fprintf(stderr, "Matrix coefficients have to be identity, YCgCo-Re, or YCgCo-Ro in lossless mode.\n");
-#else
-                fprintf(stderr, "Matrix coefficients have to be identity in lossless mode.\n");
-#endif
                 goto cleanup;
             }
         } else {
@@ -2179,7 +2186,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
                 fprintf(stderr,
-                        "WARNING: --min and --max are deprecated, please use --q 0..100 instead. "
+                        "WARNING: --min and --max are deprecated, please use -q 0..100 instead. "
                         "--min %d --max %d is equivalent to -q %d\n",
                         fileSettings->minQuantizer.value,
                         fileSettings->maxQuantizer.value,
@@ -2480,17 +2487,11 @@ int main(int argc, char * argv[])
                 lossless = AVIF_FALSE;
             }
 
-            avifBool matrixCoefficientsAreLosslessCompatible = usingIdentityMatrix;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-            matrixCoefficientsAreLosslessCompatible |= (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
-                                                        image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#endif
+            avifBool matrixCoefficientsAreLosslessCompatible = usingIdentityMatrix ||
+                                                               image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+                                                               image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO;
             if (!matrixCoefficientsAreLosslessCompatible && !using400) {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                 fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0) or YCgCo-Re/Ro (--cicp x/x/16 or x/x/17); Output might not be lossless.\n");
-#else
-                fprintf(stderr, "WARNING: [--lossless] Input data was RGB and matrixCoefficients isn't set to identity (--cicp x/x/0); Output might not be lossless.\n");
-#endif
                 lossless = AVIF_FALSE;
             }
         }

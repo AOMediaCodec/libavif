@@ -98,8 +98,10 @@ else()
             GIT_SHALLOW ON
             UPDATE_COMMAND ""
         )
-        # This will disable the tensorflow dependency.
-        set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")
+        # There can be a duplicate cpuinfo in SVT so find_package has to be used.
+        set(RUY_FIND_CPUINFO ON CACHE INTERNAL "")
+        # TODO(vrabaud) Remove once libavm properly depends on flatbuffers.
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/)
     else()
         FetchContent_Declare(
             libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz" BINARY_DIR "${AOM_BINARY_DIR}"
@@ -149,7 +151,7 @@ else()
         foreach(_config_setting CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS)
             foreach(_config_type DEBUG RELEASE MINSIZEREL RELWITHDEBINFO)
                 unset(${_config_setting}_${_config_type} CACHE)
-                set(${_config_setting}_${_config_type} ${${_config_setting}_${_config_type}_ORIG})
+                set(${_config_setting}_${_config_type} ${${_config_setting}_${_config_type}_ORIG} CACHE STRING "" FORCE)
                 unset(${_config_setting}_${_config_type}_ORIG)
             endforeach()
         endforeach()
@@ -168,6 +170,10 @@ else()
             file(WRITE ${AOM_BINARY_DIR}/config/aom_config.h "${AOM_CONFIG_H}")
         endif()
         target_link_libraries(aom PRIVATE $<TARGET_FILE:yuv::yuv>)
+    endif()
+    if(AVIF_CODEC_AVM)
+        # TODO(vrabaud) Remove once libavm properly depends on tensorflow-lite.
+        target_link_libraries(aom PRIVATE tensorflow-lite)
     endif()
 
     set_property(TARGET aom PROPERTY AVIF_LOCAL ON)

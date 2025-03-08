@@ -23,8 +23,9 @@ An opaque blue circle on a transparent green background.
 
 It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk before a PLTE
 chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
-follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
-ignores it.
+follow the PLTE chunk, if any", libpng 1.6.46 or older considers the tRNS chunk
+as invalid and ignores it. The behavior changed starting with libpng 1.6.47.
+See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
 
 ### File [circle_custom_properties.avif](circle_custom_properties.avif)
 
@@ -830,6 +831,21 @@ An animated AVIF image file with the following attributes:
 * Repetition Count: 0
 * Frame count: 5
 
+### File [colors-animated-8bpc-audio.avif](colors-animated-8bpc-audio.avif)
+
+![](colors-animated-8bpc-audio.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Same as `colors-animated-8bpc.avif` but with an audio track added using MP4Box:
+
+`MP4Box -add audio.aac colors-animated-8bpc-audio.avif`
+
+audio.aac was recorded with QuickTime and converted/truncated to the same length as the
+image sequence with ffmpeg:
+
+`ffmpeg -i audio.m4a -t 0.17 audio.aac`
+
 ### File [colors-animated-8bpc-alpha-exif-xmp.avif](colors-animated-8bpc-alpha-exif-xmp.avif)
 
 ![](colors-animated-8bpc-alpha-exif-xmp.avif)
@@ -838,6 +854,15 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: `colors-animated-8bpc.avif` but translucent and with the Exif/XMP chunks of
 `paris_exif_xmp_icc.jpg`. The repetition is infinite.
+
+### File [colors-animated-8bpc-depth-exif-xmp.avif](colors-animated-8bpc-depth-exif-xmp.avif)
+
+![](colors-animated-8bpc-depth-exif-xmp.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `colors-animated-8bpc-alpha-exif-xmp.avif` but with the alpha URI manually
+changed to depth using a hex editor.
 
 ### File [colors-animated-12bpc-keyframes-0-2-3.avif](colors-animated-12bpc-keyframes-0-2-3.avif)
 

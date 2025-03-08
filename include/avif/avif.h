@@ -78,8 +78,8 @@ extern "C" {
 // downstream projects to do greater-than preprocessor checks on AVIF_VERSION
 // to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 1
-#define AVIF_VERSION_MINOR 1
-#define AVIF_VERSION_PATCH 1
+#define AVIF_VERSION_MINOR 2
+#define AVIF_VERSION_PATCH 0
 #define AVIF_VERSION_DEVEL 1
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
@@ -101,9 +101,9 @@ typedef int avifBool;
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
 #define AVIF_QUALITY_DEFAULT -1
-#define AVIF_QUALITY_LOSSLESS 100
 #define AVIF_QUALITY_WORST 0
 #define AVIF_QUALITY_BEST 100
+#define AVIF_QUALITY_LOSSLESS 100
 
 #define AVIF_QUANTIZER_LOSSLESS 0
 #define AVIF_QUANTIZER_BEST_QUALITY 0
@@ -210,22 +210,29 @@ AVIF_API const char * avifResultToString(avifResult result);
 // ---------------------------------------------------------------------------
 // avifHeaderFormat
 
+// Bit flag for selecting container strategies when encoding an image.
 typedef enum avifHeaderFormat
 {
-    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
-    AVIF_HEADER_FULL,
+    AVIF_HEADER_DEFAULT = 0x0,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // AVIF file with a "mif3" brand and a MinimizedImageBox to reduce the encoded file size.
     // This is based on the w24144 "Low-overhead image file format" MPEG proposal for HEIF.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_HEADER_REDUCED,
+    // If this flag is omitted or if MinimizedImageBox cannot be used at encoding, falls back to an
+    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
+    AVIF_HEADER_MINI = 0x1,
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
     // Use the full syntax of the PixelInformationProperty from HEIF 3rd edition Amendment 2.
     // WARNING: Experimental feature. Produces files that may be incompatible with older decoders.
-    AVIF_HEADER_FULL_WITH_EXTENDED_PIXI,
+    // Only relevant if a MetaBox is used. No effect if a MinimizedImageBox is used.
+    AVIF_HEADER_EXTENDED_PIXI = 0x2,
 #endif
+
+    // Deprecated.
+    AVIF_HEADER_FULL = AVIF_HEADER_DEFAULT,
 } avifHeaderFormat;
+typedef int avifHeaderFormatFlags;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
@@ -402,10 +409,8 @@ enum
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL = 12,
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL = 13,
     AVIF_MATRIX_COEFFICIENTS_ICTCP = 14,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    AVIF_MATRIX_COEFFICIENTS_YCGCO_RE = 16,
-    AVIF_MATRIX_COEFFICIENTS_YCGCO_RO = 17,
-#endif
+    AVIF_MATRIX_COEFFICIENTS_YCGCO_RE = 16, // Added to libavif in Feb 2025
+    AVIF_MATRIX_COEFFICIENTS_YCGCO_RO = 17, // Added to libavif in Feb 2025
     AVIF_MATRIX_COEFFICIENTS_LAST
 };
 typedef uint16_t avifMatrixCoefficients; // AVIF_MATRIX_COEFFICIENTS_*
@@ -626,7 +631,9 @@ typedef struct avifContentLightLevelInformationBox
 struct avifImage;
 
 // Gain map image and associated metadata.
-// Must be allocated by calling avifGainMapCreate().
+//
+// NOTE: The avifGainMap struct may be extended in a future release. Code outside the libavif
+// library must allocate avifGainMap by calling the avifGainMapCreate() function.
 typedef struct avifGainMap
 {
     // Gain map pixels.
@@ -707,6 +714,8 @@ typedef struct avifGainMap
     // Optimal viewing conditions of the alternate image ('clli' box content
     // of the alternate image that the gain map was created from).
     avifContentLightLevelInformationBox altCLLI;
+
+    // Version 1.2.0 ends here. Add any new members after this line.
 } avifGainMap;
 
 // Allocates a gain map. Returns NULL if a memory allocation failed.
@@ -1569,8 +1578,8 @@ typedef struct avifEncoder
     // Version 1.0.0 ends here.
     // --------------------------------------------------------------------------------------------
 
-    // Defaults to AVIF_HEADER_FULL
-    avifHeaderFormat headerFormat; // Changeable encoder setting.
+    // Defaults to AVIF_HEADER_DEFAULT
+    avifHeaderFormatFlags headerFormat; // Changeable encoder setting.
 
     // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------

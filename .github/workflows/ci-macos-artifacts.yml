@@ -6,7 +6,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-macos-artifacts:
@@ -33,7 +33,8 @@ jobs:
           -DAVIF_ZLIBPNG=LOCAL -DAVIF_JPEG=LOCAL
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
-          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11
       - name: Build libavif (ninja)
         working-directory: ./build
         run: ninja

@@ -21,12 +21,10 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
     const ImagePtr ground_truth_image =
         testutil::ReadImage(data_path, file_name);
 
-    for (auto matrix_coefficient : {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-           AVIF_MATRIX_COEFFICIENTS_YCGCO_RE, AVIF_MATRIX_COEFFICIENTS_YCGCO_RO,
-#endif
-               AVIF_MATRIX_COEFFICIENTS_IDENTITY, AVIF_MATRIX_COEFFICIENTS_YCGCO
-         }) {
+    for (auto matrix_coefficient :
+         {AVIF_MATRIX_COEFFICIENTS_IDENTITY, AVIF_MATRIX_COEFFICIENTS_YCGCO,
+          AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+          AVIF_MATRIX_COEFFICIENTS_YCGCO_RO}) {
       // Read a ground truth image but ask for certain matrix coefficients.
       ImagePtr image(avifImageCreateEmpty());
       ASSERT_NE(image, nullptr);
@@ -41,14 +39,12 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
           /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
           /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
           /*frameIter=*/nullptr);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
       if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
         // AVIF_MATRIX_COEFFICIENTS_YCGCO_RO does not work because the input
         // depth is not odd.
         ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
         continue;
       }
-#endif
       ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 
       // Encode.
@@ -84,11 +80,8 @@ TEST(BasicTest, EncodeDecodeMatrixCoefficients) {
       const bool are_images_equal =
           testutil::AreImagesEqual(*ground_truth_image, *decoded_default);
 
-      if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_IDENTITY
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-          || matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
-#endif
-      ) {
+      if (matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
+          matrix_coefficient == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
         ASSERT_TRUE(are_images_equal);
       } else {
         // AVIF_MATRIX_COEFFICIENTS_YCGCO is not lossless because it does not
