@@ -35,11 +35,7 @@ strip_header_if() {
   STRIP_HEADER="$2"
 
   if ${STRIP_HEADER}; then
-    # The following does not work on all platforms:
-    #   grep --text mdat "${FILE}"
-    #   awk -b -v RS='mdat' '{print length($0); exit}' "${FILE}"
-    # Hence the hardcoded variable below.
-    MDAT_OFFSET=1061
+    MDAT_OFFSET=$(grep -b -m 1 -o --text mdat "${FILE}" | cut -d: -f 1)
     dd if="${FILE}" of="${FILE}.strip" bs=1 skip="${MDAT_OFFSET}"
     mv "${FILE}.strip" "${FILE}"
   fi
