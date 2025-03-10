@@ -40,8 +40,8 @@ strip_header_if() {
     #   awk -b -v RS='mdat' '{print length($0); exit}' "${FILE}"
     # Hence the hardcoded variable below.
     MDAT_OFFSET=1061
-    FILE_CONTENTS_AFTER_HEADER=$(tail -c +${MDAT_OFFSET} < "${FILE}")
-    echo "${FILE_CONTENTS_AFTER_HEADER}" > "${FILE}"
+    dd if="${FILE}" of="${FILE}.strip" bs=1 skip="${MDAT_OFFSET}"
+    mv "${FILE}.strip" "${FILE}"
   fi
 }
 
