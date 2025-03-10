@@ -149,6 +149,9 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
   ImagePtr image;
   ASSERT_NO_FATAL_FAILURE(ReadImageSimple(
       file_name, pixel_format, matrix_coefficients, ignore_icc, image));
+  // ReadImageSimple does not set image and does not trigger an assert for the
+  // unsupported case of AVIF_MATRIX_COEFFICIENTS_IDENTITY + 420 only. Hence
+  // stop the test here.
   if (image == nullptr) return;
 
   // Convert to a temporary PNG and read back losslessly.
@@ -178,7 +181,9 @@ TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
     ASSERT_FALSE(are_images_equal);
   } else if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
              pixel_format == AVIF_PIXEL_FORMAT_YUV400) {
-    // For gray images, information is lost in YCGCO_RE.
+    // For gray images, information is lost in the YCGCO_RE roundtrip:
+    // RGB->YCGCO_RE->Y (because 400 is requested)->RGB (being YYY). Y is not
+    // the luminance like in YUV, hence a loss of information.
     ASSERT_FALSE(are_images_equal);
   } else {
     ASSERT_TRUE(are_images_equal);
