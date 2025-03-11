@@ -35,6 +35,9 @@ strip_header_if() {
   STRIP_HEADER="$2"
 
   if ${STRIP_HEADER}; then
+    grep --version
+    grep -b -m 1 -o --text mdat "${FILE}"
+    grep -h -b -m 1 -o --text mdat "${FILE}"
     MDAT_OFFSET=$(grep -b -m 1 -o --text mdat "${FILE}" | cut -d: -f 1)
     dd if="${FILE}" of="${FILE}.strip" bs=1 skip="${MDAT_OFFSET}"
     mv "${FILE}.strip" "${FILE}"
