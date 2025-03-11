@@ -179,7 +179,8 @@ static avifBool avifJPEGReadCopy(avifImage * avif, uint32_t sizeLimit, struct jp
         if ((cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
              cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
             // Import to YUV/Grayscale: must use compatible matrixCoefficients.
-            if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
+            if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients) ||
+                avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
                 // Grayscale->Grayscale: direct copy.
                 if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE)) {
                     avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
@@ -1269,7 +1270,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
 
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, avif);
-    rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.format = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_RGB_FORMAT_GRAY : AVIF_RGB_FORMAT_RGB;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
