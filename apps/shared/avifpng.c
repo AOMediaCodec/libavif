@@ -299,9 +299,6 @@ avifBool avifPNGRead(const char * inputFilename,
     }
 
     const avifBool rawColorTypeIsGray = (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA);
-    if (rawColorTypeIsGray) {
-        png_set_gray_to_rgb(png);
-    }
 
     int imgBitDepth = 8;
     if (rawBitDepth == 16) {
@@ -457,8 +454,8 @@ avifBool avifPNGRead(const char * inputFilename,
     }
 
     const int numChannels = png_get_channels(png, info);
-    if ((numChannels != 3) && (numChannels != 4)) {
-        fprintf(stderr, "png_get_channels() should return 3 or 4 but returns %d.\n", numChannels);
+    if (numChannels < 1 || numChannels > 4) {
+        fprintf(stderr, "png_get_channels() should return 1,2,3 or 4 but returns %d.\n", numChannels);
         goto cleanup;
     }
     if (avif->width > imageSizeLimit / avif->height) {
@@ -469,7 +466,11 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
-    if (numChannels == 3) {
+    if (numChannels == 1) {
+        rgb.format = AVIF_RGB_FORMAT_GRAY;
+    } else if (numChannels == 2) {
+        rgb.format = AVIF_RGB_FORMAT_GRAYA;
+    } else if (numChannels == 3) {
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
@@ -571,12 +572,20 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         colorType = PNG_COLOR_TYPE_GRAY;
     } else {
         avifRGBImageSetDefaults(&rgb, avif);
-        rgb.chromaUpsampling = chromaUpsampling;
         rgb.depth = rgbDepth;
-        colorType = PNG_COLOR_TYPE_RGBA;
-        if (avifImageIsOpaque(avif)) {
-            colorType = PNG_COLOR_TYPE_RGB;
-            rgb.format = AVIF_RGB_FORMAT_RGB;
+        if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && avif->alphaPlane) {
+            colorType = PNG_COLOR_TYPE_GRAY_ALPHA;
+            rgb.format = AVIF_RGB_FORMAT_GRAYA;
+        } else if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && !avif->alphaPlane) {
+            colorType = PNG_COLOR_TYPE_GRAY;
+            rgb.format = AVIF_RGB_FORMAT_GRAY;
+        } else {
+            rgb.chromaUpsampling = chromaUpsampling;
+            colorType = PNG_COLOR_TYPE_RGBA;
+            if (avifImageIsOpaque(avif)) {
+                colorType = PNG_COLOR_TYPE_RGB;
+                rgb.format = AVIF_RGB_FORMAT_RGB;
+            }
         }
         if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);

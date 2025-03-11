@@ -972,10 +972,14 @@ typedef enum avifRGBFormat
     // This format is only supported for YUV -> RGB conversion and when
     // avifRGBImage.depth is set to 8.
     AVIF_RGB_FORMAT_RGB_565,
+    AVIF_RGB_FORMAT_GRAY,
+    AVIF_RGB_FORMAT_GRAYA,
+    AVIF_RGB_FORMAT_AGRAY,
     AVIF_RGB_FORMAT_COUNT
 } avifRGBFormat;
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
+AVIF_API avifBool avifRGBFormatIsGray(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {

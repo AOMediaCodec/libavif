@@ -33,12 +33,13 @@ TEST(LosslessTest, YCGCO_RO) {
   ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 // Reads an image with a simpler API. ASSERT_NO_FATAL_FAILURE should be used
 // when calling it.
-void ReadImageSimple(const std::string& file_name, avifPixelFormat pixel_format,
+void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
                      avifMatrixCoefficients matrix_coefficients,
                      avifBool ignore_icc, ImagePtr& image) {
-  const std::string file_path = std::string(data_path) + file_name;
   image.reset(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   image->matrixCoefficients = matrix_coefficients;
@@ -64,26 +65,70 @@ void ReadImageSimple(const std::string& file_name, avifPixelFormat pixel_format,
   ASSERT_NE(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 }
 
+// Checks whether an image is grayscale. ASSERT_NO_FATAL_FAILURE should be used
+// when calling it.
+void IsGray(const std::string& path, bool& is_gray) {
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  // In the first iteration, figure out if the image is grayscale.
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+  ASSERT_NE(AVIF_APP_FILE_FORMAT_UNKNOWN,
+            avifReadImage(
+                path.c_str(), AVIF_PIXEL_FORMAT_NONE, /*requested_depth=*/0,
+                /*chroma_downsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                /*ignore_icc=*/true, /*ignore_exif=*/true, /*ignore_xmp=*/true,
+                /*allow_changing_cicp=*/true, /*ignore_gain_map=*/true,
+                AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+                /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+                /*frameIter=*/nullptr));
+  is_gray = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
+}
+
 // The test parameters are: the file path, the matrix coefficients and the pixel
 // format.
-class LosslessTest
+class EncodeDecodeRam
     : public testing::TestWithParam<std::tuple<std::string, int, int>> {};
 
-// Tests encode/decode round trips.
-TEST_P(LosslessTest, EncodeDecode) {
-  const std::string& file_name = std::get<0>(GetParam());
+// Tests encode/decode round trips in RAM.
+TEST_P(EncodeDecodeRam, RoundTrip) {
+  const std::string& file_path =
+      std::string(data_path) + std::get<0>(GetParam());
   const avifMatrixCoefficients matrix_coefficients =
       static_cast<avifMatrixCoefficients>(std::get<1>(GetParam()));
   const avifPixelFormat pixel_format =
       static_cast<avifPixelFormat>(std::get<2>(GetParam()));
-  // Ignore ICC when going from RGB to gray.
-  const avifBool ignore_icc =
-      pixel_format == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_TRUE : AVIF_FALSE;
 
-  // Read a ground truth image but ask for certain matrix coefficients.
+  // Check if the input image is grayscale.
+  bool gt_is_gray = false;
+  ASSERT_NO_FATAL_FAILURE(IsGray(file_path, gt_is_gray));
+
+  // Ignore ICC when going from RGB to gray or gray to RGB.
+  avifBool ignore_icc;
+  if (gt_is_gray && pixel_format != AVIF_PIXEL_FORMAT_YUV400 &&
+      pixel_format != AVIF_PIXEL_FORMAT_NONE) {
+    ignore_icc = AVIF_TRUE;
+  } else if (!gt_is_gray && pixel_format == AVIF_PIXEL_FORMAT_YUV400) {
+    ignore_icc = AVIF_TRUE;
+  } else {
+    ignore_icc = AVIF_FALSE;
+  }
+
+  // Read a ground truth image but do not care about the matrix coefficients: we
+  // just want data.
+  avifMatrixCoefficients gt_matrix_coefficients;
+  if (gt_is_gray) {
+    // gray to gray or RGB does not require MC.
+    gt_matrix_coefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+  } else if (pixel_format != AVIF_PIXEL_FORMAT_YUV400) {
+    // RGB to RGB is done with identity to be lossless.
+    gt_matrix_coefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+  } else {
+    // RGB to gray depends on the MC so use the input one.
+    gt_matrix_coefficients = matrix_coefficients;
+  }
   ImagePtr image;
   ASSERT_NO_FATAL_FAILURE(ReadImageSimple(
-      file_name, pixel_format, matrix_coefficients, ignore_icc, image));
+      file_path, pixel_format, gt_matrix_coefficients, ignore_icc, image));
   if (image == nullptr) return;
 
   // Encode.
@@ -92,9 +137,10 @@ TEST_P(LosslessTest, EncodeDecode) {
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->quality = AVIF_QUALITY_LOSSLESS;
   testutil::AvifRwData encoded;
+  image->matrixCoefficients = matrix_coefficients;
   avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
 
-  if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+  if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
       image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
     // The AV1 spec does not allow identity with subsampling.
     ASSERT_EQ(result, AVIF_RESULT_INVALID_ARGUMENT);
@@ -115,80 +161,11 @@ TEST_P(LosslessTest, EncodeDecode) {
   ASSERT_TRUE(testutil::AreImagesEqual(*image, *decoded));
 }
 
-// Reads an image losslessly, using identiy MC.
-ImagePtr ReadImageLossless(const std::string& path,
-                           avifPixelFormat requested_format,
-                           avifBool ignore_icc) {
-  ImagePtr image(avifImageCreateEmpty());
-  if (!image) return nullptr;
-  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
-  if (avifReadImage(path.c_str(), requested_format, /*requested_depth=*/0,
-                    /*chroma_downsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                    ignore_icc, /*ignore_exif=*/false, /*ignore_xmp=*/false,
-                    /*allow_changing_cicp=*/false, /*ignore_gain_map=*/false,
-                    AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-                    /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-    return nullptr;
-  }
-  return image;
-}
-
-// Tests encode/decode round trips under different matrix coefficients.
-TEST_P(LosslessTest, EncodeDecodeMatrixCoefficients) {
-  const std::string& file_name = std::get<0>(GetParam());
-  const avifMatrixCoefficients matrix_coefficients =
-      static_cast<avifMatrixCoefficients>(std::get<1>(GetParam()));
-  const avifPixelFormat pixel_format =
-      static_cast<avifPixelFormat>(std::get<2>(GetParam()));
-  // Ignore ICC when going from RGB to gray.
-  const avifBool ignore_icc =
-      pixel_format == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_TRUE : AVIF_FALSE;
-
-  // Read a ground truth image but ask for certain matrix coefficients.
-  ImagePtr image;
-  ASSERT_NO_FATAL_FAILURE(ReadImageSimple(
-      file_name, pixel_format, matrix_coefficients, ignore_icc, image));
-  if (image == nullptr) return;
-
-  // Convert to a temporary PNG and read back losslessly.
-  const std::string tmp_path =
-      testing::TempDir() + "decoded_EncodeDecodeMatrixCoefficients.png";
-  ASSERT_TRUE(testutil::WriteImage(image.get(), tmp_path.c_str()));
-  const ImagePtr decoded_lossless =
-      ReadImageLossless(tmp_path, pixel_format, ignore_icc);
-  if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-    // 420 cannot be converted from RGB to YUV with
-    // AVIF_MATRIX_COEFFICIENTS_IDENTITY due to a decision taken in
-    // avifGetYUVColorSpaceInfo.
-    ASSERT_EQ(decoded_lossless, nullptr);
-    return;
-  }
-  ASSERT_NE(decoded_lossless, nullptr);
-
-  // Verify that the ground truth and decoded images are the same.
-  const ImagePtr ground_truth_lossless = ReadImageLossless(
-      std::string(data_path) + file_name, pixel_format, ignore_icc);
-  ASSERT_NE(ground_truth_lossless, nullptr);
-  const bool are_images_equal =
-      testutil::AreImagesEqual(*ground_truth_lossless, *decoded_lossless);
-
-  if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
-    // AVIF_MATRIX_COEFFICIENTS_YCGCO is not a lossless transform.
-    ASSERT_FALSE(are_images_equal);
-  } else if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
-             pixel_format == AVIF_PIXEL_FORMAT_YUV400) {
-    // For gray images, information is lost in YCGCO_RE.
-    ASSERT_FALSE(are_images_equal);
-  } else {
-    ASSERT_TRUE(are_images_equal);
-  }
-}
-
 INSTANTIATE_TEST_SUITE_P(
-    LosslessTestInstantiation, LosslessTest,
+    EncodeDecodeRamInstantiation, EncodeDecodeRam,
     testing::Combine(
-        testing::Values("paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg"),
+        testing::Values("paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg",
+                        "kodim03_grayscale_gamma1.6.png"),
         testing::Values(static_cast<int>(AVIF_MATRIX_COEFFICIENTS_IDENTITY),
                         static_cast<int>(AVIF_MATRIX_COEFFICIENTS_YCGCO),
                         static_cast<int>(AVIF_MATRIX_COEFFICIENTS_YCGCO_RE)),
