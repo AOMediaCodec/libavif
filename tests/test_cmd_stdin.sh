@@ -35,14 +35,7 @@ strip_header_if() {
   STRIP_HEADER="$2"
 
   if ${STRIP_HEADER}; then
-    export
-    grep --version
-    alias
-    export LC_ALL=C
-    grep -b -m 1 -o --text mdat "${FILE}" || true
-    command grep -b -m 1 -o --text mdat "${FILE}" || true
-    od -tx1 -a "${FILE}"
-    MDAT_OFFSET=$(grep -b -m 1 -o --text mdat "${FILE}" | cut -d: -f 1)
+    MDAT_OFFSET=$(LC_ALL=C grep -b -m 1 -o --text mdat "${FILE}" | cut -d: -f 1)
     dd if="${FILE}" of="${FILE}.strip" bs=1 skip="${MDAT_OFFSET}"
     mv "${FILE}.strip" "${FILE}"
   fi
