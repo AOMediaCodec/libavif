@@ -39,9 +39,6 @@ TEST_P(SvtAv1Test, EncodeDecodeStillImage) {
                             AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
-  if (quality == AVIF_QUALITY_LOSSLESS) {
-    image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
-  }
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
@@ -87,9 +84,6 @@ TEST_P(SvtAv1Test, EncodeDecodeSequence) {
     // Generate different frames.
     testutil::FillImageGradient(sequence.back().get(),
                                 /*offset=*/static_cast<int>(i) * 100);
-    if (quality == AVIF_QUALITY_LOSSLESS) {
-      sequence.back()->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
-    }
   }
 
   EncoderPtr encoder(avifEncoderCreate());
