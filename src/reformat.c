@@ -498,8 +498,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         }
                     }
                 }
-                g = avifRoundf(AVIF_CLAMP(g, 0.0f, grayMaxChannelF));
-                if (state.rgb.channelBytes > 1) {
+                g = avifRoundf(AVIF_CLAMP(g, 0.0f, state.yuv.maxChannel));
+                if (state.yuv.channelBytes > 1) {
                     uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + j * yRowBytes];
                     *pY = (uint16_t)g;
                 } else {
