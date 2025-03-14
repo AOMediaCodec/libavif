@@ -23,6 +23,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add support for outputting all frames of an image sequence in `avifdec`.
   `avifdec --index all sequence.avif out.png` creates files named
   `out-xxxxxxxxxx.png` where xxxxxxxxxx are the zero-padded frame indices.
+* Add grayscale conversions in avifImageRGBToYUV and avifImageYUVToRGB.
 
 ### Changed since 1.2.0
 
@@ -30,6 +31,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Patch local libyuv dependency for compatibility with gcc 10.
 * Use stricter C99 syntax to avoid related compilation issues.
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
+* Properly deal with grayscale PNG/JPG images in avifenc/avifdec
 
 ## [1.2.0] - 2025-02-25
 
