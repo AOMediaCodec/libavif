@@ -30,6 +30,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update aom.cmd/LocalAom.cmake: v3.12.0-4-g65ddc22823. This fixes an encode &
   decode issue on PowerPC (ppc64le).
 * Change avifenc to start in automatic tiling mode.
+* Always forward Unspecified (2) CICP color primaries, transfer characteristics,
+  and matrix coefficients to the AV1 encoder. Rely on the 'colr' box instead.
 
 ## [1.2.1] - 2025-03-17
 
