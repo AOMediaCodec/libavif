@@ -13,6 +13,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add support for outputting all frames of an image sequence in `avifdec`.
   `avifdec --index all sequence.avif out.png` creates files named
   `out-xxxxxxxxxx.png` where xxxxxxxxxx are the zero-padded frame indices.
+* Add grayscale conversions in avifImageRGBToYUV and avifImageYUVToRGB.
 
 ### Changed since 1.2.0
 
@@ -25,6 +26,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
+* Properly deal with grayscale PNG/JPG images in avifenc/avifdec
 
 ## [1.2.0] - 2025-02-25
 
