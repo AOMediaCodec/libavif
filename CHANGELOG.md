@@ -15,6 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   discarded.
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
+* Forward the CICP color primaries, transfer characteristics, and matrix
+  coefficients to the SVT-AV1 encoder.
 
 ## [1.2.1] - 2025-03-17
 

@@ -89,12 +89,29 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
 
     if (!codec->internal->rav1eContext) {
         const avifBool supports400 = rav1eSupports400();
+        RaColorPrimaries rav1eCp;
+        RaTransferCharacteristics rav1eTf;
+        RaMatrixCoefficients rav1eMc;
         RaPixelRange rav1eRange;
         if (alpha) {
+            rav1eCp = (RaColorPrimaries)AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+            rav1eTf = (RaTransferCharacteristics)AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+            // AV1 specification section 6.4.2. Color config semantics:
+            //   subsampling_x | subsampling_y | mono_chrome | Description
+            //   1             | 1             | 1           | Monochrome 4:0:0
+            //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
+            //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
+            // Use AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED instead.
+            rav1eMc = (RaMatrixCoefficients)AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+
             rav1eRange = RA_PIXEL_RANGE_FULL;
             codec->internal->chromaSampling = supports400 ? RA_CHROMA_SAMPLING_CS400 : RA_CHROMA_SAMPLING_CS420;
             codec->internal->yShift = 1;
         } else {
+            rav1eCp = (RaColorPrimaries)image->colorPrimaries;
+            rav1eTf = (RaTransferCharacteristics)image->transferCharacteristics;
+            rav1eMc = (RaMatrixCoefficients)image->matrixCoefficients;
+
             rav1eRange = (image->yuvRange == AVIF_RANGE_FULL) ? RA_PIXEL_RANGE_FULL : RA_PIXEL_RANGE_LIMITED;
             codec->internal->yShift = 0;
             switch (image->yuvFormat) {
@@ -186,10 +203,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        rav1e_config_set_color_description(rav1eConfig,
-                                           (RaMatrixCoefficients)image->matrixCoefficients,
-                                           (RaColorPrimaries)image->colorPrimaries,
-                                           (RaTransferCharacteristics)image->transferCharacteristics);
+        rav1e_config_set_color_description(rav1eConfig, rav1eMc, rav1eCp, rav1eTf);
 
         codec->internal->rav1eContext = rav1e_context_new(rav1eConfig);
         if (!codec->internal->rav1eContext) {
