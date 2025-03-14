@@ -83,11 +83,28 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     EbErrorType res = EB_ErrorNone;
 
     int y_shift = 0;
+    EbColorPrimaries color_primaries;
+    EbTransferCharacteristics transfer_characteristics;
+    EbMatrixCoefficients matrix_coefficients;
     EbColorRange svt_range;
     if (alpha) {
+        color_primaries = (EbColorPrimaries)AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+        transfer_characteristics = (EbTransferCharacteristics)AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+        // AV1 specification section 6.4.2. Color config semantics:
+        //   subsampling_x | subsampling_y | mono_chrome | Description
+        //   1             | 1             | 1           | Monochrome 4:0:0
+        //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
+        //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
+        // Use AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED instead.
+        matrix_coefficients = (EbMatrixCoefficients)AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+
         svt_range = EB_CR_FULL_RANGE;
         y_shift = 1;
     } else {
+        color_primaries = (EbColorPrimaries)image->colorPrimaries;
+        transfer_characteristics = (EbTransferCharacteristics)image->transferCharacteristics;
+        matrix_coefficients = (EbMatrixCoefficients)image->matrixCoefficients;
+
         svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
         switch (image->yuvFormat) {
             case AVIF_PIXEL_FORMAT_YUV444:
@@ -125,6 +142,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+        svt_config->color_primaries = color_primaries;
+        svt_config->transfer_characteristics = transfer_characteristics;
+        svt_config->matrix_coefficients = matrix_coefficients;
         svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
