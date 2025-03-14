@@ -34,6 +34,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
 * Do not go through RGB when reading/writing a grayscale PNG/JPG images in
   avifenc/avifdec
+* Ignore tmap items not present in `grpl` box
 
 ## [1.2.0] - 2025-02-25
 
