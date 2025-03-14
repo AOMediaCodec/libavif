@@ -44,15 +44,12 @@ void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
   ASSERT_NE(image, nullptr);
   image->matrixCoefficients = matrix_coefficients;
   const avifAppFileFormat file_format = avifReadImage(
-      file_path.c_str(),
-      /*requestedFormat=*/pixel_format,
-      /*requestedDepth=*/0,
+      file_path.c_str(), /*requestedFormat=*/pixel_format, /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
-      /*ignoreXMP=*/false, /*allowChangingCicp=*/true,
-      /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-      /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-      /*frameIter=*/nullptr);
+      /*ignoreXMP=*/false, /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
+      AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(), /*outDepth=*/nullptr,
+      /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
   if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
       image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
     // 420 cannot be converted from RGB to YUV with
@@ -70,27 +67,27 @@ void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
 void IsGray(const std::string& path, bool& is_gray) {
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
-  // In the first iteration, figure out if the image is grayscale.
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-  ASSERT_NE(AVIF_APP_FILE_FORMAT_UNKNOWN,
-            avifReadImage(
-                path.c_str(), AVIF_PIXEL_FORMAT_NONE, /*requested_depth=*/0,
-                /*chroma_downsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                /*ignore_icc=*/true, /*ignore_exif=*/true, /*ignore_xmp=*/true,
-                /*allow_changing_cicp=*/true, /*ignore_gain_map=*/true,
-                AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-                /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-                /*frameIter=*/nullptr));
+  ASSERT_NE(
+      AVIF_APP_FILE_FORMAT_UNKNOWN,
+      avifReadImage(path.c_str(), AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
+                    /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                    /*ignoreColorProfile=*/true, /*ignoreExif=*/true,
+                    /*ignoreXMP=*/true,
+                    /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
+                    AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+                    /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+                    /*frameIter=*/nullptr));
   is_gray = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
 }
 
 // The test parameters are: the file path, the matrix coefficients and the pixel
 // format.
-class EncodeDecodeRam
+class EncodeDecodeMemory
     : public testing::TestWithParam<std::tuple<std::string, int, int>> {};
 
 // Tests encode/decode round trips in RAM.
-TEST_P(EncodeDecodeRam, RoundTrip) {
+TEST_P(EncodeDecodeMemory, RoundTrip) {
   const std::string& file_path =
       std::string(data_path) + std::get<0>(GetParam());
   const avifMatrixCoefficients matrix_coefficients =
@@ -162,7 +159,7 @@ TEST_P(EncodeDecodeRam, RoundTrip) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    EncodeDecodeRamInstantiation, EncodeDecodeRam,
+    EncodeDecodeMemoryInstantiation, EncodeDecodeMemory,
     testing::Combine(
         testing::Values("paris_icc_exif_xmp.png", "paris_exif_xmp_icc.jpg",
                         "kodim03_grayscale_gamma1.6.png"),

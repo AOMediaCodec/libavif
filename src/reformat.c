@@ -126,8 +126,7 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
         return AVIF_FALSE;
     }
 
-    // Removing 400 here would break backward behavior but would respect the
-    // spec.
+    // Removing 400 here would break backward behavior but would respect the spec.
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
         (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
         return AVIF_FALSE;

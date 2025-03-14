@@ -333,20 +333,20 @@ TEST(ICCTest, RGB2Gray2RGB) {
     ASSERT_EQ(avifImageSetProfileICC(image.get(), icc.data, icc.size),
               AVIF_RESULT_OK);
 
-    for (const std::string ext : {"png", "jpg"}) {
+    for (const std::string ext : {"jpg", "png"}) {
       // Write the image with the appropriate codec.
       const std::string new_path =
           testing::TempDir() + "tmp_RGB2Gray2RGB." + ext;
-      if (ext == "png") {
+      if (ext == "jpg") {
+        ASSERT_EQ(
+            avifJPEGWrite(new_path.c_str(), image.get(), /*jpegQuality=*/75,
+                          AVIF_CHROMA_UPSAMPLING_BEST_QUALITY),
+            AVIF_TRUE);
+      } else {
         ASSERT_EQ(
             avifPNGWrite(new_path.c_str(), image.get(), /*requestedDepth=*/0,
                          AVIF_CHROMA_UPSAMPLING_BEST_QUALITY,
                          /*compressionLevel=*/0),
-            AVIF_TRUE);
-      } else {
-        ASSERT_EQ(
-            avifJPEGWrite(new_path.c_str(), image.get(), /*jpegQuality=*/75,
-                          AVIF_CHROMA_UPSAMPLING_BEST_QUALITY),
             AVIF_TRUE);
       }
 
@@ -401,8 +401,8 @@ TEST(GrayTest, Roundtrip) {
     ASSERT_NE(rt_image, nullptr);
     const avifAppFileFormat new_file_format = avifReadImageForRGB2Gray2RGB(
         new_path, AVIF_PIXEL_FORMAT_NONE, /*ignore_icc=*/true, rt_image);
-    ASSERT_NE(AVIF_APP_FILE_FORMAT_UNKNOWN, new_file_format);
-    ASSERT_EQ(AVIF_PIXEL_FORMAT_YUV400, rt_image->yuvFormat);
+    ASSERT_NE(new_file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+    ASSERT_EQ(rt_image->yuvFormat, AVIF_PIXEL_FORMAT_YUV400);
     if (ext == "png") {
       ASSERT_TRUE(testutil::AreImagesEqual(*image, *rt_image));
     } else {
@@ -428,7 +428,7 @@ TEST(GrayAlphaTest, Roundtrip) {
       image->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
       const size_t size = image->height * image->alphaRowBytes;
       image->alphaPlane = (uint8_t*)avifAlloc(size);
-      ASSERT_NE(nullptr, image->alphaPlane);
+      ASSERT_NE(image->alphaPlane, nullptr);
       image->imageOwnsAlphaPlane = AVIF_TRUE;
       for (size_t i = 0; i < size; ++i) image->alphaPlane[i] = i % 256;
     }
@@ -446,8 +446,8 @@ TEST(GrayAlphaTest, Roundtrip) {
     ASSERT_NE(rt_image, nullptr);
     const avifAppFileFormat new_file_format = avifReadImageForRGB2Gray2RGB(
         new_path, AVIF_PIXEL_FORMAT_NONE, /*ignore_icc=*/true, rt_image);
-    ASSERT_NE(AVIF_APP_FILE_FORMAT_UNKNOWN, new_file_format);
-    ASSERT_EQ(AVIF_PIXEL_FORMAT_YUV400, rt_image->yuvFormat);
+    ASSERT_NE(new_file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
+    ASSERT_EQ(rt_image->yuvFormat, AVIF_PIXEL_FORMAT_YUV400);
     ASSERT_TRUE(testutil::AreImagesEqual(*image, *rt_image));
   }
 }
