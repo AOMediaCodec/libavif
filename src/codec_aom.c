@@ -1025,6 +1025,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
+        // AV1 specification section 6.4.2. Color config semantics:
+        //   subsampling_x | subsampling_y | mono_chrome | Description
+        //   1             | 1             | 1           | Monochrome 4:0:0
+        //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
+        //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
+        // Use AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED instead.
+        aomImage.mc = (aom_matrix_coefficients_t)AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
         aomImage.range = AOM_CR_FULL_RANGE;
         monochromeRequested = AVIF_TRUE;
         if (aomImageAllocated) {
