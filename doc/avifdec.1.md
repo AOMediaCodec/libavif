@@ -63,7 +63,7 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     (JPEG only; not applicable to y4m).
 
 **\--index** _I_
-:   When decoding an image sequence or progressive image, specify which frame index to decode (Default: 0).
+:   When decoding an image sequence or progressive image, specify which frame index to decode, where the first frame has index 0, or 'all' to decode all frames. (Default: 0)
 
 **\--progressive**
 :   Enable progressive AVIF processing. If a progressive image is encountered and \--progressive is passed,
