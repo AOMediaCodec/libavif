@@ -8,6 +8,16 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.2.1
+
+* Reject the conversion in avifenc from non-monochrome/monochrome to
+  monochrome/non-monochrome when an ICC profile is present and not explicitly
+  discarded.
+* Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
+  AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
+
+## [1.2.1] - 2025-03-17
+
 ### Added since 1.2.0
 
 * Add support for outputting all frames of an image sequence in `avifdec`.
@@ -19,11 +29,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix local libargparse dependency patch step on macOS 10.15 and earlier.
 * Patch local libyuv dependency for compatibility with gcc 10.
 * Use stricter C99 syntax to avoid related compilation issues.
-* Reject the conversion in avifenc from non-monochrome/monochrome to
-  monochrome/non-monochrome when an ICC profile is present and not explicitly
-  discarded.
-* Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
-  AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
 
 ## [1.2.0] - 2025-02-25
@@ -1230,7 +1235,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/AOMediaCodec/libavif/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/AOMediaCodec/libavif/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/AOMediaCodec/libavif/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/AOMediaCodec/libavif/compare/v1.0.0...v1.1.0
