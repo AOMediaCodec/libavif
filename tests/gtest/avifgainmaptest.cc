@@ -837,7 +837,7 @@ TEST(GainMapTest, DecodeWrongAltr) {
   // The gain map is ignored because the 'tmap' item is not marked as a
   // preferred alternative to the primary image item using an 'altr' group.
   // In this example file, the 'altr' group is present, but the tmap item comes
-  // after the main item so its' not preferred.
+  // after the main item so it's not preferred.
   ASSERT_EQ(decoded->gainMap, nullptr);
 }
 

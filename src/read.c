@@ -829,7 +829,7 @@ typedef struct avifMeta
     // are ignored unless they refer to this item in some way (alpha plane, EXIF/XMP metadata).
     uint32_t primaryItemID;
 
-    // Contents of gprl box, which signal groups of entities (items or tracks).
+    // Contents of grpl box, which signal groups of entities (items or tracks).
     avifEntityToGroups entityToGroups;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -3342,6 +3342,11 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader groupHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &groupHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        // We don't check the flag or version as they depend on the grouping type (and for simplicity).
+        // ISO/IEC 14496-12:2024 Section 8.15.3.2
+        //   version shall be 0 unless defined otherwise for the grouping_type. Any values of flags such that
+        //   (flags & 0x000FFF) is not equal to 0 are reserved. The values of flags shall be such that (flags
+        //   & 0xFFF000) is equal to 0 unless defined otherwise for the grouping_type.
         AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&s, NULL, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         avifEntityToGroup * group = avifArrayPush(&meta->entityToGroups);
@@ -5609,7 +5614,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
 // Returns AVIF_TRUE if the two entity ids (usually item ids) are part of an
 // 'altr' group (representing entities that are alternatives of each other)
 // with 'id1' appearing before 'id2' (meaning that 'id1' should be preferred).
-static avifBool avifIsPreferredAlternativeTo(avifDecoderData * data, uint32_t id1, uint32_t id2)
+static avifBool avifIsPreferredAlternativeTo(const avifDecoderData * data, uint32_t id1, uint32_t id2)
 {
     for (uint32_t i = 0; i < data->meta->entityToGroups.count; ++i) {
         avifEntityToGroup * group = &data->meta->entityToGroups.groups[i];
