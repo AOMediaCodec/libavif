@@ -115,7 +115,7 @@ TEST_P(LosslessTest, EncodeDecode) {
   ASSERT_TRUE(testutil::AreImagesEqual(*image, *decoded));
 }
 
-// Reads an image losslessly, using identiy MC.
+// Reads an image losslessly, using identity MC.
 ImagePtr ReadImageLossless(const std::string& path,
                            avifPixelFormat requested_format,
                            avifBool ignore_icc) {
