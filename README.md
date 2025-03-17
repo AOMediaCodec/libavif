@@ -148,7 +148,7 @@ To link against the already installed `aom`, `libjpeg`, `libpng` and `libyuv` de
 libraries (recommended):
 
 ```sh
-git clone -b v1.2.0 https://github.com/AOMediaCodec/libavif.git
+git clone -b v1.2.1 https://github.com/AOMediaCodec/libavif.git
 cmake -S libavif -B libavif/build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
 cmake --build libavif/build --parallel
 ```
@@ -158,7 +158,7 @@ cmake --build libavif/build --parallel
 For development and debugging purposes:
 
 ```sh
-git clone -b v1.2.0 https://github.com/AOMediaCodec/libavif.git
+git clone -b v1.2.1 https://github.com/AOMediaCodec/libavif.git
 cmake -S libavif -B libavif/build -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON
 cmake --build libavif/build --parallel
 ```
