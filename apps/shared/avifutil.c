@@ -182,7 +182,7 @@ void avifContainerDump(const avifDecoder * decoder)
     }
 }
 
-void avifPrintVersions()
+void avifPrintVersions(void)
 {
     char codecVersions[256];
     avifCodecVersions(codecVersions);
