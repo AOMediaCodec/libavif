@@ -31,7 +31,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Patch local libyuv dependency for compatibility with gcc 10.
 * Use stricter C99 syntax to avoid related compilation issues.
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
-* Properly deal with grayscale PNG/JPG images in avifenc/avifdec
+* Do not go through RGB when reading/writing a grayscale PNG/JPG images in
+  avifenc/avifdec
 
 ## [1.2.0] - 2025-02-25
 

@@ -64,7 +64,7 @@ void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
 
 // Checks whether an image is grayscale. ASSERT_NO_FATAL_FAILURE should be used
 // when calling it.
-void IsGray(const std::string& path, bool& is_gray) {
+void GetIsGray(const std::string& path, bool& is_gray) {
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
@@ -86,7 +86,7 @@ void IsGray(const std::string& path, bool& is_gray) {
 class EncodeDecodeMemory
     : public testing::TestWithParam<std::tuple<std::string, int, int>> {};
 
-// Tests encode/decode round trips in RAM.
+// Tests encode/decode round trips in memory.
 TEST_P(EncodeDecodeMemory, RoundTrip) {
   const std::string& file_path =
       std::string(data_path) + std::get<0>(GetParam());
@@ -97,7 +97,7 @@ TEST_P(EncodeDecodeMemory, RoundTrip) {
 
   // Check if the input image is grayscale.
   bool gt_is_gray = false;
-  ASSERT_NO_FATAL_FAILURE(IsGray(file_path, gt_is_gray));
+  ASSERT_NO_FATAL_FAILURE(GetIsGray(file_path, gt_is_gray));
 
   // Ignore ICC when going from RGB to gray or gray to RGB.
   avifBool ignore_icc;

@@ -382,8 +382,8 @@ TEST(GrayTest, Roundtrip) {
             AVIF_APP_FILE_FORMAT_UNKNOWN);
   for (const std::string ext : {"png", "jpg"}) {
     // Write the image with the appropriate codec.
-    const std::string new_path =
-        testing::TempDir() + "tmp_GrayTestRoundtrip." + ext;
+    const std::string new_path = testing::TempDir() + std::string(file_name) +
+                                 "_tmp_GrayTestRoundtrip." + ext;
     if (ext == "png") {
       ASSERT_EQ(
           avifPNGWrite(new_path.c_str(), image.get(), /*requestedDepth=*/0,

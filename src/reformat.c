@@ -832,7 +832,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         G = Y + Cb;
                         B = t - Cr;
                         R = t + Cr;
-                    } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
+                    } else if ((state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE) || (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO)) {
                         // YCgCoRe/YCgCoRo: Formulas 62,63,64,65 from
                         // https://www.itu.int/rec/T-REC-H.273-202407-P
                         const int YY = unormY;

@@ -681,7 +681,7 @@ uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
     if (format == AVIF_RGB_FORMAT_GRAY) {
         return 1;
     }
-    if (format == AVIF_RGB_FORMAT_GRAYA || format == AVIF_RGB_FORMAT_AGRAY) {
+    if ((format == AVIF_RGB_FORMAT_GRAYA) || (format == AVIF_RGB_FORMAT_AGRAY)) {
         return 2;
     }
     return avifRGBFormatHasAlpha(format) ? 4 : 3;
