@@ -665,13 +665,25 @@ void avifCodecDestroy(avifCodec * codec)
 // ---------------------------------------------------------------------------
 // avifRGBImage
 
+avifBool avifRGBFormatIsGray(avifRGBFormat format)
+{
+    return (format == AVIF_RGB_FORMAT_GRAY) || (format == AVIF_RGB_FORMAT_GRAYA) || (format == AVIF_RGB_FORMAT_AGRAY);
+}
+
 avifBool avifRGBFormatHasAlpha(avifRGBFormat format)
 {
-    return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR) && (format != AVIF_RGB_FORMAT_RGB_565);
+    return (format != AVIF_RGB_FORMAT_RGB) && (format != AVIF_RGB_FORMAT_BGR) && (format != AVIF_RGB_FORMAT_RGB_565) &&
+           (format != AVIF_RGB_FORMAT_GRAY);
 }
 
 uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
 {
+    if (format == AVIF_RGB_FORMAT_GRAY) {
+        return 1;
+    }
+    if ((format == AVIF_RGB_FORMAT_GRAYA) || (format == AVIF_RGB_FORMAT_AGRAY)) {
+        return 2;
+    }
     return avifRGBFormatHasAlpha(format) ? 4 : 3;
 }
 

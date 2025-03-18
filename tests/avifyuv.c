@@ -40,6 +40,12 @@ static const char * rgbFormatToString(avifRGBFormat format)
             return "ABGR";
         case AVIF_RGB_FORMAT_RGB_565:
             return "RGB_565";
+        case AVIF_RGB_FORMAT_GRAY:
+            return "RGB_GRAY";
+        case AVIF_RGB_FORMAT_GRAYA:
+            return "RGB_GRAYA";
+        case AVIF_RGB_FORMAT_AGRAY:
+            return "RGB_AGRAY";
         case AVIF_RGB_FORMAT_COUNT:
             break;
     }
