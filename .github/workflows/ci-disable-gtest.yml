@@ -1,6 +1,6 @@
 # This is a copy of ci-unix-static.yml with gtest disabled. It differs from ci-unix-static.yml as follows:
 #
-#   * The os matrix consists of ubuntu-24.04 only.
+#   * The os matrix consists of ubuntu-latest only.
 #   * Does not build libgav1. (Building libgav1 would enable CXX in CMakeLists.txt.)
 #   * Disables gtest.
 
@@ -29,9 +29,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04]
+        os: [ubuntu-latest]
         include:
-          - runs-on: ubuntu-24.04
+          - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
 

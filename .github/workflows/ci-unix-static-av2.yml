@@ -19,13 +19,13 @@ concurrency:
 
 jobs:
   build-static-av2:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         also-enable-av1-codecs: [OFF, LOCAL] # On top of enabling AV2 codecs.
         include:
-          - runs-on: ubuntu-24.04
+          - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
 
