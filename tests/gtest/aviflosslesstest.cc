@@ -37,6 +37,8 @@ TEST(LosslessTest, YCGCO_RO) {
 
 // Reads an image with a simpler API. ASSERT_NO_FATAL_FAILURE should be used
 // when calling it.
+// If image is set to nullptr, it is because AVIF_MATRIX_COEFFICIENTS_IDENTITY
+// is requested with AVIF_PIXEL_FORMAT_YUV420.
 void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
                      avifMatrixCoefficients matrix_coefficients,
                      avifBool ignore_icc, ImagePtr& image) {
@@ -126,6 +128,9 @@ TEST_P(EncodeDecodeMemory, RoundTrip) {
   ImagePtr image;
   ASSERT_NO_FATAL_FAILURE(ReadImageSimple(
       file_path, pixel_format, gt_matrix_coefficients, ignore_icc, image));
+  // ReadImageSimple does not set image and does not trigger an assert for the
+  // unsupported case of AVIF_MATRIX_COEFFICIENTS_IDENTITY + 420 only. Hence
+  // stop the test here.
   if (image == nullptr) return;
 
   // Encode.
@@ -145,7 +150,7 @@ TEST_P(EncodeDecodeMemory, RoundTrip) {
   }
   ASSERT_EQ(result, AVIF_RESULT_OK) << avifResultToString(result);
 
-  // Decode to RAM.
+  // Decode to memory.
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
