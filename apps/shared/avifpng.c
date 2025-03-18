@@ -455,7 +455,7 @@ avifBool avifPNGRead(const char * inputFilename,
 
     const int numChannels = png_get_channels(png, info);
     if (numChannels < 1 || numChannels > 4) {
-        fprintf(stderr, "png_get_channels() should return 1,2,3 or 4 but returns %d.\n", numChannels);
+        fprintf(stderr, "png_get_channels() should return 1, 2, 3 or 4 but returns %d.\n", numChannels);
         goto cleanup;
     }
     if (avif->width > imageSizeLimit / avif->height) {

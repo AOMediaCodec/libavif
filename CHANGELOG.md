@@ -24,6 +24,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   `avifdec --index all sequence.avif out.png` creates files named
   `out-xxxxxxxxxx.png` where xxxxxxxxxx are the zero-padded frame indices.
 * Add grayscale conversions in avifImageRGBToYUV and avifImageYUVToRGB.
+* Add avifRGBFormatIsGray to check whether an avifRGBFormat is gray.
 
 ### Changed since 1.2.0
 

@@ -380,7 +380,7 @@ TEST(GrayTest, Roundtrip) {
   ASSERT_NE(avifReadImageForRGB2Gray2RGB(file_path, AVIF_PIXEL_FORMAT_YUV400,
                                          /*ignore_icc=*/true, image),
             AVIF_APP_FILE_FORMAT_UNKNOWN);
-  for (const std::string ext : {"png", "jpg"}) {
+  for (const std::string ext : {"jpg", "png"}) {
     // Write the image with the appropriate codec.
     const std::string new_path = testing::TempDir() + std::string(file_name) +
                                  "_tmp_GrayTestRoundtrip." + ext;
