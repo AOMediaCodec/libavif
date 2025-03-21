@@ -876,6 +876,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
+
+        if (image->depth == 12 && cfg->g_limit != 1) {
+            // The encoder may produce integer overflows with 12-bit input when loop restoration is enabled. See crbug.com/aomedia/42302587.
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_RESTORATION, 0) != AOM_CODEC_OK) {
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
+        }
     } else {
         avifBool dimensionsChanged = AVIF_FALSE;
         if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
