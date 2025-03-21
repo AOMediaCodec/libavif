@@ -173,7 +173,7 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             }
             avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Ignore the return value because the header is optional.
             *ignoreXMP = AVIF_TRUE;                       // Ignore any other XMP chunk.
-        } else if (!strcmp(text->key, "Raw profile type APP1")) {
+        } else if (!strcmp(text->key, "Raw profile type APP1") || !strcmp(text->key, "Raw profile type app1")) {
             // This can be either Exif, XMP or something else.
             avifRWData metadata = { NULL, 0 };
             if (!avifCopyRawProfile(text->text, textLength, &metadata)) {
