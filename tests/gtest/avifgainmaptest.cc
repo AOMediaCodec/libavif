@@ -813,9 +813,31 @@ TEST(GainMapTest, DecodeInvalidFtyp) {
   ASSERT_NE(decoder, nullptr);
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
 
-  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
-            AVIF_RESULT_OK);
+  const avifResult result =
+      avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
   // The gain map is ignored because the 'tmap' brand is not present.
+  ASSERT_EQ(decoded->gainMap, nullptr);
+}
+
+TEST(GainMapTest, DecodeWrongAltr) {
+  const std::string path =
+      std::string(data_path) + "seine_hdr_gainmap_wrongaltr.avif";
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+
+  const avifResult result =
+      avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
+  // The gain map is ignored because the 'tmap' item is not marked as a
+  // preferred alternative to the primary image item using an 'altr' group.
+  // In this example file, the 'altr' group is present, but the tmap item comes
+  // after the main item so it's not preferred.
   ASSERT_EQ(decoded->gainMap, nullptr);
 }
 
