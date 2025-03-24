@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.3.0
+
+* Allow avifenc to read png or jpeg files through stdin using --stdin-format.
+
 ### Changed since 1.3.0
 
 * Set avifDecoder::image->depth to the same value after avifDecoderParse() as

@@ -830,7 +830,12 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
 
             const avifROData mpfData = { (const uint8_t *)marker->data + tagMpf.size, marker->data_length - tagMpf.size };
             if (!avifJPEGExtractGainMapImageFromMpf(f, sizeLimit, &mpfData, image, chromaDownsampling)) {
-                fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
+                if (f == stdin) {
+                    // Not supported because fseek doesn't work on stdin.
+                    fprintf(stderr, "Warning: gain map transcoding is not supported with sdtin\n");
+                } else {
+                    fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
+                }
                 avifImageDestroy(image);
                 return AVIF_FALSE;
             }
@@ -1250,10 +1255,16 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifBool ignoreGainMap,
                       uint32_t sizeLimit)
 {
-    FILE * f = fopen(inputFilename, "rb");
-    if (!f) {
-        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
-        return AVIF_FALSE;
+    FILE * f;
+    if (inputFilename) {
+        f = fopen(inputFilename, "rb");
+        if (!f) {
+            fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+            return AVIF_FALSE;
+        }
+    } else {
+        f = stdin;
+        inputFilename = "(stdin)";
     }
     const avifBool res = avifJPEGReadInternal(f,
                                               inputFilename,
@@ -1266,7 +1277,9 @@ avifBool avifJPEGRead(const char * inputFilename,
                                               ignoreXMP,
                                               ignoreGainMap,
                                               sizeLimit);
-    fclose(f);
+    if (f && f != stdin) {
+        fclose(f);
+    }
     return res;
 }
 

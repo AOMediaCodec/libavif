@@ -73,6 +73,7 @@ typedef struct
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
     avifChromaDownsampling chromaDownsampling;
+    avifAppFileFormat stdinFormat;
 } avifSettings;
 
 typedef struct
@@ -145,7 +146,7 @@ static const char * avifPrettyFilename(const char * filename)
 
 typedef struct avifInputFile
 {
-    const char * filename; // If AVIF_FILENAME_STDIN, use stdin (y4m)
+    const char * filename; // If AVIF_FILENAME_STDIN, use stdin
     uint64_t duration;     // If 0, use the default duration
     avifInputFileSettings settings;
 } avifInputFile;
@@ -222,7 +223,8 @@ static void syntaxLong(void)
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
-    printf("    --stdin                           : Read y4m frames from stdin instead of file paths. No other input is allowed. The output file path must still be provided.\n");
+    printf("    --stdin                           : Read input from stdin instead of file paths. No other input is allowed. The input format is assumed to be y4m unless --stdin-format is specified. The output file path must still be provided.\n");
+    printf("    --stdin-format FORMAT             : Format of the data from stdin, when --stdin is specified. One of: jpeg/png/y4m. (Default: y4m)\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
@@ -522,7 +524,8 @@ static avifBool avifInputReadImage(avifInput * input,
                                    uint32_t * outDepth,
                                    avifBool * sourceIsRGB,
                                    avifAppSourceTiming * sourceTiming,
-                                   avifChromaDownsampling chromaDownsampling)
+                                   avifChromaDownsampling chromaDownsampling,
+                                   avifAppFileFormat stdinFormat)
 {
     if (imageIndex < input->cacheCount) {
         const avifInputCacheEntry * cached = &input->cache[imageIndex];
@@ -589,16 +592,30 @@ static avifBool avifInputReadImage(avifInput * input,
     const avifInputFile * currentFile = &input->files[input->fileIndex];
     avifAppFileFormat inputFormat;
     if (currentFile->filename == AVIF_FILENAME_STDIN) {
-        inputFormat = AVIF_APP_FILE_FORMAT_Y4M;
         if (feof(stdin)) {
             return AVIF_FALSE;
         }
-        if (!y4mRead(NULL, UINT32_MAX, dstImage, dstSourceTiming, &input->frameIter)) {
-            fprintf(stderr, "ERROR: Cannot read y4m through standard input");
+        inputFormat = stdinFormat;
+        if (!avifReadFormat(currentFile->filename,
+                            inputFormat,
+                            input->requestedFormat,
+                            input->requestedDepth,
+                            chromaDownsampling,
+                            ignoreColorProfile,
+                            ignoreExif,
+                            ignoreXMP,
+                            allowChangingCicp,
+                            ignoreGainMap,
+                            UINT32_MAX,
+                            dstImage,
+                            dstDepth,
+                            dstSourceTiming,
+                            &input->frameIter)) {
+            fprintf(stderr, "ERROR: Couldn't read %s file from standard input\n", avifFileFormatToString(inputFormat));
+            if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
+                fprintf(stderr, "Specifify --stdin-format if the input is not y4m\n");
+            }
             return AVIF_FALSE;
-        }
-        if (dstDepth) {
-            *dstDepth = dstImage->depth;
         }
     } else {
         inputFormat = avifReadImage(currentFile->filename,
@@ -616,12 +633,12 @@ static avifBool avifInputReadImage(avifInput * input,
                                     dstSourceTiming,
                                     &input->frameIter);
         if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-            fprintf(stderr, "Cannot read input file: %s\n", currentFile->filename);
+            fprintf(stderr, "Couldn't read input file: %s\n", currentFile->filename);
             return AVIF_FALSE;
         }
-        if (!input->frameIter) {
-            ++input->fileIndex;
-        }
+    }
+    if (!input->frameIter) {
+        ++input->fileIndex;
     }
     if (dstSourceIsRGB) {
         *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
@@ -646,7 +663,8 @@ static avifBool avifInputReadImage(avifInput * input,
                                   outDepth,
                                   sourceIsRGB,
                                   sourceTiming,
-                                  chromaDownsampling);
+                                  chromaDownsampling,
+                                  stdinFormat);
     }
     return AVIF_TRUE;
 }
@@ -999,7 +1017,8 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 /*outDepth=*/NULL,
                                 /*sourceIsRGB=*/NULL,
                                 /*sourceTiming=*/NULL,
-                                settings->chromaDownsampling)) {
+                                settings->chromaDownsampling,
+                                settings->stdinFormat)) {
             goto cleanup;
         }
         if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", avifPrettyFilename(nextFile->filename))) {
@@ -1100,7 +1119,8 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     /*outDepth=*/NULL,
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
-                                    settings->chromaDownsampling)) {
+                                    settings->chromaDownsampling,
+                                    settings->stdinFormat)) {
                 goto cleanup;
             }
             // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
@@ -1247,7 +1267,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         }
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
-        if (firstFile->filename == AVIF_FILENAME_STDIN || (settings->layers == 1 && input->filesCount > 1)) {
+        if ((firstFile->filename == AVIF_FILENAME_STDIN && settings->inputFormat == AVIF_APP_FILE_FORMAT_Y4M) ||
+            (settings->layers == 1 && input->filesCount > 1)) {
             snprintf(manualTilingStr,
                      sizeof(manualTilingStr),
                      "tileRowsLog2 [%d], tileColsLog2 [%d]",
@@ -1472,6 +1493,7 @@ int main(int argc, char * argv[])
     settings.ignoreColorProfile = AVIF_FALSE;
     settings.ignoreGainMap = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
+    settings.stdinFormat = AVIF_APP_FILE_FORMAT_Y4M;
 
     avifInputFileSettings pendingSettings;
     memset(&pendingSettings, 0, sizeof(pendingSettings));
@@ -1563,6 +1585,18 @@ int main(int argc, char * argv[])
 
             } else if (input.filesCount > 2) {
                 fprintf(stderr, "ERROR: there cannot be any other input if --stdin is specified\n");
+                goto cleanup;
+            }
+        } else if (!strcmp(arg, "--stdin-format")) {
+            NEXTARG();
+            if (!strcmp(arg, "jpg") || !strcmp(arg, "jpeg")) {
+                settings.stdinFormat = AVIF_APP_FILE_FORMAT_JPEG;
+            } else if (!strcmp(arg, "png")) {
+                settings.stdinFormat = AVIF_APP_FILE_FORMAT_PNG;
+            } else if (!strcmp(arg, "y4m")) {
+                settings.stdinFormat = AVIF_APP_FILE_FORMAT_Y4M;
+            } else {
+                fprintf(stderr, "ERROR: invalid stdin file format (expected one of jpeg/png/y4m): %s\n", arg);
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
@@ -2326,7 +2360,8 @@ int main(int argc, char * argv[])
                             &sourceDepth,
                             &sourceWasRGB,
                             &firstSourceTiming,
-                            settings.chromaDownsampling)) {
+                            settings.chromaDownsampling,
+                            settings.stdinFormat)) {
         goto cleanup;
     }
 
@@ -2570,7 +2605,8 @@ int main(int argc, char * argv[])
                                     /*outDepth=*/NULL,
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
-                                    settings.chromaDownsampling)) {
+                                    settings.chromaDownsampling,
+                                    settings.stdinFormat)) {
                 goto cleanup;
             }
             // Let avifEncoderAddImageGrid() verify the grid integrity (valid cell sizes, depths etc.).

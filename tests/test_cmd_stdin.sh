@@ -18,6 +18,8 @@ source $(dirname "$0")/cmd_test_common.sh || exit
 # Input file paths.
 INPUT_Y4M_STILL="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 INPUT_Y4M_ANIMATED="${TESTDATA_DIR}/webp_logo_animated.y4m"
+INPUT_PNG="${TESTDATA_DIR}/draw_points.png"
+INPUT_JPEG="${TESTDATA_DIR}/paris_extended_xmp.jpg"
 # Output file names.
 ENCODED_FILE_REGULAR="avif_test_cmd_stdin_encoded.avif"
 ENCODED_FILE_STDIN="avif_test_cmd_stdin_encoded_with_stdin.avif"
@@ -43,62 +45,66 @@ strip_header_if() {
 }
 
 test_stdin() {
-  INPUT_Y4M="$1"
+  INPUT="$1"
   STRIP_HEADER="$2"
+  shift 2
+  EXTRA_FLAGS=$@
 
   # Make sure that --stdin can be replaced with a file path and that it leads to
   # the same encoded bytes.
 
-  "${AVIFENC}" -s 8 -o "${ENCODED_FILE_REGULAR}" "${INPUT_Y4M}"
-  "${AVIFENC}" -s 8 -o "${ENCODED_FILE_STDIN}" --stdin < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 8 -o "${ENCODED_FILE_REGULAR}" "${INPUT}"
+  "${AVIFENC}" -s 8 -o "${ENCODED_FILE_STDIN}" --stdin ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_REGULAR}" ${STRIP_HEADER}
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
 
-  "${AVIFENC}" -s 9 "${INPUT_Y4M}" -o "${ENCODED_FILE_REGULAR}"
-  "${AVIFENC}" -s 9 --stdin -o "${ENCODED_FILE_STDIN}" < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 9 "${INPUT}" -o "${ENCODED_FILE_REGULAR}"
+  "${AVIFENC}" -s 9 --stdin -o "${ENCODED_FILE_STDIN}" ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_REGULAR}" ${STRIP_HEADER}
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
 
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_REGULAR}"
-  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 "${INPUT}" "${ENCODED_FILE_REGULAR}"
+  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_REGULAR}" ${STRIP_HEADER}
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
-  "${AVIFENC}" -s 10 "${ENCODED_FILE_STDIN}" --stdin < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 "${ENCODED_FILE_STDIN}" --stdin ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
 
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" -q 90 "${ENCODED_FILE_REGULAR}"
-  "${AVIFENC}" -s 10 --stdin -q 90 "${ENCODED_FILE_STDIN}" < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 "${INPUT}" -q 90 "${ENCODED_FILE_REGULAR}"
+  "${AVIFENC}" -s 10 --stdin -q 90 "${ENCODED_FILE_STDIN}" ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_REGULAR}" ${STRIP_HEADER}
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
-  "${AVIFENC}" -s 10 "${ENCODED_FILE_STDIN}" -q 90 --stdin < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 "${ENCODED_FILE_STDIN}" -q 90 --stdin ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
-  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" -q 90 < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" -q 90 ${EXTRA_FLAGS} < "${INPUT}"
   strip_header_if "${ENCODED_FILE_STDIN}" ${STRIP_HEADER}
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
 
   # Negative tests.
 
   # WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.
-  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" -q:u 90 < "${INPUT_Y4M}"
+  "${AVIFENC}" -s 10 --stdin "${ENCODED_FILE_STDIN}" -q:u 90 ${EXTRA_FLAGS} < "${INPUT}"
   cmp --silent "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}" && exit 1
 
   # ERROR: there cannot be any other input if --stdin is specified
   "${AVIFENC}" --stdin && exit 1
-  "${AVIFENC}" --stdin "${INPUT_Y4M}" "${ENCODED_FILE_STDIN}" && exit 1
-  "${AVIFENC}" "${INPUT_Y4M}" --stdin "${ENCODED_FILE_STDIN}" && exit 1
-  "${AVIFENC}" "${INPUT_Y4M}" "${ENCODED_FILE_STDIN}" --stdin && exit 1
+  "${AVIFENC}" --stdin "${INPUT}" "${ENCODED_FILE_STDIN}" && exit 1
+  "${AVIFENC}" "${INPUT}" --stdin "${ENCODED_FILE_STDIN}" && exit 1
+  "${AVIFENC}" "${INPUT}" "${ENCODED_FILE_STDIN}" --stdin && exit 1
 
   return 0
 }
 
 pushd ${TMP_DIR}
   test_stdin "${INPUT_Y4M_STILL}" false
+  test_stdin "${INPUT_PNG}" false --stdin-format png
+  test_stdin "${INPUT_JPEG}" false --stdin-format jpeg
 
   # The output of avifenc for animations is not deterministic because of boxes
   # such as mvhd and its field creation_time. Strip the whole header to compare
