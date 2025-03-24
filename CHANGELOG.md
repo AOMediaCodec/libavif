@@ -15,6 +15,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   discarded.
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
+* Ignore tmap items not present in `grpl` box
 
 ## [1.2.1] - 2025-03-17
 
@@ -34,7 +35,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update svt.cmd/svt.sh/LocalSvt.cmake to v3.0.1.
 * Do not go through RGB when reading/writing a grayscale PNG/JPG images in
   avifenc/avifdec
-* Ignore tmap items not present in `grpl` box
 
 ## [1.2.0] - 2025-02-25
 
