@@ -5626,10 +5626,10 @@ static avifBool avifIsPreferredAlternativeTo(const avifDecoderData * data, uint3
             if (group->entityIDs.ids[j] == id1) {
                 id1Found = AVIF_TRUE;
             } else if (group->entityIDs.ids[j] == id2) {
-                if (id1Found) {
-                    return AVIF_TRUE;
-                }
-                break;
+                // Assume id2 is only present in one altr group, as per ISO/IEC 14496-12:2022
+                // Section 8.15.3.1:
+                // Any entity_id value shall be mapped to only one grouping of type 'altr'.
+                return id1Found;
             }
         }
     }
