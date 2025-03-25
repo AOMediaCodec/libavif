@@ -51,7 +51,7 @@ jobs:
           -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON
           -DGOLDEN_TESTS_OUTPUT_DIR=${{ runner.temp }}/golden_tests
       - name: Build libavif
-        run: cmake --build build --config=Release --parallel 4
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF golden tests
         working-directory: ./build
         # Runs test that have "golden" in their name.

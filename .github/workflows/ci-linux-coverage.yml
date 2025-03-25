@@ -47,9 +47,9 @@ jobs:
           -DAVIF_ENABLE_WERROR=ON -DAVIF_ENABLE_COVERAGE=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       - name: Build libavif
-        run: cmake --build build --config=Release --parallel 4
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF coverage
-        run: cmake --build build --config=Release --target avif_coverage --parallel 4
+        run: cmake --build build --config Release --target avif_coverage --parallel 4
 
       # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
       - name: Archive coverage output

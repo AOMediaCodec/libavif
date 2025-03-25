@@ -59,7 +59,7 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
       - name: Build libavif
-        run: cmake --build build --config=Release --parallel 4
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure

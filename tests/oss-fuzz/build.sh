@@ -79,7 +79,7 @@ cmake -G Ninja -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAV
       -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON \
       ${EXTRA_CMAKE_FLAGS}
 
-cmake --build build --config=Release --parallel
+cmake --build build --config Release --parallel
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
 if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then

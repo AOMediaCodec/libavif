@@ -2,7 +2,7 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-: # cmake must be in your PATH.
+: # cmake and ninja must be in your PATH.
 
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
@@ -25,4 +25,4 @@ git apply --ignore-whitespace ../libyuv.patch
 cd ..
 
 cmake -G Ninja -S libyuv -B libyuv/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-cmake --build libyuv/build --config=Release --target yuv --parallel
+cmake --build libyuv/build --config Release --target yuv --parallel

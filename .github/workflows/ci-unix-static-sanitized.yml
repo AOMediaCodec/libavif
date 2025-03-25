@@ -57,7 +57,7 @@ jobs:
         if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run: |
-          sed -i -e 's/cmake -G Ninja -S/cmake -G Ninja -DSANITIZE=${{ matrix.sanitizer }} -S/g' aom.cmd
+          sed -i -e 's/cmake -G \(.*\)/cmake -G \1 -DSANITIZE=${{ matrix.sanitizer }}/g' aom.cmd
           ./aom.cmd
         env:
           CFLAGS: ${{ env.CI_CFLAGS }}
@@ -67,7 +67,7 @@ jobs:
         if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
         run:
-          sed -i -e 's/meson setup \(.*\) \.\./meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false ../g' dav1d.cmd
+          sed -i -e 's/meson setup \(.*\)/meson setup \1 -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false/g' dav1d.cmd
       - name: Build dav1d
         if: ${{ steps.cache-hit.outputs.hit == 'false' }}
         working-directory: ./ext
@@ -91,7 +91,7 @@ jobs:
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
       - name: Build libavif
-        run: cmake --build build --config=Debug --parallel 4
+        run: cmake --build build --config Debug --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

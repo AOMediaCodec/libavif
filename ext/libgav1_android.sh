@@ -32,5 +32,5 @@ for abi in ${ABI_LIST}; do
     -DLIBGAV1_ENABLE_TESTS=0 \
     -DLIBGAV1_MAX_BITDEPTH=12 \
     -DANDROID_ABI=${abi}
-  cmake --build "libgav1/build/${abi}" --config=Release --parallel
+  cmake --build "libgav1/build/${abi}" --config Release --parallel
 done

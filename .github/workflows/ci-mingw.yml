@@ -44,6 +44,7 @@ jobs:
             libjpeg-turbo:p
             libpng:p
             libyuv:p
+            ninja:p
             zlib:p
       - uses: ./.github/actions/cache
         with:
@@ -64,7 +65,7 @@ jobs:
           -DAVIF_BUILD_GDK_PIXBUF=ON
           -DAVIF_ENABLE_WERROR=ON
       - name: Build libavif
-        run: cmake --build build --config=Release --parallel 4
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j --output-on-failure
