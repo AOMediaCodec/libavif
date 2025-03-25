@@ -24,5 +24,5 @@ git apply --ignore-whitespace ../libyuv.patch
 
 cd ..
 
-cmake -S libyuv -B libyuv/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-cmake --build libyuv/build --target yuv --parallel
+cmake -G Ninja -S libyuv -B libyuv/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+cmake --build libyuv/build --config=Release --target yuv --parallel

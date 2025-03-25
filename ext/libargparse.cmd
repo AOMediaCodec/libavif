@@ -14,5 +14,5 @@ cd libargparse
 git checkout 81998ffafb9c2ac8cf488d31e536a2e6fd6b3fdf
 cd ..
 
-cmake -S libargparse -B libargparse/build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
-cmake --build libargparse/build --parallel
+cmake -G Ninja -S libargparse -B libargparse/build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build libargparse/build --config=Release --parallel

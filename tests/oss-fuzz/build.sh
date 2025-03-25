@@ -52,13 +52,13 @@ sed -i "s/meson setup \(.*\) \.\./meson setup \1${DAV1D_EXTRA_FLAGS} ../g" ./ext
 # Build libaom with sanitizer flags.
 # Adds extra flags: -DAOM_TARGET_CPU=generic for msan.
 if [[ "$SANITIZER" == "memory" ]]; then
-  sed -i 's/cmake \(.*\) \.\./cmake \1 -DAOM_TARGET_CPU=generic ../g' ./ext/aom.cmd
+  sed -i 's/cmake -G \(.*\)/cmake -G \1 -DAOM_TARGET_CPU=generic/g' ./ext/aom.cmd
 fi
 
 # Build libjpeg-turbo with sanitizer flags. Add extra flag -DWITH_SIMD=0 for msan.
 # See https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/README.md#memory-debugger-pitfalls
 if [[ "$SANITIZER" == "memory" ]]; then
-  sed -i 's/cmake -S libjpeg-turbo \(.*\)/cmake -S libjpeg-turbo \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
+  sed -i 's/cmake -G \(.*\)/cmake -G \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
 fi
 
 # Prepare dependencies.
@@ -71,7 +71,7 @@ if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
   EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS} -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
 fi
-cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
+cmake -G Ninja -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
       -DAVIF_CODEC_AOM_DECODE=ON -DAVIF_CODEC_AOM_ENCODE=ON \
       -DAVIF_FUZZTEST=LOCAL \
       -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL \
@@ -79,7 +79,7 @@ cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_
       -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON \
       ${EXTRA_CMAKE_FLAGS}
 
-cmake --build build --parallel
+cmake --build build --config=Release --parallel
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
 if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then

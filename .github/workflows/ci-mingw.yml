@@ -53,7 +53,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -S . -B build
+          cmake -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=SYSTEM
           -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
@@ -64,7 +64,7 @@ jobs:
           -DAVIF_BUILD_GDK_PIXBUF=ON
           -DAVIF_ENABLE_WERROR=ON
       - name: Build libavif
-        run: cmake --build build --parallel 4
+        run: cmake --build build --config=Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j --output-on-failure

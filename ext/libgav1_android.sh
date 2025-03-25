@@ -22,7 +22,7 @@ mkdir libgav1/build
 
 ABI_LIST="armeabi-v7a arm64-v8a x86 x86_64"
 for abi in ${ABI_LIST}; do
-  cmake -S libgav1 -B "libgav1/build/${abi}" \
+  cmake -G Ninja -S libgav1 -B "libgav1/build/${abi}" \
     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android.cmake \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_BUILD_TYPE=Release \
@@ -32,5 +32,5 @@ for abi in ${ABI_LIST}; do
     -DLIBGAV1_ENABLE_TESTS=0 \
     -DLIBGAV1_MAX_BITDEPTH=12 \
     -DANDROID_ABI=${abi}
-  cmake --build "libgav1/build/${abi}" --parallel
+  cmake --build "libgav1/build/${abi}" --config=Release --parallel
 done
