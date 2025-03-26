@@ -35,9 +35,8 @@ jobs:
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Archive artifacts
         uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
         with:

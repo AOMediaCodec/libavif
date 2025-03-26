@@ -22,9 +22,7 @@ git checkout ccdf87034
 : # TODO: https://libyuv.issues.chromium.org/issues/399856238 - Remove when fixed upstream
 git apply --ignore-whitespace ../libyuv.patch
 
-mkdir build
-cd build
+cd ..
 
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
-cd ../..
-ninja -C libyuv/build yuv
+cmake -G Ninja -S libyuv -B libyuv/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+cmake --build libyuv/build --config Release --target yuv --parallel

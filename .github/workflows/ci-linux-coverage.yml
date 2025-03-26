@@ -46,12 +46,10 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON -DAVIF_ENABLE_COVERAGE=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF coverage
-        working-directory: ./build
-        run: ninja avif_coverage
+        run: cmake --build build --config Release --target avif_coverage --parallel 4
 
       # See https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
       - name: Archive coverage output

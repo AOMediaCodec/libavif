@@ -71,9 +71,8 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure

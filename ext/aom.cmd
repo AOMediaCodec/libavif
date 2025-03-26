@@ -10,10 +10,5 @@
 
 git clone -b v3.12.0 --depth 1 https://aomedia.googlesource.com/aom
 
-cd aom
-mkdir build.libavif
-cd build.libavif
-
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCONFIG_PIC=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
-cd ../..
-ninja -C aom/build.libavif
+cmake -G Ninja -S aom -B aom/build.libavif -DBUILD_SHARED_LIBS=OFF -DCONFIG_PIC=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTDATA=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0
+cmake --build aom/build.libavif --config Release --parallel

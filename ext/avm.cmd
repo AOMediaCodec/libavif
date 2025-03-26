@@ -10,11 +10,5 @@
 
 git clone -b research-v9.0.0 --depth 1 https://gitlab.com/AOMediaCodec/avm.git
 
-cd avm
-
-mkdir build.libavif
-cd build.libavif
-
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCONFIG_PIC=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0 ..
-cd ../..
-ninja -C avm/build.libavif
+cmake -G Ninja -S avm -B avm/build.libavif -DBUILD_SHARED_LIBS=OFF -DCONFIG_PIC=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TESTS=0 -DENABLE_TOOLS=0
+cmake --build avm/build.libavif --config Release --parallel

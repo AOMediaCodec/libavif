@@ -13,7 +13,6 @@ function(avif_build_local_dav1d)
         )
     endif()
 
-    find_program(NINJA_EXECUTABLE NAMES ninja ninja-build REQUIRED)
     find_program(MESON_EXECUTABLE meson REQUIRED)
 
     set(PATH $ENV{PATH})
@@ -90,8 +89,8 @@ function(avif_build_local_dav1d)
             ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${MESON_EXECUTABLE} setup --buildtype=release --default-library=static
             --prefix=<INSTALL_DIR> --libdir=lib -Denable_asm=true -Denable_tools=false -Denable_examples=false
             -Denable_tests=false ${EXTRA_ARGS} <SOURCE_DIR>
-        BUILD_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${NINJA_EXECUTABLE} -C <BINARY_DIR>
-        INSTALL_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${NINJA_EXECUTABLE} -C <BINARY_DIR> install
+        BUILD_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${MESON_EXECUTABLE} compile -C <BINARY_DIR>
+        INSTALL_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${MESON_EXECUTABLE} install -C <BINARY_DIR>
         BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libdav1d.a
     )
 

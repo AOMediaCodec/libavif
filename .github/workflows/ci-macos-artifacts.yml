@@ -35,9 +35,8 @@ jobs:
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
           -DCMAKE_OSX_DEPLOYMENT_TARGET=11
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       # TODO: notarize the binaries
       - name: Create README.txt
         run: |

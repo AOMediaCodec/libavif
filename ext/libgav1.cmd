@@ -11,10 +11,5 @@
 : # When updating the libgav1 version, make the same change to libgav1_android.sh.
 git clone -b v0.19.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 
-cd libgav1
-mkdir build
-cd build
-
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 -DLIBGAV1_ENABLE_EXAMPLES=0 -DLIBGAV1_ENABLE_TESTS=0 -DLIBGAV1_MAX_BITDEPTH=12 ..
-cd ../..
-ninja -C libgav1/build
+cmake -G Ninja -S libgav1 -B libgav1/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1 -DLIBGAV1_ENABLE_EXAMPLES=0 -DLIBGAV1_ENABLE_TESTS=0 -DLIBGAV1_MAX_BITDEPTH=12
+cmake --build libgav1/build --config Release --parallel

@@ -12,9 +12,7 @@ git clone https://github.com/maryla-uc/libargparse.git
 
 cd libargparse
 git checkout 81998ffafb9c2ac8cf488d31e536a2e6fd6b3fdf
+cd ..
 
-mkdir build
-cd build
-cmake -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  ..
-cd ../..
-ninja -C libargparse/build
+cmake -G Ninja -S libargparse -B libargparse/build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build libargparse/build --config Release --parallel
