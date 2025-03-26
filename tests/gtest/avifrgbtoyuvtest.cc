@@ -486,8 +486,8 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
-            /*max_abs_average_diff=*/Values(0.35),  // The color drift is almost
-                                                    // centered.
+            /*max_abs_average_diff=*/Values(0.1),  // The color drift is almost
+                                                   // centered.
             /*min_psnr=*/Values(36.)  // Subsampling distortion is acceptable.
             ));
 
@@ -553,7 +553,7 @@ INSTANTIATE_TEST_SUITE_P(
         Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
         /*add_noise=*/Values(false),
         /*rgb_step=*/Values(17),
-        /*max_abs_average_diff=*/Values(0.33),  // The color drift is centered.
+        /*max_abs_average_diff=*/Values(0.02),  // The color drift is centered.
         /*min_psnr=*/Values(45.)  // RGB>YUV>RGB distortion is barely
                                   // noticeable.
         ));
