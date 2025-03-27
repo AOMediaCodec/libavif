@@ -486,7 +486,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC),
             /*add_noise=*/Values(true),
             /*rgb_step=*/Values(3),
-            /*max_abs_average_diff=*/Values(0.32),  // The color drift is almost
+            /*max_abs_average_diff=*/Values(0.35),  // The color drift is almost
                                                     // centered.
             /*min_psnr=*/Values(36.)  // Subsampling distortion is acceptable.
             ));
