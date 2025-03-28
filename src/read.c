@@ -3984,7 +3984,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
 static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * propertyType)
 {
     avifProperty * metaProperty = avifArrayPush(&meta->properties);
-    AVIF_CHECK(metaProperty);
+    AVIF_CHECKERR(metaProperty, NULL);
     memcpy(metaProperty->type, propertyType, 4);
     return metaProperty;
 }
@@ -3992,7 +3992,7 @@ static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * prope
 static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const avifProperty * metaProperty)
 {
     avifProperty * itemProperty = avifArrayPush(&item->properties);
-    AVIF_CHECK(itemProperty);
+    AVIF_CHECKERR(itemProperty, NULL);
     *itemProperty = *metaProperty;
     return itemProperty;
 }
