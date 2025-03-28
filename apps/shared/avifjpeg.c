@@ -310,7 +310,7 @@ static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
 // Reads 'numBytes' at 'offset', stores them in 'bytes' and increases 'offset'.
 static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint32_t * offset, uint32_t numBytes)
 {
-    if (data->size < (*offset + numBytes)) {
+    if ((UINT32_MAX - *offset) < numBytes || data->size < (*offset + numBytes)) {
         return AVIF_FALSE;
     }
     memcpy(bytes, &data->data[*offset], numBytes);
