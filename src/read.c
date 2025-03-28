@@ -3390,7 +3390,7 @@ static avifResult avifParseMetaBox(avifMeta * meta, uint64_t rawOffset, const ui
                 //   The handler type for the MetaBox shall be 'pict'.
                 if (memcmp(handlerType, "pict", 4) != 0) {
                     avifDiagnosticsPrintf(diag, "Box[hdlr] handler_type is not 'pict'");
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 firstBox = AVIF_FALSE;
             } else {
@@ -3958,7 +3958,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
                 !memcmp(track->handlerType, "auxv", 4)) {
                 if ((track->width == 0) || (track->height == 0)) {
                     avifDiagnosticsPrintf(data->diag, "Track ID [%u] has an invalid size [%ux%u]", track->id, track->width, track->height);
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
                 if (avifDimensionsTooLarge(track->width, track->height, imageSizeLimit, imageDimensionLimit)) {
                     avifDiagnosticsPrintf(data->diag,
@@ -3966,7 +3966,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
                                           track->id,
                                           track->width,
                                           track->height);
-                    return AVIF_FALSE;
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
             }
         }
@@ -3984,7 +3984,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
 static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * propertyType)
 {
     avifProperty * metaProperty = avifArrayPush(&meta->properties);
-    AVIF_CHECK(metaProperty);
+    AVIF_CHECKERR(metaProperty, NULL);
     memcpy(metaProperty->type, propertyType, 4);
     return metaProperty;
 }
@@ -3992,7 +3992,7 @@ static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * prope
 static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const avifProperty * metaProperty)
 {
     avifProperty * itemProperty = avifArrayPush(&item->properties);
-    AVIF_CHECK(itemProperty);
+    AVIF_CHECKERR(itemProperty, NULL);
     *itemProperty = *metaProperty;
     return itemProperty;
 }
