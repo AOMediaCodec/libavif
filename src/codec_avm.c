@@ -406,6 +406,12 @@ static const struct aomOptionDef aomOptionDefs[] = {
     { "film-grain-test", AV1E_SET_FILM_GRAIN_TEST_VECTOR, AVIF_AOM_OPTION_INT, NULL },
     // Film grain table file
     { "film-grain-table", AV1E_SET_FILM_GRAIN_TABLE, AVIF_AOM_OPTION_STR, NULL },
+    // Enable quantization matrices
+    { "enable-qm", AV1E_SET_ENABLE_QM, AVIF_AOM_OPTION_UINT, NULL },
+    // Quantization matrices range minimum
+    { "qm-min", AV1E_SET_QM_MIN, AVIF_AOM_OPTION_UINT, NULL },
+    // Quantization matrices range maximum
+    { "qm-max", AV1E_SET_QM_MAX, AVIF_AOM_OPTION_UINT, NULL },
 
     // Sentinel
     { NULL, 0, AVIF_AOM_OPTION_NUL, NULL }
