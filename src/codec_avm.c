@@ -271,32 +271,6 @@ static aom_img_fmt_t avifImageCalcAOMFmt(const avifImage * image, avifBool alpha
     return fmt;
 }
 
-static avifBool aomOptionParseInt(const char * str, int * val)
-{
-    char * endptr;
-    const long rawval = strtol(str, &endptr, 10);
-
-    if (str[0] != '\0' && endptr[0] == '\0' && rawval >= INT_MIN && rawval <= INT_MAX) {
-        *val = (int)rawval;
-        return AVIF_TRUE;
-    }
-
-    return AVIF_FALSE;
-}
-
-static avifBool aomOptionParseUInt(const char * str, unsigned int * val)
-{
-    char * endptr;
-    const unsigned long rawval = strtoul(str, &endptr, 10);
-
-    if (str[0] != '\0' && endptr[0] == '\0' && rawval <= UINT_MAX) {
-        *val = (unsigned int)rawval;
-        return AVIF_TRUE;
-    }
-
-    return AVIF_FALSE;
-}
-
 struct aomOptionEnumList
 {
     const char * name;
@@ -367,50 +341,6 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
     return AVIF_TRUE;
 }
 
-typedef enum
-{
-    AVIF_AOM_OPTION_NUL = 0,
-    AVIF_AOM_OPTION_STR,
-    AVIF_AOM_OPTION_INT,
-    AVIF_AOM_OPTION_UINT,
-    AVIF_AOM_OPTION_ENUM,
-} aomOptionType;
-
-struct aomOptionDef
-{
-    const char * name;
-    int controlId;
-    aomOptionType type;
-    // If type is AVIF_AOM_OPTION_ENUM, this must be set. Otherwise should be NULL.
-    const struct aomOptionEnumList * enums;
-};
-
-static const struct aomOptionEnumList tuningEnum[] = { //
-    { "psnr", AOM_TUNE_PSNR },                         //
-    { "ssim", AOM_TUNE_SSIM },                         //
-    { NULL, 0 }
-};
-
-static const struct aomOptionDef aomOptionDefs[] = {
-    // Adaptive quantization mode
-    { "aq-mode", AV1E_SET_AQ_MODE, AVIF_AOM_OPTION_UINT, NULL },
-    // Constant/Constrained Quality level
-    { "qp-level", AOME_SET_QP, AVIF_AOM_OPTION_UINT, NULL },
-    // Enable delta quantization in chroma planes
-    { "enable-chroma-deltaq", AV1E_SET_ENABLE_CHROMA_DELTAQ, AVIF_AOM_OPTION_INT, NULL },
-    // Bias towards block sharpness in rate-distortion optimization of transform coefficients
-    { "sharpness", AOME_SET_SHARPNESS, AVIF_AOM_OPTION_UINT, NULL },
-    // Tune distortion metric
-    { "tune", AOME_SET_TUNING, AVIF_AOM_OPTION_ENUM, tuningEnum },
-    // Film grain test vector
-    { "film-grain-test", AV1E_SET_FILM_GRAIN_TEST_VECTOR, AVIF_AOM_OPTION_INT, NULL },
-    // Film grain table file
-    { "film-grain-table", AV1E_SET_FILM_GRAIN_TABLE, AVIF_AOM_OPTION_STR, NULL },
-
-    // Sentinel
-    { NULL, 0, AVIF_AOM_OPTION_NUL, NULL }
-};
-
 static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
@@ -450,46 +380,6 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
         }
         if (!strcmp(key, "tune")) {
             codec->internal->tuningSet = AVIF_TRUE;
-        }
-
-        avifBool match = AVIF_FALSE;
-        for (int j = 0; aomOptionDefs[j].name; ++j) {
-            if (avifKeyEqualsName(entry->key, aomOptionDefs[j].name, alpha)) {
-                match = AVIF_TRUE;
-                avifBool success = AVIF_FALSE;
-                int valInt;
-                unsigned int valUInt;
-                switch (aomOptionDefs[j].type) {
-                    case AVIF_AOM_OPTION_NUL:
-                        success = AVIF_FALSE;
-                        break;
-                    case AVIF_AOM_OPTION_STR:
-                        success = aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, entry->value) == AOM_CODEC_OK;
-                        break;
-                    case AVIF_AOM_OPTION_INT:
-                        success = aomOptionParseInt(entry->value, &valInt) &&
-                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
-                        break;
-                    case AVIF_AOM_OPTION_UINT:
-                        success = aomOptionParseUInt(entry->value, &valUInt) &&
-                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valUInt) == AOM_CODEC_OK;
-                        break;
-                    case AVIF_AOM_OPTION_ENUM:
-                        success = aomOptionParseEnum(entry->value, aomOptionDefs[j].enums, &valInt) &&
-                                  aom_codec_control(&codec->internal->encoder, aomOptionDefs[j].controlId, valInt) == AOM_CODEC_OK;
-                        break;
-                }
-                if (!success) {
-                    return AVIF_FALSE;
-                }
-                if (aomOptionDefs[j].controlId == AOME_SET_TUNING) {
-                    codec->internal->tuningSet = AVIF_TRUE;
-                }
-                break;
-            }
-        }
-        if (!match) {
-            return AVIF_FALSE;
         }
     }
     return AVIF_TRUE;
