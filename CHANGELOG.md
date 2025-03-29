@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.2.1
+
+* Allow avifenc to read png or jpeg files through stdin using --stdin-format
+
 ### Changed since 1.2.1
 
 * Reject the conversion in avifenc from non-monochrome/monochrome to
