@@ -281,9 +281,6 @@ void ConvertWholeBuffer(int rgb_depth, int yuv_depth, avifRGBFormat rgb_format,
       num_diffs += src_rgb.width * src_rgb.height * 3;
     }
   }
-  // max_average_abs_diff is not tested here because it is not meaningful for
-  // only 3*3 conversions as it takes the maximum difference per conversion.
-  // PSNR is averaged on all pixels so it can be tested here.
   EXPECT_GE(GetPsnr(static_cast<double>(sq_diff_sum),
                     static_cast<double>(num_diffs), rgb_max),
             min_psnr);
@@ -695,7 +692,6 @@ INSTANTIATE_TEST_SUITE_P(
     SharpYuv16Bit, RGBToYUVTest,
     Combine(
         /*rgb_depth=*/Values(16),
-        // TODO(yguyon): Why max_average_abs_diff>28 if RGB16 to YUV10 full rng?
         /*yuv_depth=*/Values(8, /*10,*/ 12), Values(AVIF_RGB_FORMAT_RGBA),
         Values(AVIF_PIXEL_FORMAT_YUV420), Values(AVIF_RANGE_FULL),
         Values(kMatrixCoefficientsBT601),
