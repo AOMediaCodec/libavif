@@ -16,10 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       # Generate the configurations:
-      # case 0: nodiscard
+      # case 0: nodiscard, case 1: use stdbool, case 2: use enums
       matrix:
         os: [ubuntu-latest, windows-latest]
-        case: [0]
+        case: [0, 1, 2]
 
     runs-on: ${{ matrix.os }}
 
@@ -54,6 +54,18 @@ jobs:
       - name: Enable nodiscard
         if: ${{ matrix.case == 0}}
         run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_ENABLE_NODISCARD=ON\""  >> $GITHUB_ENV
+      - name: Use stdbool for AVIF_TRUE/AVIF_FALSE
+        if: ${{ matrix.case == 1}}
+        run: |
+          sed -i 's/#include <stdint.h>/#include <stdint.h>\n#include <stdbool.h>/' include/avif/avif.h
+          sed -i 's/typedef int avifBool;/typedef bool avifBool;/' include/avif/avif.h
+          sed -i 's/#define AVIF_TRUE 1/#define AVIF_TRUE true/' include/avif/avif.h
+          sed -i 's/#define AVIF_FALSE 0/#define AVIF_FALSE false/' include/avif/avif.h
+      - name: Use enums for AVIF_TRUE/AVIF_FALSE
+        if: ${{ matrix.case == 2}}
+        run: |
+          sed -i 's/#define AVIF_TRUE 1/enum avifTrueFalse_{ AVIF_TRUE 1,/' include/avif/avif.h
+          sed -i 's/#define AVIF_FALSE 0/AVIF_FALSE 0};/' include/avif/avif.h
 
       - name: Prepare libavif (cmake)
         run: >
