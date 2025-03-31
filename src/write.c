@@ -1046,10 +1046,10 @@ size_t avifEncoderGetGainMapSizeBytes(avifEncoder * encoder)
 }
 
 // Sets altImageMetadata's metadata values to represent the "alternate" image as if applying the gain map to the base image.
-static avifResult avifImageCopyAltImageMetadata(avifImage * altImageMetadata, const avifImage * imageWithGainMap)
+static avifResult avifImageCopyAltImageMetadata(avifImage * altImageMetadata, const avifImage * imageWithGainMap, uint32_t gridWidth, uint32_t gridHeight)
 {
-    altImageMetadata->width = imageWithGainMap->width;
-    altImageMetadata->height = imageWithGainMap->height;
+    altImageMetadata->width = gridWidth;
+    altImageMetadata->height = gridHeight;
     AVIF_CHECKRES(avifRWDataSet(&altImageMetadata->icc, imageWithGainMap->gainMap->altICC.data, imageWithGainMap->gainMap->altICC.size));
     altImageMetadata->colorPrimaries = imageWithGainMap->gainMap->altColorPrimaries;
     altImageMetadata->transferCharacteristics = imageWithGainMap->gainMap->altTransferCharacteristics;
@@ -1885,14 +1885,17 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (encoder->data->items.count == 0) {
         // Make a copy of the first image's metadata (sans pixels) for future writing/validation
         AVIF_CHECKRES(avifImageCopy(encoder->data->imageMetadata, firstCell, 0));
+
+        const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
+        const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
+
         if (hasGainMap) {
-            AVIF_CHECKRES(avifImageCopyAltImageMetadata(encoder->data->altImageMetadata, encoder->data->imageMetadata));
+            AVIF_CHECKRES(
+                avifImageCopyAltImageMetadata(encoder->data->altImageMetadata, encoder->data->imageMetadata, gridWidth, gridHeight));
         }
 
         // Prepare all AV1 items
         uint16_t colorItemID;
-        const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
-        const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
         AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_COLOR, &colorItemID));
         encoder->data->primaryItemID = colorItemID;
 

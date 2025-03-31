@@ -5704,6 +5704,18 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         gainMap->altDepth = pixiProp->u.pixi.planeDepths[0];
     }
 
+    const avifProperty * ispeProp = avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "ispe");
+    if (!ispeProp) {
+        // HEIF (ISO/IEC 23008-12:2022), Section 6.5.3.1:
+        // Every image item shall be associated with one property of this type, prior to the association
+        // of all transformative properties.
+        avifDiagnosticsPrintf(data->diag, "Box[tmap] missing mandatory ispe property");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    } else if (ispeProp->u.ispe.width != colorItem->width || ispeProp->u.ispe.height != colorItem->height) {
+        avifDiagnosticsPrintf(data->diag, "Box[tmap] ispe property width/height does not match base image");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+
     if (avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "pasp") ||
         avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "clap") ||
         avifPropertyArrayFind(&toneMappedImageItemTmp->properties, "irot") ||
