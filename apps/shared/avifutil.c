@@ -302,6 +302,7 @@ avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size)
 }
 
 avifAppFileFormat avifReadImage(const char * filename,
+                                avifAppFileFormat inputFormat,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
@@ -316,46 +317,13 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter)
 {
-    const avifAppFileFormat format = avifGuessFileFormat(filename);
-    if (!avifReadFormat(filename,
-                        format,
-                        requestedFormat,
-                        requestedDepth,
-                        chromaDownsampling,
-                        ignoreColorProfile,
-                        ignoreExif,
-                        ignoreXMP,
-                        allowChangingCicp,
-                        ignoreGainMap,
-                        imageSizeLimit,
-                        image,
-                        outDepth,
-                        sourceTiming,
-                        frameIter)) {
-        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        inputFormat = avifGuessFileFormat(filename);
     }
-    return format;
-}
 
-avifBool avifReadFormat(const char * filename,
-                        avifAppFileFormat inputFormat,
-                        avifPixelFormat requestedFormat,
-                        int requestedDepth,
-                        avifChromaDownsampling chromaDownsampling,
-                        avifBool ignoreColorProfile,
-                        avifBool ignoreExif,
-                        avifBool ignoreXMP,
-                        avifBool allowChangingCicp,
-                        avifBool ignoreGainMap,
-                        uint32_t imageSizeLimit,
-                        avifImage * image,
-                        uint32_t * outDepth,
-                        avifAppSourceTiming * sourceTiming,
-                        struct y4mFrameIterator ** frameIter)
-{
     if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (!y4mRead(filename, imageSizeLimit, image, sourceTiming, frameIter)) {
-            return AVIF_FALSE;
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = image->depth;
@@ -363,7 +331,7 @@ avifBool avifReadFormat(const char * filename,
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // imageSizeLimit is also used to limit Exif and XMP metadata here.
         if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
-            return AVIF_FALSE;
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = 8;
@@ -380,13 +348,16 @@ avifBool avifReadFormat(const char * filename,
                          allowChangingCicp,
                          imageSizeLimit,
                          outDepth)) {
-            return AVIF_FALSE;
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-    } else {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
-        return AVIF_FALSE;
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    } else {
+        fprintf(stderr, "Unsupported file format %s for input file: %s\n", avifFileFormatToString(inputFormat), filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
-    return AVIF_TRUE;
+    return inputFormat;
 }
 
 avifBool avifReadEntireFile(const char * filename, avifRWData * raw)

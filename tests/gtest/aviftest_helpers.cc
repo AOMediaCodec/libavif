@@ -560,6 +560,7 @@ ImagePtr ReadImage(const char* folder_path, const char* file_name,
   ImagePtr image(avifImageCreateEmpty());
   if (!image ||
       avifReadImage((std::string(folder_path) + file_name).c_str(),
+                    AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
                     requested_format, requested_depth, chroma_downsampling,
                     ignore_icc, ignore_exif, ignore_xmp, allow_changing_cicp,
                     ignore_gain_map, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),

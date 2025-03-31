@@ -32,7 +32,9 @@ ImagePtr ReadImageLosslessBitDepth(const std::string& path,
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
 
   uint32_t output_depth;
-  if (avifReadImage(path.c_str(), AVIF_PIXEL_FORMAT_YUV444, bit_depth,
+  if (avifReadImage(path.c_str(),
+                    AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+                    AVIF_PIXEL_FORMAT_YUV444, bit_depth,
                     AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                     /*ignoreColorProfile=*/true,
                     /*ignoreExif=*/true, /*ignoreXMP=*/true,

@@ -69,10 +69,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.
 
 **\--stdin**
-:   Read input from stdin instead of file paths. No other input is allowed. The input format is assumed to be y4m unless --stdin-format is specified. The output file path must still be provided.
+:   Read input from stdin instead of file paths. No other input is allowed. The input format is assumed to be y4m unless --input-format is specified. The output file path must still be provided.
 
-**\--stdin-format**
-:   Format of the data from stdin, when --stdin is specified. One of: jpeg/png/y4m. (Default: y4m)
+**\--input-format**
+:   File format of the input data. One of: jpeg/png/y4m/auto. (Default: auto, except for stdin where auto is not supported and the defualt is y4m).
 
 **\--cicp**, **\--nclx** _P_/_T_/_M_
 :   Set CICP values (nclx colr box) (3 raw numbers, use **-r** to set range flag).

@@ -103,8 +103,8 @@ test_stdin() {
 
 pushd ${TMP_DIR}
   test_stdin "${INPUT_Y4M_STILL}" false
-  test_stdin "${INPUT_PNG}" false --stdin-format png
-  test_stdin "${INPUT_JPEG}" false --stdin-format jpeg
+  test_stdin "${INPUT_PNG}" false --input-format png
+  test_stdin "${INPUT_JPEG}" false --input-format jpeg
 
   # The output of avifenc for animations is not deterministic because of boxes
   # such as mvhd and its field creation_time. Strip the whole header to compare

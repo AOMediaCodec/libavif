@@ -64,7 +64,8 @@ typedef struct avifAppSourceTiming
 
 struct y4mFrameIterator;
 // Reads an image from a file with the requested format and depth.
-// The image format is guessed based on the filename or first few bytes.
+// If 'inputFormat' is AVIF_APP_FILE_FORMAT_UNKNOWN, the image format is guessed
+// based on the filename or first few bytes.
 // At most imageSizeLimit pixels will be read or an error returned.
 // In case of a y4m file, sourceTiming and frameIter can be set.
 // Returns the format of the file, or AVIF_APP_FILE_FORMAT_UNKNOWN in case of
@@ -73,6 +74,7 @@ struct y4mFrameIterator;
 // and only if AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION is ON
 // (requires libxml2). Otherwise it has no effect.
 avifAppFileFormat avifReadImage(const char * filename,
+                                avifAppFileFormat inputFormat,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
@@ -86,24 +88,6 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);
-// Same as avifReadImage but the input file format is passed in instead of
-// being guessed from the file's name/content.
-// Returns AVIF_FALSE in case of error.
-avifBool avifReadFormat(const char * filename,
-                        avifAppFileFormat inputFormat,
-                        avifPixelFormat requestedFormat,
-                        int requestedDepth,
-                        avifChromaDownsampling chromaDownsampling,
-                        avifBool ignoreColorProfile,
-                        avifBool ignoreExif,
-                        avifBool ignoreXMP,
-                        avifBool allowChangingCicp,
-                        avifBool ignoreGainMap,
-                        uint32_t imageSizeLimit,
-                        avifImage * image,
-                        uint32_t * outDepth,
-                        avifAppSourceTiming * sourceTiming,
-                        struct y4mFrameIterator ** frameIter);
 
 // Copies all the bytes from the file at filename to a newly allocated memory chunk.
 avifBool avifReadEntireFile(const char * filename, avifRWData * raw);
