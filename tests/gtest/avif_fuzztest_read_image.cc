@@ -26,6 +26,10 @@ namespace {
 
 std::string FileFormatToString(avifAppFileFormat file_format) {
   switch (file_format) {
+    case AVIF_APP_FILE_FORMAT_UNKNOWN:
+      return "unknown";
+    case AVIF_APP_FILE_FORMAT_AVIF:
+      return "AVIF";
     case AVIF_APP_FILE_FORMAT_PNG:
       return "PNG";
     case AVIF_APP_FILE_FORMAT_JPEG:
@@ -74,7 +78,8 @@ void ReadImageFile(const std::string& arbitrary_bytes,
           : kImageSizeLimit;
 
   const avifAppFileFormat file_format = avifReadImage(
-      file_path.c_str(), requested_format, requested_depth, chroma_downsampling,
+      file_path.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+      requested_format, requested_depth, chroma_downsampling,
       ignore_color_profile, ignore_exif, ignore_xmp, allow_changing_cicp,
       ignore_gain_map, imageSizeLimit, avif_image.get(), &out_depth, &timing,
       /*frameIter=*/nullptr);

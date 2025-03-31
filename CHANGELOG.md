@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.2.1
+
+* Allow avifenc to read png or jpeg files through stdin using --input-format.
+
 ### Changed since 1.2.1
 
 * Reject the conversion in avifenc from non-monochrome/monochrome to
@@ -15,7 +19,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   discarded.
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
-* Ignore tmap items not present in `grpl` box
+* Ignore tmap items not present in `grpl` box.
 
 ## [1.2.1] - 2025-03-17
 
