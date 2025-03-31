@@ -116,7 +116,7 @@ SwapBaseCommand::SwapBaseCommand()
           "swapbase",
           "Swaps the base and alternate images (e.g. if the base image is SDR "
           "and the alternate is HDR, makes the base HDR). The alternate image "
-          "is the result to fully applying the gain map.") {
+          "is the result of fully applying the gain map.") {
   argparse_.add_argument(arg_input_filename_, "input_filename");
   argparse_.add_argument(arg_output_filename_, "output_filename");
   arg_image_read_.Init(argparse_);
