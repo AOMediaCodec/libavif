@@ -16,6 +16,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Ignore tmap items not present in `grpl` box
+* Update libyuv.cmd: dc47c71b3 (1907)
 
 ## [1.2.1] - 2025-03-17
 
