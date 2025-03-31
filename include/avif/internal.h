@@ -69,7 +69,7 @@ static inline void avifBreakOnError()
     } while (0)
 #else
 #define AVIF_ASSERT_OR_RETURN(A) assert(A)
-#define AVIF_ASSERT_NOT_REACHED_OR_RETURN assert(AVIF_FALSE);
+#define AVIF_ASSERT_NOT_REACHED_OR_RETURN assert(0);
 #endif
 
 // ---------------------------------------------------------------------------
