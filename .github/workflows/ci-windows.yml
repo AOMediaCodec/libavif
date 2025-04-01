@@ -57,11 +57,8 @@ jobs:
           CXX: clang-cl
 
       - name: Prepare libavif (cmake)
-        # CMake 4.0.0 removed compatibility with CMake < 3.5. Add
-        # -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
         run: >
           cmake -G Ninja -S . -B build
-          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL

@@ -20,6 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libsharpyuv: v1.5.0
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.14.0
 * Update libyuv.cmd: dc47c71b3 (1907)
+* Update zlibpng.cmd: libpng 1.6.47
 * Fix wrong Exif orientation set in JPEG or PNG output by avifdec when the input
   AVIF file has an ImageRotation property with angle set to 1 or 3, has no
   ImageMirror property, and carries an Exif chunk. Note that Exif orientation is
