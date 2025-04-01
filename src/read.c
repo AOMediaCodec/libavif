@@ -6699,7 +6699,17 @@ static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, a
         return result;
     }
 
-    for (avifBool alpha = AVIF_FALSE; alpha <= decoder->alphaPresent ? AVIF_TRUE : AVIF_FALSE; ++alpha) {
+    for (int i_alpha = 0; i_alpha < 2; ++i_alpha) {
+        avifBool alpha;
+        if (i_alpha == 0) {
+            alpha = AVIF_FALSE;
+        } else {
+            if (decoder->alphaPresent) {
+                alpha = AVIF_TRUE;
+            } else {
+                break;
+            }
+        }
         AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
         const avifImage * inputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
         for (uint32_t i = 0; i < decoder->data->sampleTransformNumInputImageItems; ++i) {
