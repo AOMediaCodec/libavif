@@ -1,4 +1,4 @@
-set(AVIF_GTEST_GIT_TAG v1.14.0)
+set(AVIF_GTEST_GIT_TAG v1.16.0)
 
 set(GTest_FOUND ON CACHE BOOL "")
 set(GTEST_INCLUDE_DIRS ${AVIF_SOURCE_DIR}/ext/googletest/googletest/include)
