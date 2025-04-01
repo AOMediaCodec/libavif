@@ -126,7 +126,7 @@ if(AVIF_GTEST)
     add_avif_gtest_with_data(avifiostatstest)
     add_avif_gtest_with_data(avifkeyframetest)
     add_avif_gtest_with_data(aviflosslesstest)
-    add_avif_gtest_with_data(avifmetadatatest)
+    add_avif_internal_gtest_with_data(avifmetadatatest)
 
     if(AVIF_ENABLE_EXPERIMENTAL_MINI)
         add_avif_gtest(avifminitest)

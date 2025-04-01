@@ -17,6 +17,10 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Ignore tmap items not present in `grpl` box
 * Update libyuv.cmd: dc47c71b3 (1907)
+* Fix wrong Exif orientation set in JPEG or PNG output by avifdec when the input
+  AVIF file has an ImageRotation property with angle set to 1 or 3, has no
+  ImageMirror property, and carries an Exif chunk. Note that Exif orientation is
+  usually ignored in PNG files, so this mainly impacts JPEG files.
 
 ## [1.2.1] - 2025-03-17
 
