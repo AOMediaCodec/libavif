@@ -715,6 +715,9 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
     for (int mpTagIdx = 0; mpTagIdx < mpTagCount; ++mpTagIdx) {
         uint16_t tagId;
         AVIF_CHECK(avifJPEGReadU16(segmentData, &tagId, &offset, isBigEndian));
+        if (UINT32_MAX - offset < 2 + 4) {
+            return AVIF_FALSE;
+        }
         offset += 2; // Skip data format.
         offset += 4; // Skip num components.
         uint8_t valueBytes[4];
@@ -749,12 +752,18 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
     AVIF_CHECK(avifJPEGFindMpfSegmentOffset(f, &mpfSegmentOffset));
 
     for (uint32_t imageIdx = 0; imageIdx < numImages; ++imageIdx) {
+        if (UINT32_MAX - offset < 4) {
+            return AVIF_FALSE;
+        }
         offset += 4; // Skip "Individual Image Attribute"
         uint32_t imageSize;
         AVIF_CHECK(avifJPEGReadU32(segmentData, &imageSize, &offset, isBigEndian));
         uint32_t imageDataOffset;
         AVIF_CHECK(avifJPEGReadU32(segmentData, &imageDataOffset, &offset, isBigEndian));
 
+        if (UINT32_MAX - offset < 4) {
+            return AVIF_FALSE;
+        }
         offset += 4; // Skip "Dependent image Entry Number" (2 + 2 bytes)
         if (imageDataOffset == 0) {
             // 0 is a special value which indicates the first image.
