@@ -287,11 +287,11 @@ TEST(MetadataTest, ExifOrientation) {
 }
 
 TEST(MetadataTest, AllExifOrientations) {
-  const ImagePtr image =
-      testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
-  ASSERT_NE(image, nullptr);
-  image->transformFlags = AVIF_TRANSFORM_NONE;
   for (uint8_t orientation = 1; orientation <= 8; ++orientation) {
+    const ImagePtr image =
+        testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+    ASSERT_NE(image, nullptr);
+    image->transformFlags = AVIF_TRANSFORM_NONE;
     // Check roundtrip.
     ASSERT_EQ(avifSetExifOrientation(&image->exif, orientation),
               AVIF_RESULT_OK);
