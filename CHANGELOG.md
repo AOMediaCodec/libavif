@@ -16,6 +16,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Forbid encoding with AVIF_MATRIX_COEFFICIENTS_IDENTITY and
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Ignore tmap items not present in `grpl` box
+* Update googletest.cmd/LocalGTest.cmake: v1.16.0
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.14.0
 * Update libyuv.cmd: dc47c71b3 (1907)
 
 ## [1.2.1] - 2025-03-17

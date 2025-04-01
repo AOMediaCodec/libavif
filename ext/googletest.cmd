@@ -7,7 +7,7 @@
 : # If you're running this on Windows, be sure you've already run this (from your VC2019 install dir):
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
-git clone -b v1.14.0 --depth 1 https://github.com/google/googletest.git
+git clone -b v1.16.0 --depth 1 https://github.com/google/googletest.git
 
 : # The gtest_force_shared_crt option makes gtest link the Microsoft C runtime library (CRT) dynamically
 : # on Windows:
