@@ -63,7 +63,7 @@ index 15ceebe..03825a2 100644
  
  if(NOT CYGWIN)
      # This property causes shared libraries on Linux to have the full version
-@@ -164,26 +171,45 @@ if(NOT CYGWIN)
+@@ -164,26 +171,49 @@ if(NOT CYGWIN)
      #
      # This has no effect with MSVC, on that platform the version info for
      # the DLL comes from the resource file win32/zlib1.rc
@@ -87,7 +87,11 @@ index 15ceebe..03825a2 100644
 +endif()
 +
 +if(NOT UNIX)
-+  set_target_properties(ZLIB PROPERTIES OUTPUT_NAME zlib)
++  if(BUILD_SHARED_LIBS)
++    set_target_properties(ZLIB PROPERTIES OUTPUT_NAME zlib)
++  else()
++    set_target_properties(ZLIB PROPERTIES OUTPUT_NAME zlibstatic)
++  endif()
  endif()
  
 -if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL )
@@ -119,7 +123,7 @@ index 15ceebe..03825a2 100644
  if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL )
      install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "${INSTALL_INC_DIR}")
  endif()
-@@ -199,20 +225,20 @@ endif()
+@@ -199,20 +229,20 @@ endif()
  #============================================================================
  if(ZLIB_BUILD_EXAMPLES)
      add_executable(example test/example.c)
