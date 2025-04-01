@@ -4,6 +4,7 @@
 #ifndef AVIF_AVIF_H
 #define AVIF_AVIF_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -84,9 +85,9 @@ extern "C" {
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
 
-typedef int avifBool;
-#define AVIF_TRUE 1
-#define AVIF_FALSE 0
+typedef bool avifBool;
+#define AVIF_TRUE true
+#define AVIF_FALSE false
 
 #define AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE 256
 
