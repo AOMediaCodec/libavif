@@ -302,6 +302,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
     target_compile_options(
         avif_enable_warnings INTERFACE -Wall -Wextra -Wgnu-empty-initializer -Wshorten-64-to-32 -Wstrict-prototypes
+                                       -Wzero-as-null-pointer-constant
     )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")

@@ -98,7 +98,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     return AVIF_RESULT_INVALID_ARGUMENT;
   } else if (input_format == AVIF_APP_FILE_FORMAT_AVIF) {
     DecoderPtr decoder(avifDecoderCreate());
-    if (decoder == NULL) {
+    if (decoder == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
     avifResult result = ReadAvif(decoder.get(), input_filename, ignore_profile);
@@ -106,7 +106,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       return result;
     }
     if (decoder->image->imageOwnsYUVPlanes &&
-        (decoder->image->alphaPlane == NULL ||
+        (decoder->image->alphaPlane == nullptr ||
          decoder->image->imageOwnsAlphaPlane)) {
       std::swap(*image, *decoder->image);
     } else {

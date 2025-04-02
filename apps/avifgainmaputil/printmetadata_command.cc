@@ -38,7 +38,7 @@ PrintMetadataCommand::PrintMetadataCommand()
 
 avifResult PrintMetadataCommand::Run() {
   DecoderPtr decoder(avifDecoderCreate());
-  if (decoder == NULL) {
+  if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
 
