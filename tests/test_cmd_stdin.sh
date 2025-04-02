@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 # Input file paths.

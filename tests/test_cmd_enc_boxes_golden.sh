@@ -17,6 +17,9 @@
 # ===================================
 # To add new test case, just add new encode commands to this function.
 # All .avif files created here will become test cases.
+
+set -eu
+
 encode_test_files() {
     AVIFENC="$1"
     TESTDATA_DIR="$2"

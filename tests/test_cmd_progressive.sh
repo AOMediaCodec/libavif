@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 # Basic calls.

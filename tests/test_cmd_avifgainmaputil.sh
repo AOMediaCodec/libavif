@@ -4,6 +4,8 @@
 #
 # tests for command lines (avifgainmaputil tool)
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 AVIFGAINMAPUTIL="${BINARY_DIR}/avifgainmaputil"

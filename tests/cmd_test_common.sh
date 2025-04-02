@@ -18,7 +18,7 @@
 # the test: source $(dirname "$0")/cmd_test_common.sh
 
 # Very verbose but useful for debugging.
-set -ex
+set -eux
 
 if [[ "$#" -ge 1 ]]; then
   # eval so that the passed in directory can contain variables.

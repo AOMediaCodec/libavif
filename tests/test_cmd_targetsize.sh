@@ -16,6 +16,8 @@
 #
 # tests for command lines (--target-size)
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 AVIFENC="${BINARY_DIR}/avifenc"

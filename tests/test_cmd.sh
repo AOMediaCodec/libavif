@@ -16,6 +16,8 @@
 #
 # tests for command lines
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 # Basic calls.
@@ -24,6 +26,7 @@ source $(dirname "$0")/cmd_test_common.sh
 
 # Input file paths.
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
+INPUT_PNG="${TESTDATA_DIR}/circle-trns-after-plte.png"
 INPUT_UTF8_Y4M="🐾.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"

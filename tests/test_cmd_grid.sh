@@ -16,6 +16,8 @@
 #
 # tests for command lines (grid)
 
+set -eu
+
 source $(dirname "$0")/cmd_test_common.sh
 
 # Input file paths.
