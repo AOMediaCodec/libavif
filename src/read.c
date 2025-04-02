@@ -5711,7 +5711,8 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         // of all transformative properties.
         avifDiagnosticsPrintf(data->diag, "Box[tmap] missing mandatory ispe property");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
-    } else if (ispeProp->u.ispe.width != colorItem->width || ispeProp->u.ispe.height != colorItem->height) {
+    }
+    if (ispeProp->u.ispe.width != colorItem->width || ispeProp->u.ispe.height != colorItem->height) {
         avifDiagnosticsPrintf(data->diag, "Box[tmap] ispe property width/height does not match base image");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
