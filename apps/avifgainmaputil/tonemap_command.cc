@@ -68,7 +68,7 @@ avifResult TonemapCommand::Run() {
   const bool tone_mapping_to_hdr = (headroom > 0.0f);
 
   DecoderPtr decoder(avifDecoderCreate());
-  if (decoder == NULL) {
+  if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
