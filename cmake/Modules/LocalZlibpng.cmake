@@ -24,7 +24,8 @@ FetchContent_Declare(
     SOURCE_DIR "${ZLIB_SOURCE_DIR}" BINARY_DIR "${ZLIB_BINARY_DIR}"
     GIT_TAG "${AVIF_ZLIB_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib.patch"
+    PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib.patch"
+    UPDATE_COMMAND ""
 )
 
 # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
