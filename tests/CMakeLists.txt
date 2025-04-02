@@ -161,8 +161,8 @@ if(AVIF_GTEST)
     add_avif_internal_gtest(avifutilstest)
     add_avif_gtest(avify4mtest)
 
-    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE OR NOT AVIF_CODEC_AOM_DECODE)
-        # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
+    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
+        # These tests are supported with aom being the encoder. If the aom encoder is unavailable,
         # these tests are disabled because other codecs may not implement all the necessary features.
         # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
         set_tests_properties(
@@ -170,7 +170,7 @@ if(AVIF_GTEST)
                                                                                                                       True
         )
 
-        message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
+        message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
     endif()
 
     if(NOT AVIF_LIBSHARPYUV_ENABLED)
