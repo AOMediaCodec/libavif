@@ -975,10 +975,10 @@ static avifBool avifGainMapIdenticalChannels(const avifGainMap * gainMap)
 }
 
 // Returns the number of bytes written by avifWriteGainmapMetadata().
-static avifBool avifGainMapMetadataSize(const avifGainMap * gainMap)
+static uint32_t avifGainMapMetadataSize(const avifGainMap * gainMap)
 {
     const uint8_t channelCount = avifGainMapIdenticalChannels(gainMap) ? 1u : 3u;
-    return sizeof(uint16_t) * 2 + sizeof(uint8_t) + sizeof(uint32_t) * 4 + channelCount * sizeof(uint32_t) * 10;
+    return (uint32_t)(sizeof(uint16_t) * 2 + sizeof(uint8_t) + sizeof(uint32_t) * 4 + channelCount * sizeof(uint32_t) * 10);
 }
 
 static avifResult avifWriteGainmapMetadata(avifRWStream * s, const avifGainMap * gainMap, avifDiagnostics * diag)
