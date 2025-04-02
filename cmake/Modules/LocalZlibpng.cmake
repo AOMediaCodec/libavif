@@ -16,7 +16,7 @@ if(ANDROID_ABI)
     set(ZLIB_BINARY_DIR "${ZLIB_BINARY_DIR}/${ANDROID_ABI}")
 endif()
 
-# The patch is taken from Googles's or-tools
+# The patch is taken from Google's or-tools
 # https://github.com/google/or-tools/blob/73bef34d95768a0fc0676023bd68111946deb417/cmake/dependencies/CMakeLists.txt
 FetchContent_Declare(
     zlib
@@ -24,14 +24,14 @@ FetchContent_Declare(
     SOURCE_DIR "${ZLIB_SOURCE_DIR}" BINARY_DIR "${ZLIB_BINARY_DIR}"
     GIT_TAG "${AVIF_ZLIB_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/ZLIB-v1.3.1.patch"
+    UPDATE_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/ext/zlib.patch"
 )
 
 # Put the value of ZLIB_INCLUDE_DIR in the cache. This works around cmake behavior that has been updated by
 # cmake policy CMP0102 in cmake 3.17. Remove the CACHE workaround when we require cmake 3.17 or later. See
 # https://gitlab.kitware.com/cmake/cmake/-/issues/21343.
 set(ZLIB_INCLUDE_DIR "${ZLIB_SOURCE_DIR}" CACHE PATH "zlib include dir")
-set(ZLIB_BUILD_TESTING OFF CACHE BOOL "")
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "")
 
 if(NOT zlib_POPULATED)
     avif_fetchcontent_populate_cmake(zlib)
