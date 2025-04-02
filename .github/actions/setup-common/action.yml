@@ -20,6 +20,11 @@ runs:
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
       with:
         python-version: "3.x"
+    - name: Set up latest CMake
+      if: ${{ runner.os != 'Linux' || inputs.oldest-cmake != 'true' }}
+      uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
+      with:
+        cmake-version: "latest"
     - name: Set up CMake 3.13
       if: ${{ runner.os == 'Linux' && inputs.oldest-cmake == 'true' }}
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
