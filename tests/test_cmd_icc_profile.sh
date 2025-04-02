@@ -16,9 +16,7 @@
 #
 # tests for command lines (icc profile)
 
-set -eu
-
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 # Input file paths.
 INPUT_COLOR_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap.png"
