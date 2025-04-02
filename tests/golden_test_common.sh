@@ -11,7 +11,7 @@
 # The paths to avifenc and to the testdata dir will be passed as arguments.
 # See 'test_cmd_enc_boxes_golden.sh' for an example.
 
-set -e
+set -eu
 
 if [[ "$#" -ge 1 ]]; then
   # eval so that the passed in directory can contain variables.

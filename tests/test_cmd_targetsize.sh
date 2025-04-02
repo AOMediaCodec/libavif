@@ -16,7 +16,7 @@
 #
 # tests for command lines (--target-size)
 
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
