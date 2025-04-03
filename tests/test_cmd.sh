@@ -125,7 +125,7 @@ pushd ${TMP_DIR}
   # Test tiling options.
   echo "Testing tiling options"
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
-  grep " tileRowsLog2 \[0\], tileColsLog2 \[0\]," "${OUT_MSG}"
+  grep " automatic tiling," "${OUT_MSG}"
   "${AVIFENC}" -s 10 --tilerowslog2 1 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
   grep " tileRowsLog2 \[1\], tileColsLog2 \[0\]," "${OUT_MSG}"
   "${AVIFENC}" -s 10 --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"

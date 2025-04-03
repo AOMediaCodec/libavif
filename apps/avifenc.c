@@ -284,7 +284,7 @@ static void syntaxLong(void)
     printf("                                        If specified, switch to manual tiling.\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
     printf("                                        If specified, switch to automatic tiling.\n");
-    printf("                                        avifenc starts in manual tiling mode.\n");
+    printf("                                        avifenc starts in automatic tiling mode.\n");
     printf("    --min QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --max QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --minalpha QP                     : Deprecated, use --qalpha 0..100 instead\n");
@@ -2213,7 +2213,7 @@ int main(int argc, char * argv[])
             }
 
             if (!fileSettings->autoTiling.set) {
-                fileSettings->autoTiling = boolSettingsEntryOf(AVIF_FALSE);
+                fileSettings->autoTiling = boolSettingsEntryOf(AVIF_TRUE);
             }
             if (!fileSettings->tileRowsLog2.set) {
                 fileSettings->tileRowsLog2 = intSettingsEntryOf(0);
