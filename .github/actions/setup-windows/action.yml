@@ -13,9 +13,17 @@ inputs:
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
+  libxml2:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  libyuv:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
+  vcpkg-cmake-config:
+    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
 runs:
   using: "composite"
   steps:
@@ -25,6 +33,37 @@ runs:
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run: pip install meson
       shell: bash
+
+    - name: Install libaom library
+      id: aom
+      if: ${{ inputs.codec-aom == 'SYSTEM' }}
+      run: echo "WIN_LIBRARIES=aom" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Install libdav1d library
+      id: dav1d
+      if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
+      run: echo "WIN_LIBRARIES=dav1d" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Install libxml2 library
+      id: libxml2
+      if: ${{ inputs.libxml2 == 'SYSTEM' }}
+      run: echo "WIN_LIBRARIES=libxml2" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Install libyuv library
+      id: libyuv
+      if: ${{ inputs.libyuv == 'SYSTEM' }}
+      run: echo "WIN_LIBRARIES=libyuv" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Install libraries
+      uses: johnwason/vcpkg-action@v6
+      id: vcpkg
+      with:
+        pkgs: libjpeg-turbo libpng zlib ${{ steps.aom.outputs.WIN_LIBRARIES }} ${{ steps.dav1d.outputs.WIN_LIBRARIES }} ${{ steps.libxml2.outputs.WIN_LIBRARIES }} ${{ steps.libyuv.outputs.WIN_LIBRARIES }}
+        triplet: x64-windows-release
+        token: ${{ github.token }}
+        github-binarycache: true
+        cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
 
     - uses: ./.github/actions/setup-common
       with:
