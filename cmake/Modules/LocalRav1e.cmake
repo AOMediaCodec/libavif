@@ -51,6 +51,9 @@ else()
             GIT_REPOSITORY https://github.com/lu-zero/cargo-c.git
             GIT_TAG "${AVIF_CARGOC_GIT_TAG}"
             GIT_SHALLOW ON
+            # Patch from https://github.com/lu-zero/cargo-c/pull/453
+            PATCH_COMMAND git apply --ignore-whitespace "${AVIF_SOURCE_DIR}/ext/cargo.patch"
+            UPDATE_COMMAND ""
         )
         FetchContent_MakeAvailable(cargoc)
 

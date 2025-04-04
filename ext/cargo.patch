@@ -1,0 +1,28 @@
+--- Cargo.toml	2025-04-04 09:52:07.160571748 +0200
++++ Cargo.toml_new	2025-04-04 09:52:47.321096631 +0200
+@@ -1,6 +1,6 @@
+ [package]
+ name = "cargo-c"
+-version = "0.10.11+cargo-0.86.0"
++version = "0.10.12+cargo-0.87.0"
+ authors = ["Luca Barbato <lu_zero@gentoo.org>"]
+ description = "Helper program to build and install c-like libraries"
+ license = "MIT"
+@@ -9,7 +9,7 @@
+ repository = "https://github.com/lu-zero/cargo-c"
+ categories = ["command-line-utilities", "development-tools::cargo-plugins"]
+ keywords = ["cargo", "cdylib"]
+-rust-version = "1.83"
++rust-version = "1.84"
+ 
+ [[bin]]
+ name = "cargo-capi"
+@@ -28,7 +28,7 @@
+ path = "src/bin/ctest.rs"
+ 
+ [dependencies]
+-cargo = "0.86.0"
++cargo = "0.87.0"
+ cargo-util = "0.2"
+ semver = "1.0.3"
+ log = "0.4"
