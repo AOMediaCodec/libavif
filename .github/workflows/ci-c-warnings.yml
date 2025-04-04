@@ -64,8 +64,8 @@ jobs:
       - name: Use enums for AVIF_TRUE/AVIF_FALSE
         if: ${{ matrix.case == 2}}
         run: |
-          sed -i 's/#define AVIF_TRUE 1/enum avifTrueFalse_{ AVIF_TRUE 1,/' include/avif/avif.h
-          sed -i 's/#define AVIF_FALSE 0/AVIF_FALSE 0};/' include/avif/avif.h
+          sed -i 's/#define AVIF_TRUE 1/enum avifTrueFalse_{ AVIF_TRUE = 1,/' include/avif/avif.h
+          sed -i 's/#define AVIF_FALSE 0/AVIF_FALSE = 0};/' include/avif/avif.h
 
       - name: Prepare libavif (cmake)
         run: >

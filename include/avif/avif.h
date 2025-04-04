@@ -85,11 +85,8 @@ extern "C" {
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
 
 typedef int avifBool;
-enum avifTrueFalse_
-{
-    AVIF_FALSE = 0,
-    AVIF_TRUE = 1
-};
+#define AVIF_TRUE 1
+#define AVIF_FALSE 0
 
 #define AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE 256
 
