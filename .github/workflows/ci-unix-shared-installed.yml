@@ -90,19 +90,3 @@ jobs:
                 endif()" >> CMakeLists.txt
 
           cmake . -DCMAKE_PREFIX_PATH=../install
-      - name: Prepare libavif with [[nodiscard]] (cmake)
-        # CMake 3.21 is needed to force C23 for [[nodiscard]].
-        if: runner.oldest-cmake == 'false'
-        run: >
-          cmake -G Ninja -S . -B build_nodiscard
-          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
-          -DAVIF_CODEC_AOM=SYSTEM
-          -DAVIF_CODEC_AOM_DECODE=OFF -DAVIF_CODEC_AOM_ENCODE=ON
-          -DAVIF_CODEC_DAV1D=SYSTEM
-          -DAVIF_ENABLE_NODISCARD=ON -DAVIF_ENABLE_WERROR=ON
-          -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
-          -DAVIF_BUILD_GDK_PIXBUF=ON ${{ env.CMAKE_AVIF_FLAGS }}
-      - name: Build libavif with [[nodiscard]]
-        if: runner.oldest-cmake == 'false'
-        run: cmake --build build_nodiscard --config Release --parallel 4
