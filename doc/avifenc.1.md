@@ -180,12 +180,16 @@ The following options can optionally have a **:u** (or **:update**) suffix like 
 
 **\--tilerowslog2** _R_
 :   log2 of number of tile rows in 0..6. (Default: 0).
+    If specified, switch to manual tiling.
 
 **\--tilecolslog2** _C_
 :   log2 of number of tile columns in 0..6. (Default: 0).
+    If specified, switch to manual tiling.
 
 **\--autotiling**
 :   Set \--tilerowslog2 and \--tilecolslog2 automatically.
+    If specified, switch to automatic tiling.
+    avifenc starts in manual tiling mode.
 
 **\--scaling-mode** _N_[/_D_]
 :   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1).

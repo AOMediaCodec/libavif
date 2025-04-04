@@ -279,12 +279,12 @@ static void syntaxLong(void)
            AVIF_QUALITY_LOSSLESS);
 #endif
     printf("    --tilerowslog2 R                  : log2 of number of tile rows in 0..6. (Default: 0)\n");
-    printf("                                        If specified, switch to manual tiling\n");
+    printf("                                        If specified, switch to manual tiling.\n");
     printf("    --tilecolslog2 C                  : log2 of number of tile columns 0..6. (Default: 0)\n");
-    printf("                                        If specified, switch to manual tiling\n");
+    printf("                                        If specified, switch to manual tiling.\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
-    printf("                                        If specified, switch to automatic tiling\n");
-    printf("                                        The encoder starts in manual tiling\n");
+    printf("                                        If specified, switch to automatic tiling.\n");
+    printf("                                        avifenc starts in manual tiling mode.\n");
     printf("    --min QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --max QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --minalpha QP                     : Deprecated, use --qalpha 0..100 instead\n");
