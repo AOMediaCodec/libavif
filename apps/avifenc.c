@@ -279,8 +279,12 @@ static void syntaxLong(void)
            AVIF_QUALITY_LOSSLESS);
 #endif
     printf("    --tilerowslog2 R                  : log2 of number of tile rows in 0..6. (Default: 0)\n");
+    printf("                                        If specified, switch to manual tiling.\n");
     printf("    --tilecolslog2 C                  : log2 of number of tile columns 0..6. (Default: 0)\n");
+    printf("                                        If specified, switch to manual tiling.\n");
     printf("    --autotiling                      : Set --tilerowslog2 and --tilecolslog2 automatically\n");
+    printf("                                        If specified, switch to automatic tiling.\n");
+    printf("                                        avifenc starts in manual tiling mode.\n");
     printf("    --min QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --max QP                          : Deprecated, use -q 0..100 instead\n");
     printf("    --minalpha QP                     : Deprecated, use --qalpha 0..100 instead\n");
@@ -2121,9 +2125,9 @@ int main(int argc, char * argv[])
         avifInputFileSettings * fileSettings = &file->settings;
 
         // Check tiling parameters.
-        // Auto tiling (autoTiling) and manual tiling (tileRowsLog2, tileColsLog2) are mutually exclusive, which means:
-        // - At each input, only one of the two shall be set.
-        // - At some input, specify one disables the other.
+        // Automatic tiling (autoTiling) and manual tiling (tileRowsLog2, tileColsLog2) are mutually exclusive, which means:
+        // - At each input, only one of the two may be set.
+        // - At some input, specifying one disables the other.
         if (fileSettings->autoTiling.set) {
             if (fileSettings->tileRowsLog2.set || fileSettings->tileColsLog2.set) {
                 fprintf(stderr, "ERROR: --autotiling is specified but --tilerowslog2 or --tilecolslog2 is also specified for current input.\n");
@@ -2133,11 +2137,11 @@ int main(int argc, char * argv[])
             // (auto generation of setting entries happens below)
             // Since it's a boolean flag, its value must be AVIF_TRUE.
             assert(fileSettings->autoTiling.value);
-            // Therefore disables manual tiling at this input (in case it was enabled at previous input).
+            // Therefore disable manual tiling at this input (in case it was enabled at previous input).
             fileSettings->tileRowsLog2 = intSettingsEntryOf(0);
             fileSettings->tileColsLog2 = intSettingsEntryOf(0);
         } else if (fileSettings->tileColsLog2.set || fileSettings->tileRowsLog2.set) {
-            // If this file has manual tile config set, disable autotiling, for the same reason as above.
+            // If this file has manual tile config set, disable automatic tiling, for the same reason as above.
             fileSettings->autoTiling = boolSettingsEntryOf(AVIF_FALSE);
         }
 
