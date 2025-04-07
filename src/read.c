@@ -4766,7 +4766,7 @@ static avifResult avifParse(avifDecoder * decoder)
             if (header.isSizeZeroBox) {
                 // The box body goes till the end of the file.
                 if (decoder->io->sizeHint != 0 && decoder->io->sizeHint - parseOffset < SIZE_MAX) {
-                    sizeToRead = decoder->io->sizeHint - parseOffset;
+                    sizeToRead = (size_t)(decoder->io->sizeHint - parseOffset);
                 } else {
                     sizeToRead = SIZE_MAX; // This will get truncated. See the documentation of avifIOReadFunc.
                 }
