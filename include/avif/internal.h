@@ -816,6 +816,10 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
 
 avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
 
+// Returns true if both gain maps have the same metadata. Pixels are not checked.
+avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b);
+avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b);
+
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 

@@ -16,6 +16,7 @@
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
+#include "avif/internal.h"
 #include "avifpng.h"
 #include "avifutil.h"
 
@@ -217,6 +218,49 @@ bool AreByteSequencesEqual(const avifRWData& data1, const avifRWData& data2) {
   return AreByteSequencesEqual(data1.data, data1.size, data2.data, data2.size);
 }
 
+namespace {
+// Returns true if all properties of image1 are present in image2 and equal.
+bool MatchEachPropertyOfFirstImageInSecondImage(const avifImage& image1,
+                                                const avifImage& image2) {
+  for (size_t i = 0; i < image1.numProperties; ++i) {
+    const avifImageItemProperty& property1 = image1.properties[i];
+
+    // libavif may write a 'ccsp' box in Sample Entries.
+    // libavif does not read and expose those except in avifImage::properties.
+    // Ignore these boxes because it is an easy source of valid difference
+    // between an original avifImage and a decoded avifImage.
+    if (AreByteSequencesEqual(property1.boxtype, sizeof(property1.boxtype),
+                              reinterpret_cast<const uint8_t*>("ccst"), 4)) {
+      continue;
+    }
+
+    bool found = false;
+    for (size_t j = 0; j < image2.numProperties; ++j) {
+      const avifImageItemProperty& property2 = image2.properties[j];
+      if (!AreByteSequencesEqual(property1.boxtype, sizeof(property1.boxtype),
+                                 property2.boxtype,
+                                 sizeof(property2.boxtype))) {
+        continue;
+      }
+      if (AreByteSequencesEqual(property1.boxtype, sizeof(property1.boxtype),
+                                reinterpret_cast<const uint8_t*>("uuid"), 4) &&
+          !AreByteSequencesEqual(property1.usertype, sizeof(property1.usertype),
+                                 property2.usertype,
+                                 sizeof(property2.usertype))) {
+        continue;
+      }
+      if (found) return false;  // Consider duplicates as invalid.
+      found = true;
+      if (!AreByteSequencesEqual(property1.boxPayload, property2.boxPayload)) {
+        return false;
+      }
+    }
+    if (!found) return false;
+  }
+  return true;
+}
+}  // namespace
+
 // Returns true if image1 and image2 are identical.
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha) {
@@ -226,22 +270,6 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     return false;
   }
   assert(image1.width * image1.height > 0);
-
-  if (image1.clli.maxCLL != image2.clli.maxCLL ||
-      image1.clli.maxPALL != image2.clli.maxPALL) {
-    return false;
-  }
-  if (image1.transformFlags != image2.transformFlags ||
-      ((image1.transformFlags & AVIF_TRANSFORM_PASP) &&
-       std::memcmp(&image1.pasp, &image2.pasp, sizeof(image1.pasp))) ||
-      ((image1.transformFlags & AVIF_TRANSFORM_CLAP) &&
-       std::memcmp(&image1.clap, &image2.clap, sizeof(image1.clap))) ||
-      ((image1.transformFlags & AVIF_TRANSFORM_IROT) &&
-       std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
-      ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
-       std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
-    return false;
-  }
 
   for (avifChannelIndex c :
        {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
@@ -255,6 +283,12 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
           avifImageIsOpaque(&image2)) {
         continue;
       }
+      return false;
+    }
+    if (c == AVIF_CHAN_A && row1 != nullptr &&
+        image1.alphaPremultiplied != image2.alphaPremultiplied &&
+        !avifImageIsOpaque(&image1)) {
+      // Alpha premultiplication is ignored if alpha is opaque.
       return false;
     }
     const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
@@ -278,9 +312,53 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
       row2 += row_bytes2;
     }
   }
-  return AreByteSequencesEqual(image1.icc, image2.icc) &&
-         AreByteSequencesEqual(image1.exif, image2.exif) &&
-         AreByteSequencesEqual(image1.xmp, image2.xmp);
+
+  if (!AreByteSequencesEqual(image1.icc, image2.icc)) return false;
+
+  if (image1.colorPrimaries != image2.colorPrimaries ||
+      image1.transferCharacteristics != image2.transferCharacteristics ||
+      image1.matrixCoefficients != image2.matrixCoefficients) {
+    return false;
+  }
+
+  if (image1.clli.maxCLL != image2.clli.maxCLL ||
+      image1.clli.maxPALL != image2.clli.maxPALL) {
+    return false;
+  }
+  if (image1.transformFlags != image2.transformFlags ||
+      ((image1.transformFlags & AVIF_TRANSFORM_PASP) &&
+       std::memcmp(&image1.pasp, &image2.pasp, sizeof(image1.pasp))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_CLAP) &&
+       std::memcmp(&image1.clap, &image2.clap, sizeof(image1.clap))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IROT) &&
+       std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
+      ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
+       std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
+    return false;
+  }
+
+  if (!AreByteSequencesEqual(image1.exif, image2.exif)) return false;
+  if (!AreByteSequencesEqual(image1.xmp, image2.xmp)) return false;
+
+  if (!MatchEachPropertyOfFirstImageInSecondImage(image1, image2) ||
+      !MatchEachPropertyOfFirstImageInSecondImage(image2, image1)) {
+    return false;
+  }
+
+  if (!image1.gainMap != !image2.gainMap) return false;
+  if (image1.gainMap != nullptr) {
+    if (!avifSameGainMapMetadata(image1.gainMap, image2.gainMap) ||
+        !avifSameGainMapAltMetadata(image1.gainMap, image2.gainMap)) {
+      return false;
+    }
+
+    if (!image1.gainMap->image != !image2.gainMap->image) return false;
+    if (image1.gainMap->image != nullptr &&
+        !AreImagesEqual(*image1.gainMap->image, *image2.gainMap->image)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 namespace {
