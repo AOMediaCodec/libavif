@@ -1743,40 +1743,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         if (hasGainMap) {
-            const avifGainMap * firstGainMap = firstCell->gainMap;
-            const avifGainMap * cellGainMap = cellImage->gainMap;
-            if (cellGainMap->altICC.size != firstGainMap->altICC.size ||
-                memcmp(cellGainMap->altICC.data, firstGainMap->altICC.data, cellGainMap->altICC.size) != 0 ||
-                cellGainMap->altColorPrimaries != firstGainMap->altColorPrimaries ||
-                cellGainMap->altTransferCharacteristics != firstGainMap->altTransferCharacteristics ||
-                cellGainMap->altMatrixCoefficients != firstGainMap->altMatrixCoefficients ||
-                cellGainMap->altYUVRange != firstGainMap->altYUVRange || cellGainMap->altDepth != firstGainMap->altDepth ||
-                cellGainMap->altPlaneCount != firstGainMap->altPlaneCount || cellGainMap->altCLLI.maxCLL != firstGainMap->altCLLI.maxCLL ||
-                cellGainMap->altCLLI.maxPALL != firstGainMap->altCLLI.maxPALL) {
+            if (!avifSameGainMapAltMetadata(firstCell->gainMap, cellImage->gainMap)) {
                 avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same alternate image metadata in the gain map");
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
-            if (cellGainMap->baseHdrHeadroom.n != firstGainMap->baseHdrHeadroom.n ||
-                cellGainMap->baseHdrHeadroom.d != firstGainMap->baseHdrHeadroom.d ||
-                cellGainMap->alternateHdrHeadroom.n != firstGainMap->alternateHdrHeadroom.n ||
-                cellGainMap->alternateHdrHeadroom.d != firstGainMap->alternateHdrHeadroom.d) {
+            if (!avifSameGainMapMetadata(firstCell->gainMap, cellImage->gainMap)) {
                 avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
-            }
-            for (int c = 0; c < 3; ++c) {
-                if (cellGainMap->gainMapMin[c].n != firstGainMap->gainMapMin[c].n ||
-                    cellGainMap->gainMapMin[c].d != firstGainMap->gainMapMin[c].d ||
-                    cellGainMap->gainMapMax[c].n != firstGainMap->gainMapMax[c].n ||
-                    cellGainMap->gainMapMax[c].d != firstGainMap->gainMapMax[c].d ||
-                    cellGainMap->gainMapGamma[c].n != firstGainMap->gainMapGamma[c].n ||
-                    cellGainMap->gainMapGamma[c].d != firstGainMap->gainMapGamma[c].d ||
-                    cellGainMap->baseOffset[c].n != firstGainMap->baseOffset[c].n ||
-                    cellGainMap->baseOffset[c].d != firstGainMap->baseOffset[c].d ||
-                    cellGainMap->alternateOffset[c].n != firstGainMap->alternateOffset[c].n ||
-                    cellGainMap->alternateOffset[c].d != firstGainMap->alternateOffset[c].d) {
-                    avifDiagnosticsPrintf(&encoder->diag, "all cells should have the same gain map metadata");
-                    return AVIF_RESULT_INVALID_IMAGE_GRID;
-                }
             }
         }
     }
