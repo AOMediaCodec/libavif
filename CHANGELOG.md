@@ -26,6 +26,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF file has an ImageRotation property with angle set to 1 or 3, has no
   ImageMirror property, and carries an Exif chunk. Note that Exif orientation is
   usually ignored in PNG files, so this mainly impacts JPEG files.
+* Allow lowercase GUIDs in XMP when reading JPEG files.
 
 ## [1.2.1] - 2025-03-17
 
