@@ -121,6 +121,23 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 -q 65 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
   grep " color quality \[65 " "${OUT_MSG}"
   grep " alpha quality \[65 " "${OUT_MSG}"
+
+  # Test tiling options.
+  echo "Testing tiling options"
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " tileRowsLog2 \[0\], tileColsLog2 \[0\]," "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --tilerowslog2 1 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " tileRowsLog2 \[1\], tileColsLog2 \[0\]," "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " tileRowsLog2 \[0\], tileColsLog2 \[2\]," "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --tilerowslog2 1 --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " tileRowsLog2 \[1\], tileColsLog2 \[2\]," "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --autotiling "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " automatic tiling," "${OUT_MSG}"
+  # --autotiling and --tilerowslog2 R --tilecolslog2 C are mutually exclusive.
+  "${AVIFENC}" --autotiling --tilerowslog2 1 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --autotiling --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --autotiling --tilerowslog2 1 --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0
