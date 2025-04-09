@@ -145,6 +145,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+
         // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
         // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
         // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
@@ -153,6 +154,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->color_primaries = EB_CICP_CP_UNSPECIFIED;
         svt_config->transfer_characteristics = EB_CICP_TC_UNSPECIFIED;
         svt_config->matrix_coefficients = EB_CICP_MC_UNSPECIFIED;
+
         svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;

@@ -625,27 +625,44 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 
         // Set color_config() in the sequence header OBU.
         if (alpha) {
+            // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+            //   The color_range field in the Sequence Header OBU shall be set to 1.
             aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+
+            // Keep the default AOM_CSP_UNKNOWN value.
+
+            // AV1 specification, Section 6.4.2 "Color config semantics":
+            //   subsampling_x | subsampling_y | mono_chrome | Description
+            //   1             | 1             | 1           | Monochrome 4:0:0
+            //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
+            //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
+            // The default AOM_CICP_MC_UNSPECIFIED value is kept.
         } else {
-            // libavm's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
-            // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
-            // aom_codec_control() only if the values are not the defaults.
-            if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
-            }
-            if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
-            }
-            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
-            }
+            // libaom's defaults are AOM_CSP_UNKNOWN and 0 (studio/limited range).
+            // Call aom_codec_control() only if the values are not the defaults.
+
+            // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+            //   The values of the fields in the AV1CodecConfigurationBox shall match those
+            //   of the Sequence Header OBU in the AV1 Image Item Data.
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
             }
+
+            // AV1-ISOBMFF specification, Section 2.3.4:
+            //   The value of full_range_flag in the 'colr' box SHALL match the color_range
+            //   flag in the Sequence Header OBU.
             if (image->yuvRange != AVIF_RANGE_LIMITED) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange);
             }
         }
+
+        // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
+        // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
+        // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
+        // It may also save 3 bytes since the AV1 encoder can set color_description_present_flag to 0
+        // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
+        // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED, and
+        // AOM_CICP_MC_UNSPECIFIED. No need to call aom_codec_control().
 
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
