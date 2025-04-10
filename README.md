@@ -137,7 +137,7 @@ the `avif_coverage` target, e.g. `make avif_coverage -j`. It requires
 compiling with clang (`-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++`)
 and LLVM must be installed on the system.
 
-### Build Command Lines {#build-command-lines}
+### Build Command Lines
 
 The following instructions can be used to build the libavif library and the
 `avifenc` and `avifdec` tools.
