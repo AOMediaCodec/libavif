@@ -1074,8 +1074,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
                     // According to Adobe XMP Specification Part 3 section 1.1.3.1:
                     //   "128-bit GUID stored as a 32-byte ASCII hex string, capital A-F, no null termination"
                     // Also allow lowercase since some cameras use lowercase. https://github.com/AOMediaCodec/libavif/issues/2755
-                    if (((guid[c] < '0') || (guid[c] > '9')) && ((guid[c] < 'A') || (guid[c] > 'F')) &&
-                        ((guid[c] < 'a') || (guid[c] > 'f'))) {
+                    if (!isxdigit(guid[c])) {
                         fprintf(stderr, "XMP extraction failed: invalid XMP segment GUID\n");
                         goto cleanup;
                     }
