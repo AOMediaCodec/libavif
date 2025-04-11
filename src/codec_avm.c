@@ -631,12 +631,9 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 
             // Keep the default AOM_CSP_UNKNOWN value.
 
-            // AV1 specification, Section 6.4.2 "Color config semantics":
-            //   subsampling_x | subsampling_y | mono_chrome | Description
-            //   1             | 1             | 1           | Monochrome 4:0:0
-            //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
-            //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
-            // The default AOM_CICP_MC_UNSPECIFIED value is kept.
+            // CICP (CP/TC/MC) does not apply to the alpha auxiliary image.
+            // Keep default Unspecified (2) colour primaries, transfer characteristics,
+            // and matrix coefficients.
         } else {
             // libaom's defaults are AOM_CSP_UNKNOWN and 0 (studio/limited range).
             // Call aom_codec_control() only if the values are not the defaults.
@@ -654,16 +651,16 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             if (image->yuvRange != AVIF_RANGE_LIMITED) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange);
             }
-        }
 
-        // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
-        // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
-        // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
-        // It may also save 3 bytes since the AV1 encoder can set color_description_present_flag to 0
-        // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
-        // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED, and
-        // AOM_CICP_MC_UNSPECIFIED. No need to call aom_codec_control().
-        // aom_image_t::cp, aom_image_t::tc and aom_image_t::mc are ignored by aom_codec_encode().
+            // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
+            // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
+            // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
+            // It may also save 3 bytes since the AV1 encoder can set color_description_present_flag to 0
+            // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
+            // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED, and
+            // AOM_CICP_MC_UNSPECIFIED. No need to call aom_codec_control().
+            // aom_image_t::cp, aom_image_t::tc and aom_image_t::mc are ignored by aom_codec_encode().
+        }
 
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
@@ -849,13 +846,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         }
 
         // Ignore UV planes when monochrome. Keep the default AOM_CSP_UNKNOWN value.
-
-        // AV1 specification, Section 6.4.2 "Color config semantics":
-        //   subsampling_x | subsampling_y | mono_chrome | Description
-        //   1             | 1             | 1           | Monochrome 4:0:0
-        //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
-        //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
-        // AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED is set below anyway.
     } else {
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
