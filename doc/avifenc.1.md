@@ -189,7 +189,7 @@ The following options can optionally have a **:u** (or **:update**) suffix like 
 **\--autotiling**
 :   Set \--tilerowslog2 and \--tilecolslog2 automatically.
     If specified, switch to automatic tiling.
-    avifenc starts in manual tiling mode.
+    avifenc starts in automatic tiling mode.
 
 **\--scaling-mode** _N_[/_D_]
 :   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1).
