@@ -85,7 +85,7 @@ pushd ${TMP_DIR}
 
   # Test updating of tiling options.
   out=$("${AVIFENC}" -s 10 "${INPUT_Y4M_0}" --tilerowslog2:u 1 "${INPUT_Y4M_1}" --tilecolslog2:u 2 "${INPUT_Y4M_0}" --autotiling:u "${INPUT_Y4M_1}" --tilecolslog2:u 1 "${INPUT_Y4M_0}" -o "${ENCODED_FILE}")
-  findstr "Encoding frame 0 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [0], tileColsLog2 [0]" "${out}"
+  findstr "Encoding frame 0 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], automatic tiling" "${out}"
   findstr "Encoding frame 1 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [1], tileColsLog2 [0]" "${out}"
   findstr "Encoding frame 2 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [1], tileColsLog2 [2]" "${out}"
   findstr "Encoding frame 3 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], automatic tiling" "${out}"
