@@ -2637,7 +2637,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, orientationMinus1, 3)); // bit(3) orientation_minus1;
 
     // Spatial extents
-    AVIF_CHECKRES(avifRWStreamWriteBits(s, largeDimensionsFlag, 1));                         // bit(1) small_dimensions_flag;
+    AVIF_CHECKRES(avifRWStreamWriteBits(s, largeDimensionsFlag, 1));                         // bit(1) large_dimensions_flag;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, image->width - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) width_minus1;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, image->height - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) height_minus1;
 
