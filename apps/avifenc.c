@@ -230,7 +230,7 @@ static void syntaxLong(void)
     printf("                                        Use 2 for any you wish to leave unspecified\n");
     printf("    -r,--range RANGE                  : YUV range, one of 'limited' or 'l', 'full' or 'f'. (JPEG/PNG only, default: full; For y4m or stdin, range is retained)\n");
     printf("    --target-size S                   : Set target file size in bytes (up to 7 times slower)\n");
-    printf("    --progressive                     : EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
+    printf("    --progressive                     : EXPERIMENTAL: Automatically set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
     printf("    --layered                         : EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most %d layers can be encoded.\n",
            AVIF_MAX_AV1_LAYER_COUNT);
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
@@ -854,7 +854,7 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
 #define INVALID_QUALITY (-1)
 #define DEFAULT_QUALITY 60 // Maps to a quantizer (QP) of 25.
 #define DEFAULT_QUALITY_GAIN_MAP DEFAULT_QUALITY
-#define PROGRESSIVE_WORST_QUALITY 10 // Not doing auto automatic layered encoding below this quality
+#define PROGRESSIVE_WORST_QUALITY 10 // Not doing automatic layered encoding below this quality
 #define PROGRESSIVE_START_QUALITY 2  // First layer use this quality
 
 static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avifInputFileSettings * settings)
@@ -1213,8 +1213,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
     if (settings->progressive) {
-        // If the color quality is less than 10, the main() function overrides
-        // --progressive and sets settings->autoProgressive to false.
+        // If --progressive is specified and the color quality is less than 10,
+        // the main() function returns an error. So we should not reach here.
         assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
@@ -2141,7 +2141,7 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             // At this point, autoTiling of this input file can only be set by command line.
-            // (auto generation of setting entries happens below)
+            // (automatic generation of setting entries happens below)
             // Since it's a boolean flag, its value must be AVIF_TRUE.
             assert(fileSettings->autoTiling.value);
             // Therefore disable manual tiling at this input (in case it was enabled at previous input).
