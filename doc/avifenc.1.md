@@ -1,6 +1,6 @@
 % AVIFENC(1) | General Commands Manual
 %
-% 2022-04-30
+% 2025-04-11
 
 <!--
 This man page is written in pandoc's Markdown.
