@@ -838,7 +838,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
         // Set color_config() in the sequence header OBU.
         if (alpha) {
-            // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+            // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
             //   The color_range field in the Sequence Header OBU shall be set to 1.
             aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
 
@@ -854,7 +854,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom's defaults are AOM_CSP_UNKNOWN and 0 (studio/limited range).
             // Call aom_codec_control() only if the values are not the defaults.
 
-            // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+            // AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
             //   The values of the fields in the AV1CodecConfigurationBox shall match those
             //   of the Sequence Header OBU in the AV1 Image Item Data.
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
@@ -1050,11 +1050,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
-        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The color_range field in the Sequence Header OBU shall be set to 1.
         aomImage.range = AOM_CR_FULL_RANGE;
 
-        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The mono_chrome field in the Sequence Header OBU shall be set to 1.
         // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
         monochromeRequested = AVIF_TRUE;
@@ -1104,7 +1104,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+        // AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
         //   The values of the fields in the AV1CodecConfigurationBox shall match those
         //   of the Sequence Header OBU in the AV1 Image Item Data.
         aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
