@@ -87,7 +87,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set target file size in bytes (up to 7 times slower)
 
 **\--progressive**
-:   EXPERIMENTAL: Auto set parameters to encode a simple layered image supporting progressive rendering from a single input frame.
+:   EXPERIMENTAL: Automatically set parameters to encode a simple layered image supporting progressive rendering from a single input frame.
 
 **\--layered**
 :   EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most 4 layers can be encoded.
