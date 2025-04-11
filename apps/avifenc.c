@@ -1213,8 +1213,9 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
            settings->jobs);
     if (settings->progressive) {
-        // If --progressive is specified and the color quality is less than 10,
-        // the main() function returns an error. So we should not reach here.
+        // If --progressive is specified and the color quality is less than
+        // PROGRESSIVE_WORST_QUALITY, the main() function returns an error and
+        // we should not reach here.
         assert(encoder->quality >= PROGRESSIVE_WORST_QUALITY);
         // Encode the base layer with a very low quality to ensure a small encoded size.
         encoder->quality = 2;
