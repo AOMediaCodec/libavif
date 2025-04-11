@@ -94,12 +94,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
         y_shift = 1;
 
-        // AV1 specification, Section 6.4.2 "Color config semantics":
-        //   subsampling_x | subsampling_y | mono_chrome | Description
-        //   1             | 1             | 1           | Monochrome 4:0:0
-        //   If matrix_coefficients is equal to MC_IDENTITY, it is a requirement of bitstream
-        //   conformance that subsampling_x is equal to 0 and subsampling_y is equal to 0.
-        // AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED is set below anyway.
+        // CICP (CP/TC/MC) does not apply to the alpha auxiliary image.
+        // Use Unspecified (2) colour primaries, transfer characteristics, and matrix coefficients below.
     } else {
         // AV1-ISOBMFF specification, Section 2.3.4:
         //   The value of full_range_flag in the 'colr' box SHALL match the color_range
