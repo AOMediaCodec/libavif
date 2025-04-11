@@ -85,10 +85,26 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     int y_shift = 0;
     EbColorRange svt_range;
     if (alpha) {
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        //   The color_range field in the Sequence Header OBU shall be set to 1.
         svt_range = EB_CR_FULL_RANGE;
+
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        //   The mono_chrome field in the Sequence Header OBU shall be set to 1.
+        // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
         y_shift = 1;
+
+        // CICP (CP/TC/MC) does not apply to the alpha auxiliary image.
+        // Use Unspecified (2) colour primaries, transfer characteristics, and matrix coefficients below.
     } else {
+        // AV1-ISOBMFF specification, Section 2.3.4:
+        //   The value of full_range_flag in the 'colr' box SHALL match the color_range
+        //   flag in the Sequence Header OBU.
         svt_range = (image->yuvRange == AVIF_RANGE_FULL) ? EB_CR_FULL_RANGE : EB_CR_STUDIO_RANGE;
+
+        // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+        //   The values of the fields in the AV1CodecConfigurationBox shall match those
+        //   of the Sequence Header OBU in the AV1 Image Item Data.
         switch (image->yuvFormat) {
             case AVIF_PIXEL_FORMAT_YUV444:
                 color_format = EB_YUV444;
@@ -125,6 +141,16 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
+
+        // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
+        // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
+        // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
+        // It may also save 3 bytes since the AV1 encoder may set color_description_present_flag to 0
+        // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
+        svt_config->color_primaries = EB_CICP_CP_UNSPECIFIED;
+        svt_config->transfer_characteristics = EB_CICP_TC_UNSPECIFIED;
+        svt_config->matrix_coefficients = EB_CICP_MC_UNSPECIFIED;
+
         svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
         svt_config->is_16bit_pipeline = image->depth > 8;
