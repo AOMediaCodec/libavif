@@ -1009,7 +1009,10 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
             goto cleanup;
         }
 
-        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
+        char manualTilingStr[128];
+        snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", encoder->tileRowsLog2, encoder->tileColsLog2);
+
+        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)], %s: %s\n",
                imageIndex,
                nextDurationInTimescales,
                settings->outputTiming.timescale,
@@ -1017,6 +1020,7 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                qualityString(encoder->quality),
                encoder->qualityAlpha,
                qualityString(encoder->qualityAlpha),
+               encoder->autoTiling ? "automatic tiling" : manualTilingStr,
                avifPrettyFilename(nextFile->filename));
 
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
@@ -1157,13 +1161,6 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         goto cleanup;
     }
 
-    char manualTilingStr[128];
-    snprintf(manualTilingStr,
-             sizeof(manualTilingStr),
-             "tileRowsLog2 [%d], tileColsLog2 [%d]",
-             firstFile->settings.tileRowsLog2.value,
-             firstFile->settings.tileColsLog2.value);
-
     encoder->maxThreads = settings->jobs;
     encoder->codecChoice = settings->codecChoice;
     encoder->speed = settings->speed;
@@ -1201,6 +1198,9 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         snprintf(gainMapStr, sizeof(gainMapStr), ", gain map quality [%d (%s)]", encoder->qualityGainMap, qualityString(encoder->qualityGainMap));
     }
 #endif
+
+    char manualTilingStr[128];
+    snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", encoder->tileRowsLog2, encoder->tileColsLog2);
 
     printf("Encoding with initial settings: codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
@@ -1247,7 +1247,13 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
         if (firstFile->filename == AVIF_FILENAME_STDIN || (settings->layers == 1 && input->filesCount > 1)) {
-            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
+            snprintf(manualTilingStr,
+                     sizeof(manualTilingStr),
+                     "tileRowsLog2 [%d], tileColsLog2 [%d]",
+                     encoder->tileRowsLog2,
+                     encoder->tileColsLog2);
+
+            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)], %s: %s\n",
                    0,
                    firstDurationInTimescales,
                    settings->outputTiming.timescale,
@@ -1255,6 +1261,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                    qualityString(encoder->quality),
                    encoder->qualityAlpha,
                    qualityString(encoder->qualityAlpha),
+                   encoder->autoTiling ? "automatic tiling" : manualTilingStr,
                    avifPrettyFilename(firstFile->filename));
         }
         const avifResult addImageResult = avifEncoderAddImage(encoder, firstImage, firstDurationInTimescales, addImageFlags);
