@@ -663,6 +663,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
         // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED, and
         // AOM_CICP_MC_UNSPECIFIED. No need to call aom_codec_control().
+        // aom_image_t::cp, aom_image_t::tc and aom_image_t::mc are ignored by aom_codec_encode().
 
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
@@ -891,15 +892,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         //   flag in the Sequence Header OBU.
         aomImage.range = (aom_color_range_t)image->yuvRange;
     }
-
-    // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
-    // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
-    // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
-    // It may also save 3 bytes since the AV1 encoder can set color_description_present_flag to 0
-    // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
-    aomImage.cp = AOM_CICP_CP_UNSPECIFIED;
-    aomImage.tc = AOM_CICP_TC_UNSPECIFIED;
-    aomImage.mc = AOM_CICP_MC_UNSPECIFIED;
 
     unsigned char * monoUVPlane = NULL;
     if (monochromeRequested) {
