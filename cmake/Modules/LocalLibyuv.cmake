@@ -1,4 +1,4 @@
-set(AVIF_LIBYUV_TAG "a4f653b38993a0f3aee9821b893266afd96c8977")
+set(AVIF_LIBYUV_TAG "ce488afb7b1a1d9279ddeddb3fcade534d741c81")
 
 set(AVIF_LIBYUV_BUILD_DIR "${AVIF_SOURCE_DIR}/ext/libyuv/build")
 # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
