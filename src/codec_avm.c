@@ -625,26 +625,41 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 
         // Set color_config() in the sequence header OBU.
         if (alpha) {
+            // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+            //   The color_range field in the Sequence Header OBU shall be set to 1.
             aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+
+            // Keep the default AOM_CSP_UNKNOWN value.
+
+            // CICP (CP/TC/MC) does not apply to the alpha auxiliary image.
+            // Keep default Unspecified (2) colour primaries, transfer characteristics,
+            // and matrix coefficients.
         } else {
-            // libavm's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
-            // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
-            // aom_codec_control() only if the values are not the defaults.
-            if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
-            }
-            if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
-            }
-            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
-            }
+            // libaom's defaults are AOM_CSP_UNKNOWN and 0 (studio/limited range).
+            // Call aom_codec_control() only if the values are not the defaults.
+
+            // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+            //   The values of the fields in the AV1CodecConfigurationBox shall match those
+            //   of the Sequence Header OBU in the AV1 Image Item Data.
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
             }
+
+            // AV1-ISOBMFF specification, Section 2.3.4:
+            //   The value of full_range_flag in the 'colr' box SHALL match the color_range
+            //   flag in the Sequence Header OBU.
             if (image->yuvRange != AVIF_RANGE_LIMITED) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange);
             }
+
+            // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
+            // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
+            // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
+            // It may also save 3 bytes since the AV1 encoder can set color_description_present_flag to 0
+            // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
+            // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED, and
+            // AOM_CICP_MC_UNSPECIFIED. No need to call aom_codec_control().
+            // aom_image_t::cp, aom_image_t::tc and aom_image_t::mc are ignored by aom_codec_encode().
         }
 
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
@@ -810,7 +825,13 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        //   The color_range field in the Sequence Header OBU shall be set to 1.
         aomImage.range = AOM_CR_FULL_RANGE;
+
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        //   The mono_chrome field in the Sequence Header OBU shall be set to 1.
+        // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
         monochromeRequested = AVIF_TRUE;
         if (aomImageAllocated) {
             const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
@@ -824,7 +845,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             aomImage.stride[0] = image->alphaRowBytes;
         }
 
-        // Ignore UV planes when monochrome
+        // Ignore UV planes when monochrome. Keep the default AOM_CSP_UNKNOWN value.
     } else {
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
@@ -851,10 +872,14 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        aomImage.cp = (aom_color_primaries_t)image->colorPrimaries;
-        aomImage.tc = (aom_transfer_characteristics_t)image->transferCharacteristics;
-        aomImage.mc = (aom_matrix_coefficients_t)image->matrixCoefficients;
+        // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+        //   The values of the fields in the AV1CodecConfigurationBox shall match those
+        //   of the Sequence Header OBU in the AV1 Image Item Data.
         aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
+
+        // AV1-ISOBMFF specification, Section 2.3.4:
+        //   The value of full_range_flag in the 'colr' box SHALL match the color_range
+        //   flag in the Sequence Header OBU.
         aomImage.range = (aom_color_range_t)image->yuvRange;
     }
 
