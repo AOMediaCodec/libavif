@@ -27,8 +27,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   ImageMirror property, and carries an Exif chunk. Note that Exif orientation is
   usually ignored in PNG files, so this mainly impacts JPEG files.
 * Allow lowercase GUIDs in XMP when reading JPEG files.
-* Update aom.cmd/LocalAom.cmake: v3.12.0-4-g65ddc22823. This fixes an encode &
-  decode issue on PowerPC (ppc64le).
+* Update aom.cmd/LocalAom.cmake: v3.12.1
 * Change avifenc to start in automatic tiling mode.
 * Always forward Unspecified (2) CICP color primaries, transfer characteristics,
   and matrix coefficients to the AV1 encoder. Rely on the 'colr' box instead.
