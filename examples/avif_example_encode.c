@@ -52,9 +52,10 @@ int main(int argc, char * argv[])
         }
 
         // Fill your YUV(A) data here
+        const uint32_t uvHeight = avifImagePlaneHeight(image, AVIF_CHAN_U);
         memset(image->yuvPlanes[AVIF_CHAN_Y], 255, image->yuvRowBytes[AVIF_CHAN_Y] * image->height);
-        memset(image->yuvPlanes[AVIF_CHAN_U], 128, image->yuvRowBytes[AVIF_CHAN_U] * image->height);
-        memset(image->yuvPlanes[AVIF_CHAN_V], 128, image->yuvRowBytes[AVIF_CHAN_V] * image->height);
+        memset(image->yuvPlanes[AVIF_CHAN_U], 128, image->yuvRowBytes[AVIF_CHAN_U] * uvHeight);
+        memset(image->yuvPlanes[AVIF_CHAN_V], 128, image->yuvRowBytes[AVIF_CHAN_V] * uvHeight);
         memset(image->alphaPlane, 255, image->alphaRowBytes * image->height);
     } else {
         // If you have RGB(A) data you want to encode, use this path
@@ -105,6 +106,9 @@ int main(int argc, char * argv[])
     avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, AVIF_ADD_IMAGE_FLAG_SINGLE);
     if (addImageResult != AVIF_RESULT_OK) {
         fprintf(stderr, "Failed to add image to encoder: %s\n", avifResultToString(addImageResult));
+        if (encoder->diag.error[0] != '\0') {
+            fprintf(stderr, "  %s\n", encoder->diag.error);
+        }
         goto cleanup;
     }
 
