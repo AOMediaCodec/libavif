@@ -60,19 +60,19 @@ TEST_P(CicpTest, EncodeDecode) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    UnknownIdentity, CicpTest,
+    Reserved0Identity, CicpTest,
     // Identity MC require 4:4:4 and AVIF_CODEC_CHOICE_SVT only supports 4:2:0.
-    testing::Combine(testing::Values(AVIF_CODEC_CHOICE_AOM,
-                                     AVIF_CODEC_CHOICE_RAV1E),
-                     testing::Values(static_cast<avifColorPrimaries>(
-                         AVIF_COLOR_PRIMARIES_UNKNOWN)),
-                     testing::Values(static_cast<avifTransferCharacteristics>(
-                         AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN)),
-                     testing::Values(static_cast<avifMatrixCoefficients>(
-                         AVIF_MATRIX_COEFFICIENTS_IDENTITY)),
-                     testing::Values(AVIF_PIXEL_FORMAT_YUV444),
-                     testing::Values(AVIF_PLANES_YUV, AVIF_PLANES_ALL),
-                     testing::Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL)));
+    testing::Combine(
+        testing::Values(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_RAV1E),
+        testing::Values(static_cast<avifColorPrimaries>(
+            AVIF_COLOR_PRIMARIES_UNKNOWN)),  // Reserved CICP value.
+        testing::Values(static_cast<avifTransferCharacteristics>(
+            AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN)),  // Reserved CICP value.
+        testing::Values(static_cast<avifMatrixCoefficients>(
+            AVIF_MATRIX_COEFFICIENTS_IDENTITY)),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_PLANES_YUV, AVIF_PLANES_ALL),
+        testing::Values(AVIF_RANGE_LIMITED, AVIF_RANGE_FULL)));
 
 INSTANTIATE_TEST_SUITE_P(
     Unspecified, CicpTest,
