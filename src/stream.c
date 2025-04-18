@@ -335,6 +335,9 @@ avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforc
 static avifResult makeRoom(avifRWStream * stream, size_t size)
 {
     size_t neededSize = stream->offset + size;
+    if (neededSize < stream->offset) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     size_t newSize = stream->raw->size;
     while (newSize < neededSize) {
         newSize += AVIF_STREAM_BUFFER_INCREMENT;
