@@ -273,14 +273,14 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         const uint32_t offsetBytesG = state.rgb.offsetBytesG;
         const uint32_t offsetBytesB = state.rgb.offsetBytesB;
         const uint32_t offsetBytesA = state.rgb.offsetBytesA;
-        const uint32_t rgbRowBytes = rgb->rowBytes;
+        const size_t rgbRowBytes = rgb->rowBytes;
         const float rgbMaxChannelF = state.rgb.maxChannelF;
         uint8_t * yPlane = image->yuvPlanes[AVIF_CHAN_Y];
         uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
         uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
-        const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
-        const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
-        const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+        const size_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+        const size_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+        const size_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
         for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
             for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
                 uint32_t blockW = 2, blockH = 2;
