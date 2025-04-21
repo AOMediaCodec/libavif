@@ -39,6 +39,7 @@ int main(int argc, char * argv[])
     long fileSize = ftell(f);
     if (fileSize < 0) {
         fprintf(stderr, "Truncated file: %s\n", inputFilename);
+        goto cleanup;
     }
     fseek(f, 0, SEEK_SET);
     fileBuffer = malloc(fileSize);
