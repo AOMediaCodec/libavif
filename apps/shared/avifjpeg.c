@@ -353,6 +353,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
 static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
 {
     const long oldOffset = ftell(f);
+    if (oldOffset < 0) {
+        return AVIF_FALSE;
+    }
 
     uint32_t offset = 2; // Skip the 2 byte SOI (Start Of Image) marker.
     if (fseek(f, offset, SEEK_SET) != 0) {
