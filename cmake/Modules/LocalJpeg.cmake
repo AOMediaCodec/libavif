@@ -2,22 +2,27 @@ set(AVIF_JPEG_TAG "3.0.4")
 
 add_library(JPEG::JPEG STATIC IMPORTED GLOBAL)
 
-set(LIB_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/build.libavif")
 if(MSVC)
-    set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg-static${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(JPEG_STATIC_SUFFIX "-static")
 else()
-    set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(JPEG_STATIC_SUFFIX "")
 endif()
+set(LIB_BASENAME "${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${JPEG_STATIC_SUFFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(LIB_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/build.libavif")
+set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
 if(EXISTS "${LIB_FILENAME}")
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} found, using for local JPEG")
     set(JPEG_INCLUDE_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo")
 else()
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} not found, fetching")
     set(LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg-build")
-    if(MSVC)
-        set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg-static${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    else()
-        set(LIB_FILENAME "${LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
+    get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(IS_MULTI_CONFIG)
+        set(LIB_FILENAME_DEBUG "${LIB_DIR}/Debug/${LIB_BASENAME}")
+        set(LIB_FILENAME_MINSIZEREL "${LIB_DIR}/MinSizeRel/${LIB_BASENAME}")
+        set(LIB_FILENAME_RELEASE "${LIB_DIR}/Release/${LIB_BASENAME}")
+        set(LIB_FILENAME_RELWITHDEBINFO "${LIB_DIR}/RelWithDebInfo/${LIB_BASENAME}")
     endif()
 
     set(JPEG_INSTALL_DIR "${prefix}/libjpeg-install")
@@ -29,6 +34,10 @@ else()
     #   Manually-specified variables were not used by the project:
     #
     #     WITH_CRT_DLL
+    #
+    # TODO(wtc): Delete one of -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} and
+    # -DCMAKE_BUILD_TYPE=Release.
+    # TODO(wtc): Should BUILD_BYPRODUCTS include ${LIB_FILENAME_DEBUG}, etc.?
     ExternalProject_Add(
         libjpeg
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libjpeg
@@ -53,6 +62,14 @@ else()
     )
     add_dependencies(JPEG::JPEG libjpeg)
     set(JPEG_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg)
+    if(IS_MULTI_CONFIG)
+        set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION_DEBUG "${LIB_FILENAME_DEBUG}" AVIF_LOCAL ON)
+        set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION_MINSIZEREL "${LIB_FILENAME_MINSIZEREL}" AVIF_LOCAL ON)
+        set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION_RELEASE "${LIB_FILENAME_RELEASE}" AVIF_LOCAL ON)
+        set_target_properties(
+            JPEG::JPEG PROPERTIES IMPORTED_LOCATION_RELWITHDEBINFO "${LIB_FILENAME_RELWITHDEBINFO}" AVIF_LOCAL ON
+        )
+    endif()
 endif()
 
 set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION "${LIB_FILENAME}" AVIF_LOCAL ON)
