@@ -17,12 +17,16 @@ else()
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} not found, fetching")
     set(LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg-build")
     set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
+    set(BUILD_BYPRODUCTS "${LIB_FILENAME}")
     get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
     if(IS_MULTI_CONFIG)
         set(LIB_FILENAME_DEBUG "${LIB_DIR}/Debug/${LIB_BASENAME}")
         set(LIB_FILENAME_MINSIZEREL "${LIB_DIR}/MinSizeRel/${LIB_BASENAME}")
         set(LIB_FILENAME_RELEASE "${LIB_DIR}/Release/${LIB_BASENAME}")
         set(LIB_FILENAME_RELWITHDEBINFO "${LIB_DIR}/RelWithDebInfo/${LIB_BASENAME}")
+        set(BUILD_BYPRODUCTS "${LIB_FILENAME_DEBUG}" "${LIB_FILENAME_MINSIZEREL}" "${LIB_FILENAME_RELEASE}"
+                             "${LIB_FILENAME_RELWITHDEBINFO}"
+        )
     endif()
 
     set(JPEG_INSTALL_DIR "${prefix}/libjpeg-install")
@@ -37,7 +41,6 @@ else()
     #
     # TODO(wtc): Delete one of -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} and
     # -DCMAKE_BUILD_TYPE=Release.
-    # TODO(wtc): Should BUILD_BYPRODUCTS include ${LIB_FILENAME_DEBUG}, etc.?
     ExternalProject_Add(
         libjpeg
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libjpeg
@@ -57,7 +60,7 @@ else()
                    -DCMAKE_BUILD_TYPE=Release
                    -DWITH_TURBOJPEG=OFF
                    -DWITH_CRT_DLL=ON
-        BUILD_BYPRODUCTS "${LIB_FILENAME}"
+        BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS}
         INSTALL_COMMAND ""
     )
     add_dependencies(JPEG::JPEG libjpeg)
