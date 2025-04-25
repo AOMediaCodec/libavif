@@ -12,21 +12,31 @@ set(LIB_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/build.libavif")
 set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
 if(EXISTS "${LIB_FILENAME}")
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} found, using for local JPEG")
+    set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION "${LIB_FILENAME}")
     set(JPEG_INCLUDE_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo")
 else()
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} not found, fetching")
     set(LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg-build")
-    set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
-    set(BUILD_BYPRODUCTS "${LIB_FILENAME}")
-    get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-    if(IS_MULTI_CONFIG)
+    get_property(JPEG_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(JPEG_IS_MULTI_CONFIG)
         set(LIB_FILENAME_DEBUG "${LIB_DIR}/Debug/${LIB_BASENAME}")
-        set(LIB_FILENAME_MINSIZEREL "${LIB_DIR}/MinSizeRel/${LIB_BASENAME}")
         set(LIB_FILENAME_RELEASE "${LIB_DIR}/Release/${LIB_BASENAME}")
         set(LIB_FILENAME_RELWITHDEBINFO "${LIB_DIR}/RelWithDebInfo/${LIB_BASENAME}")
-        set(BUILD_BYPRODUCTS "${LIB_FILENAME_DEBUG}" "${LIB_FILENAME_MINSIZEREL}" "${LIB_FILENAME_RELEASE}"
-                             "${LIB_FILENAME_RELWITHDEBINFO}"
+        set(LIB_FILENAME_MINSIZEREL "${LIB_DIR}/MinSizeRel/${LIB_BASENAME}")
+        set(BUILD_BYPRODUCTS "${LIB_FILENAME_DEBUG}" "${LIB_FILENAME_RELEASE}" "${LIB_FILENAME_RELWITHDEBINFO}"
+                             "${LIB_FILENAME_MINSIZEREL}"
         )
+        set_target_properties(
+            JPEG::JPEG
+            PROPERTIES IMPORTED_LOCATION_DEBUG "${LIB_FILENAME_DEBUG}"
+                       IMPORTED_LOCATION_RELEASE "${LIB_FILENAME_RELEASE}"
+                       IMPORTED_LOCATION_RELWITHDEBINFO "${LIB_FILENAME_RELWITHDEBINFO}"
+                       IMPORTED_LOCATION_MINSIZEREL "${LIB_FILENAME_MINSIZEREL}"
+        )
+    else()
+        set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
+        set(BUILD_BYPRODUCTS "${LIB_FILENAME}")
+        set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION "${LIB_FILENAME}")
     endif()
 
     set(JPEG_INSTALL_DIR "${prefix}/libjpeg-install")
@@ -53,8 +63,8 @@ else()
                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                   -DCMAKE_C_FLAGS_MINSIZEREL=${CMAKE_C_FLAGS_MINSIZEREL}
                    -DCMAKE_C_FLAGS_RELWITHDEBINFO=${CMAKE_C_FLAGS_RELWITHDEBINFO}
+                   -DCMAKE_C_FLAGS_MINSIZEREL=${CMAKE_C_FLAGS_MINSIZEREL}
                    -DENABLE_SHARED=OFF
                    -DENABLE_STATIC=ON
                    -DCMAKE_BUILD_TYPE=Release
@@ -65,18 +75,9 @@ else()
     )
     add_dependencies(JPEG::JPEG libjpeg)
     set(JPEG_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg)
-    if(IS_MULTI_CONFIG)
-        set_target_properties(
-            JPEG::JPEG
-            PROPERTIES IMPORTED_LOCATION_DEBUG "${LIB_FILENAME_DEBUG}"
-                       IMPORTED_LOCATION_MINSIZEREL "${LIB_FILENAME_MINSIZEREL}"
-                       IMPORTED_LOCATION_RELEASE "${LIB_FILENAME_RELEASE}"
-                       IMPORTED_LOCATION_RELWITHDEBINFO "${LIB_FILENAME_RELWITHDEBINFO}"
-        )
-    endif()
 endif()
 
-set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION "${LIB_FILENAME}" AVIF_LOCAL ON)
+set_target_properties(JPEG::JPEG PROPERTIES AVIF_LOCAL ON)
 target_include_directories(JPEG::JPEG INTERFACE "${JPEG_INCLUDE_DIR}")
 
 # Also add the build directory path because it contains jconfig.h,
