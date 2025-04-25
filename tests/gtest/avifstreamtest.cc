@@ -202,6 +202,22 @@ TEST(StreamTest, WriteBitsLimit) {
             AVIF_RESULT_INVALID_ARGUMENT);
 }
 
+// Test the overflow checks in the makeRoom() function in src/stream.c.
+TEST(StreamTest, OverflowChecksInMakeRoom) {
+  testutil::AvifRwData rw_data;
+  avifRWStream rw_stream;
+  avifRWStreamStart(&rw_stream, &rw_data);
+  const char ten_bytes[10] = {0};
+  EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, 10), AVIF_RESULT_OK);
+  EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, SIZE_MAX - 9),
+            AVIF_RESULT_OUT_OF_MEMORY);
+  // The next test takes a very long time if size_t is 64 bits.
+#if SIZE_MAX == UINT32_MAX
+  EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, SIZE_MAX - 10),
+            AVIF_RESULT_OUT_OF_MEMORY);
+#endif
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

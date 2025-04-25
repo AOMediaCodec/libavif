@@ -340,6 +340,9 @@ static avifResult makeRoom(avifRWStream * stream, size_t size)
     size_t neededSize = stream->offset + size;
     size_t newSize = stream->raw->size;
     while (newSize < neededSize) {
+        if (newSize > SIZE_MAX - AVIF_STREAM_BUFFER_INCREMENT) {
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
         newSize += AVIF_STREAM_BUFFER_INCREMENT;
     }
     return avifRWDataRealloc(stream->raw, newSize);
