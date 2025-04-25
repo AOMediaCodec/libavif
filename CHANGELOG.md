@@ -31,6 +31,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Change avifenc to start in automatic tiling mode.
 * Always forward Unspecified (2) CICP color primaries, transfer characteristics,
   and matrix coefficients to the AV1 encoder. Rely on the 'colr' box instead.
+* LocalJpeg.cmake: Support multi-config generators.
 
 ## [1.2.1] - 2025-03-17
 
