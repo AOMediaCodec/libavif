@@ -48,9 +48,6 @@ else()
     #   Manually-specified variables were not used by the project:
     #
     #     WITH_CRT_DLL
-    #
-    # TODO(wtc): Delete one of -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} and
-    # -DCMAKE_BUILD_TYPE=Release.
     ExternalProject_Add(
         libjpeg
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libjpeg
@@ -59,7 +56,6 @@ else()
         LIST_SEPARATOR |
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG> --target jpeg-static
         CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
