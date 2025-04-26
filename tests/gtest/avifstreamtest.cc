@@ -211,11 +211,8 @@ TEST(StreamTest, OverflowChecksInMakeRoom) {
   EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, 10), AVIF_RESULT_OK);
   EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, SIZE_MAX - 9),
             AVIF_RESULT_OUT_OF_MEMORY);
-  // The next test takes a very long time if size_t is 64 bits.
-#if SIZE_MAX == UINT32_MAX
   EXPECT_EQ(avifRWStreamWrite(&rw_stream, ten_bytes, SIZE_MAX - 10),
             AVIF_RESULT_OUT_OF_MEMORY);
-#endif
 }
 
 //------------------------------------------------------------------------------
