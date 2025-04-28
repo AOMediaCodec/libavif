@@ -83,7 +83,7 @@ jobs:
           -I.\apps\shared -I.\include -I.\third_party\iccjpeg
           -external:W0
           -external:I.\build\_deps\libpng-src
-          -external:I.\build\libjpeg\src\libjpeg
+          -external:I.\build\libjpeg\src\libjpeg\src
           -external:I.\build\libjpeg\src\libjpeg-build
           -external:I.\build\_deps\zlib-src
           -external:I.\build\_deps\libpng
