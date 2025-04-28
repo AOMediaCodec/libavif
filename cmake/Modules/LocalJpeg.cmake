@@ -1,4 +1,4 @@
-set(AVIF_JPEG_TAG "3.0.4")
+set(AVIF_JPEG_TAG "3.1.0")
 
 add_library(JPEG::JPEG STATIC IMPORTED GLOBAL)
 
@@ -13,7 +13,7 @@ set(LIB_FILENAME "${LIB_DIR}/${LIB_BASENAME}")
 if(EXISTS "${LIB_FILENAME}")
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} found, using for local JPEG")
     set_target_properties(JPEG::JPEG PROPERTIES IMPORTED_LOCATION "${LIB_FILENAME}")
-    set(JPEG_INCLUDE_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo")
+    set(JPEG_INCLUDE_DIR "${AVIF_SOURCE_DIR}/ext/libjpeg-turbo/src")
 else()
     message(STATUS "libavif(AVIF_JPEG=LOCAL): ${LIB_FILENAME} not found, fetching")
     set(LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg-build")
@@ -70,11 +70,11 @@ else()
         INSTALL_COMMAND ""
     )
     add_dependencies(JPEG::JPEG libjpeg)
-    set(JPEG_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg)
+    set(JPEG_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libjpeg/src/libjpeg/src)
 endif()
 
 set_target_properties(JPEG::JPEG PROPERTIES AVIF_LOCAL ON)
-target_include_directories(JPEG::JPEG INTERFACE "${JPEG_INCLUDE_DIR}")
+target_include_directories(JPEG::JPEG INTERFACE $<INSTALL_INTERFACE:"${JPEG_INCLUDE_DIR}">)
 
 # Also add the build directory path because it contains jconfig.h,
 # which is included by jpeglib.h.

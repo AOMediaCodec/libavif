@@ -17,6 +17,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF_PIXEL_FORMAT_YUV400 to be AV1 spec compatible.
 * Ignore tmap items not present in `grpl` box
 * Update googletest.cmd/LocalGTest.cmake: v1.16.0
+* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.0
 * Update libsharpyuv: v1.5.0
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.14.0
 * Update libyuv.cmd: ce488afb7 (1908)
