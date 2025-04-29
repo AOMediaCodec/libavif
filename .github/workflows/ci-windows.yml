@@ -78,11 +78,11 @@ jobs:
         working-directory: ./build
         run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
       - name: Set the config folder for Ninja
-        if: ${{ matrix.generator == "Ninja" }}
+        if: ${{ matrix.generator == 'Ninja' }}
         run:
           echo "CONFIG_DIR=" >> $env:GITHUB_ENV
       - name: Set the config folder for multi-config MSVC
-        if: ${{ matrix.generator != "Ninja" }}
+        if: ${{ matrix.generator != 'Ninja' }}
         run:
           echo "CONFIG_DIR=Release\" >> $env:GITHUB_ENV
       - name: Check static link bundling
