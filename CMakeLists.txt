@@ -8,6 +8,11 @@ if(POLICY CMP0092)
     cmake_policy(SET CMP0092 NEW)
 endif()
 
+# New in CMake version 3.19. Support the Xcode "new build system" for ExternalProject_Add().
+if(POLICY CMP0114)
+    cmake_policy(SET CMP0114 NEW)
+endif()
+
 # Prevent warnings in CMake>=3.24 for ExternalProject_Add()
 # see https://cmake.org/cmake/help/latest/policy/CMP0135.html
 if(POLICY CMP0135)
