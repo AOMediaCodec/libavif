@@ -36,6 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
+        generator: [Ninja, "Visual Studio 17 2022"]
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -58,7 +59,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G Ninja -S . -B build
+          cmake -G "${{ matrix.generator }}" -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
@@ -75,7 +76,15 @@ jobs:
         run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
-        run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+        run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+      - name: Set the config folder for Ninja
+        if: ${{ matrix.generator == 'Ninja' }}
+        run:
+          echo "CONFIG_DIR=" >> $env:GITHUB_ENV
+      - name: Set the config folder for multi-config MSVC
+        if: ${{ matrix.generator != 'Ninja' }}
+        run:
+          echo "CONFIG_DIR=Release\" >> $env:GITHUB_ENV
       - name: Check static link bundling
         run: >
           cl .\apps\avifenc.c .\apps\shared\*.c .\third_party\iccjpeg\iccjpeg.c /nologo
@@ -89,10 +98,10 @@ jobs:
           -external:I.\build\_deps\libpng
           -external:I.\build\_deps\zlib
           /link
-          build\libjpeg\src\libjpeg-build\jpeg-static.lib
-          build\_deps\libpng\libpng16_static.lib
-          build\_deps\zlib\zlibstatic.lib
-          build\avif.lib
+          build\libjpeg\src\libjpeg-build\${env:CONFIG_DIR}jpeg-static.lib
+          build\_deps\libpng\${env:CONFIG_DIR}libpng16_static.lib
+          build\_deps\zlib\${env:CONFIG_DIR}zlibstatic.lib
+          build\${env:CONFIG_DIR}avif.lib
           ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
           /out:avifenc.exe
 

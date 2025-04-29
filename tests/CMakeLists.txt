@@ -221,6 +221,20 @@ endif()
 ################################################################################
 # Bash tests
 
+# Macro to add a shell test. It takes multi-config generators into account.
+# The first argument is the name of the shell script, without .sh.
+# The following arguments are sent to the script.
+macro(add_cmd_test SHELL_SCRIPT)
+    get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(${IS_MULTI_CONFIG})
+        add_test(NAME ${SHELL_SCRIPT} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${SHELL_SCRIPT}.sh $<CONFIG> ${CMAKE_BINARY_DIR}
+                                              ${ARGN}
+        )
+    else()
+        add_test(NAME ${SHELL_SCRIPT} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${SHELL_SCRIPT}.sh "" ${CMAKE_BINARY_DIR} ${ARGN})
+    endif()
+endmacro()
+
 if(AVIF_BUILD_APPS)
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
@@ -233,38 +247,18 @@ if(AVIF_BUILD_APPS)
         endif()
     endif()
     target_link_libraries(are_images_equal aviftest_helpers avif_enable_warnings)
-    add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_animation COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_animation.sh ${CMAKE_BINARY_DIR}
-                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_grid COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_grid.sh ${CMAKE_BINARY_DIR}
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
-                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_lossless.sh ${CMAKE_BINARY_DIR}
-                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
-                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
-                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_stdin COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_stdin.sh ${CMAKE_BINARY_DIR}
-                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
-                                              ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
+    add_cmd_test(test_cmd ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_animation ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_grid ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_icc_profile ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_lossless ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_metadata ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_progressive ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_stdin ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_targetsize ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-        add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
-                                                       ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
+        add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
     endif()
 
     if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
@@ -277,19 +271,13 @@ if(AVIF_BUILD_APPS)
 
         set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
 
-        add_test(NAME test_cmd_enc_boxes_golden
-                 COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
-                         ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
-        )
+        add_cmd_test(test_cmd_enc_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR})
 
         if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-            add_test(NAME test_cmd_gainmap COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_gainmap.sh ${CMAKE_BINARY_DIR}
-                                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
-            )
+            add_cmd_test(test_cmd_gainmap ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
-            add_test(NAME test_cmd_enc_gainmap_boxes_golden
-                     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_gainmap_boxes_golden.sh ${CMAKE_BINARY_DIR}
-                             ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+            add_cmd_test(
+                test_cmd_enc_gainmap_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
             )
         endif()
     endif()
@@ -325,12 +313,8 @@ if(AVIF_CODEC_AVM_ENABLED)
     endif()
 
     if(AVIF_BUILD_APPS)
-        add_test(NAME test_cmd_avm COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm.sh ${CMAKE_BINARY_DIR}
-                                           ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
-        add_test(NAME test_cmd_avm_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm_lossless.sh ${CMAKE_BINARY_DIR}
-                                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
+        add_cmd_test(test_cmd_avm ${CMAKE_CURRENT_SOURCE_DIR}/data)
+        add_cmd_test(test_cmd_avm_lossless ${CMAKE_CURRENT_SOURCE_DIR}/data)
     endif()
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
