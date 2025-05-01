@@ -46,6 +46,7 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
+          extra-cache-key: ${{ matrix.generator }}
 
       - name: Build libyuv
         if: steps.setup.outputs.ext-cache-hit != 'true'
