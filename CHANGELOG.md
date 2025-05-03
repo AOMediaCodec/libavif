@@ -20,7 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.0
 * Update libsharpyuv: v1.5.0
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.14.0
-* Update libyuv.cmd: ce488afb7 (1908)
+* Update libyuv.cmd/LocalLibyuv.cmake: 4db2af62d (1909)
 * Update LocalRav1e.cmake: cargo-c v0.10.12
 * Update zlibpng.cmd: libpng 1.6.47
 * Fix wrong Exif orientation set in JPEG or PNG output by avifdec when the input
