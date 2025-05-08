@@ -411,6 +411,59 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
   }
 }
 
+TEST(RGBToYUVTest, 8BitGrayToYUV420) {
+  // 2x2 8-bit image
+  static const uint8_t gray[4] = {4, 3, 2, 1};
+  ImagePtr image(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV420));
+  ASSERT_NE(image, nullptr);
+  avifRGBImage rgb;
+  avifRGBImageSetDefaults(&rgb, image.get());
+  rgb.format = AVIF_RGB_FORMAT_GRAY;
+  rgb.avoidLibYUV = AVIF_TRUE;
+  rgb.pixels = const_cast<uint8_t*>(gray);
+  rgb.rowBytes = 2 * sizeof(uint8_t);
+  ASSERT_EQ(avifImageRGBToYUV(image.get(), &rgb), AVIF_RESULT_OK);
+  const uint8_t* y_plane = image->yuvPlanes[AVIF_CHAN_Y];
+  const uint8_t* u_plane = image->yuvPlanes[AVIF_CHAN_U];
+  const uint8_t* v_plane = image->yuvPlanes[AVIF_CHAN_V];
+  EXPECT_EQ(y_plane[0], gray[0]);
+  EXPECT_EQ(y_plane[1], gray[1]);
+  EXPECT_EQ(y_plane[2], gray[2]);
+  EXPECT_EQ(y_plane[3], gray[3]);
+  EXPECT_EQ(u_plane[0], 128);
+  EXPECT_EQ(v_plane[0], 128);
+}
+
+TEST(RGBToYUVTest, HighBitDepthGrayToYUV420) {
+  // 2x2 10-bit, 12-bit, or 16-bit image
+  static const uint16_t gray[4] = {4, 3, 2, 1};
+  static const uint32_t depth[3] = {10, 12, 16};
+  static const uint16_t half[3] = {512, 2048, 32768};
+  for (int i = 0; i < 3; i++) {
+    ImagePtr image(avifImageCreate(2, 2, depth[i], AVIF_PIXEL_FORMAT_YUV420));
+    ASSERT_NE(image, nullptr);
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image.get());
+    rgb.format = AVIF_RGB_FORMAT_GRAY;
+    rgb.avoidLibYUV = AVIF_TRUE;
+    rgb.pixels = reinterpret_cast<uint8_t*>(const_cast<uint16_t*>(gray));
+    rgb.rowBytes = 2 * sizeof(uint16_t);
+    ASSERT_EQ(avifImageRGBToYUV(image.get(), &rgb), AVIF_RESULT_OK);
+    const uint16_t* y_plane =
+        reinterpret_cast<uint16_t*>(image->yuvPlanes[AVIF_CHAN_Y]);
+    const uint16_t* u_plane =
+        reinterpret_cast<uint16_t*>(image->yuvPlanes[AVIF_CHAN_U]);
+    const uint16_t* v_plane =
+        reinterpret_cast<uint16_t*>(image->yuvPlanes[AVIF_CHAN_V]);
+    EXPECT_EQ(y_plane[0], gray[0]);
+    EXPECT_EQ(y_plane[1], gray[1]);
+    EXPECT_EQ(y_plane[2], gray[2]);
+    EXPECT_EQ(y_plane[3], gray[3]);
+    EXPECT_EQ(u_plane[0], half[i]);
+    EXPECT_EQ(v_plane[0], half[i]);
+  }
+}
+
 //------------------------------------------------------------------------------
 // Selected configurations
 
