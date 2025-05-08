@@ -413,7 +413,7 @@ TEST(RGBToYUVTest, AllMatrixCoefficients) {
 
 TEST(RGBToYUVTest, 8BitGrayToYUV420) {
   // 2x2 8-bit image
-  const uint8_t gray[4] = {4, 3, 2, 1};
+  static const uint8_t gray[4] = {4, 3, 2, 1};
   ImagePtr image(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV420));
   ASSERT_NE(image, nullptr);
   avifRGBImage rgb;
@@ -436,9 +436,9 @@ TEST(RGBToYUVTest, 8BitGrayToYUV420) {
 
 TEST(RGBToYUVTest, HighBitDepthGrayToYUV420) {
   // 2x2 10-bit, 12-bit, or 16-bit image
-  const uint16_t gray[4] = {4, 3, 2, 1};
-  const uint32_t depth[3] = {10, 12, 16};
-  const uint16_t half[3] = {512, 2048, 32768};
+  static const uint16_t gray[4] = {4, 3, 2, 1};
+  static const uint32_t depth[3] = {10, 12, 16};
+  static const uint16_t half[3] = {512, 2048, 32768};
   for (int i = 0; i < 3; i++) {
     ImagePtr image(avifImageCreate(2, 2, depth[i], AVIF_PIXEL_FORMAT_YUV420));
     ASSERT_NE(image, nullptr);

@@ -16,9 +16,8 @@
 
 static void * avifMemset16(void * dest, int val, size_t count)
 {
-    size_t i;
     uint16_t * dest16 = (uint16_t *)dest;
-    for (i = 0; i < count; i++)
+    for (size_t i = 0; i < count; i++)
         *dest16++ = (uint16_t)val;
     return dest;
 }
