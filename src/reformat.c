@@ -14,6 +14,15 @@
 #include <pthread.h>
 #endif
 
+static void * avifMemset16(void * dest, int val, size_t count)
+{
+    size_t i;
+    uint16_t * dest16 = (uint16_t *)dest;
+    for (i = 0; i < count; i++)
+        *dest16++ = (uint16_t)val;
+    return dest;
+}
+
 struct YUVBlock
 {
     float y;
@@ -506,17 +515,28 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 }
             }
         }
-        // Set the chroma planes to 128 if any.
+        // Set the chroma planes, if any, to the half value.
         avifPixelFormatInfo info;
         avifGetPixelFormatInfo(image->yuvFormat, &info);
         const uint32_t shiftedH = (uint32_t)(((uint64_t)image->height + info.chromaShiftY) >> info.chromaShiftY);
+        const int half = 1 << (image->depth - 1);
         if (image->yuvPlanes[AVIF_CHAN_U]) {
+            uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
             const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
-            memset(image->yuvPlanes[AVIF_CHAN_U], 128, shiftedH * uRowBytes);
+            if (state.yuv.channelBytes > 1) {
+                avifMemset16(uPlane, half, shiftedH * uRowBytes / 2);
+            } else {
+                memset(uPlane, half, shiftedH * uRowBytes);
+            }
         }
         if (image->yuvPlanes[AVIF_CHAN_V]) {
+            uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
             const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
-            memset(image->yuvPlanes[AVIF_CHAN_V], 128, shiftedH * vRowBytes);
+            if (state.yuv.channelBytes > 1) {
+                avifMemset16(vPlane, half, shiftedH * vRowBytes / 2);
+            } else {
+                memset(vPlane, half, shiftedH * vRowBytes);
+            }
         }
     }
 
