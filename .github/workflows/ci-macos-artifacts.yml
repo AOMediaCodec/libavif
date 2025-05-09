@@ -44,7 +44,7 @@ jobs:
           For security reasons, macOS might prevent these binaries from running.
           If you get a message saying that "Apple cannot check it for malicious software",
           run this command once:
-          $ sudo xattr -r -d com.apple.quarantine ./avifenc ./avifdec
+          $ sudo xattr -r -d com.apple.quarantine ./avifenc ./avifdec ./avifgainmaputil
           See also https://github.com/AOMediaCodec/libavif/issues/2460
           EOF
       - name: Archive artifacts
@@ -56,6 +56,7 @@ jobs:
           path: |
             avifenc
             avifdec
+            avifgainmaputil
             README.txt
       - name: Upload artifacts
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2

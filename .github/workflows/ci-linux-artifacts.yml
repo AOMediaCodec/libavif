@@ -46,6 +46,7 @@ jobs:
           path: |
             avifenc
             avifdec
+            avifgainmaputil
       - name: Upload artifacts
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:
