@@ -6413,6 +6413,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
 
     AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image, colorProperties, colorCodecType));
+#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+    if (decoder->data->meta->sampleTransformExpression.count > 0) {
+        AVIF_ASSERT_OR_RETURN(decoder->data->meta->sampleTransformDepth != 0);
+        decoder->image->depth = decoder->data->meta->sampleTransformDepth;
+    }
+#endif
 
     // Expose as raw bytes all other properties that libavif does not care about.
     for (size_t i = 0; i < colorProperties->count; ++i) {

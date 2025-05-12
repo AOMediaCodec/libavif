@@ -148,6 +148,15 @@ photographer or Signature Edits."
 Source: Picture from https://www.signatureedits.com/free-raw-photos/, rescaled, modified color balance and converted
 with GIMP+Darktable to 16b PNG, metadata removed with `exiftool -All=`.
 
+#### File [weld_sato_12B_8B_q0.avif](weld_sato_12B_8B_q0.avif)
+
+![](weld_sato_12B_8B_q0.avif)
+
+License: Same as for `weld_16bit.png`.
+
+Source: `weld_16bit.png` encoded with `AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B` at quality 0 and
+fastest effort.
+
 ## Metadata
 
 The structure can be displayed using `exiv2 -pS <file>`.
