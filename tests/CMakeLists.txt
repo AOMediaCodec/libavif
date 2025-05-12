@@ -83,6 +83,7 @@ if(AVIF_GTEST)
     add_avif_gtest(avifallocationtest)
     add_avif_gtest_with_data(avifalphanoispetest)
     add_avif_gtest(avifalphapremtest)
+    add_avif_gtest_with_data(avifaltrtest)
     add_avif_gtest_with_data(avifanimationtest)
     add_avif_gtest(avifbasictest)
     add_avif_gtest(avifchangesettingtest)
@@ -328,6 +329,7 @@ if(AVIF_CODEC_AVM_ENABLED)
         if(AVIF_GTEST)
             set_tests_properties(
                 avifallocationtest
+                avifaltrtest
                 avifbasictest
                 avifchangesettingtest
                 avifcllitest
