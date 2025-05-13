@@ -93,6 +93,7 @@ redact_xml() {
              -e 's/<Sample\(.*\) size="[0-9]*"/<Sample\1 size="REDACTED"/g' \
              -e 's/<SampleSizeEntry\(.*\) Size="[0-9]*"/<SampleSizeEntry\1 Size="REDACTED"/g' \
              -e 's/<OBU\(.*\) size="[0-9]*"/<OBU\1 size="REDACTED"/g' \
+             -e 's/<Tile\(.*\) start="[0-9]*"/<Tile\1 start="REDACTED"/g' \
              -e 's/<Tile\(.*\) size="[0-9]*"/<Tile\1 size="REDACTED"/g' \
             "$f"
   rm "$f.bak"
