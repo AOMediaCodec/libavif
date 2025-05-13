@@ -808,6 +808,9 @@ uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfiguration
 // ---------------------------------------------------------------------------
 // gain maps
 
+// Initializes avifGainMap to default values.
+void avifGainMapSetDefaults(avifGainMap * gainMap);
+
 // Finds the approximate min/max values from the given gain map values, excluding outliers.
 // Uses a histogram, with outliers defined as having at least one empty bucket between them
 // and the rest of the distribution. Discards at most 0.1% of values.

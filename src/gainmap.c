@@ -7,7 +7,7 @@
 #include <math.h>
 #include <string.h>
 
-static void avifGainMapSetDefaults(avifGainMap * gainMap)
+static void avifGainMapSetEncodingDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
         gainMap->gainMapMin[i] = (avifSignedFraction) { 1, 1 };
@@ -569,7 +569,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         }
     }
 
-    avifGainMapSetDefaults(gainMap);
+    avifGainMapSetEncodingDefaults(gainMap);
     gainMap->useBaseColorSpace = (gainMapMathPrimaries == baseColorPrimaries);
 
     float (*baseGammaToLinear)(float) = avifTransferCharacteristicsGetGammaToLinearFunction(baseTransferCharacteristics);

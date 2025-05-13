@@ -67,6 +67,8 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
   if (image == nullptr) {
     return nullptr;
   }
+  image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2020;
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
   image->transferCharacteristics =
       (avifTransferCharacteristics)(base_rendition_is_hdr
                                         ? AVIF_TRANSFER_CHARACTERISTICS_PQ
@@ -78,6 +80,9 @@ ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {
   if (gain_map == nullptr) {
     return nullptr;
   }
+  gain_map->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+  gain_map->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+  gain_map->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
   testutil::FillImageGradient(gain_map.get());
   image->gainMap = avifGainMapCreate();
   if (image->gainMap == nullptr) {
@@ -152,6 +157,13 @@ TEST(GainMapTest, EncodeDecodeBaseImageSdr) {
   EXPECT_EQ(decoded->gainMap->image->width, image->gainMap->image->width);
   EXPECT_EQ(decoded->gainMap->image->height, image->gainMap->image->height);
   EXPECT_EQ(decoded->gainMap->image->depth, image->gainMap->image->depth);
+  EXPECT_EQ(decoded->gainMap->image->colorPrimaries,
+            image->gainMap->image->colorPrimaries);
+  EXPECT_EQ(decoded->gainMap->image->transferCharacteristics,
+            image->gainMap->image->transferCharacteristics);
+  EXPECT_EQ(decoded->gainMap->image->matrixCoefficients,
+            image->gainMap->image->matrixCoefficients);
+  EXPECT_EQ(decoded->gainMap->image->yuvRange, image->gainMap->image->yuvRange);
   CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
 
   // Decode the image.

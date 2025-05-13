@@ -1310,6 +1310,17 @@ avifGainMap * avifGainMapCreate(void)
     if (!gainMap) {
         return NULL;
     }
+    avifGainMapSetDefaults(gainMap);
+    // Note that some functions like avifDecoderFindGainMapItem() allocate avifGainMap directly on
+    // the stack instead of calling avifGainMapCreate() to simplify error handling. This works under
+    // the assumption that no complex initialization (such as dynamic allocation of fields) takes
+    // place here. If this function becomes more complex than one alloc + setDefaults, such code
+    // might need to be changed.
+    return gainMap;
+}
+
+void avifGainMapSetDefaults(avifGainMap * gainMap)
+{
     memset(gainMap, 0, sizeof(avifGainMap));
     gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
@@ -1327,7 +1338,6 @@ avifGainMap * avifGainMapCreate(void)
     }
     gainMap->baseHdrHeadroom.d = 1;
     gainMap->alternateHdrHeadroom.d = 1;
-    return gainMap;
 }
 
 void avifGainMapDestroy(avifGainMap * gainMap)
