@@ -1310,6 +1310,12 @@ avifGainMap * avifGainMapCreate(void)
     if (!gainMap) {
         return NULL;
     }
+    avifGainMapSetDefaults(gainMap);
+    return gainMap;
+}
+
+void avifGainMapSetDefaults(avifGainMap * gainMap)
+{
     memset(gainMap, 0, sizeof(avifGainMap));
     gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
@@ -1327,7 +1333,6 @@ avifGainMap * avifGainMapCreate(void)
     }
     gainMap->baseHdrHeadroom.d = 1;
     gainMap->alternateHdrHeadroom.d = 1;
-    return gainMap;
 }
 
 void avifGainMapDestroy(avifGainMap * gainMap)
