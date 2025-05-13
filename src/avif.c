@@ -1311,6 +1311,11 @@ avifGainMap * avifGainMapCreate(void)
         return NULL;
     }
     avifGainMapSetDefaults(gainMap);
+    // Note that some functions like avifDecoderFindGainMapItem() allocate avifGainMap direclty on
+    // the stack instead of calling avifGainMapCreate() to simplify error handling. This works under
+    // the assumtion that no complex initialization (such as dynamic allocation of fields) takes
+    // place here. If this function becomes more complex than one alloc + setDefaults, such code
+    // might need to be changed.
     return gainMap;
 }
 
