@@ -227,13 +227,13 @@ static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, i
 {
     switch (operator) {
         case AVIF_SAMPLE_TRANSFORM_SUM:
-            return avifSampleTransformClamp32b(leftOperand + rightOperand);
+            return avifSampleTransformClamp32b((int64_t)leftOperand + rightOperand);
         case AVIF_SAMPLE_TRANSFORM_DIFFERENCE:
-            return avifSampleTransformClamp32b(leftOperand - rightOperand);
+            return avifSampleTransformClamp32b((int64_t)leftOperand - rightOperand);
         case AVIF_SAMPLE_TRANSFORM_PRODUCT:
-            return avifSampleTransformClamp32b(leftOperand * rightOperand);
+            return avifSampleTransformClamp32b((int64_t)leftOperand * rightOperand);
         case AVIF_SAMPLE_TRANSFORM_QUOTIENT:
-            return rightOperand == 0 ? leftOperand : leftOperand / rightOperand;
+            return rightOperand == 0 ? leftOperand : avifSampleTransformClamp32b((int64_t)leftOperand / rightOperand);
         case AVIF_SAMPLE_TRANSFORM_AND:
             return leftOperand & rightOperand;
         case AVIF_SAMPLE_TRANSFORM_OR:
