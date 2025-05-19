@@ -244,24 +244,24 @@ static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, i
             if (leftOperand == 0 || leftOperand == 1) {
                 return leftOperand;
             }
-            const uint32_t exponent = rightOperand > 0 ? (uint32_t)rightOperand : (uint32_t) - (int64_t)rightOperand;
-            if (exponent == 0) {
+            if (rightOperand == 0) {
                 return 1;
             }
-            if (exponent == 1) {
+            if (rightOperand == 1) {
                 return leftOperand;
             }
             if (leftOperand == -1) {
-                return (exponent % 2 == 0) ? 1 : -1;
+                return (rightOperand % 2 == 0) ? 1 : -1;
             }
-
+            if (rightOperand < 0) {
+                // L^R is in ]0:1[ here, so truncating it always gives 0.
+                return 0;
+            }
             int64_t result = leftOperand;
-            for (uint32_t i = 1; i < exponent; ++i) {
+            for (int32_t i = 1; i < rightOperand; ++i) {
                 result *= leftOperand;
-                if (result <= INT32_MIN) {
-                    return INT32_MIN;
-                } else if (result >= INT32_MAX) {
-                    return INT32_MAX;
+                if (result < INT32_MIN || result > INT32_MAX) {
+                    return (leftOperand > 0 || rightOperand % 2 == 0) ? INT32_MAX : INT32_MIN;
                 }
             }
             return (int32_t)result;

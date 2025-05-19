@@ -64,6 +64,14 @@ class AvifExpression : public avifSampleTransformExpression {
   }
 };
 
+int32_t Eval(int32_t a, int32_t b, avifSampleTransformTokenType op) {
+  AvifExpression e;
+  e.AddConstant(a);
+  e.AddConstant(b);
+  e.AddOperator(op);
+  return e.Apply();
+}
+
 //------------------------------------------------------------------------------
 
 TEST(SampleTransformTest, NoExpression) {
@@ -127,6 +135,49 @@ TEST(SampleTransformTest, MaxStackSize) {
   for (int i = 0; i < 127; ++i) e.AddOperator(AVIF_SAMPLE_TRANSFORM_SUM);
 
   EXPECT_EQ(e.Apply(), 255);
+}
+
+TEST(SampleTransformTest, Pow) {
+  // Results are clamped to uint8_t.
+
+  EXPECT_EQ(Eval(-2, INT32_MIN, AVIF_SAMPLE_TRANSFORM_POW), 0);
+  EXPECT_EQ(Eval(-2, -3, AVIF_SAMPLE_TRANSFORM_POW), 0);
+  EXPECT_EQ(Eval(-2, -2, AVIF_SAMPLE_TRANSFORM_POW), 0);
+  EXPECT_EQ(Eval(-2, -1, AVIF_SAMPLE_TRANSFORM_POW), 0);
+  EXPECT_EQ(Eval(-2, 0, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-2, 1, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -2 clamped
+  EXPECT_EQ(Eval(-2, 2, AVIF_SAMPLE_TRANSFORM_POW), 4);
+  EXPECT_EQ(Eval(-2, 3, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -8 clamped
+  EXPECT_EQ(Eval(-2, INT32_MAX - 1, AVIF_SAMPLE_TRANSFORM_POW),
+            255);  // INT32_MAX clamped
+  EXPECT_EQ(Eval(-2, INT32_MAX, AVIF_SAMPLE_TRANSFORM_POW),
+            0);  // INT32_MIN clamped
+
+  EXPECT_EQ(Eval(-1, INT32_MIN, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-1, -3, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -1 clamped
+  EXPECT_EQ(Eval(-1, -2, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-1, -1, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -1 clamped
+  EXPECT_EQ(Eval(-1, 0, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-1, 1, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -1 clamped
+  EXPECT_EQ(Eval(-1, 2, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-1, 3, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -1 clamped
+  EXPECT_EQ(Eval(-1, INT32_MAX - 1, AVIF_SAMPLE_TRANSFORM_POW), 1);
+  EXPECT_EQ(Eval(-1, INT32_MAX, AVIF_SAMPLE_TRANSFORM_POW), 0);  // -1 clamped
+
+  for (int32_t v : {0, 1}) {
+    EXPECT_EQ(Eval(v, INT32_MIN, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, -2, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, -1, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, 0, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, 1, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, 2, AVIF_SAMPLE_TRANSFORM_POW), v);
+    EXPECT_EQ(Eval(v, INT32_MAX, AVIF_SAMPLE_TRANSFORM_POW), v);
+  }
+
+  EXPECT_EQ(Eval(-(1 << 16), 3, AVIF_SAMPLE_TRANSFORM_POW),
+            0);  // INT32_MIN clamped
+  EXPECT_EQ(Eval((1 << 16), 3, AVIF_SAMPLE_TRANSFORM_POW),
+            255);  // INT32_MAX clamped
 }
 
 //------------------------------------------------------------------------------
