@@ -244,14 +244,14 @@ static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, i
             if (leftOperand == 0 || leftOperand == 1) {
                 return leftOperand;
             }
+            if (leftOperand == -1) {
+                return (rightOperand % 2 == 0) ? 1 : -1;
+            }
             if (rightOperand == 0) {
                 return 1;
             }
             if (rightOperand == 1) {
                 return leftOperand;
-            }
-            if (leftOperand == -1) {
-                return (rightOperand % 2 == 0) ? 1 : -1;
             }
             if (rightOperand < 0) {
                 // L^R is in ]-1:1[ here, so truncating it always gives 0.
