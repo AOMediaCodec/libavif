@@ -13,6 +13,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Set avifDecoder::image->depth to the same value after avifDecoderParse() as
   after avifDecoderNextImage() when AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is
   enabled and when the file to decode contains a 'sato' derived image item.
+* Allow version > 1 in iinf.
 
 ## [1.3.0] - 2025-05-09
 

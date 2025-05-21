@@ -3229,11 +3229,8 @@ static avifResult avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, siz
         uint16_t tmp;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) entry_count;
         entryCount = tmp;
-    } else if (version == 1) {
-        AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
     } else {
-        avifDiagnosticsPrintf(diag, "Box[iinf] has an unsupported version %u", version);
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
+        AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
     }
 
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
