@@ -145,9 +145,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                 return AVIF_FALSE;
         }
         if (codec->internal->image->monochrome) {
-            // avm does not handle monochrome as of research-v8.1.0.
-            // https://gitlab.com/AOMediaCodec/avm/-/issues/522
-            // This should not happen.
             yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         }
 
@@ -549,10 +546,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
         }
 
-        // avm does not handle monochrome as of research-v8.1.0.
-        // https://gitlab.com/AOMediaCodec/avm/-/issues/522
-        // TODO(yguyon): Enable when fixed upstream
         codec->internal->monochromeEnabled = AVIF_FALSE;
+        if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+            codec->internal->monochromeEnabled = AVIF_TRUE;
+            cfg->monochrome = 1;
+        }
 
         if (!avifProcessAOMOptionsPreInit(codec, alpha, cfg)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
