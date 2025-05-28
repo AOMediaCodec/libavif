@@ -1367,19 +1367,13 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV444;
         }
         if (item->miniBoxPixelFormat != av1CPixelFormat) {
-            if (!memcmp(configPropName, "av2C", 4) && item->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV400 &&
-                av1CPixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                // avm does not handle monochrome as of research-v8.0.0.
-                // 4:2:0 is used instead.
-            } else {
-                avifDiagnosticsPrintf(diag,
-                                      "Item ID %u format [%s] specified by MinimizedImageBox does not match %s property format [%s]",
-                                      item->id,
-                                      avifPixelFormatToString(item->miniBoxPixelFormat),
-                                      configPropName,
-                                      avifPixelFormatToString(av1CPixelFormat));
-                return AVIF_RESULT_BMFF_PARSE_FAILED;
-            }
+            avifDiagnosticsPrintf(diag,
+                                  "Item ID %u format [%s] specified by MinimizedImageBox does not match %s property format [%s]",
+                                  item->id,
+                                  avifPixelFormatToString(item->miniBoxPixelFormat),
+                                  configPropName,
+                                  avifPixelFormatToString(av1CPixelFormat));
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
         if (configProp->u.av1C.chromaSamplePosition == /*CSP_UNKNOWN=*/0) {
@@ -6591,37 +6585,6 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 return avifGetErrorForItemCategory(tile->input->itemCategory);
             }
         }
-
-#if defined(AVIF_CODEC_AVM)
-        avifDecoderItem * tileItem = NULL;
-        for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
-            avifDecoderItem * item = decoder->data->meta->items.item[itemIndex];
-            if (avifDecoderItemShouldBeSkipped(item)) {
-                continue;
-            }
-            if (item->id == sample->itemID) {
-                tileItem = item;
-                break;
-            }
-        }
-        if (tileItem != NULL) {
-            const avifProperty * prop = avifPropertyArrayFind(&tileItem->properties, "pixi");
-            // Match the decoded image format with the number of planes specified in 'pixi'.
-            if (prop != NULL && prop->u.pixi.planeCount == 1 && tile->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-                // Codecs such as avm do not support monochrome so samples were encoded as 4:2:0.
-                // Ignore the UV planes at decoding.
-                tile->image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-                if (tile->image->imageOwnsYUVPlanes) {
-                    avifFree(tile->image->yuvPlanes[AVIF_CHAN_U]);
-                    avifFree(tile->image->yuvPlanes[AVIF_CHAN_V]);
-                }
-                tile->image->yuvPlanes[AVIF_CHAN_U] = NULL;
-                tile->image->yuvRowBytes[AVIF_CHAN_U] = 0;
-                tile->image->yuvPlanes[AVIF_CHAN_V] = NULL;
-                tile->image->yuvRowBytes[AVIF_CHAN_V] = 0;
-            }
-        }
-#endif
 
         ++info->decodedTileCount;
 
