@@ -1,5 +1,5 @@
 set(AVIF_AOM_GIT_TAG v3.12.1)
-set(AVIF_AVM_GIT_TAG bba6f9b10d9b98c45f94fcb903b0a89ed3dc3d26)
+set(AVIF_AVM_GIT_TAG 95163cd4a3c3a4714985e7f71ff021ffe096afd9)
 
 if(AVIF_CODEC_AVM)
     # Building the avm repository generates files such as "libaom.a" because it is a fork of aom,
