@@ -1,5 +1,5 @@
 set(AVIF_AOM_GIT_TAG v3.12.1)
-set(AVIF_AVM_GIT_TAG research-v9.0.0)
+set(AVIF_AVM_GIT_TAG bba6f9b10d9b98c45f94fcb903b0a89ed3dc3d26)
 
 if(AVIF_CODEC_AVM)
     # Building the avm repository generates files such as "libaom.a" because it is a fork of aom,
@@ -95,7 +95,6 @@ else()
             BINARY_DIR "${AOM_BINARY_DIR}"
             GIT_TAG ${AVIF_AVM_GIT_TAG}
             GIT_PROGRESS ON
-            GIT_SHALLOW ON
             UPDATE_COMMAND ""
         )
         # There can be a duplicate cpuinfo in SVT so find_package has to be used.
