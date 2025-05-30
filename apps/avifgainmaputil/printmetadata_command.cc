@@ -32,7 +32,7 @@ std::string FormatFractions(const T fractions[3]) {
 
 PrintMetadataCommand::PrintMetadataCommand()
     : ProgramCommand("printmetadata",
-                     "Prints the metadata of the gain map of an avif file") {
+                     "Prints the metadata of the gain map of an AVIF file") {
   argparse_.add_argument(arg_input_filename_, "input_filename");
 }
 

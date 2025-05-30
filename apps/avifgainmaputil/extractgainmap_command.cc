@@ -10,7 +10,7 @@ namespace avif {
 
 ExtractGainMapCommand::ExtractGainMapCommand()
     : ProgramCommand("extractgainmap",
-                     "Saves the gain map of an avif file as an image") {
+                     "Saves the gain map of an AVIF file as an image") {
   argparse_.add_argument(arg_input_filename_, "input_filename");
   argparse_.add_argument(arg_output_filename_, "output_filename");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);

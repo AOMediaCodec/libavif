@@ -3,11 +3,13 @@
 namespace avif {
 
 ProgramCommand::ProgramCommand(const std::string& name,
-                               const std::string& description)
-    : argparse_(
-          argparse::ArgumentParser("avifgainmaputil " + name, description)),
+                               const std::string& short_description,
+                               const std::string& long_description)
+    : argparse_(argparse::ArgumentParser(
+          "avifgainmaputil " + name,
+          short_description + ".\n" + long_description)),
       name_(name),
-      description_(description) {}
+      short_description_(short_description) {}
 
 // Parses command line arguments. Should be called before Run().
 avifResult ProgramCommand::ParseArgs(int argc, const char* const argv[]) {
@@ -47,7 +49,7 @@ argparse::ConvertedValue<CicpValues> CicpConverter::from_str(
   std::vector<uint32_t> cicp_values;
   if (!ParseList(str, '/', 3, &cicp_values)) {
     converted_value.set_error(
-        "Invalid cicp values, expected format: P/T/M where each "
+        "Invalid CICP values, expected format: P/T/M where each "
         "value is a positive integer, got: " +
         str);
   }
