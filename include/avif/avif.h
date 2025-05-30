@@ -1711,8 +1711,7 @@ AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                              avifDiagnostics * diag);
 
 // Computes a gain map between two images: a base image and an alternate image.
-// Both images should have the same width and height, and use the same color
-// primaries. TODO(maryla): allow different primaries.
+// Both images should have the same width and height.
 // gainMap->image should be initialized with avifImageCreate(), with the width,
 // height, depth and yuvFormat fields set to the desired output values for the
 // gain map. All of these fields may differ from the source images.
