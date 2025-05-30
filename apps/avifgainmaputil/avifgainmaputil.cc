@@ -30,8 +30,7 @@ class HelpCommand : public ProgramCommand {
 };
 
 void PrintUsage(const std::vector<std::unique_ptr<ProgramCommand>>& commands) {
-  std::cout << "\nExperimental tool to manipulate avif images with HDR gain "
-               "maps.\n\n";
+  std::cout << "\nTool to manipulate AVIF images with HDR gain maps.\n\n";
   std::cout << "usage: avifgainmaputil <command> [options] [arguments...]\n\n";
   std::cout << "Available commands:\n";
   int longest_command_size = 0;
@@ -41,9 +40,35 @@ void PrintUsage(const std::vector<std::unique_ptr<ProgramCommand>>& commands) {
   }
   for (const std::unique_ptr<ProgramCommand>& command : commands) {
     std::cout << "  " << std::left << std::setw(longest_command_size)
-              << command->name() << "  " << command->description() << "\n";
+              << command->name() << "  " << command->short_description()
+              << "\n";
   }
   std::cout << "\n";
+
+  std::cout << R"(General concepts:
+  Gain maps allow creating HDR (High Dynamic Range) images that look good on any display,
+  including SDR (Standard Dynamic Range) displays. Images with gain maps are also backward
+  compatible with viewers that do not support gain maps.
+
+  An image with a gain map consists of a "base image", and a "gain map image". The gain map
+  image contains information used to "tone map" the base image, in order to adapt it to displays
+  with different HDR capabilities. Fully applying the gain map results in a different image
+  called the "alternate image". The gain map can also be applied partially, giving a result in
+  between the base image and the alternate image.
+
+  Typically, either the base image or the alternate image is SDR, and the other one is HDR.
+  Both images have a target "HDR headroom" that they are meant to be displayed on.
+  The HDR headroom is the ratio between the maximum brightness of white that the display can
+  produce, and the standard SDR white brightness. This value is usually expressed in log2.
+  An SDR display has an HDR headroom of 0. An HDR display with a headroom of 1 can produce white
+  that is twice as bright as SDR white.
+
+  Viewers that support gain maps will show the base image, or the alternate image, or something
+  in between, depending on the display's current HDR headroom and the target headroom of the base
+  image and alternate image. Viewers that do not support gain maps will always show the base image.
+
+)";
+
   avifPrintVersions();
 }
 
