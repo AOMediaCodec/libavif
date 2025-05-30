@@ -2415,12 +2415,16 @@ static avifBool avifParseColourInformationBox(avifProperty * prop, uint64_t rawO
     uint8_t colorType[4]; // unsigned int(32) colour_type;
     AVIF_CHECK(avifROStreamRead(&s, colorType, 4));
     if (!memcmp(colorType, "rICC", 4) || !memcmp(colorType, "prof", 4)) {
-        colr->hasICC = AVIF_TRUE;
         // Remember the offset of the ICC payload relative to the beginning of the stream. A direct pointer cannot be stored
         // because decoder->io->persistent could have been AVIF_FALSE when obtaining raw through decoder->io->read().
         // The bytes could be copied now instead of remembering the offset, but it is as invasive as passing rawOffset everywhere.
         colr->iccOffset = rawOffset + avifROStreamOffset(&s);
         colr->iccSize = avifROStreamRemainingBytes(&s);
+        if (colr->iccSize == 0) {
+            avifDiagnosticsPrintf(diag, "Box[colr] contains empty ICC_profile");
+            return AVIF_FALSE;
+        }
+        colr->hasICC = AVIF_TRUE;
     } else if (!memcmp(colorType, "nclx", 4)) {
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->colorPrimaries));          // unsigned int(16) colour_primaries;
         AVIF_CHECK(avifROStreamReadU16(&s, &colr->transferCharacteristics)); // unsigned int(16) transfer_characteristics;
