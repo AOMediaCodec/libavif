@@ -21,7 +21,7 @@ namespace {
 
 class HelpCommand : public ProgramCommand {
  public:
-  HelpCommand() : ProgramCommand("help", "Prints a command's usage") {}
+  HelpCommand() : ProgramCommand("help", "Print a command's usage") {}
   avifResult Run() override {
     // Actual implementation is in the main function because it needs access
     // to the list of commands.

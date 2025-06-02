@@ -13,7 +13,7 @@ namespace avif {
 TonemapCommand::TonemapCommand()
     : ProgramCommand(
           "tonemap",
-          "Tone maps an AVIF image that has a gain map to a given HDR headroom "
+          "Tone map an AVIF image that has a gain map to a given HDR headroom "
           "(how much brighter the display can go compared to SDR white)",
           "Images with ICC  profiles are not supported: use --ignore-profile "
           "and optionally set --cicp-input and/or --cicp-output if needed.") {

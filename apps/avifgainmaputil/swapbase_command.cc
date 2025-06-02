@@ -114,7 +114,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
 SwapBaseCommand::SwapBaseCommand()
     : ProgramCommand(
           "swapbase",
-          "Swaps the base and alternate images (e.g. if the base image is SDR "
+          "Swap the base and alternate images (e.g. if the base image is SDR "
           "and the alternate is HDR, makes the base HDR)",
           "The alternate image is the result of fully applying the gain map. "
           "Images with ICC profiles are not supported: use --ignore-profile "

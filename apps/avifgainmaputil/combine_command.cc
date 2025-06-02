@@ -12,7 +12,7 @@ namespace avif {
 
 CombineCommand::CombineCommand()
     : ProgramCommand("combine",
-                     "Creates an AVIF image with a gain map from a base image "
+                     "Create an AVIF image with a gain map from a base image "
                      "and an alternate image") {
   argparse_.add_argument(arg_base_filename_, "base_image")
       .help(
@@ -47,7 +47,7 @@ CombineCommand::CombineCommand()
           "other is HDR, the full HDR image (i.e. without tone mapping to SDR "
           "using the gain map) will be shown for displays with at least this "
           "amount of HDR headroom.")
-      .default_value("4");
+      .default_value("4.0");
   argparse_
       .add_argument<CicpValues, CicpConverter>(arg_base_cicp_, "--cicp-base")
       .help(
