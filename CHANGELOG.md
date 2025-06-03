@@ -18,8 +18,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Removed since 1.3.0
 
-* ext/avm.cmd was removed. Use the -DAVIF_CODEC_AVM=LOCAL CMake build option
-  instead.
+* Remove ext/avm.cmd.
 
 ## [1.3.0] - 2025-05-09
 
