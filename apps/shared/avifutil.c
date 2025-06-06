@@ -128,14 +128,20 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Gain map       : ");
     avifImage * gainMapImage = avif->gainMap ? avif->gainMap->image : NULL;
     if (gainMapImage != NULL) {
-        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s\n",
+        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Headroom %.2f (%s), Alternate Headroom %.2f (%s)\n",
                gainMapImage->width,
                gainMapImage->height,
                gainMapImage->depth,
                avifPixelFormatToString(gainMapImage->yuvFormat),
                (gainMapImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMapImage->matrixCoefficients,
-               (avif->gainMap->baseHdrHeadroom.n == 0) ? "SDR" : "HDR");
+               avif->gainMap->baseHdrHeadroom.d == 0 ? 0
+                                                     : (double)avif->gainMap->baseHdrHeadroom.n / avif->gainMap->baseHdrHeadroom.d,
+               (avif->gainMap->baseHdrHeadroom.n == 0) ? "SDR" : "HDR",
+               avif->gainMap->alternateHdrHeadroom.d == 0
+                   ? 0
+                   : (double)avif->gainMap->alternateHdrHeadroom.n / avif->gainMap->alternateHdrHeadroom.d,
+               (avif->gainMap->alternateHdrHeadroom.n == 0) ? "SDR" : "HDR");
         printf(" * Alternate image:\n");
         printf("    * Color Primaries: %u\n", avif->gainMap->altColorPrimaries);
         printf("    * Transfer Char. : %u\n", avif->gainMap->altTransferCharacteristics);

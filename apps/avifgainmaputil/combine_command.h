@@ -24,6 +24,7 @@ class CombineCommand : public ProgramCommand {
   argparse::ArgValue<int> arg_gain_map_quality_;
   argparse::ArgValue<int> arg_gain_map_depth_;
   argparse::ArgValue<int> arg_gain_map_pixel_format_;
+  argparse::ArgValue<float> arg_max_headroom_;
   BasicImageEncodeArgs arg_image_encode_;
   ImageReadArgs arg_image_read_;
 };

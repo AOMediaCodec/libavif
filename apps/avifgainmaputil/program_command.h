@@ -19,8 +19,10 @@ class ProgramCommand {
  public:
   // 'name' is the command that should be used to invoke the command on the
   // command line.
-  // 'description' should be a one line description of what the command does.
-  ProgramCommand(const std::string& name, const std::string& description);
+  // 'short_description' should be a one line description of what the command
+  // does.
+  ProgramCommand(const std::string& name, const std::string& short_description,
+                 const std::string& long_description = "");
 
   virtual ~ProgramCommand() = default;
 
@@ -31,7 +33,7 @@ class ProgramCommand {
   virtual avifResult Run() = 0;
 
   std::string name() const { return name_; }
-  std::string description() const { return description_; }
+  std::string short_description() const { return short_description_; }
 
   // Prints this command's help on stdout.
   void PrintUsage();
@@ -41,7 +43,7 @@ class ProgramCommand {
 
  private:
   std::string name_;
-  std::string description_;
+  std::string short_description_;
 };
 
 //------------------------------------------------------------------------------
