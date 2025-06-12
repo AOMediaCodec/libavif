@@ -571,6 +571,7 @@ endif()
 if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
