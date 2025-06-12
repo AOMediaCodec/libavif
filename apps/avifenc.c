@@ -1424,7 +1424,8 @@ static void avifInputAdd(avifInput * input, const char * filePath, uint64_t dura
 static int quantizerToQuality(int minQuantizer, int maxQuantizer)
 {
     const int quantizer = (minQuantizer + maxQuantizer) / 2;
-    return (int)(100 - (100 * quantizer - 50) / 63.0);
+    const int quality = ((63 - quantizer) * 100 + 31) / 63;
+    return quality;
 }
 
 int main(int argc, char * argv[])
