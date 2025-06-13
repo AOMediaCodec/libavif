@@ -1423,6 +1423,8 @@ static void avifInputAdd(avifInput * input, const char * filePath, uint64_t dura
 
 static int quantizerToQuality(int minQuantizer, int maxQuantizer)
 {
+    // When calculating the average quantizer, discard the fractional part for a
+    // bias toward better quality.
     const int quantizer = (minQuantizer + maxQuantizer) / 2;
     const int quality = ((63 - quantizer) * 100 + 31) / 63;
     return quality;
@@ -2241,8 +2243,7 @@ int main(int argc, char * argv[])
                 if (fileSettings->minQuantizer.set) {
                     assert(fileSettings->maxQuantizer.set);
                     if (!fileSettings->quality.set) {
-                        const int quantizer = (fileSettings->minQuantizer.value + fileSettings->maxQuantizer.value) / 2;
-                        const int quality = ((63 - quantizer) * 100 + 31) / 63;
+                        const int quality = quantizerToQuality(fileSettings->minQuantizer.value, fileSettings->maxQuantizer.value);
                         fileSettings->quality = intSettingsEntryOf(quality);
                     }
                 } else {
@@ -2257,8 +2258,8 @@ int main(int argc, char * argv[])
                 if (fileSettings->minQuantizerAlpha.set) {
                     assert(fileSettings->maxQuantizerAlpha.set);
                     if (!fileSettings->qualityAlpha.set) {
-                        const int quantizerAlpha = (fileSettings->minQuantizerAlpha.value + fileSettings->maxQuantizerAlpha.value) / 2;
-                        const int qualityAlpha = ((63 - quantizerAlpha) * 100 + 31) / 63;
+                        const int qualityAlpha =
+                            quantizerToQuality(fileSettings->minQuantizerAlpha.value, fileSettings->maxQuantizerAlpha.value);
                         fileSettings->qualityAlpha = intSettingsEntryOf(qualityAlpha);
                     }
                 } else {
