@@ -570,13 +570,8 @@ endif()
 
 if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
-    if(AVIF_ENABLE_NODISCARD OR AVIF_CODEC_AVM_ENABLED)
-        # [[nodiscard]] and tensorflow-lite require C++17.
-        set(CMAKE_CXX_STANDARD 17)
-        set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    else()
-        set(CMAKE_CXX_STANDARD 14)
-    endif()
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
