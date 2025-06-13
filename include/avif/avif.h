@@ -1546,6 +1546,20 @@ typedef struct avifEncoder
     int quality;
     // Encode quality for the alpha layer if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityAlpha;
+    // Note: libavif internally converts between quality and quantizer using the
+    // following formulas. Both variables are of the int type and the division
+    // is integer division.
+    //   quantizer = ((100 - quality) * 63 + 50) / 100
+    //   quality = ((63 - quantizer) * 100 + 31) / 63
+    //
+    // These formulas are the integer equivalents of the following formulas:
+    //   quantizer = (int)round(((100.0 - quality) * 63.0) / 100.0)
+    //   quality = (int)round(((63.0 - quantizer) * 100.0) / 63.0)
+    //
+    // The conversion formulas have two nice properties:
+    // 1. Each quantizer in 0..63 can be converted to quality and back to itself.
+    // 2. The lossless quality 100 is the only quality that is converted to the
+    //    lossless quantizer 0, and vice versa.
     int minQuantizer;      // Deprecated, use `quality` instead.
     int maxQuantizer;      // Deprecated, use `quality` instead.
     int minQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
