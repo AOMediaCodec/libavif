@@ -44,7 +44,7 @@ TEST_P(AvmTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 36.6);
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
 
   // Forcing an AV1 decoding codec should fail.
   for (avifCodecChoice av1_codec :
