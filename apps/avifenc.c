@@ -224,7 +224,7 @@ static void syntaxLong(void)
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
     printf("    --stdin                           : Read input from stdin instead of file paths. No other input is allowed. The input format is assumed to be y4m unless --input-format is specified. The output file path must still be provided.\n");
-    printf("    --input-format FORMAT             : File format of the input data. One of: jpeg/png/y4m/auto. (Default: auto, except for stdin where auto is not supported and the defualt is y4m)\n");
+    printf("    --input-format FORMAT             : File format of the input data. One of: jpeg/png/y4m/auto. (Default: auto, except for stdin where auto is not supported and the default is y4m)\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
