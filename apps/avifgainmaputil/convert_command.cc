@@ -11,7 +11,9 @@
 namespace avif {
 
 ConvertCommand::ConvertCommand()
-    : ProgramCommand("convert", "Convert a jpeg with a gain map to avif.") {
+    : ProgramCommand("convert", "Convert a JPEG with a gain map to AVIF",
+                     "If features like --swap-base are not needed, avifenc can "
+                     "also be used to convert JPEGs to AVIF.") {
   argparse_.add_argument(arg_input_filename_, "input_filename.jpg");
   argparse_.add_argument(arg_output_filename_, "output_image.avif");
   argparse_.add_argument(arg_swap_base_, "--swap-base")
@@ -23,7 +25,7 @@ ConvertCommand::ConvertCommand()
       .default_value("60");
   argparse_.add_argument<CicpValues, CicpConverter>(arg_cicp_, "--cicp")
       .help(
-          "Set the cicp values for the input image, expressed as "
+          "Set the CICP values for the input image, expressed as "
           "P/T/M where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);

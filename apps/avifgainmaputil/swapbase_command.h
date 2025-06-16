@@ -22,6 +22,8 @@ class SwapBaseCommand : public ProgramCommand {
  private:
   argparse::ArgValue<std::string> arg_input_filename_;
   argparse::ArgValue<std::string> arg_output_filename_;
+  argparse::ArgValue<CicpValues> arg_cicp_;
+  argparse::ArgValue<CicpValues> arg_alt_cicp_;
   ImageReadArgs arg_image_read_;
   BasicImageEncodeArgs arg_image_encode_;
   argparse::ArgValue<int> arg_gain_map_quality_;
