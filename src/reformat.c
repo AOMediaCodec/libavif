@@ -477,9 +477,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             for (uint32_t i = 0; i < image->width; ++i) {
                 float g;
                 if (state.rgb.channelBytes > 1) {
-                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)];
+                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
                 } else {
-                    g = rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)];
+                    g = rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
                 }
                 if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                     float a;
@@ -505,7 +505,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         }
                     }
                 }
-                g = avifRoundf(AVIF_CLAMP(g, 0.0f, state.yuv.maxChannel));
+                g = avifRoundf(AVIF_CLAMP(g * state.yuv.rangeY, 0.0f, state.yuv.maxChannel));
                 if (state.yuv.channelBytes > 1) {
                     uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + j * yRowBytes];
                     *pY = (uint16_t)g;
