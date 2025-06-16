@@ -20,7 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
   rav1e v0.8.0
-* Fix grayscale conversion when doing bit lifting.
+* Fix grayscale conversion when changing the bit depth.
 
 ### Removed since 1.3.0
 
