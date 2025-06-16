@@ -11,6 +11,23 @@
 #include "avifpng.h"
 #include "y4m.h"
 
+char * avifFileFormatToString(avifAppFileFormat format)
+{
+    switch (format) {
+        case AVIF_APP_FILE_FORMAT_UNKNOWN:
+            return "unknown";
+        case AVIF_APP_FILE_FORMAT_AVIF:
+            return "AVIF";
+        case AVIF_APP_FILE_FORMAT_JPEG:
+            return "JPEG";
+        case AVIF_APP_FILE_FORMAT_PNG:
+            return "PNG";
+        case AVIF_APP_FILE_FORMAT_Y4M:
+            return "Y4M";
+    }
+    return "unknown";
+}
+
 // |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
 // overflowing int32_t.
 static int64_t calcGCD(int64_t a, int64_t b)
@@ -291,6 +308,7 @@ avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size)
 }
 
 avifAppFileFormat avifReadImage(const char * filename,
+                                avifAppFileFormat inputFormat,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
@@ -305,15 +323,18 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter)
 {
-    const avifAppFileFormat format = avifGuessFileFormat(filename);
-    if (format == AVIF_APP_FILE_FORMAT_Y4M) {
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        inputFormat = avifGuessFileFormat(filename);
+    }
+
+    if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (!y4mRead(filename, imageSizeLimit, image, sourceTiming, frameIter)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = image->depth;
         }
-    } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // imageSizeLimit is also used to limit Exif and XMP metadata here.
         if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
@@ -321,7 +342,7 @@ avifAppFileFormat avifReadImage(const char * filename,
         if (outDepth) {
             *outDepth = 8;
         }
-    } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(filename,
                          image,
                          requestedFormat,
@@ -335,11 +356,14 @@ avifAppFileFormat avifReadImage(const char * filename,
                          outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-    } else {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    } else {
+        fprintf(stderr, "Unsupported file format %s for input file: %s\n", avifFileFormatToString(inputFormat), filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
-    return format;
+    return inputFormat;
 }
 
 avifBool avifReadEntireFile(const char * filename, avifRWData * raw)

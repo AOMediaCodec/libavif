@@ -297,7 +297,8 @@ static avifAppFileFormat avifReadImageForRGB2Gray2RGB(const std::string& path,
                                                       bool ignore_icc,
                                                       ImagePtr& image) {
   return avifReadImage(
-      path.c_str(), format, /*requestedDepth=*/0,
+      path.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */, format,
+      /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
       /*ignoreXMP=*/false, /*allowChangingCicp=*/true,
@@ -466,7 +467,8 @@ TEST(ImageSizeLimitTest, AllFormats) {
       ASSERT_NE(image, nullptr);
 
       const avifAppFileFormat format = avifReadImage(
-          filepath.c_str(), AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
+          filepath.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+          AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
           AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, /*ignoreColorProfile=*/true,
           /*ignoreExif=*/true, /*ignoreXMP=*/true, /*allowChangingCicp=*/true,
           /*ignoreGainMap=*/true, image_size_limit, image.get(),

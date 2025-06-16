@@ -224,17 +224,18 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
 // modified between setjmp and longjmp. But GCC's -Wclobbered warning may have
 // trouble figuring that out, so we preemptively declare them as volatile.
 
-avifBool avifPNGRead(const char * inputFilename,
-                     avifImage * avif,
-                     avifPixelFormat requestedFormat,
-                     uint32_t requestedDepth,
-                     avifChromaDownsampling chromaDownsampling,
-                     avifBool ignoreColorProfile,
-                     avifBool ignoreExif,
-                     avifBool ignoreXMP,
-                     avifBool allowChangingCicp,
-                     uint32_t imageSizeLimit,
-                     uint32_t * outPNGDepth)
+static avifBool avifPNGReadImpl(FILE * f,
+                                const char * inputFilename,
+                                avifImage * avif,
+                                avifPixelFormat requestedFormat,
+                                uint32_t requestedDepth,
+                                avifChromaDownsampling chromaDownsampling,
+                                avifBool ignoreColorProfile,
+                                avifBool ignoreExif,
+                                avifBool ignoreXMP,
+                                avifBool allowChangingCicp,
+                                uint32_t imageSizeLimit,
+                                uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -243,12 +244,6 @@ avifBool avifPNGRead(const char * inputFilename,
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
-
-    FILE * f = fopen(inputFilename, "rb");
-    if (!f) {
-        fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
-        goto cleanup;
-    }
 
     uint8_t header[8];
     size_t bytesRead = fread(header, 1, 8, f);
@@ -515,9 +510,6 @@ avifBool avifPNGRead(const char * inputFilename,
     readResult = AVIF_TRUE;
 
 cleanup:
-    if (f) {
-        fclose(f);
-    }
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
     }
@@ -526,6 +518,49 @@ cleanup:
     }
     avifRGBImageFreePixels(&rgb);
     return readResult;
+}
+
+avifBool avifPNGRead(const char * inputFilename,
+                     avifImage * avif,
+                     avifPixelFormat requestedFormat,
+                     uint32_t requestedDepth,
+                     avifChromaDownsampling chromaDownsampling,
+                     avifBool ignoreColorProfile,
+                     avifBool ignoreExif,
+                     avifBool ignoreXMP,
+                     avifBool allowChangingCicp,
+                     uint32_t imageSizeLimit,
+                     uint32_t * outPNGDepth)
+{
+    FILE * f;
+    if (inputFilename) {
+        f = fopen(inputFilename, "rb");
+        if (!f) {
+            fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
+            return AVIF_FALSE;
+        }
+    } else {
+        f = stdin;
+        inputFilename = "(stdin)";
+    }
+
+    const avifBool res = avifPNGReadImpl(f,
+                                         inputFilename,
+                                         avif,
+                                         requestedFormat,
+                                         requestedDepth,
+                                         chromaDownsampling,
+                                         ignoreColorProfile,
+                                         ignoreExif,
+                                         ignoreXMP,
+                                         allowChangingCicp,
+                                         imageSizeLimit,
+                                         outPNGDepth);
+
+    if (f && f != stdin) {
+        fclose(f);
+    }
+    return res;
 }
 
 //------------------------------------------------------------------------------

@@ -47,8 +47,10 @@ avifResult ConvertCommand::Run() {
   }
 
   const avifAppFileFormat file_format = avifReadImage(
-      arg_input_filename_.value().c_str(), pixel_format, arg_image_read_.depth,
-      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, arg_image_read_.ignore_profile,
+      arg_input_filename_.value().c_str(),
+      AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */, pixel_format,
+      arg_image_read_.depth, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+      arg_image_read_.ignore_profile,
       /*ignoreExif=*/false,
       /*ignoreXMP=*/false,
       /*allowChangingCicp=*/true,

@@ -117,9 +117,10 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     }
   } else {
     const avifAppFileFormat file_format = avifReadImage(
-        input_filename.c_str(), requested_format,
-        static_cast<int>(requested_depth), AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-        ignore_profile, /*ignoreExif=*/false, /*ignoreXMP=*/false,
+        input_filename.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+        requested_format, static_cast<int>(requested_depth),
+        AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile,
+        /*ignoreExif=*/false, /*ignoreXMP=*/false,
         /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
         AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image, /*outDepth=*/nullptr,
         /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
