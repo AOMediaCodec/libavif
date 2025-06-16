@@ -466,10 +466,10 @@ TEST(RGBToYUVTest, HighBitDepthGrayToYUV420) {
 
 TEST(RGBToYUVTest, 8BitGrayRoundTripWithLift) {
   // 2x2 12-bit temporary image.
-  static constexpr uint8_t gray[4] = {4, 3, 2, 1};
   ImagePtr image(avifImageCreate(2, 2, 12, AVIF_PIXEL_FORMAT_YUV400));
   ASSERT_NE(image, nullptr);
   // 2x2 8-bit original image.
+  static constexpr uint8_t gray[4] = {5, 3, 2, 1};
   avifRGBImage rgb;
   avifRGBImageSetDefaults(&rgb, image.get());
   rgb.format = AVIF_RGB_FORMAT_GRAY;
