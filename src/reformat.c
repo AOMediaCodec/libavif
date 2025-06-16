@@ -505,12 +505,12 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         }
                     }
                 }
-                int g_int = avifYUVColorSpaceInfoYToUNorm(&state.yuv, g);
+                int gInt = avifYUVColorSpaceInfoYToUNorm(&state.yuv, g);
                 if (state.yuv.channelBytes > 1) {
                     uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + j * yRowBytes];
-                    *pY = (uint16_t)g_int;
+                    *pY = (uint16_t)gInt;
                 } else {
-                    yPlane[i + (j * yRowBytes)] = (uint8_t)g_int;
+                    yPlane[i + (j * yRowBytes)] = (uint8_t)gInt;
                 }
             }
         }
