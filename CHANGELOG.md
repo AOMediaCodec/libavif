@@ -54,6 +54,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Set tuning before applying the user-provided specific aom codec options.
 * Use AOM_TUNE_PSNR by default when encoding alpha with libaom because
   AOM_TUNE_SSIM causes ringing for alpha.
+* Use AOM_TUNE_IQ by default when encoding still luma and chroma with libaom.
 * Converting an image containing a gain map using avifenc with the --grid flag
   now also splits the gain map into a grid.
 

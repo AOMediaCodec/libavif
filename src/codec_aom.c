@@ -722,6 +722,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             libavifDefaultTuneMetric = AOM_TUNE_PSNR;
         } else {
             libavifDefaultTuneMetric = AOM_TUNE_SSIM;
+#if defined(AOM_HAVE_TUNE_IQ) && defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
+            // AOM_TUNE_IQ is favored for its low perceptual distortion on luma and chroma samples.
+            // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
+            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
+                libavifDefaultTuneMetric = AOM_TUNE_IQ;
+            }
+#endif
         }
     }
 
@@ -729,8 +736,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     avifBool quantizerUpdated = AVIF_FALSE;
     // True if libavif knows that tune=iq is used, either by default by libavif, or explicitly set by the user.
     // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v1.13.1 and earlier versions).
-    // This is only accurate for the first frame but tune=iq is only supported for still images in libavif and
-    // for all-intra coding in libaom (at least up to v1.13.1) anyway.
+    // This is only accurate for the first frame but tune=iq is only supported for all-intra coding in libaom (at least up to v1.13.1),
+    // and thus only supported for still images in libavif.
     const avifBool useTuneIq = useLibavifDefaultTuneMetric ? libavifDefaultTuneMetric == AOM_TUNE_IQ : avifImageUsesTuneIq(codec, alpha);
     const int quantizer = aomQualityToQuantizer(quality, useTuneIq);
 
