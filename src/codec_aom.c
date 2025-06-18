@@ -886,8 +886,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
-        if (!codec->internal->tuningSet) {
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
+        if (!lossless && !codec->internal->tuningSet) {
+            aom_tune_metric tuneMetric = AOM_TUNE_SSIM;
+#if defined(AOM_HAVE_TUNE_IQ)
+            // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
+            if (aomUsage == AOM_USAGE_ALL_INTRA) {
+                tuneMetric = AOM_TUNE_IQ;
+            }
+#endif
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
