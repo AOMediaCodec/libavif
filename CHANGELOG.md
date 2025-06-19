@@ -21,6 +21,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
   rav1e v0.8.0
 * Fix grayscale conversion when changing the bit depth.
+* Associate transformative properties with alpha auxiliary image items.
 
 ### Removed since 1.3.0
 

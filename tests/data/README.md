@@ -2,6 +2,33 @@
 
 ## Still images
 
+### File [abc.png](abc.png)
+
+![](abc.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Black opaque letters "abc" written on a translucent white background.
+
+### File [abc_color_irot_alpha_irot.png](abc_color_irot_alpha_irot.png)
+
+![](abc_color_irot_alpha_irot.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+`abc.png` encoded with libavif and having a correct association between the
+`irot` transformative property and the alpha auxiliary image item corresponding
+to the same rotation applied to the color image item.
+
+### File [abc_color_irot_alpha_NOirot.png](abc_color_irot_alpha_NOirot.png)
+
+![](abc_color_irot_alpha_NOirot.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+`abc.png` encoded with libavif 1.3.0 and missing an association between the
+`irot` transformative property and the alpha auxiliary image item.
+
 ### File [circle-trns-after-plte.png](circle-trns-after-plte.png)
 
 ![](circle-trns-after-plte.png)
