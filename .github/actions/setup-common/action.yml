@@ -25,12 +25,12 @@ runs:
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
         cmake-version: "latest"
-    - name: Set up CMake 3.13
+    - name: Set up CMake 3.22
       if: ${{ runner.os == 'Linux' && inputs.oldest-cmake == 'true' }}
       uses: jwlawson/actions-setup-cmake@802fa1a2c4e212495c05bf94dba2704a92a472be # v2.0.2
       with:
         # Use the minimum required version of cmake.
-        cmake-version: "3.13.x"
+        cmake-version: "3.22.x"
     - name: Print CMake version
       run: cmake --version
       shell: bash

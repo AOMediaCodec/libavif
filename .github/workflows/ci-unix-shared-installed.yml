@@ -72,14 +72,13 @@ jobs:
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
       - name: Install AVIF
-        # cmake --install was introduced in CMake version 3.15.
-        run: cmake --build build --target install
+        run: cmake --install build
       - name: Test installed cmake
         working-directory: ./build
         run: >
           mkdir test && cd test
 
-          echo "cmake_minimum_required(VERSION 3.13)
+          echo "cmake_minimum_required(VERSION 3.22)
                 project(FindPackageTest)
                 message(STATUS ${CMAKE_PREFIX_PATH})
                 find_package(libavif REQUIRED)

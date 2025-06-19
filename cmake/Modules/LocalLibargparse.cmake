@@ -23,8 +23,6 @@ else()
         libargparse
         GIT_REPOSITORY "https://github.com/kmurray/libargparse.git"
         GIT_TAG ${AVIF_LIBARGPARSE_GIT_TAG}
-        # TODO(vrabaud) remove once CMake 3.13 is not supported anymore.
-        PATCH_COMMAND git apply --ignore-whitespace "${AVIF_SOURCE_DIR}/ext/libargparse.patch"
         UPDATE_COMMAND ""
     )
     avif_fetchcontent_populate_cmake(libargparse)

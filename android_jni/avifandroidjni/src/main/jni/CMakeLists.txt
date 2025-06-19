@@ -1,7 +1,7 @@
 # Copyright 2022 Google LLC
 # SPDX-License-Identifier: BSD-2-Clause
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.22)
 
 project(avif_android_jni)
 
