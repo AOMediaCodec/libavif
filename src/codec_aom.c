@@ -889,8 +889,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (!lossless && !codec->internal->tuningSet) {
             aom_tune_metric tuneMetric = AOM_TUNE_SSIM;
 #if defined(AOM_HAVE_TUNE_IQ)
+            // AOM_TUNE_IQ is favored for its low perceptual distortion on luma and chroma samples.
             // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
-            if (aomUsage == AOM_USAGE_ALL_INTRA) {
+            if (!alpha && image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && aomUsage == AOM_USAGE_ALL_INTRA) {
                 tuneMetric = AOM_TUNE_IQ;
             }
 #endif
