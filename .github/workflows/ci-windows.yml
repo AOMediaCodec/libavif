@@ -2,9 +2,6 @@
 #
 #   * The os matrix consists of windows-latest only.
 #   * Installs Visual Studio in the os image.
-#   * Doesn't install cmake 3.17.x, because only cmake 3.18 or later, with the
-#     following bug fix, detects Visual Studio compilers correctly:
-#     https://gitlab.kitware.com/cmake/cmake/-/issues/20585
 #   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
 #     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
 #   * Builds with local libjpeg (-DAVIF_JPEG=LOCAL).
