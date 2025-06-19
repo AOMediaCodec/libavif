@@ -3111,6 +3111,9 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // Color specific properties
             // Note the 'tmap' (tone mapped image) item when a gain map is present also has itemCategory AVIF_ITEM_COLOR.
             AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, itemMetadata, &item->associations, dedup));
+        } else if (item->itemCategory == AVIF_ITEM_ALPHA) {
+            // Cropping, rotation and mirroring must also be applied to alpha auxiliary items.
+            AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&dedup->s, s, itemMetadata, &item->associations, dedup));
         } else if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
             // Gain map specific properties
 
