@@ -6059,8 +6059,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
                 continue;
             }
-            const avifPropertyArray * alphaProperties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
-            const avifProperty * auxiProp = alphaProperties ? avifPropertyArrayFind(alphaProperties, "auxi") : NULL;
+            const avifPropertyArray * properties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
+            const avifProperty * auxiProp = properties ? avifPropertyArrayFind(properties, "auxi") : NULL;
             // If auxi is present, check that it contains the alpha URN.
             // If auxi is not present, assume that the track is alpha. This is for backward compatibility with
             // old versions of libavif that did not write this property, see
@@ -6074,6 +6074,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             if (track->auxForID == colorTrack->id) {
                 // Found it!
+                alphaProperties = properties;
                 break;
             }
         }
