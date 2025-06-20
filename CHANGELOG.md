@@ -21,7 +21,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
   rav1e v0.8.0
 * Fix grayscale conversion when changing the bit depth.
-* Use AOM_TUNE_IQ by default when possible.
+* Use AOM_TUNE_IQ by default when encoding luma and chroma with libaom.
+* Use AOM_TUNE_PSNR by default when encoding alpha with libaom.
 
 ### Removed since 1.3.0
 

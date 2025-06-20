@@ -888,6 +888,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
         if (!lossless && !codec->internal->tuningSet) {
             aom_tune_metric tuneMetric = AOM_TUNE_SSIM;
+            if (alpha) {
+                // Minimize ringing for alpha.
+                tuneMetric = AOM_TUNE_PSNR;
+            }
 #if defined(AOM_HAVE_TUNE_IQ)
             // AOM_TUNE_IQ is favored for its low perceptual distortion on luma and chroma samples.
             // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
