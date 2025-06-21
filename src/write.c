@@ -3193,6 +3193,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // -----------------------------------------------------------------------
     // Harvest configuration properties from sequence headers
 
+    avifBool isMA1B = AVIF_TRUE;
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (item->encodeOutput->samples.count > 0) {
@@ -3201,6 +3202,11 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKERR(avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data, codecType),
                           avifGetErrorForItemCategory(item->itemCategory));
             item->av1C = sequenceHeader.av1C;
+            // The MA1B brand: The AV1 profile shall be the Main Profile and the level shall be 5.1
+            // or lower.
+            if (item->av1C.seqProfile != 0 || item->av1C.seqLevelIdx0 > 13) {
+                isMA1B = AVIF_FALSE;
+            }
         }
     }
 
@@ -3285,24 +3291,25 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker ftyp;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4));              // unsigned int(32) major_brand;
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));                 // unsigned int(32) minor_version;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));                  // unsigned int(32) compatible_brands[];
-    if (useAvioBrand) {                                                    //
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));              // ... compatible_brands[]
-    }                                                                      //
-    if (isSequence) {                                                      //
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4));              // ... compatible_brands[]
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4));              // ... compatible_brands[]
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "iso8", 4));              // ... compatible_brands[]
-    }                                                                      //
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif1", 4));                  // ... compatible_brands[]
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "miaf", 4));                  // ... compatible_brands[]
-    if ((imageMetadata->depth == 8) || (imageMetadata->depth == 10)) {     //
-        if (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {        //
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "MA1B", 4));          // ... compatible_brands[]
-        } else if (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) { //
-            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "MA1A", 4));          // ... compatible_brands[]
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4));          // unsigned int(32) major_brand;
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));             // unsigned int(32) minor_version;
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));              // unsigned int(32) compatible_brands[];
+    if (useAvioBrand) {                                                //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));          // ... compatible_brands[]
+    }                                                                  //
+    if (isSequence) {                                                  //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4));          // ... compatible_brands[]
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4));          // ... compatible_brands[]
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "iso8", 4));          // ... compatible_brands[]
+    }                                                                  //
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif1", 4));              // ... compatible_brands[]
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "miaf", 4));              // ... compatible_brands[]
+    if (isMA1B) {                                                      //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "MA1B", 4));          // ... compatible_brands[]
+    }                                                                  //
+    if ((imageMetadata->depth == 8) || (imageMetadata->depth == 10)) { //
+        if (imageMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {    //
+            AVIF_CHECKRES(avifRWStreamWriteChars(&s, "MA1A", 4));      // ... compatible_brands[]
         }
     }
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
