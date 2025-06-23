@@ -4462,28 +4462,26 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY);
     }
 
+    uint32_t irotPropIndex = 0;  // 0-based.
+    uint32_t imirPropIndex = 0;
     // Same behavior as avifImageExtractExifOrientationToIrotImir().
     if (orientation == 3 || orientation == 5 || orientation == 6 || orientation == 7 || orientation == 8) {
-        // Property with fixed index 9.
+        irotPropIndex = meta->properties.count; // Store index instead of pointer which may be invalidated by avifMetaCreateProperty().
+        // Property with fixed 1-based index 9.
+        assert(irotPropIndex + 1 == 9);
         avifProperty * irotProp = avifMetaCreateProperty(meta, "irot");
         AVIF_CHECKERR(irotProp, AVIF_RESULT_OUT_OF_MEMORY);
         irotProp->u.irot.angle = orientation == 3 ? 2 : (orientation == 5 || orientation == 8) ? 1 : 3;
-        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
-        if (hasAlpha) {
-            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
-        }
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
     if (orientation == 2 || orientation == 4 || orientation == 5 || orientation == 7) {
+        imirPropIndex = meta->properties.count;
         // Property with fixed index 10.
+        assert(imirPropIndex + 1 == 10);
         avifProperty * imirProp = avifMetaCreateProperty(meta, "imir");
         AVIF_CHECKERR(imirProp, AVIF_RESULT_OUT_OF_MEMORY);
         imirProp->u.imir.axis = orientation == 2 ? 1 : 0;
-        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
-        if (hasAlpha) {
-            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
-        }
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
@@ -4599,6 +4597,36 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     }
     AVIF_ASSERT_OR_RETURN(meta->properties.count == 29);
 
+    // ISO/IEC 23008-12 Section 6.5.1:
+    //   Readers shall allow and ignore descriptive properties following the first transformative or unrecognized
+    //   property, whichever is earlier, in the sequence associating properties with an item.
+    //   Writers should arrange the descriptive properties specified in 6.5 prior to any other properties in the
+    //   sequence associating properties with an item.
+    //
+    // irot and imir are transformative properties, so associate them last.
+    if (irotPropIndex != 0) {
+        const avifProperty * irotProp = &meta->properties.prop[irotPropIndex];
+        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        if (hasAlpha) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+        if (gainmapItemDataSize != 0) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+    }
+    if (imirPropIndex != 0) {
+        const avifProperty * imirProp = &meta->properties.prop[imirPropIndex];
+        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        if (hasAlpha) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+        if (gainmapItemDataSize != 0) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+    } else {
+        AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
+    }
+
     // Extents.
 
     if (gainmapMetadataSize != 0) {
@@ -4663,6 +4691,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifROStreamSkip(&s, xmpExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         xmpItem->size = xmpExtent->size;
     }
+
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
