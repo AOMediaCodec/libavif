@@ -4623,8 +4623,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         if (gainmapItemDataSize != 0) {
             AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
         }
-    } else {
-        AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
 
     // Extents.
@@ -4691,7 +4689,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifROStreamSkip(&s, xmpExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
         xmpItem->size = xmpExtent->size;
     }
-
     return AVIF_RESULT_OK;
 }
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
