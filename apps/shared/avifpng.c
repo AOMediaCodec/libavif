@@ -557,7 +557,7 @@ avifBool avifPNGRead(const char * inputFilename,
                                          imageSizeLimit,
                                          outPNGDepth);
 
-    if (f && f != stdin) {
+    if (f != stdin) {
         fclose(f);
     }
     return res;
