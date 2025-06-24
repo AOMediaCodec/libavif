@@ -349,7 +349,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     if (ignore_alpha && c == AVIF_CHAN_A) continue;
     const uint8_t* row1 = avifImagePlane(&image1, c);
     const uint8_t* row2 = avifImagePlane(&image2, c);
-    if (row1 == NULL || row2 == NULL) {
+    if (row1 == nullptr || row2 == nullptr) {
       continue;  // Verified in AreImageFeaturesEqual().
     }
     const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
