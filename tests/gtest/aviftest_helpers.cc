@@ -259,11 +259,10 @@ bool MatchEachPropertyOfFirstImageInSecondImage(const avifImage& image1,
   }
   return true;
 }
-}  // namespace
 
-// Returns true if image1 and image2 are identical.
-bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
-                    bool ignore_alpha) {
+// Returns true if image1 and image2 are identical, pixel values excepted.
+bool AreImageFeaturesEqual(const avifImage& image1, const avifImage& image2,
+                           bool ignore_alpha) {
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
       image1.yuvRange != image2.yuvRange) {
@@ -278,7 +277,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     const uint8_t* row2 = avifImagePlane(&image2, c);
     if (!row1 != !row2) {
       // Maybe one image contains an opaque alpha channel while the other has no
-      // alpha channel, but they should still be considered equal.
+      // alpha channel, but the features should still be considered equal.
       if (c == AVIF_CHAN_A && avifImageIsOpaque(&image1) &&
           avifImageIsOpaque(&image2)) {
         continue;
@@ -290,26 +289,6 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
         !avifImageIsOpaque(&image1)) {
       // Alpha premultiplication is ignored if alpha is opaque.
       return false;
-    }
-    const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
-    const uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
-    const uint32_t plane_width = avifImagePlaneWidth(&image1, c);
-    // 0 for A if no alpha and 0 for UV if 4:0:0.
-    const uint32_t plane_height = avifImagePlaneHeight(&image1, c);
-    for (uint32_t y = 0; y < plane_height; ++y) {
-      if (avifImageUsesU16(&image1)) {
-        if (!std::equal(reinterpret_cast<const uint16_t*>(row1),
-                        reinterpret_cast<const uint16_t*>(row1) + plane_width,
-                        reinterpret_cast<const uint16_t*>(row2))) {
-          return false;
-        }
-      } else {
-        if (!std::equal(row1, row1 + plane_width, row2)) {
-          return false;
-        }
-      }
-      row1 += row_bytes1;
-      row2 += row_bytes2;
     }
   }
 
@@ -353,10 +332,70 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
     }
 
     if (!image1.gainMap->image != !image2.gainMap->image) return false;
-    if (image1.gainMap->image != nullptr &&
-        !AreImagesEqual(*image1.gainMap->image, *image2.gainMap->image)) {
-      return false;
+  }
+  return true;
+}
+}  // namespace
+
+// Returns true if image1 and image2 are identical.
+bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
+                    bool ignore_alpha) {
+  if (!AreImageFeaturesEqual(image1, image2, ignore_alpha)) {
+    return false;
+  }
+
+  for (avifChannelIndex c :
+       {AVIF_CHAN_Y, AVIF_CHAN_U, AVIF_CHAN_V, AVIF_CHAN_A}) {
+    if (ignore_alpha && c == AVIF_CHAN_A) continue;
+    const uint8_t* row1 = avifImagePlane(&image1, c);
+    const uint8_t* row2 = avifImagePlane(&image2, c);
+    if (row1 == NULL || row2 == NULL) {
+      continue;  // Verified in AreImageFeaturesEqual().
     }
+    const uint32_t row_bytes1 = avifImagePlaneRowBytes(&image1, c);
+    const uint32_t row_bytes2 = avifImagePlaneRowBytes(&image2, c);
+    const uint32_t plane_width = avifImagePlaneWidth(&image1, c);
+    // 0 for A if no alpha and 0 for UV if 4:0:0.
+    const uint32_t plane_height = avifImagePlaneHeight(&image1, c);
+    for (uint32_t y = 0; y < plane_height; ++y) {
+      if (avifImageUsesU16(&image1)) {
+        if (!std::equal(reinterpret_cast<const uint16_t*>(row1),
+                        reinterpret_cast<const uint16_t*>(row1) + plane_width,
+                        reinterpret_cast<const uint16_t*>(row2))) {
+          return false;
+        }
+      } else {
+        if (!std::equal(row1, row1 + plane_width, row2)) {
+          return false;
+        }
+      }
+      row1 += row_bytes1;
+      row2 += row_bytes2;
+    }
+  }
+
+  if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
+      image2.gainMap != nullptr && image2.gainMap->image != nullptr &&
+      !AreImagesEqual(*image1.gainMap->image, *image2.gainMap->image)) {
+    return false;
+  }
+  return true;
+}
+
+bool AreImagesSimilar(const avifImage& image1, const avifImage& image2,
+                      double min_psnr, bool ignore_alpha) {
+  if (!AreImageFeaturesEqual(image1, image2, ignore_alpha)) {
+    return false;
+  }
+
+  if (GetPsnr(image1, image2, ignore_alpha) < min_psnr) {
+    return true;
+  }
+
+  if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
+      image2.gainMap != nullptr && image2.gainMap->image != nullptr &&
+      GetPsnr(*image1.gainMap->image, *image2.gainMap->image) < min_psnr) {
+    return false;
   }
   return true;
 }
