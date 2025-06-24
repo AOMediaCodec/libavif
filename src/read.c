@@ -4462,22 +4462,26 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY);
     }
 
+    uint32_t irotPropIndex = 0; // 0-based.
+    uint32_t imirPropIndex = 0;
     // Same behavior as avifImageExtractExifOrientationToIrotImir().
     if (orientation == 3 || orientation == 5 || orientation == 6 || orientation == 7 || orientation == 8) {
-        // Property with fixed index 9.
+        irotPropIndex = meta->properties.count; // Store index instead of pointer which may be invalidated by avifMetaCreateProperty().
+        // Property with fixed 1-based index 9.
+        assert(irotPropIndex + 1 == 9);
         avifProperty * irotProp = avifMetaCreateProperty(meta, "irot");
         AVIF_CHECKERR(irotProp, AVIF_RESULT_OUT_OF_MEMORY);
         irotProp->u.irot.angle = orientation == 3 ? 2 : (orientation == 5 || orientation == 8) ? 1 : 3;
-        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
     if (orientation == 2 || orientation == 4 || orientation == 5 || orientation == 7) {
-        // Property with fixed index 10.
+        imirPropIndex = meta->properties.count;
+        // Property with fixed 1-based index 10.
+        assert(imirPropIndex + 1 == 10);
         avifProperty * imirProp = avifMetaCreateProperty(meta, "imir");
         AVIF_CHECKERR(imirProp, AVIF_RESULT_OUT_OF_MEMORY);
         imirProp->u.imir.axis = orientation == 2 ? 1 : 0;
-        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
@@ -4592,6 +4596,34 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
     AVIF_ASSERT_OR_RETURN(meta->properties.count == 29);
+
+    // ISO/IEC 23008-12 Section 6.5.1:
+    //   Readers shall allow and ignore descriptive properties following the first transformative or unrecognized
+    //   property, whichever is earlier, in the sequence associating properties with an item.
+    //   Writers should arrange the descriptive properties specified in 6.5 prior to any other properties in the
+    //   sequence associating properties with an item.
+    //
+    // irot and imir are transformative properties, so associate them last.
+    if (irotPropIndex != 0) {
+        const avifProperty * irotProp = &meta->properties.prop[irotPropIndex];
+        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        if (hasAlpha) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+        if (gainmapItemDataSize != 0) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, irotProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+    }
+    if (imirPropIndex != 0) {
+        const avifProperty * imirProp = &meta->properties.prop[imirPropIndex];
+        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        if (hasAlpha) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+        if (gainmapItemDataSize != 0) {
+            AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, imirProp), AVIF_RESULT_OUT_OF_MEMORY);
+        }
+    }
 
     // Extents.
 
@@ -5773,7 +5805,47 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     return AVIF_RESULT_OK;
 }
 
-static avifResult aviDecoderCheckGainMapProperties(avifDecoder * decoder, const avifPropertyArray * gainMapProperties)
+static avifResult avifDecoderCheckAlphaProperties(avifDecoder * decoder, const avifPropertyArray * alphaProperties)
+{
+    const avifImage * image = decoder->image;
+    // The 'clap', 'irot' and 'imir' transformative properties should be applied to the alpha
+    // auxiliary image item before considering it a plane of the color image item.
+    // Alternatively, inequality with the transformative properties attached to the color image item
+    // should be treated as AVIF_RESULT_NOT_IMPLEMENTED.
+    // The latter is easier and is the behavior of libavif.
+
+    const avifProperty * clapProp = avifPropertyArrayFind(alphaProperties, "clap");
+    const avifProperty * irotProp = avifPropertyArrayFind(alphaProperties, "irot");
+    const avifProperty * imirProp = avifPropertyArrayFind(alphaProperties, "imir");
+    if (clapProp == NULL && irotProp == NULL && imirProp == NULL) {
+        // However, libavif up to version 1.3.0 generated images lacking transformative property
+        // associations with alpha auxiliary image items, so be lenient on their absence for
+        // backward compatibility with previously generated images.
+        return AVIF_RESULT_OK;
+    }
+
+    // TODO(yguyon): Check for 'ispe' values too.
+
+    if (!clapProp != !(image->transformFlags & AVIF_TRANSFORM_CLAP) ||
+        (clapProp && (clapProp->u.clap.widthN != image->clap.widthN || clapProp->u.clap.widthD != image->clap.widthD ||
+                      clapProp->u.clap.heightN != image->clap.heightN || clapProp->u.clap.heightD != image->clap.heightD ||
+                      clapProp->u.clap.horizOffN != image->clap.horizOffN || clapProp->u.clap.horizOffD != image->clap.horizOffD ||
+                      clapProp->u.clap.vertOffN != image->clap.vertOffN || clapProp->u.clap.vertOffD != image->clap.vertOffD))) {
+        avifDiagnosticsPrintf(&decoder->diag, "Clean aperture property mismatch between alpha auxiliary image item and color item");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if (!irotProp != !(image->transformFlags & AVIF_TRANSFORM_IROT) || (irotProp && irotProp->u.irot.angle != image->irot.angle)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Rotation property mismatch between alpha auxiliary image item and color item");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    if (!imirProp != !(image->transformFlags & AVIF_TRANSFORM_IMIR) || (imirProp && imirProp->u.imir.axis != image->imir.axis)) {
+        avifDiagnosticsPrintf(&decoder->diag, "Mirroring property mismatch between alpha auxiliary image item and color item");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+    return AVIF_RESULT_OK;
+}
+
+static avifResult avifDecoderCheckGainMapProperties(avifDecoder * decoder, const avifPropertyArray * gainMapProperties)
 {
     const avifImage * image = decoder->image;
     // libavif requires the bitstream contain the same 'pasp', 'clap', 'irot', 'imir'
@@ -5941,6 +6013,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     avifCodecType colorCodecType = AVIF_CODEC_TYPE_UNKNOWN;
     const avifPropertyArray * colorProperties = NULL;
+    const avifPropertyArray * alphaProperties = NULL;
     const avifPropertyArray * gainMapProperties = NULL;
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         avifTrack * colorTrack = NULL;
@@ -6012,8 +6085,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
                 continue;
             }
-            const avifPropertyArray * alphaProperties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
-            const avifProperty * auxiProp = alphaProperties ? avifPropertyArrayFind(alphaProperties, "auxi") : NULL;
+            const avifPropertyArray * properties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
+            const avifProperty * auxiProp = properties ? avifPropertyArrayFind(properties, "auxi") : NULL;
             // If auxi is present, check that it contains the alpha URN.
             // If auxi is not present, assume that the track is alpha. This is for backward compatibility with
             // old versions of libavif that did not write this property, see
@@ -6027,6 +6100,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             if (track->auxForID == colorTrack->id) {
                 // Found it!
+                alphaProperties = properties;
                 break;
             }
         }
@@ -6308,6 +6382,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->alphaPremultiplied = decoder->alphaPresent &&
                                              (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id);
 
+        if (mainItems[AVIF_ITEM_ALPHA]) {
+            alphaProperties = &mainItems[AVIF_ITEM_ALPHA]->properties;
+        }
         if (mainItems[AVIF_ITEM_GAIN_MAP]) {
             AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
             decoder->image->gainMap->image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
@@ -6380,8 +6457,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->transformFlags |= AVIF_TRANSFORM_IMIR;
         decoder->image->imir = imirProp->u.imir;
     }
-    if (gainMapProperties != NULL) {
-        AVIF_CHECKRES(aviDecoderCheckGainMapProperties(decoder, gainMapProperties));
+    if (alphaProperties) {
+        AVIF_CHECKRES(avifDecoderCheckAlphaProperties(decoder, alphaProperties));
+    }
+    if (gainMapProperties) {
+        AVIF_CHECKRES(avifDecoderCheckGainMapProperties(decoder, gainMapProperties));
     }
 
     if (!data->cicpSet && (data->tiles.count > 0)) {
