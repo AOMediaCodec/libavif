@@ -122,7 +122,9 @@ TEST(TransformTest, IrotAlphaEncodedDecoded) {
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                   encoded.size),
             AVIF_RESULT_OK);
-  EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
+  // Note that rav1e does not support lossless encoding as of v0.8.0.
+  // Otherwise AreImagesEqual() could be used here.
+  EXPECT_TRUE(testutil::AreImagesSimilar(*image, *decoded));
 
   // Check with existing correct AVIF file.
   const std::string ref_path =
@@ -134,7 +136,9 @@ TEST(TransformTest, IrotAlphaEncodedDecoded) {
   ASSERT_EQ(avifDecoderReadFile(ref_decoder.get(), ref_decoded.get(),
                                 ref_path.c_str()),
             AVIF_RESULT_OK);
-  EXPECT_TRUE(testutil::AreImagesEqual(*decoded, *ref_decoded));
+  // Note that rav1e does not support lossless encoding as of v0.8.0.
+  // Otherwise AreImagesEqual() could be used here.
+  EXPECT_TRUE(testutil::AreImagesSimilar(*decoded, *ref_decoded));
 
   // The rendering of the images should be compared but that is outside the
   // scope of libavif.
