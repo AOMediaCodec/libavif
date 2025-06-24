@@ -4477,7 +4477,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     }
     if (orientation == 2 || orientation == 4 || orientation == 5 || orientation == 7) {
         imirPropIndex = meta->properties.count;
-        // Property with fixed index 10.
+        // Property with fixed 1-based index 10.
         assert(imirPropIndex + 1 == 10);
         avifProperty * imirProp = avifMetaCreateProperty(meta, "imir");
         AVIF_CHECKERR(imirProp, AVIF_RESULT_OUT_OF_MEMORY);
