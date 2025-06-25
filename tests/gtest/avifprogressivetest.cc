@@ -71,15 +71,13 @@ class ProgressiveTest : public testing::Test {
 
 TEST_F(ProgressiveTest, QualityChange) {
   encoder_->extraLayerCount = 1;
-  encoder_->minQuantizer = 50;
-  encoder_->maxQuantizer = 50;
+  encoder_->quality = 21;
 
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
 
-  encoder_->minQuantizer = 0;
-  encoder_->maxQuantizer = 0;
+  encoder_->quality = 100;
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
@@ -101,8 +99,7 @@ TEST_F(ProgressiveTest, DimensionChange) {
   }
 
   encoder_->extraLayerCount = 1;
-  encoder_->minQuantizer = 0;
-  encoder_->maxQuantizer = 0;
+  encoder_->quality = 100;
   encoder_->scalingMode = {{1, 2}, {1, 2}};
 
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
@@ -121,16 +118,14 @@ TEST_F(ProgressiveTest, DimensionChange) {
 
 TEST_F(ProgressiveTest, LayeredGrid) {
   encoder_->extraLayerCount = 1;
-  encoder_->minQuantizer = 50;
-  encoder_->maxQuantizer = 50;
+  encoder_->quality = 21;
 
   avifImage* image_grid[2] = {image_.get(), image_.get()};
   ASSERT_EQ(avifEncoderAddImageGrid(encoder_.get(), 2, 1, image_grid,
                                     AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
 
-  encoder_->minQuantizer = 0;
-  encoder_->maxQuantizer = 0;
+  encoder_->quality = 100;
   ASSERT_EQ(avifEncoderAddImageGrid(encoder_.get(), 2, 1, image_grid,
                                     AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
