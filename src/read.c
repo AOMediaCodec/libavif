@@ -4598,8 +4598,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     AVIF_ASSERT_OR_RETURN(meta->properties.count == 29);
 
     // ISO/IEC 23008-12 Section 6.5.1:
-    //   Readers shall allow and ignore descriptive properties following the first transformative or unrecognized
-    //   property, whichever is earlier, in the sequence associating properties with an item.
     //   Writers should arrange the descriptive properties specified in 6.5 prior to any other properties in the
     //   sequence associating properties with an item.
     //
