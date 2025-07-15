@@ -18,9 +18,12 @@ The changes are relative to the previous release, unless the baseline is specifi
   after avifDecoderNextImage() when AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is
   enabled and when the file to decode contains a 'sato' derived image item.
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
+* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.1
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.14.4
 * Update LocalAom.cmake: AVM research-v10.0.1
-* Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
-  rav1e v0.8.0
+* Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
+  rav1e v0.8.1
+* Update zlibpng.cmd: libpng 1.6.50
 * Fix grayscale conversion when changing the bit depth.
 * Bump cmake_minimum_required from 3.13 to 3.22
 * Associate transformative properties with alpha auxiliary image items.
