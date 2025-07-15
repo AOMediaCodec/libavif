@@ -18,7 +18,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   after avifDecoderNextImage() when AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is
   enabled and when the file to decode contains a 'sato' derived image item.
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
-* Update LocalAom.cmake: AVM research-v10.0.0
+* Update LocalAom.cmake: AVM research-v10.0.1
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
   rav1e v0.8.0
 * Fix grayscale conversion when changing the bit depth.
