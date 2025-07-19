@@ -37,6 +37,7 @@ include(ExternalProject)
 include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
+include(GNUInstallDirs)
 
 option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23." OFF)
 
@@ -591,7 +592,9 @@ endif()
 # Main avif library.
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif PRIVATE avif_obj)
-target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_include_directories(
+    avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif INTERFACE AVIF_DLL)
     if(AVIF_LIB_USE_CXX)
@@ -634,10 +637,6 @@ endif()
 
 if(CMAKE_SKIP_INSTALL_RULES)
     set(SKIP_INSTALL_ALL TRUE)
-endif()
-
-if(NOT SKIP_INSTALL_ALL)
-    include(GNUInstallDirs)
 endif()
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
