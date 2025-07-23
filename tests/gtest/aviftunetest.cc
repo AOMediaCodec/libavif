@@ -37,8 +37,14 @@ TEST(AomTuneMetricTest, GenerateDifferentBitstreams) {
     ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder.get(), "tune", tune),
               AVIF_RESULT_OK);
     testutil::AvifRwData encoded;
-    ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
-              AVIF_RESULT_OK);
+    avifResult result = avifEncoderWrite(encoder.get(), image.get(), &encoded);
+    if (std::string(tune) == "iq" &&
+        result == AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION) {
+      // The aom version that libavif was built with likely does not support
+      // AOM_TUNE_IQ yet.
+      continue;
+    }
+    ASSERT_EQ(result, AVIF_RESULT_OK);
     for (const std::vector<uint8_t>& encoded_with_another_tune :
          encoded_bitstreams) {
       const bool is_same = encoded.size == encoded_with_another_tune.size() &&
@@ -75,15 +81,13 @@ TEST(AomSharpnessTest, GenerateDifferentBitstreams) {
   image->height = 64;
 
   std::vector<std::vector<uint8_t>> encoded_bitstreams;
-  for (bool set_sharpness_to_0 : {false, true}) {
+  for (const char* sharpness : {"0", "2"}) {
     EncoderPtr encoder(avifEncoderCreate());
     ASSERT_NE(encoder, nullptr);
     encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
-    if (set_sharpness_to_0) {
-      ASSERT_EQ(
-          avifEncoderSetCodecSpecificOption(encoder.get(), "sharpness", "0"),
-          AVIF_RESULT_OK);
-    }
+    ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder.get(), "sharpness",
+                                                sharpness),
+              AVIF_RESULT_OK);
     testutil::AvifRwData encoded;
     ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
               AVIF_RESULT_OK);
