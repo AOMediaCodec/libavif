@@ -64,9 +64,6 @@ struct avifCodecInternal
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
     avifBool monochromeEnabled;
-    // Whether 'tuning' (of the specified distortion metric) was set with an
-    // avifEncoderSetCodecSpecificOption(encoder, "tune", value) call.
-    avifBool tuningSet;
     uint32_t currentLayer;
 #endif
 };
@@ -373,6 +370,17 @@ static avifBool avifKeyEqualsName(const char * key, const char * name, avifBool 
            (!strncmp(key, shortPrefix, shortPrefixLen) && !strcmp(key + shortPrefixLen, name));
 }
 
+static avifBool avifAOMOptionsSetTuning(const avifCodec * codec, avifBool alpha)
+{
+    for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        if (avifKeyEqualsName(entry->key, "tune", alpha)) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
+}
+
 static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, struct aom_codec_enc_cfg * cfg)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
@@ -502,9 +510,6 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
                                   aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
-        if (!strcmp(key, "tune")) {
-            codec->internal->tuningSet = AVIF_TRUE;
-        }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
         avifBool match = AVIF_FALSE;
         for (int j = 0; aomOptionDefs[j].name; ++j) {
@@ -535,9 +540,6 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
                 }
                 if (!success) {
                     return AVIF_FALSE;
-                }
-                if (aomOptionDefs[j].controlId == AOME_SET_TUNING) {
-                    codec->internal->tuningSet = AVIF_TRUE;
                 }
                 break;
             }
@@ -991,10 +993,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
 #endif
 
-        if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
-            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-        }
-        if (!lossless && !codec->internal->tuningSet) {
+        if (!lossless && !avifAOMOptionsSetTuning(codec, alpha)) {
             aom_tune_metric tuneMetric = AOM_TUNE_SSIM;
             if (alpha) {
                 // Minimize ringing for alpha.
@@ -1010,6 +1009,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, tuneMetric) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
+        }
+        if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
         if (image->depth == 12) {

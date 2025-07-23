@@ -46,6 +46,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Use a "quality to quantizer (QP)" mapping formula designed for AOM_TUNE_IQ.
 * Use AOM_TUNE_IQ by default when encoding luma and chroma with libaom.
 * Use AOM_TUNE_PSNR by default when encoding alpha with libaom.
+* Set tuning before applying the user-provided specific aom codec options.
 
 ### Removed since 1.3.0
 
