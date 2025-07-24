@@ -3288,17 +3288,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     avifBoxMarker ftyp;
     AVIF_CHECKRES(avifRWStreamWriteBox(&s, "ftyp", AVIF_BOX_SIZE_TBD, &ftyp));
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4));              // unsigned int(32) major_brand;
-    AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));                 // unsigned int(32) minor_version;
-    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));                  // unsigned int(32) compatible_brands[];
-    if (useAvioBrand) {                                                    //
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4));              // ... compatible_brands[]
-    }                                                                      //
-    if (isSequence) {                                                      //
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4));              // ... compatible_brands[]
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4));              // ... compatible_brands[]
-        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "iso8", 4));              // ... compatible_brands[]
-    }                                                                      //
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, majorBrand, 4)); // unsigned int(32) major_brand;
+    AVIF_CHECKRES(avifRWStreamWriteU32(&s, minorVersion));    // unsigned int(32) minor_version;
+    AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avif", 4));     // unsigned int(32) compatible_brands[];
+    if (useAvioBrand) {                                       //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avio", 4)); // ... compatible_brands[]
+    } //
+    if (isSequence) {                                         //
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "avis", 4)); // ... compatible_brands[]
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "msf1", 4)); // ... compatible_brands[]
+        AVIF_CHECKRES(avifRWStreamWriteChars(&s, "iso8", 4)); // ... compatible_brands[]
+    } //
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, "mif1", 4));                  // ... compatible_brands[]
     AVIF_CHECKRES(avifRWStreamWriteChars(&s, "miaf", 4));                  // ... compatible_brands[]
     if ((imageMetadata->depth == 8) || (imageMetadata->depth == 10)) {     //
@@ -3553,8 +3553,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             { 0 },
             { 0 },
             { 0 },
-            { 0x40, 0x00, 0x00, 0x00 }
-            /* clang-format on */
+            { 0x40, 0x00, 0x00, 0x00 } /* clang-format on */
         };
 
         if (encoder->repetitionCount < 0 && encoder->repetitionCount != AVIF_REPETITION_COUNT_INFINITE) {
