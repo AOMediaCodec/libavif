@@ -178,7 +178,7 @@ The libavif library is written in C99. Most of the tests are written in C++14.
 ### Formatting
 
 Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the
-sources from the top-level folder (`clang-format-16` preferred):
+sources from the top-level folder (`clang-format-19` preferred):
 
 ```sh
 clang-format -style=file -i \
