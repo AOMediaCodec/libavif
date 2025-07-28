@@ -10,9 +10,9 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Black opaque letters "abc" written on a translucent white background.
 
-### File [abc_color_irot_alpha_irot.png](abc_color_irot_alpha_irot.png)
+### File [abc_color_irot_alpha_irot.avif](abc_color_irot_alpha_irot.avif)
 
-![](abc_color_irot_alpha_irot.png)
+![](abc_color_irot_alpha_irot.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -20,9 +20,9 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 `irot` transformative property and the alpha auxiliary image item corresponding
 to the same rotation applied to the color image item.
 
-### File [abc_color_irot_alpha_NOirot.png](abc_color_irot_alpha_NOirot.png)
+### File [abc_color_irot_alpha_NOirot.avif](abc_color_irot_alpha_NOirot.avif)
 
-![](abc_color_irot_alpha_NOirot.png)
+![](abc_color_irot_alpha_NOirot.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
