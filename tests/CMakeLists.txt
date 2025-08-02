@@ -142,6 +142,7 @@ if(AVIF_GTEST)
 
     add_avif_gtest(aviftilingtest)
     add_avif_gtest_with_data(aviftransformtest)
+    add_avif_gtest_with_data(aviftunetest)
     add_avif_gtest(avifutilstest)
     add_avif_gtest(avify4mtest)
 
@@ -150,8 +151,8 @@ if(AVIF_GTEST)
         # these tests are disabled because other codecs may not implement all the necessary features.
         # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
         set_tests_properties(
-            avifallocationtest avifgridapitest avifincrtest aviflosslesstest avifmetadatatest avifpixitest PROPERTIES DISABLED
-                                                                                                                      True
+            avifallocationtest avifgridapitest avifincrtest aviflosslesstest avifmetadatatest avifpixitest aviftunetest
+            PROPERTIES DISABLED True
         )
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
@@ -345,6 +346,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifprogressivetest
                 avifpropertytest
                 avifrangetest
+                aviftunetest
                 avify4mtest
                 PROPERTIES DISABLED True
             )
