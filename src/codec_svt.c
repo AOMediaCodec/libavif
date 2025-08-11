@@ -142,11 +142,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         svt_config->encoder_color_format = color_format;
         svt_config->encoder_bit_depth = (uint8_t)image->depth;
 
-        // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
-        // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
-        // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
-        // It may also save 3 bytes since the AV1 encoder may set color_description_present_flag to 0
-        // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
+        // AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+        //   The values of the fields in the AV1CodecConfigurationBox shall match those
+        //   of the Sequence Header OBU in the AV1 Image Item Data.
+        // CICP values could be set to 2/2/2 (Unspecified) in the Sequence Header OBU for
+        // simplicity and to save 3 bytes, but some decoders ignore the colr box and rely
+        // on the OBU contents instead. See #2850.
         svt_config->color_primaries = (EbColorPrimaries)image->colorPrimaries;
         svt_config->transfer_characteristics = (EbTransferCharacteristics)image->transferCharacteristics;
         svt_config->matrix_coefficients = (EbMatrixCoefficients)image->matrixCoefficients;
