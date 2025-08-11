@@ -208,9 +208,9 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         // It may also save 3 bytes since the AV1 encoder may set color_description_present_flag to 0
         // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
         rav1e_config_set_color_description(rav1eConfig,
-                                           RA_MATRIX_COEFFICIENTS_UNSPECIFIED,
-                                           RA_COLOR_PRIMARIES_UNSPECIFIED,
-                                           RA_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+                                           (RaMatrixCoefficients)image->matrixCoefficients,
+                                           (RaColorPrimaries)image->colorPrimaries,
+                                           (RaTransferCharacteristics)image->transferCharacteristics);
 
         codec->internal->rav1eContext = rav1e_context_new(rav1eConfig);
         if (!codec->internal->rav1eContext) {

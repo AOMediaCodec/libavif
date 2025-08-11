@@ -848,12 +848,21 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Keep default Unspecified (2) colour primaries, transfer characteristics,
             // and matrix coefficients.
         } else {
-            // libaom's defaults are AOM_CSP_UNKNOWN and 0 (studio/limited range).
-            // Call aom_codec_control() only if the values are not the defaults.
-
+            // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
+            // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
+            // aom_codec_control() only if the values are not the defaults.
             // AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
             //   The values of the fields in the AV1CodecConfigurationBox shall match those
             //   of the Sequence Header OBU in the AV1 Image Item Data.
+            if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
+            }
+            if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
+            }
+            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
+            }
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
                 aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
             }
@@ -1097,6 +1106,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
         //   The values of the fields in the AV1CodecConfigurationBox shall match those
         //   of the Sequence Header OBU in the AV1 Image Item Data.
+        aomImage.cp = (aom_color_primaries_t)image->colorPrimaries;
+        aomImage.tc = (aom_transfer_characteristics_t)image->transferCharacteristics;
+        aomImage.mc = (aom_matrix_coefficients_t)image->matrixCoefficients;
         aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
 
         // AV1-ISOBMFF specification, Section 2.3.4:

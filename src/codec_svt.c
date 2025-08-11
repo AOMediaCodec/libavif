@@ -147,9 +147,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
         // It may also save 3 bytes since the AV1 encoder may set color_description_present_flag to 0
         // (see Section 5.5.2 "Color config syntax" of the AV1 specification).
-        svt_config->color_primaries = EB_CICP_CP_UNSPECIFIED;
-        svt_config->transfer_characteristics = EB_CICP_TC_UNSPECIFIED;
-        svt_config->matrix_coefficients = EB_CICP_MC_UNSPECIFIED;
+        svt_config->color_primaries = (EbColorPrimaries)image->colorPrimaries;
+        svt_config->transfer_characteristics = (EbTransferCharacteristics)image->transferCharacteristics;
+        svt_config->matrix_coefficients = (EbMatrixCoefficients)image->matrixCoefficients;
 
         svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)

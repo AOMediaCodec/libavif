@@ -28,6 +28,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix grayscale conversion when changing the bit depth.
 * Bump cmake_minimum_required from 3.13 to 3.22
 * Associate transformative properties with alpha auxiliary image items.
+* Always forward the CICP color primaries, transfer characteristics,
+  and matrix coefficients to the AV1 encoder, which writes them in the Sequence
+  Header OBU, for compatibility with libraries that wrongly ignore the colr box.
 
 ### Removed since 1.3.0
 
