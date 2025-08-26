@@ -28,8 +28,9 @@ TEST_P(CicpTest, EncodeDecode) {
   const avifPlanesFlag planes = std::get<5>(GetParam());
   const avifRange range = std::get<6>(GetParam());
 
+  // At least 64x64 to support SVT-AV1 older than v3.0.0.
   ImagePtr image =
-      testutil::CreateImage(32, 32, /*depth=*/8, subsampling, planes, range);
+      testutil::CreateImage(64, 64, /*depth=*/8, subsampling, planes, range);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());
   image->colorPrimaries = cp;
