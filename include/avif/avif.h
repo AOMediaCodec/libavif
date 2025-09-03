@@ -613,8 +613,8 @@ typedef struct avifContentLightLevelInformationBox
 
 // ---------------------------------------------------------------------------
 // avifGainMap
-// Gain Maps are a solution for a consistent and adaptive display of HDR images.
-// This product includes Gain Map technology under license by Adobe.
+// Gain Maps are a solution for a consistent and adaptive display of HDR images
+// standardized in ISO 21496-1.
 //
 // Terms:
 // base image: main image stored in the file, shown by viewers that do not support
@@ -1696,7 +1696,6 @@ AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * i
 // The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
 // 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
-// NOTE: only used in tests for now, might be added to the public API at some point.
 AVIF_API avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                           const avifGainMap * gainMap,
                                           float hdrHeadroom,
