@@ -88,7 +88,11 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
             if (spatialID != AVIF_SPATIAL_ID_UNSET) {
+#if CONFIG_NEW_OBU_HEADER
+                if (spatialID == nextFrame->mlayer_id) {
+#else
                 if (spatialID == nextFrame->spatial_id) {
+#endif // CONFIG_NEW_OBU_HEADER
                     // Found the correct spatial_id.
                     break;
                 }
@@ -302,12 +306,12 @@ static avifBool aomOptionParseEnum(const char * str, const struct aomOptionEnumL
     return AVIF_FALSE;
 }
 
-static const struct aomOptionEnumList endUsageEnum[] = { //
-    { "vbr", AOM_VBR },                                  // Variable Bit Rate (VBR) mode
-    { "cbr", AOM_CBR },                                  // Constant Bit Rate (CBR) mode
-    { "cq", AOM_CQ },                                    // Constrained Quality (CQ) mode
-    { "q", AOM_Q },                                      // Constant Quality (Q) mode
-    { NULL, 0 }
+static const struct aomOptionEnumList endUsageEnum[] = {                     //
+                                                         { "vbr", AOM_VBR }, // Variable Bit Rate (VBR) mode
+                                                         { "cbr", AOM_CBR }, // Constant Bit Rate (CBR) mode
+                                                         { "cq", AOM_CQ },   // Constrained Quality (CQ) mode
+                                                         { "q", AOM_Q },     // Constant Quality (Q) mode
+                                                         { NULL, 0 }
 };
 
 // Returns true if <key> equals <name> or <prefix><name>, where <prefix> is "color:" or "alpha:"
@@ -611,7 +615,13 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         }
         if (encoder->extraLayerCount > 0) {
             int layerCount = encoder->extraLayerCount + 1;
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_SPATIAL_LAYERS, layerCount) != AOM_CODEC_OK) {
+            if (aom_codec_control(&codec->internal->encoder,
+#if CONFIG_NEW_OBU_HEADER
+                                  AOME_SET_NUMBER_MLAYERS,
+#else
+                                  AOME_SET_NUMBER_SPATIAL_LAYERS,
+#endif // CONFIG_NEW_OBU_HEADER
+                                  layerCount) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
@@ -757,7 +767,13 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (encoder->extraLayerCount > 0) {
-        aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, codec->internal->currentLayer);
+        aom_codec_control(&codec->internal->encoder,
+#if CONFIG_NEW_OBU_HEADER
+                          AOME_SET_MLAYER_ID,
+#else
+                          AOME_SET_SPATIAL_LAYER_ID,
+#endif // CONFIG_NEW_OBU_HEADER
+                          codec->internal->currentLayer);
     }
 
     aom_scaling_mode_t aomScalingMode;
