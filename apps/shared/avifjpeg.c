@@ -603,7 +603,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         return AVIF_FALSE;
     }
 
-    // Set default values from Adobe's spec.
     double baseHdrHeadroom = 0.0;
     double alternateHdrHeadroom = 1.0;
     double gainMapMin[3] = { 0.0, 0.0, 0.0 };
@@ -651,7 +650,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     }
     AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroom));
     AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroom));
-    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
+    // Not in the XMP metadata but both color spaces should be the same so this value doesn't matter.
     gainMap->useBaseColorSpace = AVIF_TRUE;
 
     return AVIF_TRUE;
