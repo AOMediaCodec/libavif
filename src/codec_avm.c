@@ -165,7 +165,22 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
 
         image->yuvFormat = yuvFormat;
         image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+#if CONFIG_NEW_CSP
+        if (codec->internal->image->csp == AOM_CSP_LEFT) {
+            // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
+            image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+        } else if (codec->internal->image->csp == AOM_CSP_CENTER) {
+            // CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
+            image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        } else if (codec->internal->image->csp == AOM_CSP_TOPLEFT) {
+            // CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
+            image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+        } else {
+            image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        }
+#else
         image->yuvChromaSamplePosition = (avifChromaSamplePosition)codec->internal->image->csp;
+#endif // CONFIG_NEW_CSP
 
         image->colorPrimaries = (avifColorPrimaries)codec->internal->image->cp;
         image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
@@ -889,7 +904,22 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
         //   The values of the fields in the AV1CodecConfigurationBox shall match those
         //   of the Sequence Header OBU in the AV1 Image Item Data.
+#if CONFIG_NEW_CSP
+        if (image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL) {
+            // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
+            aomImage.csp = AOM_CSP_LEFT;
+        } else if (image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_COLOCATED) {
+            // CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
+            aomImage.csp = AOM_CSP_TOPLEFT;
+        } else if (image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_RESERVED) {
+            // CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
+            aomImage.csp = AOM_CSP_CENTER;
+        } else { // AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN or invalid values
+            aomImage.csp = AOM_CSP_UNSPECIFIED;
+        }
+#else
         aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
+#endif // CONFIG_NEW_CSP
 
         // AV1-ISOBMFF specification, Section 2.3.4:
         //   The value of full_range_flag in the 'colr' box SHALL match the color_range
