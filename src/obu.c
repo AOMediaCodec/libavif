@@ -442,7 +442,7 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
             if (csp_present_flag) {
                 chromaSamplePosition = avifBitsRead(bits, 3);
                 if (chromaSamplePosition > 5) {
-                    // Invaid chroma_sample_position.
+                    // Invalid chroma_sample_position.
                     return AVIF_FALSE;
                 }
             }
