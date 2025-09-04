@@ -594,7 +594,7 @@ static inline void SwapDoubles(double * x, double * y)
 }
 
 // Parses gain map metadata from XMP.
-// See https://helpx.adobe.com/camera-raw/using/gain-map.html
+// See https://developer.android.com/media/platform/hdr-image-format
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
 static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMap * gainMap)
 {
@@ -603,7 +603,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         return AVIF_FALSE;
     }
 
-    // Set default values from Adobe's spec.
     double baseHdrHeadroom = 0.0;
     double alternateHdrHeadroom = 1.0;
     double gainMapMin[3] = { 0.0, 0.0, 0.0 };
@@ -619,8 +618,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3));
 
-    // See inequality requirements in section 'XMP Representation of Gain Map Metadata' of Adobe's gain map specification
-    // https://helpx.adobe.com/camera-raw/using/gain-map.html
     AVIF_CHECK(alternateHdrHeadroom > baseHdrHeadroom);
     AVIF_CHECK(baseHdrHeadroom >= 0);
     for (int i = 0; i < 3; ++i) {
@@ -653,7 +650,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     }
     AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroom));
     AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroom));
-    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
+    // Not in the XMP metadata but both color spaces should be the same so this value doesn't matter.
     gainMap->useBaseColorSpace = AVIF_TRUE;
 
     return AVIF_TRUE;
@@ -675,8 +672,8 @@ avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGa
 
 // Parses an MPF (Multi-Picture File) JPEG metadata segment to find the location of other
 // images, and decodes the gain map image (as determined by having gain map XMP metadata) into 'avif'.
-// See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
-// and https://helpx.adobe.com/camera-raw/using/gain-map.html in particular Figures 1 to 6.
+// See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html,
+// (in particular Figures 1 to 6) and https://developer.android.com/media/platform/hdr-image-format.
 // Returns AVIF_FALSE if no gain map was found.
 static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                                    uint32_t sizeLimit,
@@ -808,7 +805,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
 // Looks for an MPF (Multi-Picture Format) segment then loops through the linked images to see
 // if one of them has gain map XMP metadata.
 // See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
-// and https://helpx.adobe.com/camera-raw/using/gain-map.html
+// and https://developer.android.com/media/platform/hdr-image-format
 // Returns AVIF_TRUE if a gain map was found.
 static avifBool avifJPEGExtractGainMapImage(FILE * f,
                                             uint32_t sizeLimit,
