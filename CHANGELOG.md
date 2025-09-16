@@ -20,7 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.1
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.14.4
-* Update aom.cmd/LocalAom.cmake: v3.13.0
+* Update aom.cmd/LocalAom.cmake: v3.13.1
 * Update LocalAom.cmake: AVM research-v11.0.0
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
   rav1e v0.8.1
