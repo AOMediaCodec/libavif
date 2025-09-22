@@ -173,7 +173,7 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             }
             avifRemoveHeader(&xmpApp1Header, &avif->xmp); // Ignore the return value because the header is optional.
             *ignoreXMP = AVIF_TRUE;                       // Ignore any other XMP chunk.
-        } else if (!strcmp(text->key, "Raw profile type APP1")) {
+        } else if (!strcmp(text->key, "Raw profile type APP1") || !strcmp(text->key, "Raw profile type app1")) { // ImageMagick uses lowercase app1.
             // This can be either Exif, XMP or something else.
             avifRWData metadata = { NULL, 0 };
             if (!avifCopyRawProfile(text->text, textLength, &metadata)) {
@@ -224,17 +224,18 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
 // modified between setjmp and longjmp. But GCC's -Wclobbered warning may have
 // trouble figuring that out, so we preemptively declare them as volatile.
 
-avifBool avifPNGRead(const char * inputFilename,
-                     avifImage * avif,
-                     avifPixelFormat requestedFormat,
-                     uint32_t requestedDepth,
-                     avifChromaDownsampling chromaDownsampling,
-                     avifBool ignoreColorProfile,
-                     avifBool ignoreExif,
-                     avifBool ignoreXMP,
-                     avifBool allowChangingCicp,
-                     uint32_t imageSizeLimit,
-                     uint32_t * outPNGDepth)
+static avifBool avifPNGReadImpl(FILE * f,
+                                const char * inputFilename,
+                                avifImage * avif,
+                                avifPixelFormat requestedFormat,
+                                uint32_t requestedDepth,
+                                avifChromaDownsampling chromaDownsampling,
+                                avifBool ignoreColorProfile,
+                                avifBool ignoreExif,
+                                avifBool ignoreXMP,
+                                avifBool allowChangingCicp,
+                                uint32_t imageSizeLimit,
+                                uint32_t * outPNGDepth)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -243,12 +244,6 @@ avifBool avifPNGRead(const char * inputFilename,
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
-
-    FILE * f = fopen(inputFilename, "rb");
-    if (!f) {
-        fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
-        goto cleanup;
-    }
 
     uint8_t header[8];
     size_t bytesRead = fread(header, 1, 8, f);
@@ -298,9 +293,7 @@ avifBool avifPNGRead(const char * inputFilename,
         png_set_tRNS_to_alpha(png);
     }
 
-    if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
-        png_set_gray_to_rgb(png);
-    }
+    const avifBool rawColorTypeIsGray = (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA);
 
     int imgBitDepth = 8;
     if (rawBitDepth == 16) {
@@ -317,21 +310,15 @@ avifBool avifPNGRead(const char * inputFilename,
     avif->width = rawWidth;
     avif->height = rawHeight;
     avif->yuvFormat = requestedFormat;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
         fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with PNG because it has an even bit depth.\n");
         goto cleanup;
     }
-    const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
-#endif
     if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
-        if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+        if (rawColorTypeIsGray) {
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-        } else if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                   || useYCgCoR
-#endif
-        ) {
+        } else if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
+                   avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
             // Identity and YCgCo-R are only valid with YUV444.
             avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
         } else {
@@ -346,8 +333,7 @@ avifBool avifPNGRead(const char * inputFilename,
             avif->depth = 12;
         }
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    if (useYCgCoR) {
+    if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
         if (imgBitDepth != 8) {
             fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RE cannot be used on 16 bit input because it adds two bits.\n");
             goto cleanup;
@@ -358,7 +344,6 @@ avifBool avifPNGRead(const char * inputFilename,
         }
         avif->depth = 10;
     }
-#endif
 
     if (!ignoreColorProfile) {
         char * iccpProfileName = NULL;
@@ -373,6 +358,18 @@ avifBool avifPNGRead(const char * inputFilename,
         // When the sRGB / iCCP chunk is present, applications that recognize it and are capable of color management
         // must ignore the gAMA and cHRM chunks and use the sRGB / iCCP chunk instead.
         if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+            if (!rawColorTypeIsGray && avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains a color ICC profile which is incompatible with the requested output "
+                        "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
+            if (rawColorTypeIsGray && avif->yuvFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains a gray ICC profile which is incompatible with the requested output "
+                        "format YUV (color). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
             if (avifImageSetProfileICC(avif, iccpData, iccpDataLen) != AVIF_RESULT_OK) {
                 fprintf(stderr, "Setting ICC profile failed: out of memory.\n");
                 goto cleanup;
@@ -452,8 +449,8 @@ avifBool avifPNGRead(const char * inputFilename,
     }
 
     const int numChannels = png_get_channels(png, info);
-    if ((numChannels != 3) && (numChannels != 4)) {
-        fprintf(stderr, "png_get_channels() should return 3 or 4 but returns %d.\n", numChannels);
+    if (numChannels < 1 || numChannels > 4) {
+        fprintf(stderr, "png_get_channels() should return 1, 2, 3 or 4 but returns %d.\n", numChannels);
         goto cleanup;
     }
     if (avif->width > imageSizeLimit / avif->height) {
@@ -464,7 +461,11 @@ avifBool avifPNGRead(const char * inputFilename,
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
-    if (numChannels == 3) {
+    if (numChannels == 1) {
+        rgb.format = AVIF_RGB_FORMAT_GRAY;
+    } else if (numChannels == 2) {
+        rgb.format = AVIF_RGB_FORMAT_GRAYA;
+    } else if (numChannels == 3) {
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
@@ -509,9 +510,6 @@ avifBool avifPNGRead(const char * inputFilename,
     readResult = AVIF_TRUE;
 
 cleanup:
-    if (f) {
-        fclose(f);
-    }
     if (png) {
         png_destroy_read_struct(&png, &info, NULL);
     }
@@ -520,6 +518,49 @@ cleanup:
     }
     avifRGBImageFreePixels(&rgb);
     return readResult;
+}
+
+avifBool avifPNGRead(const char * inputFilename,
+                     avifImage * avif,
+                     avifPixelFormat requestedFormat,
+                     uint32_t requestedDepth,
+                     avifChromaDownsampling chromaDownsampling,
+                     avifBool ignoreColorProfile,
+                     avifBool ignoreExif,
+                     avifBool ignoreXMP,
+                     avifBool allowChangingCicp,
+                     uint32_t imageSizeLimit,
+                     uint32_t * outPNGDepth)
+{
+    FILE * f;
+    if (inputFilename) {
+        f = fopen(inputFilename, "rb");
+        if (!f) {
+            fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
+            return AVIF_FALSE;
+        }
+    } else {
+        f = stdin;
+        inputFilename = "(stdin)";
+    }
+
+    const avifBool res = avifPNGReadImpl(f,
+                                         inputFilename,
+                                         avif,
+                                         requestedFormat,
+                                         requestedDepth,
+                                         chromaDownsampling,
+                                         ignoreColorProfile,
+                                         ignoreExif,
+                                         ignoreXMP,
+                                         allowChangingCicp,
+                                         imageSizeLimit,
+                                         outPNGDepth);
+
+    if (f != stdin) {
+        fclose(f);
+    }
+    return res;
 }
 
 //------------------------------------------------------------------------------
@@ -541,7 +582,6 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     if (rgbDepth == 0) {
         rgbDepth = (avif->depth > 8) ? 16 : 8;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
         fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with PNG because it has an even bit depth.\n");
         goto cleanup;
@@ -558,7 +598,6 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
         rgbDepth = 8;
     }
-#endif
 
     volatile avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
                                        (rgbDepth == 8);
@@ -568,12 +607,20 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         colorType = PNG_COLOR_TYPE_GRAY;
     } else {
         avifRGBImageSetDefaults(&rgb, avif);
-        rgb.chromaUpsampling = chromaUpsampling;
         rgb.depth = rgbDepth;
-        colorType = PNG_COLOR_TYPE_RGBA;
-        if (avifImageIsOpaque(avif)) {
-            colorType = PNG_COLOR_TYPE_RGB;
-            rgb.format = AVIF_RGB_FORMAT_RGB;
+        if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && avif->alphaPlane) {
+            colorType = PNG_COLOR_TYPE_GRAY_ALPHA;
+            rgb.format = AVIF_RGB_FORMAT_GRAYA;
+        } else if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && !avif->alphaPlane) {
+            colorType = PNG_COLOR_TYPE_GRAY;
+            rgb.format = AVIF_RGB_FORMAT_GRAY;
+        } else {
+            rgb.chromaUpsampling = chromaUpsampling;
+            colorType = PNG_COLOR_TYPE_RGBA;
+            if (avifImageIsOpaque(avif)) {
+                colorType = PNG_COLOR_TYPE_RGB;
+                rgb.format = AVIF_RGB_FORMAT_RGB;
+            }
         }
         if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);

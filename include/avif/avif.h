@@ -78,8 +78,8 @@ extern "C" {
 // downstream projects to do greater-than preprocessor checks on AVIF_VERSION
 // to leverage in-development code without breaking their stable builds.
 #define AVIF_VERSION_MAJOR 1
-#define AVIF_VERSION_MINOR 1
-#define AVIF_VERSION_PATCH 1
+#define AVIF_VERSION_MINOR 3
+#define AVIF_VERSION_PATCH 0
 #define AVIF_VERSION_DEVEL 1
 #define AVIF_VERSION \
     ((AVIF_VERSION_MAJOR * 1000000) + (AVIF_VERSION_MINOR * 10000) + (AVIF_VERSION_PATCH * 100) + AVIF_VERSION_DEVEL)
@@ -101,9 +101,9 @@ typedef int avifBool;
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
 #define AVIF_QUALITY_DEFAULT -1
-#define AVIF_QUALITY_LOSSLESS 100
 #define AVIF_QUALITY_WORST 0
 #define AVIF_QUALITY_BEST 100
+#define AVIF_QUALITY_LOSSLESS 100
 
 #define AVIF_QUANTIZER_LOSSLESS 0
 #define AVIF_QUANTIZER_BEST_QUALITY 0
@@ -210,22 +210,29 @@ AVIF_API const char * avifResultToString(avifResult result);
 // ---------------------------------------------------------------------------
 // avifHeaderFormat
 
+// Bit flag for selecting container strategies when encoding an image.
 typedef enum avifHeaderFormat
 {
-    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
-    AVIF_HEADER_FULL,
+    AVIF_HEADER_DEFAULT = 0x0,
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
     // AVIF file with a "mif3" brand and a MinimizedImageBox to reduce the encoded file size.
     // This is based on the w24144 "Low-overhead image file format" MPEG proposal for HEIF.
     // WARNING: Experimental feature. Produces files that are incompatible with older decoders.
-    AVIF_HEADER_REDUCED,
+    // If this flag is omitted or if MinimizedImageBox cannot be used at encoding, falls back to an
+    // AVIF file with an "avif" brand, a MetaBox and all its required boxes for maximum compatibility.
+    AVIF_HEADER_MINI = 0x1,
 #endif
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
     // Use the full syntax of the PixelInformationProperty from HEIF 3rd edition Amendment 2.
     // WARNING: Experimental feature. Produces files that may be incompatible with older decoders.
-    AVIF_HEADER_FULL_WITH_EXTENDED_PIXI,
+    // Only relevant if a MetaBox is used. No effect if a MinimizedImageBox is used.
+    AVIF_HEADER_EXTENDED_PIXI = 0x2,
 #endif
+
+    // Deprecated.
+    AVIF_HEADER_FULL = AVIF_HEADER_DEFAULT,
 } avifHeaderFormat;
+typedef int avifHeaderFormatFlags;
 
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
@@ -402,10 +409,8 @@ enum
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL = 12,
     AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL = 13,
     AVIF_MATRIX_COEFFICIENTS_ICTCP = 14,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    AVIF_MATRIX_COEFFICIENTS_YCGCO_RE = 16,
-    AVIF_MATRIX_COEFFICIENTS_YCGCO_RO = 17,
-#endif
+    AVIF_MATRIX_COEFFICIENTS_YCGCO_RE = 16, // Added to libavif in Feb 2025
+    AVIF_MATRIX_COEFFICIENTS_YCGCO_RO = 17, // Added to libavif in Feb 2025
     AVIF_MATRIX_COEFFICIENTS_LAST
 };
 typedef uint16_t avifMatrixCoefficients; // AVIF_MATRIX_COEFFICIENTS_*
@@ -608,13 +613,8 @@ typedef struct avifContentLightLevelInformationBox
 
 // ---------------------------------------------------------------------------
 // avifGainMap
-// Gain Maps are a solution for a consistent and adaptive display of HDR images.
-// Gain Maps are a HIGHLY EXPERIMENTAL FEATURE. The format might still change and
-// images containing a gain map encoded with the current version of libavif might
-// not decode with a future version of libavif. The API is not guaranteed
-// to be stable, and might even be removed in the future. Use at your own risk.
-// This is based on ISO/IEC JTC 1/SC 29/WG 3 m64379
-// This product includes Gain Map technology under license by Adobe.
+// Gain Maps are a solution for a consistent and adaptive display of HDR images
+// standardized in ISO 21496-1.
 //
 // Terms:
 // base image: main image stored in the file, shown by viewers that do not support
@@ -626,7 +626,9 @@ typedef struct avifContentLightLevelInformationBox
 struct avifImage;
 
 // Gain map image and associated metadata.
-// Must be allocated by calling avifGainMapCreate().
+//
+// NOTE: The avifGainMap struct may be extended in a future release. Code outside the libavif
+// library must allocate avifGainMap by calling the avifGainMapCreate() function.
 typedef struct avifGainMap
 {
     // Gain map pixels.
@@ -707,6 +709,8 @@ typedef struct avifGainMap
     // Optimal viewing conditions of the alternate image ('clli' box content
     // of the alternate image that the gain map was created from).
     avifContentLightLevelInformationBox altCLLI;
+
+    // Version 1.2.0 ends here. Add any new members after this line.
 } avifGainMap;
 
 // Allocates a gain map. Returns NULL if a memory allocation failed.
@@ -833,7 +837,7 @@ typedef struct avifImage
                      // byte sequence, can be retrieved by calling avifGetExifTiffHeaderOffset(avifImage.exif).
     avifRWData xmp;
 
-    // Version 1.0.0 ends here. Add any new members after this line.
+    // Version 1.0.0 ends here.
 
     // Other properties attached to this image item (primary or gainmap).
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
@@ -846,6 +850,8 @@ typedef struct avifImage
     // Owned by the avifImage and gets freed when calling avifImageDestroy().
     // gainMap->image->transformFlags is always AVIF_TRANSFORM_NONE.
     avifGainMap * gainMap;
+
+    // Version 1.2.0 ends here. Add any new members after this line.
 } avifImage;
 
 // avifImageCreate() and avifImageCreateEmpty() return NULL if arguments are invalid or if a memory allocation failed.
@@ -961,10 +967,14 @@ typedef enum avifRGBFormat
     // This format is only supported for YUV -> RGB conversion and when
     // avifRGBImage.depth is set to 8.
     AVIF_RGB_FORMAT_RGB_565,
+    AVIF_RGB_FORMAT_GRAY,
+    AVIF_RGB_FORMAT_GRAYA,
+    AVIF_RGB_FORMAT_AGRAY,
     AVIF_RGB_FORMAT_COUNT
 } avifRGBFormat;
 AVIF_API uint32_t avifRGBFormatChannelCount(avifRGBFormat format);
 AVIF_API avifBool avifRGBFormatHasAlpha(avifRGBFormat format);
+AVIF_API avifBool avifRGBFormatIsGray(avifRGBFormat format);
 
 typedef enum avifChromaUpsampling
 {
@@ -1363,11 +1373,14 @@ typedef struct avifDecoder
     // to the appropriate source.
     avifBool imageSequenceTrackPresent; // Output data field.
 
-    // Version 1.1.0 ends here. Add any new members after this line.
+    // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------
 
     // Image content to decode (if present). Defaults to AVIF_IMAGE_CONTENT_DECODE_DEFAULT.
     avifImageContentTypeFlags imageContentToDecode; // Changeable decoder setting.
+
+    // Version 1.2.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 } avifDecoder;
 
 // Creates a decoder initialized with default settings values.
@@ -1528,6 +1541,20 @@ typedef struct avifEncoder
     int quality;
     // Encode quality for the alpha layer if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityAlpha;
+    // Note: libavif internally converts between quality and quantizer using the
+    // following formulas. Both variables are of the int type and the division
+    // is integer division.
+    //   quantizer = ((100 - quality) * 63 + 50) / 100
+    //   quality = ((63 - quantizer) * 100 + 31) / 63
+    //
+    // These formulas are the integer equivalents of the following formulas:
+    //   quantizer = (int)round(((100.0 - quality) * 63.0) / 100.0)
+    //   quality = (int)round(((63.0 - quantizer) * 100.0) / 63.0)
+    //
+    // The conversion formulas have two nice properties:
+    // 1. Each quantizer in 0..63 can be converted to quality and back to itself.
+    // 2. The lossless quality 100 is the only quality that is converted to the
+    //    lossless quantizer 0, and vice versa.
     int minQuantizer;      // Deprecated, use `quality` instead.
     int maxQuantizer;      // Deprecated, use `quality` instead.
     int minQuantizerAlpha; // Deprecated, use `qualityAlpha` instead.
@@ -1564,14 +1591,17 @@ typedef struct avifEncoder
     // Version 1.0.0 ends here.
     // --------------------------------------------------------------------------------------------
 
-    // Defaults to AVIF_HEADER_FULL
-    avifHeaderFormat headerFormat; // Changeable encoder setting.
+    // Defaults to AVIF_HEADER_DEFAULT
+    avifHeaderFormatFlags headerFormat; // Changeable encoder setting.
 
-    // Version 1.1.0 ends here. Add any new members after this line.
+    // Version 1.1.0 ends here.
     // --------------------------------------------------------------------------------------------
 
     // Encode quality for the gain map image if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityGainMap; // Changeable encoder setting.
+
+    // Version 1.2.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
@@ -1661,14 +1691,11 @@ AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * i
 
 // ---------------------------------------------------------------------------
 // Gain Map utilities.
-// Gain Maps are a HIGHLY EXPERIMENTAL FEATURE, see comments in the avifGainMap
-// section above.
 
 // Performs tone mapping on a base image using the provided gain map.
 // The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
 // 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
-// NOTE: only used in tests for now, might be added to the public API at some point.
 AVIF_API avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                           const avifGainMap * gainMap,
                                           float hdrHeadroom,
@@ -1690,8 +1717,7 @@ AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                                              avifDiagnostics * diag);
 
 // Computes a gain map between two images: a base image and an alternate image.
-// Both images should have the same width and height, and use the same color
-// primaries. TODO(maryla): allow different primaries.
+// Both images should have the same width and height.
 // gainMap->image should be initialized with avifImageCreate(), with the width,
 // height, depth and yuvFormat fields set to the desired output values for the
 // gain map. All of these fields may differ from the source images.

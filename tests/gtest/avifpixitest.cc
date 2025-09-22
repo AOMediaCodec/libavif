@@ -1,12 +1,13 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <iostream>
+#include <string>
+
 #include "avif/avif.h"
+#include "avif/avif_cxx.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
-
-using ::testing::Combine;
-using ::testing::Values;
 
 namespace avif {
 namespace {
@@ -30,7 +31,7 @@ TEST(AvifPixiTest, SameOutput) {
   EncoderPtr encoder_regular_pixi(avifEncoderCreate());
   ASSERT_NE(encoder_regular_pixi, nullptr);
   encoder_regular_pixi->speed = AVIF_SPEED_FASTEST;
-  encoder_regular_pixi->headerFormat = AVIF_HEADER_FULL;
+  encoder_regular_pixi->headerFormat = AVIF_HEADER_DEFAULT;
   ASSERT_EQ(avifEncoderWrite(encoder_regular_pixi.get(), image.get(),
                              &encoded_regular_pixi),
             AVIF_RESULT_OK);
@@ -39,7 +40,7 @@ TEST(AvifPixiTest, SameOutput) {
   EncoderPtr encoder_extended_pixi(avifEncoderCreate());
   ASSERT_NE(encoder_extended_pixi, nullptr);
   encoder_extended_pixi->speed = AVIF_SPEED_FASTEST;
-  encoder_extended_pixi->headerFormat = AVIF_HEADER_FULL_WITH_EXTENDED_PIXI;
+  encoder_extended_pixi->headerFormat = AVIF_HEADER_EXTENDED_PIXI;
   ASSERT_EQ(avifEncoderWrite(encoder_extended_pixi.get(), image.get(),
                              &encoded_extended_pixi),
             AVIF_RESULT_OK);
@@ -86,6 +87,24 @@ TEST(AvifPixiTest, ExtendedPixiWorksEvenWithoutCMakeFlagOn) {
   EXPECT_EQ(image->yuvFormat, AVIF_PIXEL_FORMAT_YUV420);
   EXPECT_EQ(image->yuvChromaSamplePosition,
             AVIF_CHROMA_SAMPLE_POSITION_VERTICAL);
+}
+
+TEST(AvifHeaderFormatTest, ABI) {
+  // avifEncoder::headerFormat was of type avifHeaderFormat in libavif
+  // version 1.1.1:
+  //   https://github.com/AOMediaCodec/libavif/blob/v1.1.1/include/avif/avif.h#L1498
+  // It was later changed to avifHeaderFormatFlags to be able to combine
+  // multiple avifHeaderFormat features. Check that it was not an ABI
+  // incompatible change.
+  EXPECT_EQ(sizeof(avifEncoder::headerFormat), sizeof(avifHeaderFormat));
+
+#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
+  // Check that the field can be assigned with a combination of flags without
+  // compile errors:
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->headerFormat = AVIF_HEADER_DEFAULT | AVIF_HEADER_EXTENDED_PIXI;
+#endif  // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
 }
 
 //------------------------------------------------------------------------------

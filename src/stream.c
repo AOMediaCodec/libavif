@@ -334,11 +334,16 @@ avifBool avifROStreamReadAndEnforceVersion(avifROStream * stream, uint8_t enforc
 #define AVIF_STREAM_BUFFER_INCREMENT (1024 * 1024)
 static avifResult makeRoom(avifRWStream * stream, size_t size)
 {
-    size_t neededSize = stream->offset + size;
-    size_t newSize = stream->raw->size;
-    while (newSize < neededSize) {
-        newSize += AVIF_STREAM_BUFFER_INCREMENT;
+    AVIF_CHECKERR(size <= SIZE_MAX - stream->offset, AVIF_RESULT_OUT_OF_MEMORY);
+    size_t newSize = stream->offset + size;
+    if (newSize <= stream->raw->size) {
+        return AVIF_RESULT_OK;
     }
+    // Make newSize a multiple of AVIF_STREAM_BUFFER_INCREMENT.
+    size_t rem = newSize % AVIF_STREAM_BUFFER_INCREMENT;
+    size_t padding = (rem == 0) ? 0 : AVIF_STREAM_BUFFER_INCREMENT - rem;
+    AVIF_CHECKERR(newSize <= SIZE_MAX - padding, AVIF_RESULT_OUT_OF_MEMORY);
+    newSize += padding;
     return avifRWDataRealloc(stream->raw, newSize);
 }
 

@@ -16,7 +16,7 @@
 #
 # tests for command lines (icc profile)
 
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 # Input file paths.
 INPUT_COLOR_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap.png"
@@ -24,6 +24,8 @@ REFERENCE_COLOR_PNG="${TESTDATA_DIR}/ArcTriomphe-cHRM-red-green-swap-reference.p
 INPUT_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6.png"
 REFERENCE_GRAY_PNG="${TESTDATA_DIR}/kodim03_grayscale_gamma1.6-reference.png"
 SRGB_ICC="${TESTDATA_DIR}/sRGB2014.icc"
+INPUT_ICC_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
+INPUT_ICC_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_icc_profile_encoded.avif"
 DECODED_FILE="avif_test_cmd_icc_profile_decoded.png"
@@ -43,6 +45,12 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries.* 9$"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char.* 12$"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs.* 8$"
+
+  # RGB ICC cannot be kept when asking for gray.
+  "${AVIFENC}" -s 10 "${INPUT_ICC_JPG}" --yuv 400 -o "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 "${INPUT_ICC_PNG}" --yuv 400 -o "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 "${INPUT_ICC_JPG}" --yuv 400 --ignore-icc -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 10 "${INPUT_ICC_PNG}" --yuv 400 --ignore-icc -o "${ENCODED_FILE}"
 
   # We use third-party tool (ImageMagick) to independently check
   # our generated ICC profile is valid and correct.

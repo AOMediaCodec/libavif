@@ -12,11 +12,14 @@
 # But most of the time you will be running this test with 'make test' or
 # 'ctest -V -R test_cmd_enc_boxes_golden'
 
+set -eu
+
 # ===================================
 # ========== Encode files ===========
 # ===================================
 # To add new test case, just add new encode commands to this function.
 # All .avif files created here will become test cases.
+
 encode_test_files() {
     AVIFENC="$1"
     TESTDATA_DIR="$2"

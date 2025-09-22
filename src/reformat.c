@@ -14,6 +14,14 @@
 #include <pthread.h>
 #endif
 
+static void * avifMemset16(void * dest, int val, size_t count)
+{
+    uint16_t * dest16 = (uint16_t *)dest;
+    for (size_t i = 0; i < count; i++)
+        *dest16++ = (uint16_t)val;
+    return dest;
+}
+
 struct YUVBlock
 {
     float y;
@@ -83,6 +91,17 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
             info->offsetBytesB = 0;
             info->offsetBytesA = 0;
             break;
+        case AVIF_RGB_FORMAT_GRAY:
+            info->offsetBytesGray = info->channelBytes * 0;
+            break;
+        case AVIF_RGB_FORMAT_GRAYA:
+            info->offsetBytesGray = info->channelBytes * 0;
+            info->offsetBytesA = info->channelBytes * 1;
+            break;
+        case AVIF_RGB_FORMAT_AGRAY:
+            info->offsetBytesA = info->channelBytes * 0;
+            info->offsetBytesGray = info->channelBytes * 1;
+            break;
 
         case AVIF_RGB_FORMAT_COUNT:
             return AVIF_FALSE;
@@ -96,11 +115,6 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
 
 avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo * info)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    const avifBool useYCgCo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) ||
-                              (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#endif
-
     AVIF_CHECK(image->depth == 8 || image->depth == 10 || image->depth == 12 || image->depth == 16);
     AVIF_CHECK(image->yuvFormat >= AVIF_PIXEL_FORMAT_YUV444 && image->yuvFormat < AVIF_PIXEL_FORMAT_COUNT);
     AVIF_CHECK(image->yuvRange == AVIF_RANGE_LIMITED || image->yuvRange == AVIF_RANGE_FULL);
@@ -110,11 +124,8 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
     if ((image->matrixCoefficients == 3 /* CICP reserved */) ||
-        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-          || useYCgCo
-#endif
-          ) &&
+        ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO || image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
+          image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) &&
          (image->yuvRange == AVIF_RANGE_LIMITED)) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_BT2020_CL) ||
         (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_SMPTE2085) ||
@@ -123,11 +134,11 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
         return AVIF_FALSE;
     }
 
+    // Removing 400 here would break backward behavior but would respect the spec.
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) &&
         (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400)) {
         return AVIF_FALSE;
     }
-
     avifGetPixelFormatInfo(image->yuvFormat, &info->formatInfo);
     avifCalcYUVCoefficients(image, &info->kr, &info->kg, &info->kb);
 
@@ -146,7 +157,6 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
     if (useYCgCoRe || useYCgCoRo) {
@@ -155,7 +165,6 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
             return AVIF_FALSE;
         }
     }
-#endif
 
     AVIF_CHECK(avifGetRGBColorSpaceInfo(rgb, &state->rgb));
     AVIF_CHECK(avifGetYUVColorSpaceInfo(image, &state->yuv));
@@ -166,12 +175,10 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         state->yuv.mode = AVIF_REFORMAT_MODE_IDENTITY;
     } else if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     } else if (useYCgCoRe) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO_RE;
     } else if (useYCgCoRo) {
         state->yuv.mode = AVIF_REFORMAT_MODE_YCGCO_RO;
-#endif
     }
 
     if (state->yuv.mode != AVIF_REFORMAT_MODE_YUV_COEFFICIENTS) {
@@ -196,12 +203,8 @@ static int avifYUVColorSpaceInfoUVToUNorm(avifYUVColorSpaceInfo * info, float v)
 
     // YCgCo performs limited-full range adjustment on R,G,B but the current implementation performs range adjustment
     // on Y,U,V. So YCgCo with limited range is unsupported.
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
     assert((info->mode != AVIF_REFORMAT_MODE_YCGCO && info->mode != AVIF_REFORMAT_MODE_YCGCO_RE && info->mode != AVIF_REFORMAT_MODE_YCGCO_RO) ||
            (info->range == AVIF_RANGE_FULL));
-#else
-    assert((info->mode != AVIF_REFORMAT_MODE_YCGCO) || (info->range == AVIF_RANGE_FULL));
-#endif
 
     if (info->mode == AVIF_REFORMAT_MODE_IDENTITY) {
         unorm = (int)avifRoundf(v * info->rangeY + info->biasY);
@@ -242,28 +245,31 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         }
     }
 
+    const avifBool isGray = avifRGBFormatIsGray(rgb->format);
     avifBool converted = AVIF_FALSE;
 
     // Try converting with libsharpyuv.
-    if ((rgb->chromaDownsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
-        const avifResult libSharpYUVResult = avifImageRGBToYUVLibSharpYUV(image, rgb, &state);
-        if (libSharpYUVResult != AVIF_RESULT_OK) {
-            // Return the error if sharpyuv was requested but failed for any reason, including libsharpyuv not being available.
-            return libSharpYUVResult;
-        }
-        converted = AVIF_TRUE;
-    }
-
-    if (!converted && !rgb->avoidLibYUV && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
-        avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
-        if (libyuvResult == AVIF_RESULT_OK) {
+    if (!isGray) {
+        if ((rgb->chromaDownsampling == AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV) && (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420)) {
+            const avifResult libSharpYUVResult = avifImageRGBToYUVLibSharpYUV(image, rgb, &state);
+            if (libSharpYUVResult != AVIF_RESULT_OK) {
+                // Return the error if sharpyuv was requested but failed for any reason, including libsharpyuv not being available.
+                return libSharpYUVResult;
+            }
             converted = AVIF_TRUE;
-        } else if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
-            return libyuvResult;
+        }
+
+        if (!converted && !rgb->avoidLibYUV && (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP)) {
+            avifResult libyuvResult = avifImageRGBToYUVLibYUV(image, rgb);
+            if (libyuvResult == AVIF_RESULT_OK) {
+                converted = AVIF_TRUE;
+            } else if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
+                return libyuvResult;
+            }
         }
     }
 
-    if (!converted) {
+    if (!converted && !isGray) {
         const float kr = state.yuv.kr;
         const float kg = state.yuv.kg;
         const float kb = state.yuv.kb;
@@ -275,17 +281,17 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         const uint32_t offsetBytesG = state.rgb.offsetBytesG;
         const uint32_t offsetBytesB = state.rgb.offsetBytesB;
         const uint32_t offsetBytesA = state.rgb.offsetBytesA;
-        const uint32_t rgbRowBytes = rgb->rowBytes;
+        const size_t rgbRowBytes = rgb->rowBytes;
         const float rgbMaxChannelF = state.rgb.maxChannelF;
         uint8_t * yPlane = image->yuvPlanes[AVIF_CHAN_Y];
         uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
         uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
-        const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
-        const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
-        const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+        const size_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+        const size_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+        const size_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
         for (uint32_t outerJ = 0; outerJ < image->height; outerJ += 2) {
             for (uint32_t outerI = 0; outerI < image->width; outerI += 2) {
-                int blockW = 2, blockH = 2;
+                uint32_t blockW = 2, blockH = 2;
                 if ((outerI + 1) >= image->width) {
                     blockW = 1;
                 }
@@ -294,10 +300,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 }
 
                 // Convert an entire 2x2 block to YUV, and populate any fully sampled channels as we go
-                for (int bJ = 0; bJ < blockH; ++bJ) {
-                    for (int bI = 0; bI < blockW; ++bI) {
-                        int i = outerI + bI;
-                        int j = outerJ + bJ;
+                for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
+                    for (uint32_t bI = 0; bI < blockW; ++bI) {
+                        const uint32_t i = outerI + bI;
+                        const uint32_t j = outerJ + bJ;
 
                         // Unpack RGB into normalized float
                         if (state.rgb.channelBytes > 1) {
@@ -359,7 +365,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].y = 0.5f * rgbPixel[1] + 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].u = 0.5f * rgbPixel[1] - 0.25f * (rgbPixel[0] + rgbPixel[2]);
                             yuvBlock[bI][bJ].v = 0.5f * (rgbPixel[0] - rgbPixel[2]);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
                         } else if (state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state.yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
                             // Formulas 58,59,60,61 from https://www.itu.int/rec/T-REC-H.273-202407-P
                             const int R = (int)avifRoundf(AVIF_CLAMP(rgbPixel[0] * rgbMaxChannelF, 0.0f, rgbMaxChannelF));
@@ -371,7 +376,6 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             yuvBlock[bI][bJ].y = (t + (Cg >> 1)) / state.yuv.rangeY;
                             yuvBlock[bI][bJ].u = Cg / state.yuv.rangeUV;
                             yuvBlock[bI][bJ].v = Co / state.yuv.rangeUV;
-#endif
                         } else {
                             float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
                             yuvBlock[bI][bJ].y = Y;
@@ -408,8 +412,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
                     float sumU = 0.0f;
                     float sumV = 0.0f;
-                    for (int bJ = 0; bJ < blockH; ++bJ) {
-                        for (int bI = 0; bI < blockW; ++bI) {
+                    for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
+                        for (uint32_t bI = 0; bI < blockW; ++bI) {
                             sumU += yuvBlock[bI][bJ].u;
                             sumV += yuvBlock[bI][bJ].v;
                         }
@@ -434,10 +438,10 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
                     // YUV422, average 2 samples (1x2), twice
 
-                    for (int bJ = 0; bJ < blockH; ++bJ) {
+                    for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
                         float sumU = 0.0f;
                         float sumV = 0.0f;
-                        for (int bI = 0; bI < blockW; ++bI) {
+                        for (uint32_t bI = 0; bI < blockW; ++bI) {
                             sumU += yuvBlock[bI][bJ].u;
                             sumV += yuvBlock[bI][bJ].v;
                         }
@@ -459,6 +463,78 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         }
                     }
                 }
+            }
+        }
+    } else if (!converted && isGray) {
+        const uint32_t grayPixelBytes = state.rgb.pixelBytes;
+        const uint32_t offsetBytesGray = state.rgb.offsetBytesGray;
+        const uint32_t offsetBytesA = state.rgb.offsetBytesA;
+        const uint32_t grayRowBytes = rgb->rowBytes;
+        const float grayMaxChannelF = state.rgb.maxChannelF;
+        uint8_t * yPlane = image->yuvPlanes[AVIF_CHAN_Y];
+        const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+        for (uint32_t j = 0; j < image->height; ++j) {
+            for (uint32_t i = 0; i < image->width; ++i) {
+                float g;
+                if (state.rgb.channelBytes > 1) {
+                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
+                } else {
+                    g = rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
+                }
+                if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
+                    float a;
+                    if (state.rgb.channelBytes > 1) {
+                        a = *((uint16_t *)(&rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)])) / grayMaxChannelF;
+                    } else {
+                        a = rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)] / grayMaxChannelF;
+                    }
+
+                    if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
+                        if (a == 0) {
+                            g = 0;
+                        } else if (a < 1.0f) {
+                            g *= a;
+                        }
+                    } else {
+                        // alphaMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
+                        if (a == 0) {
+                            g = 0;
+                        } else if (a < 1.0f) {
+                            g /= a;
+                            g = AVIF_MIN(g, 1.0f);
+                        }
+                    }
+                }
+                int gInt = avifYUVColorSpaceInfoYToUNorm(&state.yuv, g);
+                if (state.yuv.channelBytes > 1) {
+                    uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + j * yRowBytes];
+                    *pY = (uint16_t)gInt;
+                } else {
+                    yPlane[i + (j * yRowBytes)] = (uint8_t)gInt;
+                }
+            }
+        }
+        // Set the chroma planes, if any, to the half value.
+        avifPixelFormatInfo info;
+        avifGetPixelFormatInfo(image->yuvFormat, &info);
+        const uint32_t shiftedH = (uint32_t)(((uint64_t)image->height + info.chromaShiftY) >> info.chromaShiftY);
+        const int half = 1 << (image->depth - 1);
+        if (image->yuvPlanes[AVIF_CHAN_U]) {
+            uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
+            const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+            if (state.yuv.channelBytes > 1) {
+                avifMemset16(uPlane, half, shiftedH * uRowBytes / 2);
+            } else {
+                memset(uPlane, half, shiftedH * uRowBytes);
+            }
+        }
+        if (image->yuvPlanes[AVIF_CHAN_V]) {
+            uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
+            const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+            if (state.yuv.channelBytes > 1) {
+                avifMemset16(vPlane, half, shiftedH * vRowBytes / 2);
+            } else {
+                memset(vPlane, half, shiftedH * vRowBytes);
             }
         }
     }
@@ -594,7 +670,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const uint32_t aRowBytes = image->alphaRowBytes;
 
     // Various observations and limits
-    const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
+    const avifBool yuvHasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
+    const avifBool rgbHasColor = !avifRGBFormatIsGray(rgb->format);
     const uint16_t yuvMaxChannel = (uint16_t)state->yuv.maxChannel;
     const float rgbMaxChannelF = state->rgb.maxChannelF;
 
@@ -604,8 +681,8 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
     for (uint32_t j = 0; j < image->height; ++j) {
-        // uvJ is used only when hasColor is true.
-        const uint32_t uvJ = hasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
+        // uvJ is used only when yuvHasColor is true.
+        const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
@@ -618,6 +695,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         uint8_t * ptrR = &rgb->pixels[state->rgb.offsetBytesR + (j * rgb->rowBytes)];
         uint8_t * ptrG = &rgb->pixels[state->rgb.offsetBytesG + (j * rgb->rowBytes)];
         uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + (j * rgb->rowBytes)];
+        uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + (j * rgb->rowBytes)];
 
         for (uint32_t i = 0; i < image->width; ++i) {
             float Y, Cb = 0.5f, Cr = 0.5f;
@@ -633,7 +711,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
             Y = unormFloatTableY[unormY];
 
             // Calculate Cb and Cr
-            if (hasColor) {
+            if (yuvHasColor) {
                 const uint32_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
@@ -756,49 +834,57 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 }
             }
 
-            float R, G, B;
-            if (hasColor) {
-                if (state->yuv.mode == AVIF_REFORMAT_MODE_IDENTITY) {
-                    // Identity (GBR): Formulas 41,42,43 from https://www.itu.int/rec/T-REC-H.273-201612-S
-                    G = Y;
-                    B = Cb;
-                    R = Cr;
-                } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO) {
-                    // YCgCo: Formulas 47,48,49,50 from https://www.itu.int/rec/T-REC-H.273-201612-S
-                    const float t = Y - Cb;
-                    G = Y + Cb;
-                    B = t - Cr;
-                    R = t + Cr;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE || state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO) {
-                    // YCgCoRe/YCgCoRo: Formulas 62,63,64,65 from https://www.itu.int/rec/T-REC-H.273-202407-P
-                    const int YY = unormY;
-                    const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
-                    const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
-                    const int t = YY - (Cg >> 1);
-                    G = (float)AVIF_CLAMP(t + Cg, 0, state->rgb.maxChannel);
-                    B = (float)AVIF_CLAMP(t - (Co >> 1), 0, state->rgb.maxChannel);
-                    R = (float)AVIF_CLAMP(B + Co, 0, state->rgb.maxChannel);
-                    G /= rgbMaxChannelF;
-                    B /= rgbMaxChannelF;
-                    R /= rgbMaxChannelF;
-#endif
+            float Rc = 0.0f, Gc = 0.0f, Bc = 0.0f, grayc = 0.0f;
+            if (rgbHasColor) {
+                float R, G, B;
+                if (yuvHasColor) {
+                    if (state->yuv.mode == AVIF_REFORMAT_MODE_IDENTITY) {
+                        // Identity (GBR): Formulas 41,42,43 from
+                        // https://www.itu.int/rec/T-REC-H.273-201612-S
+                        G = Y;
+                        B = Cb;
+                        R = Cr;
+                    } else if (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO) {
+                        // YCgCo: Formulas 47,48,49,50 from
+                        // https://www.itu.int/rec/T-REC-H.273-201612-S
+                        const float t = Y - Cb;
+                        G = Y + Cb;
+                        B = t - Cr;
+                        R = t + Cr;
+                    } else if ((state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RE) || (state->yuv.mode == AVIF_REFORMAT_MODE_YCGCO_RO)) {
+                        // YCgCoRe/YCgCoRo: Formulas 62,63,64,65 from
+                        // https://www.itu.int/rec/T-REC-H.273-202407-P
+                        const int YY = unormY;
+                        const int Cg = (int)avifRoundf(Cb * yuvMaxChannel);
+                        const int Co = (int)avifRoundf(Cr * yuvMaxChannel);
+                        const int t = YY - (Cg >> 1);
+                        G = (float)AVIF_CLAMP(t + Cg, 0, state->rgb.maxChannel);
+                        B = (float)AVIF_CLAMP(t - (Co >> 1), 0, state->rgb.maxChannel);
+                        R = (float)AVIF_CLAMP(B + Co, 0, state->rgb.maxChannel);
+                        G /= rgbMaxChannelF;
+                        B /= rgbMaxChannelF;
+                        R /= rgbMaxChannelF;
+                    } else {
+                        // Normal YUV
+                        R = Y + (2 * (1 - kr)) * Cr;
+                        B = Y + (2 * (1 - kb)) * Cb;
+                        G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
+                    }
                 } else {
-                    // Normal YUV
-                    R = Y + (2 * (1 - kr)) * Cr;
-                    B = Y + (2 * (1 - kb)) * Cb;
-                    G = Y - ((2 * ((kr * (1 - kr) * Cr) + (kb * (1 - kb) * Cb))) / kg);
+                    // Monochrome: just populate all channels with luma (state->yuv.mode
+                    // is irrelevant)
+                    R = Y;
+                    G = Y;
+                    B = Y;
                 }
+                Rc = AVIF_CLAMP(R, 0.0f, 1.0f);
+                Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
+                Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
             } else {
-                // Monochrome: just populate all channels with luma (state->yuv.mode is irrelevant)
-                R = Y;
-                G = Y;
-                B = Y;
+                // Monochrome: gray is luma
+                float gray = Y;
+                grayc = AVIF_CLAMP(gray, 0.0f, 1.0f);
             }
-
-            float Rc = AVIF_CLAMP(R, 0.0f, 1.0f);
-            float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
-            float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
             if (alphaMultiplyMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                 // Calculate A
@@ -812,48 +898,74 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 const float Ac = AVIF_CLAMP(A, 0.0f, 1.0f);
 
                 if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-                    if (Ac == 0.0f) {
-                        Rc = 0.0f;
-                        Gc = 0.0f;
-                        Bc = 0.0f;
-                    } else if (Ac < 1.0f) {
-                        Rc *= Ac;
-                        Gc *= Ac;
-                        Bc *= Ac;
+                    if (rgbHasColor) {
+                        if (Ac == 0.0f) {
+                            Rc = 0.0f;
+                            Gc = 0.0f;
+                            Bc = 0.0f;
+                        } else if (Ac < 1.0f) {
+                            Rc *= Ac;
+                            Gc *= Ac;
+                            Bc *= Ac;
+                        }
+                    } else {
+                        if (Ac == 0.0f) {
+                            grayc = 0.0f;
+                        } else if (Ac < 1.0f) {
+                            grayc *= Ac;
+                        }
                     }
                 } else {
                     // alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY
-                    if (Ac == 0.0f) {
-                        Rc = 0.0f;
-                        Gc = 0.0f;
-                        Bc = 0.0f;
-                    } else if (Ac < 1.0f) {
-                        Rc /= Ac;
-                        Gc /= Ac;
-                        Bc /= Ac;
-                        Rc = AVIF_MIN(Rc, 1.0f);
-                        Gc = AVIF_MIN(Gc, 1.0f);
-                        Bc = AVIF_MIN(Bc, 1.0f);
+                    if (rgbHasColor) {
+                        if (Ac == 0.0f) {
+                            Rc = 0.0f;
+                            Gc = 0.0f;
+                            Bc = 0.0f;
+                        } else if (Ac < 1.0f) {
+                            Rc /= Ac;
+                            Gc /= Ac;
+                            Bc /= Ac;
+                            Rc = AVIF_MIN(Rc, 1.0f);
+                            Gc = AVIF_MIN(Gc, 1.0f);
+                            Bc = AVIF_MIN(Bc, 1.0f);
+                        }
+                    } else {
+                        if (Ac == 0.0f) {
+                            grayc = 0.0f;
+                        } else if (Ac < 1.0f) {
+                            grayc /= Ac;
+                            grayc = AVIF_MIN(grayc, 1.0f);
+                        }
                     }
                 }
             }
 
-            if (rgb->depth == 8) {
-                avifStoreRGB8Pixel(rgb->format,
-                                   (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
-                                   (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
-                                   (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
-                                   ptrR,
-                                   ptrG,
-                                   ptrB);
+            if (rgbHasColor) {
+                if (rgb->depth == 8) {
+                    avifStoreRGB8Pixel(rgb->format,
+                                       (uint8_t)(0.5f + (Rc * rgbMaxChannelF)),
+                                       (uint8_t)(0.5f + (Gc * rgbMaxChannelF)),
+                                       (uint8_t)(0.5f + (Bc * rgbMaxChannelF)),
+                                       ptrR,
+                                       ptrG,
+                                       ptrB);
+                } else {
+                    *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
+                    *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
+                    *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+                }
+                ptrR += rgbPixelBytes;
+                ptrG += rgbPixelBytes;
+                ptrB += rgbPixelBytes;
             } else {
-                *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
-                *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
-                *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+                if (rgb->depth == 8) {
+                    *ptrGray = (uint8_t)(0.5f + (grayc * rgbMaxChannelF));
+                } else {
+                    *((uint16_t *)ptrGray) = (uint16_t)(0.5f + (grayc * rgbMaxChannelF));
+                }
+                ptrGray += rgbPixelBytes;
             }
-            ptrR += rgbPixelBytes;
-            ptrG += rgbPixelBytes;
-            ptrB += rgbPixelBytes;
         }
     }
     avifFreeYUVToRGBLookUpTables(&unormFloatTableY, &unormFloatTableUV);
@@ -1379,7 +1491,8 @@ static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * 
         const avifBool hasColor =
             (image->yuvRowBytes[AVIF_CHAN_U] && image->yuvRowBytes[AVIF_CHAN_V] && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
 
-        if ((!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) ||
+        if (!avifRGBFormatIsGray(rgb->format) &&
+            (!hasColor || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) ||
              ((rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_FASTEST) || (rgb->chromaUpsampling == AVIF_CHROMA_UPSAMPLING_NEAREST))) &&
             (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP || avifRGBFormatHasAlpha(rgb->format))) {
             // Explanations on the above conditional:

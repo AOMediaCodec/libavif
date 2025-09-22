@@ -16,10 +16,7 @@
 #
 # tests for command lines (--target-size)
 
-source $(dirname "$0")/cmd_test_common.sh
-
-AVIFENC="${BINARY_DIR}/avifenc"
-AVIFDEC="${BINARY_DIR}/avifdec"
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 # Input file paths.
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
@@ -81,7 +78,7 @@ pushd ${TMP_DIR}
   # TODO(yguyon): Investigate.
   # The grep and cut commands are not pretty but seem to work on most platforms.
   if "${AVIFENC}" -V | grep -o "aom" --quiet; then
-    AOM_VERSION=$("${AVIFENC}" -V | grep -o "aom.*[0-9]*\.")        # "aom [enc/dec]:X.Y."
+    AOM_VERSION=$("${AVIFENC}" -V | grep -o "aom[^,]*[0-9]*\.")     # "aom [enc/dec]:X.Y."
     AOM_VERSION=$(echo "${AOM_VERSION}" | cut -d ":" -f 2)          # "X.Y" maybe prepended by a 'v'
     AOM_VERSION=$(echo "${AOM_VERSION}" | grep -o "[0-9]*\.[0-9]*") # "X.Y"
     AOM_MAJOR_VERSION=$(echo "${AOM_VERSION}" | cut -d "." -f 1)

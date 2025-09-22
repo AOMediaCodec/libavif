@@ -6,7 +6,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-linux-artifacts:
@@ -34,11 +34,9 @@ jobs:
           -DAVIF_ZLIBPNG=LOCAL -DAVIF_JPEG=LOCAL
           -DAVIF_BUILD_EXAMPLES=OFF -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=OFF -DAVIF_ENABLE_WERROR=ON
-          -DCMAKE_C_COMPILER=clang
-          -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Archive artifacts
         uses: thedoctor0/zip-release@b57d897cb5d60cb78b51a507f63fa184cfe35554 # 0.7.6
         with:
@@ -48,6 +46,7 @@ jobs:
           path: |
             avifenc
             avifdec
+            avifgainmaputil
       - name: Upload artifacts
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:

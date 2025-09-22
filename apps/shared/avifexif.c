@@ -13,7 +13,7 @@ uint8_t avifImageGetExifOrientationFromIrotImir(const avifImage * image)
             }
             return 5; // 90 degrees anti-clockwise then swap top and bottom.
         }
-        return 6; // 90 degrees anti-clockwise.
+        return 8; // 90 degrees anti-clockwise.
     }
     if ((image->transformFlags & AVIF_TRANSFORM_IROT) && (image->irot.angle == 2)) {
         if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
@@ -31,7 +31,7 @@ uint8_t avifImageGetExifOrientationFromIrotImir(const avifImage * image)
             }
             return 7; // 270 degrees anti-clockwise then swap top and bottom.
         }
-        return 8; // 270 degrees anti-clockwise.
+        return 6; // 270 degrees anti-clockwise.
     }
     if (image->transformFlags & AVIF_TRANSFORM_IMIR) {
         if (image->imir.axis) {

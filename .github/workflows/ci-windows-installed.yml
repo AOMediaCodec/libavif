@@ -26,11 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./.github/actions/setup-windows
+        id: setup
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
           codec-rav1e: "SYSTEM"
           extra-cache-key: ${{ matrix.compiler }}
+          libxml2: "SYSTEM"
+          libyuv: "SYSTEM"
       - name: Leave compiler as default
         if: matrix.compiler == 'msvc'
         run: |
@@ -42,15 +45,6 @@ jobs:
           echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
           echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
-      - name: vcpkg build
-        uses: johnwason/vcpkg-action@v6
-        id: vcpkg
-        with:
-          pkgs: aom dav1d libjpeg-turbo libpng libxml2 libyuv zlib
-          triplet: x64-windows-release
-          token: ${{ github.token }}
-          github-binarycache: true
-          cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
       - name: Install rav1e
         run: |
           $LINK = "https://github.com/xiph/rav1e/releases/download/v0.7.1"
@@ -65,7 +59,7 @@ jobs:
           mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
       - name: Prepare libavif (cmake)
         run: >
-          cmake ${{ steps.vcpkg.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
+          cmake ${{ steps.setup.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
           -DAVIF_CODEC_RAV1E=SYSTEM
@@ -73,14 +67,12 @@ jobs:
           -DAVIF_LIBYUV=SYSTEM -DAVIF_ZLIBPNG=SYSTEM
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
-          -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure

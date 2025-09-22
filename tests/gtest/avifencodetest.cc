@@ -1,7 +1,7 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <fstream>
+#include <iostream>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -25,8 +25,9 @@ TEST(BasicTest, Encode) {
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
             AVIF_RESULT_OK);
 
-  std::ofstream(testing::TempDir() + "avifencodetest.avif", std::ios::binary)
-      .write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  // Uncomment to save the generated file to disk.
+  // std::ofstream(testing::TempDir() + "avifencodetest.avif", std::ios::binary)
+  //     .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 }
 
 //------------------------------------------------------------------------------

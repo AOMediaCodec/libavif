@@ -4,7 +4,7 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-git clone -b 3.0.4 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+git clone -b 3.1.1 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
 
 # Set WITH_CRT_DLL to ON to compile libjpeg-turbo with /MD (use the DLL
 # version of the run-time library) instead of /MT (use the static version
@@ -13,5 +13,5 @@ git clone -b 3.0.4 --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
 #   Manually-specified variables were not used by the project:
 #
 #     WITH_CRT_DLL
-cmake -S libjpeg-turbo -B libjpeg-turbo/build.libavif -G Ninja -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DWITH_TURBOJPEG=OFF -DWITH_CRT_DLL=ON
-cmake --build libjpeg-turbo/build.libavif --parallel
+cmake -G Ninja -S libjpeg-turbo -B libjpeg-turbo/build.libavif -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DCMAKE_BUILD_TYPE=Release -DWITH_TURBOJPEG=OFF -DWITH_CRT_DLL=ON
+cmake --build libjpeg-turbo/build.libavif --config Release --parallel

@@ -1,4 +1,4 @@
-set(AVIF_SVT_GIT_TAG "v2.3.0")
+set(AVIF_SVT_GIT_TAG "v3.1.2")
 
 set(LIB_FILENAME "${AVIF_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
@@ -56,6 +56,12 @@ else()
 
     set(CMAKE_OUTPUT_DIRECTORY_ORIG "${CMAKE_OUTPUT_DIRECTORY}")
     set(CMAKE_OUTPUT_DIRECTORY "${SVT_BINARY_DIR}" CACHE INTERNAL "")
+
+    if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(SVT_AV1_LTO ON)
+    else()
+        set(SVT_AV1_LTO OFF)
+    endif()
 
     avif_fetchcontent_populate_cmake(svt)
 

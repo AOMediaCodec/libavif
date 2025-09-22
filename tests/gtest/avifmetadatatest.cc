@@ -9,6 +9,8 @@
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
+#include "avif/internal.h"
+#include "avifexif.h"
 #include "avifjpeg.h"
 #include "avifpng.h"
 #include "aviftest_helpers.h"
@@ -282,6 +284,22 @@ TEST(MetadataTest, ExifOrientation) {
       avifTransformFlags{0});
   // TODO(yguyon): Fix orientation not being applied to PNG samples.
   EXPECT_EQ(image->width, temp_image->width /* should be height here */);
+}
+
+TEST(MetadataTest, AllExifOrientations) {
+  for (uint8_t orientation = 1; orientation <= 8; ++orientation) {
+    const ImagePtr image =
+        testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
+    ASSERT_NE(image, nullptr);
+    image->transformFlags = AVIF_TRANSFORM_NONE;
+    // Check roundtrip.
+    ASSERT_EQ(avifSetExifOrientation(&image->exif, orientation),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifImageExtractExifOrientationToIrotImir(image.get()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifImageGetExifOrientationFromIrotImir(image.get()),
+              orientation);
+  }
 }
 
 TEST(MetadataTest, ExifOrientationAndForcedImir) {

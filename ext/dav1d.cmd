@@ -11,14 +11,9 @@
 : # When updating the dav1d version, make the same change to dav1d_android.sh.
 git clone -b 1.5.1 --depth 1 https://code.videolan.org/videolan/dav1d.git
 
-cd dav1d
-mkdir build
-cd build
-
 : # macOS might require: -Dc_args=-fno-stack-check
 : # Build with asan: -Db_sanitize=address -Db_lundef=false
 : # Build with msan: -Db_sanitize=memory -Db_lundef=false -Denable_asm=false
 : # Build with ubsan: -Db_sanitize=undefined -Db_lundef=false
-meson setup --default-library=static --buildtype release -Denable_tools=false -Denable_tests=false ..
-cd ../..
-ninja -C dav1d/build
+meson setup --default-library=static --buildtype release -Denable_tools=false -Denable_tests=false dav1d/build dav1d
+meson compile -C dav1d/build

@@ -11,35 +11,38 @@
 # The paths to avifenc and to the testdata dir will be passed as arguments.
 # See 'test_cmd_enc_boxes_golden.sh' for an example.
 
-set -e
+set -eu
 
-if [[ "$#" -ge 1 ]]; then
-  # eval so that the passed in directory can contain variables.
-  ENCODER_DIR="$(eval echo "$1")"
-else
-  # Assume "tests" is the current directory.
-  ENCODER_DIR="$(pwd)/.."
-fi
+# The CMake config must always be passed. It can be empty if there is
+# no multi-config.
+CONFIG="$1"
 if [[ "$#" -ge 2 ]]; then
   # eval so that the passed in directory can contain variables.
-  MP4BOX_DIR="$(eval echo "$2")"
+  BINARY_DIR="$(eval echo "$2")"
+else
+  # Assume "tests" is the current directory.
+  BINARY_DIR="$(pwd)/.."
+fi
+if [[ "$#" -ge 3 ]]; then
+  # eval so that the passed in directory can contain variables.
+  MP4BOX_DIR="$(eval echo "$3")"
 else
   # Assume "tests" is the current directory.
   MP4BOX_DIR="$(pwd)/../ext/gpac/bin/gcc"
 fi
-if [[ "$#" -ge 3 ]]; then
-  TESTDATA_DIR="$(eval echo "$3")"
+if [[ "$#" -ge 4 ]]; then
+  TESTDATA_DIR="$(eval echo "$4")"
 else
   TESTDATA_DIR="$(pwd)/data"
 fi
-if [[ "$#" -ge 4 && ! -z "$4" ]]; then
-  OUTPUT_DIR="$(eval echo "$4")/test_cmd_enc_boxes_golden"
+if [[ "$#" -ge 5 && ! -z "$5" ]]; then
+  OUTPUT_DIR="$(eval echo "$5")/test_cmd_enc_boxes_golden"
 else
   OUTPUT_DIR="$(mktemp -d)"
 fi
 
 GOLDEN_DIR="${TESTDATA_DIR}/goldens"
-AVIFENC="${ENCODER_DIR}/avifenc"
+AVIFENC="${BINARY_DIR}/${CONFIG}/avifenc"
 MP4BOX="${MP4BOX_DIR}/MP4Box"
 
 # Colors for pretty formatting.
@@ -90,6 +93,7 @@ redact_xml() {
              -e 's/<Sample\(.*\) size="[0-9]*"/<Sample\1 size="REDACTED"/g' \
              -e 's/<SampleSizeEntry\(.*\) Size="[0-9]*"/<SampleSizeEntry\1 Size="REDACTED"/g' \
              -e 's/<OBU\(.*\) size="[0-9]*"/<OBU\1 size="REDACTED"/g' \
+             -e 's/<Tile\(.*\) start="[0-9]*"/<Tile\1 start="REDACTED"/g' \
              -e 's/<Tile\(.*\) size="[0-9]*"/<Tile\1 size="REDACTED"/g' \
             "$f"
   rm "$f.bak"

@@ -179,7 +179,8 @@ static avifBool avifJPEGReadCopy(avifImage * avif, uint32_t sizeLimit, struct jp
         if ((cinfo->comp_info[0].h_samp_factor == cinfo->max_h_samp_factor &&
              cinfo->comp_info[0].v_samp_factor == cinfo->max_v_samp_factor)) {
             // Import to YUV/Grayscale: must use compatible matrixCoefficients.
-            if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients)) {
+            if (avifJPEGHasCompatibleMatrixCoefficients(avif->matrixCoefficients) ||
+                avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
                 // Grayscale->Grayscale: direct copy.
                 if ((avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) || (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE)) {
                     avif->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
@@ -309,7 +310,7 @@ static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
 // Reads 'numBytes' at 'offset', stores them in 'bytes' and increases 'offset'.
 static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint32_t * offset, uint32_t numBytes)
 {
-    if (data->size < (*offset + numBytes)) {
+    if ((UINT32_MAX - *offset) < numBytes || data->size < (*offset + numBytes)) {
         return AVIF_FALSE;
     }
     memcpy(bytes, &data->data[*offset], numBytes);
@@ -352,6 +353,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
 static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
 {
     const long oldOffset = ftell(f);
+    if (oldOffset < 0) {
+        return AVIF_FALSE;
+    }
 
     uint32_t offset = 2; // Skip the 2 byte SOI (Start Of Image) marker.
     if (fseek(f, offset, SEEK_SET) != 0) {
@@ -590,7 +594,7 @@ static inline void SwapDoubles(double * x, double * y)
 }
 
 // Parses gain map metadata from XMP.
-// See https://helpx.adobe.com/camera-raw/using/gain-map.html
+// See https://developer.android.com/media/platform/hdr-image-format
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
 static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMap * gainMap)
 {
@@ -599,7 +603,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         return AVIF_FALSE;
     }
 
-    // Set default values from Adobe's spec.
     double baseHdrHeadroom = 0.0;
     double alternateHdrHeadroom = 1.0;
     double gainMapMin[3] = { 0.0, 0.0, 0.0 };
@@ -615,8 +618,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3));
 
-    // See inequality requirements in section 'XMP Representation of Gain Map Metadata' of Adobe's gain map specification
-    // https://helpx.adobe.com/camera-raw/using/gain-map.html
     AVIF_CHECK(alternateHdrHeadroom > baseHdrHeadroom);
     AVIF_CHECK(baseHdrHeadroom >= 0);
     for (int i = 0; i < 3; ++i) {
@@ -649,7 +650,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     }
     AVIF_CHECK(avifDoubleToUnsignedFraction(baseHdrHeadroom, &gainMap->baseHdrHeadroom));
     AVIF_CHECK(avifDoubleToUnsignedFraction(alternateHdrHeadroom, &gainMap->alternateHdrHeadroom));
-    // Not in Adobe's spec but both color spaces should be the same so this value doesn't matter.
+    // Not in the XMP metadata but both color spaces should be the same so this value doesn't matter.
     gainMap->useBaseColorSpace = AVIF_TRUE;
 
     return AVIF_TRUE;
@@ -671,8 +672,8 @@ avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGa
 
 // Parses an MPF (Multi-Picture File) JPEG metadata segment to find the location of other
 // images, and decodes the gain map image (as determined by having gain map XMP metadata) into 'avif'.
-// See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
-// and https://helpx.adobe.com/camera-raw/using/gain-map.html in particular Figures 1 to 6.
+// See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html,
+// (in particular Figures 1 to 6) and https://developer.android.com/media/platform/hdr-image-format.
 // Returns AVIF_FALSE if no gain map was found.
 static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                                    uint32_t sizeLimit,
@@ -714,6 +715,9 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
     for (int mpTagIdx = 0; mpTagIdx < mpTagCount; ++mpTagIdx) {
         uint16_t tagId;
         AVIF_CHECK(avifJPEGReadU16(segmentData, &tagId, &offset, isBigEndian));
+        if (UINT32_MAX - offset < 2 + 4) {
+            return AVIF_FALSE;
+        }
         offset += 2; // Skip data format.
         offset += 4; // Skip num components.
         uint8_t valueBytes[4];
@@ -748,12 +752,18 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
     AVIF_CHECK(avifJPEGFindMpfSegmentOffset(f, &mpfSegmentOffset));
 
     for (uint32_t imageIdx = 0; imageIdx < numImages; ++imageIdx) {
+        if (UINT32_MAX - offset < 4) {
+            return AVIF_FALSE;
+        }
         offset += 4; // Skip "Individual Image Attribute"
         uint32_t imageSize;
         AVIF_CHECK(avifJPEGReadU32(segmentData, &imageSize, &offset, isBigEndian));
         uint32_t imageDataOffset;
         AVIF_CHECK(avifJPEGReadU32(segmentData, &imageDataOffset, &offset, isBigEndian));
 
+        if (UINT32_MAX - offset < 4) {
+            return AVIF_FALSE;
+        }
         offset += 4; // Skip "Dependent image Entry Number" (2 + 2 bytes)
         if (imageDataOffset == 0) {
             // 0 is a special value which indicates the first image.
@@ -795,7 +805,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
 // Looks for an MPF (Multi-Picture Format) segment then loops through the linked images to see
 // if one of them has gain map XMP metadata.
 // See CIPA DC-007-Translation-2021 Multi-Picture Format at https://www.cipa.jp/e/std/std-sec.html
-// and https://helpx.adobe.com/camera-raw/using/gain-map.html
+// and https://developer.android.com/media/platform/hdr-image-format
 // Returns AVIF_TRUE if a gain map was found.
 static avifBool avifJPEGExtractGainMapImage(FILE * f,
                                             uint32_t sizeLimit,
@@ -817,7 +827,12 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
 
             const avifROData mpfData = { (const uint8_t *)marker->data + tagMpf.size, marker->data_length - tagMpf.size };
             if (!avifJPEGExtractGainMapImageFromMpf(f, sizeLimit, &mpfData, image, chromaDownsampling)) {
-                fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
+                if (f == stdin) {
+                    // Not supported because fseek doesn't work on stdin.
+                    fprintf(stderr, "Warning: gain map transcoding is not supported with sdtin\n");
+                } else {
+                    fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
+                }
                 avifImageDestroy(image);
                 return AVIF_FALSE;
             }
@@ -909,6 +924,19 @@ static avifBool avifJPEGReadInternal(FILE * f,
         unsigned int iccDataLen;
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
+            const avifBool isGray = (cinfo.jpeg_color_space == JCS_GRAYSCALE);
+            if (!isGray && (requestedFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+                fprintf(stderr,
+                        "The image contains a color ICC profile which is incompatible with the requested output "
+                        "format YUV400 (grayscale). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
+            if (isGray && requestedFormat != AVIF_PIXEL_FORMAT_YUV400) {
+                fprintf(stderr,
+                        "The image contains a gray ICC profile which is incompatible with the requested output "
+                        "format YUV (color). Pass --ignore-icc to discard the ICC profile.\n");
+                goto cleanup;
+            }
             if (avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen) != AVIF_RESULT_OK) {
                 fprintf(stderr, "Setting ICC profile failed: %s (out of memory)\n", inputFilename);
                 goto cleanup;
@@ -938,34 +966,25 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
         avif->width = cinfo.output_width;
         avif->height = cinfo.output_height;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        const avifBool useYCgCoR = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE ||
-                                    avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
-#endif
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+            fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
+            goto cleanup;
+        }
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_NONE) {
             // Identity and YCgCo-R are only valid with YUV444.
-            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-                               || useYCgCoR
-#endif
-                               )
+            avif->yuvFormat = (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY ||
+                               avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE)
                                   ? AVIF_PIXEL_FORMAT_YUV444
                                   : AVIF_APP_DEFAULT_PIXEL_FORMAT;
         }
         avif->depth = requestedDepth ? requestedDepth : 8;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-        if (useYCgCoR) {
-            if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
-                fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
-                goto cleanup;
-            }
+        if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE) {
             if (requestedDepth && requestedDepth != 10) {
                 fprintf(stderr, "Cannot request %u bits for YCgCo-Re as it uses 2 extra bits.\n", requestedDepth);
                 goto cleanup;
             }
             avif->depth = 10;
         }
-#endif
         avifRGBImageSetDefaults(&rgb, avif);
         rgb.format = AVIF_RGB_FORMAT_RGB;
         rgb.chromaDownsampling = chromaDownsampling;
@@ -1059,7 +1078,8 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 for (size_t c = 0; c < AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH; ++c) {
                     // According to Adobe XMP Specification Part 3 section 1.1.3.1:
                     //   "128-bit GUID stored as a 32-byte ASCII hex string, capital A-F, no null termination"
-                    if (((guid[c] < '0') || (guid[c] > '9')) && ((guid[c] < 'A') || (guid[c] > 'F'))) {
+                    // Also allow lowercase since some cameras use lowercase. https://github.com/AOMediaCodec/libavif/issues/2755
+                    if (!isxdigit(guid[c])) {
                         fprintf(stderr, "XMP extraction failed: invalid XMP segment GUID\n");
                         goto cleanup;
                     }
@@ -1232,10 +1252,16 @@ avifBool avifJPEGRead(const char * inputFilename,
                       avifBool ignoreGainMap,
                       uint32_t sizeLimit)
 {
-    FILE * f = fopen(inputFilename, "rb");
-    if (!f) {
-        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
-        return AVIF_FALSE;
+    FILE * f;
+    if (inputFilename) {
+        f = fopen(inputFilename, "rb");
+        if (!f) {
+            fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+            return AVIF_FALSE;
+        }
+    } else {
+        f = stdin;
+        inputFilename = "(stdin)";
     }
     const avifBool res = avifJPEGReadInternal(f,
                                               inputFilename,
@@ -1248,7 +1274,9 @@ avifBool avifJPEGRead(const char * inputFilename,
                                               ignoreXMP,
                                               ignoreGainMap,
                                               sizeLimit);
-    fclose(f);
+    if (f && f != stdin) {
+        fclose(f);
+    }
     return res;
 }
 
@@ -1265,7 +1293,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
 
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, avif);
-    rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.format = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_RGB_FORMAT_GRAY : AVIF_RGB_FORMAT_RGB;
     rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
@@ -1286,8 +1314,9 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     jpeg_stdio_dest(&cinfo, f);
     cinfo.image_width = avif->width;
     cinfo.image_height = avif->height;
-    cinfo.input_components = 3;
-    cinfo.in_color_space = JCS_RGB;
+    const avifBool isGray = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
+    cinfo.input_components = isGray ? 1 : 3;
+    cinfo.in_color_space = isGray ? JCS_GRAYSCALE : JCS_RGB;
     jpeg_set_defaults(&cinfo);
     jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);

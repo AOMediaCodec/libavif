@@ -1,6 +1,5 @@
 # This is a copy of ci-unix-static.yml for building shared libraries. It differs from ci-unix-static.yml as follows:
 #
-#   * The os matrix consists of ubuntu-24.04 only.
 #   * Does not build rav1e, SVT-AV1 nor libgav1.
 
 name: CI Unix Shared Local
@@ -20,10 +19,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest]
+        os: [ubuntu-latest, macos-latest]
         libyuv: [OFF, LOCAL]
         include:
-          - runs-on: ubuntu-24.04
+          - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
 
@@ -54,14 +53,12 @@ jobs:
           -DAVIF_LIBYUV=${{ matrix.libyuv }}
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
-          -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

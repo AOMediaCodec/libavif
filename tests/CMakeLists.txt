@@ -45,11 +45,8 @@ endforeach()
 
 if(AVIF_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers PUBLIC avif_apps avif)
+    target_link_libraries(aviftest_helpers PUBLIC avif_apps_internal avif_internal)
     target_link_libraries(aviftest_helpers PRIVATE avif_enable_warnings)
-    add_library(aviftest_helpers_internal OBJECT gtest/aviftest_helpers.cc)
-    target_link_libraries(aviftest_helpers_internal PUBLIC avif_apps_internal avif_internal)
-    target_link_libraries(aviftest_helpers_internal PRIVATE avif_enable_warnings)
 endif()
 
 ################################################################################
@@ -63,21 +60,9 @@ macro(add_avif_gtest TEST_NAME)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     register_test_for_coverage(${TEST_NAME})
 endmacro()
-macro(add_avif_internal_gtest TEST_NAME)
-    add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
-    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal GTest::GTest GTest::Main ${ARGN} avif_enable_warnings)
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    register_test_for_coverage(${TEST_NAME})
-endmacro()
 macro(add_avif_gtest_with_data TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::GTest ${ARGN} avif_enable_warnings)
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-    register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
-endmacro()
-macro(add_avif_internal_gtest_with_data TEST_NAME)
-    add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
-    target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers_internal GTest::GTest ${ARGN} avif_enable_warnings)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
     register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
@@ -85,34 +70,33 @@ endmacro()
 if(AVIF_GTEST)
     check_avif_option(AVIF_GTEST TARGET GTest::GTest PKG_NAME GTest)
     add_library(avifincrtest_helpers OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers PUBLIC avif)
+    target_link_libraries(avifincrtest_helpers PUBLIC avif_internal)
     target_link_libraries(avifincrtest_helpers PRIVATE GTest::GTest avif_enable_warnings)
-    add_library(avifincrtest_helpers_internal OBJECT gtest/avifincrtest_helpers.cc)
-    target_link_libraries(avifincrtest_helpers_internal PUBLIC avif_internal)
-    target_link_libraries(avifincrtest_helpers_internal PRIVATE GTest::GTest avif_enable_warnings)
 endif()
 
 if(AVIF_GTEST)
     if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-        add_avif_internal_gtest_with_data(avif16bittest)
-        add_avif_internal_gtest(avifsampletransformtest)
+        add_avif_gtest_with_data(avif16bittest)
+        add_avif_gtest(avifsampletransformtest)
     endif()
 
     add_avif_gtest(avifallocationtest)
     add_avif_gtest_with_data(avifalphanoispetest)
     add_avif_gtest(avifalphapremtest)
+    add_avif_gtest_with_data(avifaltrtest)
     add_avif_gtest_with_data(avifanimationtest)
     add_avif_gtest(avifbasictest)
     add_avif_gtest(avifchangesettingtest)
+    add_avif_gtest(avifcicptest)
     add_avif_gtest(avifclaptest)
     add_avif_gtest(avifcllitest)
     add_avif_gtest(avifcodectest)
-    add_avif_internal_gtest_with_data(avifcolrconverttest)
-    add_avif_internal_gtest(avifcolrtest)
+    add_avif_gtest_with_data(avifcolrconverttest)
+    add_avif_gtest(avifcolrtest)
     add_avif_gtest_with_data(avifdecodetest)
     add_avif_gtest_with_data(avifdimgtest avifincrtest_helpers)
     add_avif_gtest_with_data(avifencodetest)
-    add_avif_internal_gtest_with_data(avifgainmaptest avifincrtest_helpers_internal)
+    add_avif_gtest_with_data(avifgainmaptest avifincrtest_helpers)
 
     if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         add_avif_gtest_with_data(avifjpeggainmaptest)
@@ -142,22 +126,27 @@ if(AVIF_GTEST)
     add_avif_gtest_with_data(avifpng16bittest)
     add_avif_gtest_with_data(avifprogressivetest)
     add_avif_gtest_with_data(avifpropertytest)
-    add_avif_internal_gtest(avifpropinternaltest)
+    add_avif_gtest(avifpropinternaltest)
     add_avif_gtest(avifrangetest)
     add_avif_gtest_with_data(avifreadimagetest)
-    add_avif_internal_gtest(avifrgbtest)
+    add_avif_gtest(avifrgbtest)
     add_avif_gtest(avifrgbtoyuvtest)
     add_avif_gtest(avifrgbtoyuvthreadingtest)
     add_avif_gtest_with_data(avifscaletest)
     add_avif_gtest_with_data(avifsize0test)
-    add_avif_internal_gtest(avifstreamtest)
-    add_avif_internal_gtest(aviftilingtest)
+    add_avif_gtest(avifstreamtest)
+
+    if(AVIF_CODEC_SVT_ENABLED)
+        add_avif_gtest(avifsvttest)
+    endif()
+
+    add_avif_gtest(aviftilingtest)
     add_avif_gtest_with_data(aviftransformtest)
-    add_avif_internal_gtest(avifutilstest)
+    add_avif_gtest(avifutilstest)
     add_avif_gtest(avify4mtest)
 
-    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE OR NOT AVIF_CODEC_AOM_DECODE)
-        # These tests are supported with aom being the encoder and decoder. If aom is unavailable,
+    if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
+        # These tests are supported with aom being the encoder. If the aom encoder is unavailable,
         # these tests are disabled because other codecs may not implement all the necessary features.
         # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
         set_tests_properties(
@@ -165,7 +154,7 @@ if(AVIF_GTEST)
                                                                                                                       True
         )
 
-        message(STATUS "Some tests are disabled because aom is unavailable for encoding or decoding.")
+        message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
     endif()
 
     if(NOT AVIF_LIBSHARPYUV_ENABLED)
@@ -185,7 +174,7 @@ if(AVIF_FUZZTEST)
         add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc ${ARGN})
         # FuzzTest bundles GoogleTest so no need to link to gtest librairies.
         # avif_enable_warnings is not added because it triggers too many warnings in fuzztest.
-        target_link_libraries(${TEST_NAME} PRIVATE avif_fuzztest_helpers aviftest_helpers_internal)
+        target_link_libraries(${TEST_NAME} PRIVATE avif_fuzztest_helpers aviftest_helpers)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} --stack_limit_kb=512)
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -215,7 +204,7 @@ if(AVIF_FUZZTEST)
 
     # Create a library with avif_fuzztest_helpers.cc to compile it only once.
     add_library(avif_fuzztest_helpers OBJECT gtest/avif_fuzztest_helpers.cc)
-    target_link_libraries(avif_fuzztest_helpers PUBLIC aviftest_helpers_internal)
+    target_link_libraries(avif_fuzztest_helpers PUBLIC aviftest_helpers)
     link_fuzztest(avif_fuzztest_helpers)
 
     add_avif_fuzztest(avif_fuzztest_dec)
@@ -233,6 +222,20 @@ endif()
 ################################################################################
 # Bash tests
 
+# Macro to add a shell test. It takes multi-config generators into account.
+# The first argument is the name of the shell script, without .sh.
+# The following arguments are sent to the script.
+macro(add_cmd_test SHELL_SCRIPT)
+    get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(${IS_MULTI_CONFIG})
+        add_test(NAME ${SHELL_SCRIPT} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${SHELL_SCRIPT}.sh $<CONFIG> ${CMAKE_BINARY_DIR}
+                                              ${ARGN}
+        )
+    else()
+        add_test(NAME ${SHELL_SCRIPT} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${SHELL_SCRIPT}.sh "" ${CMAKE_BINARY_DIR} ${ARGN})
+    endif()
+endmacro()
+
 if(AVIF_BUILD_APPS)
     # When building apps, test the avifenc/avifdec.
     # 'are_images_equal' is used to make sure inputs/outputs are unchanged.
@@ -245,38 +248,18 @@ if(AVIF_BUILD_APPS)
         endif()
     endif()
     target_link_libraries(are_images_equal aviftest_helpers avif_enable_warnings)
-    add_test(NAME test_cmd COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd.sh ${CMAKE_BINARY_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_animation COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_animation.sh ${CMAKE_BINARY_DIR}
-                                             ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_grid COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_grid.sh ${CMAKE_BINARY_DIR}
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_icc_profile COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_icc_profile.sh ${CMAKE_BINARY_DIR}
-                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_lossless.sh ${CMAKE_BINARY_DIR}
-                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_metadata COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_metadata.sh ${CMAKE_BINARY_DIR}
-                                            ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_progressive COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_progressive.sh ${CMAKE_BINARY_DIR}
-                                               ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_stdin COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_stdin.sh ${CMAKE_BINARY_DIR}
-                                         ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
-    add_test(NAME test_cmd_targetsize COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_targetsize.sh ${CMAKE_BINARY_DIR}
-                                              ${CMAKE_CURRENT_SOURCE_DIR}/data
-    )
+    add_cmd_test(test_cmd ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_animation ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_grid ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_icc_profile ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_lossless ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_metadata ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_progressive ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_stdin ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_targetsize ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-        add_test(NAME test_cmd_avifgainmaputil COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avifgainmaputil.sh
-                                                       ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
+        add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
     endif()
 
     if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
@@ -289,19 +272,13 @@ if(AVIF_BUILD_APPS)
 
         set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
 
-        add_test(NAME test_cmd_enc_boxes_golden
-                 COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_boxes_golden.sh ${CMAKE_BINARY_DIR} ${MP4BOX_DIR}
-                         ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
-        )
+        add_cmd_test(test_cmd_enc_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR})
 
         if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-            add_test(NAME test_cmd_gainmap COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_gainmap.sh ${CMAKE_BINARY_DIR}
-                                                   ${CMAKE_CURRENT_SOURCE_DIR}/data
-            )
+            add_cmd_test(test_cmd_gainmap ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
-            add_test(NAME test_cmd_enc_gainmap_boxes_golden
-                     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_enc_gainmap_boxes_golden.sh ${CMAKE_BINARY_DIR}
-                             ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
+            add_cmd_test(
+                test_cmd_enc_gainmap_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
             )
         endif()
     endif()
@@ -337,12 +314,8 @@ if(AVIF_CODEC_AVM_ENABLED)
     endif()
 
     if(AVIF_BUILD_APPS)
-        add_test(NAME test_cmd_avm COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm.sh ${CMAKE_BINARY_DIR}
-                                           ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
-        add_test(NAME test_cmd_avm_lossless COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_cmd_avm_lossless.sh ${CMAKE_BINARY_DIR}
-                                                    ${CMAKE_CURRENT_SOURCE_DIR}/data
-        )
+        add_cmd_test(test_cmd_avm ${CMAKE_CURRENT_SOURCE_DIR}/data)
+        add_cmd_test(test_cmd_avm_lossless ${CMAKE_CURRENT_SOURCE_DIR}/data)
     endif()
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
@@ -356,6 +329,7 @@ if(AVIF_CODEC_AVM_ENABLED)
         if(AVIF_GTEST)
             set_tests_properties(
                 avifallocationtest
+                avifaltrtest
                 avifbasictest
                 avifchangesettingtest
                 avifcllitest

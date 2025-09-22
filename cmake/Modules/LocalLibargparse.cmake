@@ -5,29 +5,24 @@ set(LIBARGPARSE_FILENAME
 )
 
 if(EXISTS "${LIBARGPARSE_FILENAME}")
-    message(STATUS "libavif(AVIF_LIBARGPARSE=LOCAL): compiled library found at ${LIBARGPARSE_FILENAME}")
+    message(STATUS "libavif(libargparse): compiled library found at ${LIBARGPARSE_FILENAME}")
     add_library(libargparse STATIC IMPORTED GLOBAL)
     set_target_properties(libargparse PROPERTIES IMPORTED_LOCATION "${LIBARGPARSE_FILENAME}" AVIF_LOCAL ON)
     target_include_directories(libargparse INTERFACE "${AVIF_SOURCE_DIR}/ext/libargparse/src")
 else()
-    message(STATUS "libavif(AVIF_LIBARGPARSE=LOCAL): compiled library not found at ${LIBARGPARSE_FILENAME}; using FetchContent")
+    message(STATUS "libavif(libargparse): compiled library not found at ${LIBARGPARSE_FILENAME}; using FetchContent")
     if(EXISTS "${AVIF_SOURCE_DIR}/ext/libargparse")
-        message(STATUS "libavif(AVIF_LIBARGPARSE=LOCAL): ext/libargparse found; using as FetchContent SOURCE_DIR")
+        message(STATUS "libavif(libargparse): ext/libargparse found; using as FetchContent SOURCE_DIR")
         set(FETCHCONTENT_SOURCE_DIR_LIBARGPARSE "${AVIF_SOURCE_DIR}/ext/libargparse")
-        message(CHECK_START "libavif(AVIF_LIBARGPARSE=LOCAL): configuring libargparse")
+        message(CHECK_START "libavif(libargparse): configuring libargparse")
     else()
-        message(CHECK_START "libavif(AVIF_LIBARGPARSE=LOCAL): fetching and configuring libargparse")
+        message(CHECK_START "libavif(libargparse): fetching and configuring libargparse")
     endif()
 
     FetchContent_Declare(
         libargparse
         GIT_REPOSITORY "https://github.com/kmurray/libargparse.git"
         GIT_TAG ${AVIF_LIBARGPARSE_GIT_TAG}
-        # TODO(vrabaud) remove once CMake 3.13 is not supported anymore.
-        PATCH_COMMAND
-            sed -i.bak -e
-            "s:install.*:include(GNUInstallDirs)\\\\ninstall(TARGETS libargparse RUNTIME DESTINATION \\\\$\\\\{CMAKE_INSTALL_BINDIR\\\\} LIBRARY DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\} ARCHIVE DESTINATION \\\\$\\\\{CMAKE_INSTALL_LIBDIR\\\\}):"
-            CMakeLists.txt
         UPDATE_COMMAND ""
     )
     avif_fetchcontent_populate_cmake(libargparse)

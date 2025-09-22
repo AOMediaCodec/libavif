@@ -64,9 +64,8 @@ jobs:
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
           -DAVIF_BUILD_GDK_PIXBUF=ON
           -DAVIF_ENABLE_WERROR=ON
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j --output-on-failure

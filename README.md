@@ -137,30 +137,30 @@ the `avif_coverage` target, e.g. `make avif_coverage -j`. It requires
 compiling with clang (`-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++`)
 and LLVM must be installed on the system.
 
-### Build Command Lines {#build-command-lines}
+### Build Command Lines
 
 The following instructions can be used to build the libavif library and the
 `avifenc` and `avifdec` tools.
 
 #### Build using installed dependencies
 
-To link against the already installed `aom`, `libjpeg` and `libpng` dependency
+To link against the already installed `aom`, `libjpeg`, `libpng` and `libyuv` dependency
 libraries (recommended):
 
 ```sh
-git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
+git clone -b v1.2.1 https://github.com/AOMediaCodec/libavif.git
 cmake -S libavif -B libavif/build -DAVIF_CODEC_AOM=SYSTEM -DAVIF_BUILD_APPS=ON
-cmake --build libavif/build --parallel
+cmake --build libavif/build --config Release --parallel
 ```
 
 #### Build everything from scratch
 
-For development and debugging purposes, or to generate fully static binaries:
+For development and debugging purposes:
 
 ```sh
-git clone -b v1.1.1 https://github.com/AOMediaCodec/libavif.git
-cmake -S libavif -B libavif/build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON -DCMAKE_C_FLAGS_RELEASE="-static" -DCMAKE_EXE_LINKER_FLAGS="-static"
-cmake --build libavif/build --parallel
+git clone -b v1.2.1 https://github.com/AOMediaCodec/libavif.git
+cmake -S libavif -B libavif/build -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON
+cmake --build libavif/build --config Debug --parallel
 ```
 
 ## Prebuilt Binaries (Windows)
@@ -178,7 +178,7 @@ The libavif library is written in C99. Most of the tests are written in C++14.
 ### Formatting
 
 Use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to format the
-sources from the top-level folder (`clang-format-16` preferred):
+sources from the top-level folder (`clang-format-19` preferred):
 
 ```sh
 clang-format -style=file -i \

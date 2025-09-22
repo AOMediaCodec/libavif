@@ -40,22 +40,22 @@ void EncodeDecodeAnimation(std::vector<ImagePtr> frames,
         avifEncoderAddImage(encoder.get(), frames[i].get(),
                             frame_options[i].duration, frame_options[i].flags);
     ASSERT_EQ(result, AVIF_RESULT_OK)
-        << avifResultToString(result) << " " << encoder->diag.error;
+        << avifResultToString(result) << ": " << encoder->diag.error;
   }
   AvifRwData encoded_data;
   avifResult result = avifEncoderFinish(encoder.get(), &encoded_data);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << encoder->diag.error;
+      << avifResultToString(result) << ": " << encoder->diag.error;
 
   // Decode.
   result = avifDecoderSetIOMemory(decoder.get(), encoded_data.data,
                                   encoded_data.size);
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   result = avifDecoderParse(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << " " << decoder->diag.error;
+      << avifResultToString(result) << ": " << decoder->diag.error;
 
   if (decoder->requestedSource == AVIF_DECODER_SOURCE_PRIMARY_ITEM ||
       num_frames == 1) {
@@ -76,7 +76,7 @@ void EncodeDecodeAnimation(std::vector<ImagePtr> frames,
     }
     result = avifDecoderNextImage(decoder.get());
     ASSERT_EQ(result, AVIF_RESULT_NO_IMAGES_REMAINING)
-        << avifResultToString(result) << " " << decoder->diag.error;
+        << avifResultToString(result) << ": " << decoder->diag.error;
   }
 }
 

@@ -82,7 +82,7 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->headerFormat = AVIF_HEADER_REDUCED;
+  encoder->headerFormat = AVIF_HEADER_MINI;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
             AVIF_RESULT_OK);
 

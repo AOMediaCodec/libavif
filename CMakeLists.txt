@@ -1,11 +1,16 @@
 # Copyright 2019 Joe Drago. All rights reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.22)
 
 # New in CMake version 3.15. MSVC warning flags are not in CMAKE_<LANG>_FLAGS by default.
 if(POLICY CMP0092)
     cmake_policy(SET CMP0092 NEW)
+endif()
+
+# New in CMake version 3.19. Support the Xcode "new build system" for ExternalProject_Add().
+if(POLICY CMP0114)
+    cmake_policy(SET CMP0114 NEW)
 endif()
 
 # Prevent warnings in CMake>=3.24 for ExternalProject_Add()
@@ -20,7 +25,7 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
-project(libavif LANGUAGES C VERSION 1.1.1)
+project(libavif LANGUAGES C VERSION 1.3.0)
 
 # The root directory of the avif source
 set(AVIF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -32,6 +37,7 @@ include(ExternalProject)
 include(FetchContent)
 include(FindPkgConfig)
 include(AvifExternalProjectUtils)
+include(GNUInstallDirs)
 
 option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23." OFF)
 
@@ -55,8 +61,8 @@ endif()
 #   If the source code was changed, but there were no interface changes:
 #     Increment PATCH.
 set(LIBRARY_VERSION_MAJOR 16)
-set(LIBRARY_VERSION_MINOR 1)
-set(LIBRARY_VERSION_PATCH 1)
+set(LIBRARY_VERSION_MINOR 3)
+set(LIBRARY_VERSION_PATCH 0)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
@@ -64,7 +70,6 @@ option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
 
-option(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R "Enable experimental YCgCo-R matrix code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_MINI "Enable experimental reduced header" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM "Enable experimental sample transform code" OFF)
 option(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI "Enable experimental PixelInformationProperty syntax from HEIF 3rd Ed. Amd2" OFF)
@@ -301,7 +306,10 @@ if(MSVC)
     endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
-    target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra -Wshorten-64-to-32)
+    target_compile_options(
+        avif_enable_warnings INTERFACE -Wall -Wextra -Wgnu-empty-initializer -Wshorten-64-to-32 -Wstrict-prototypes
+                                       -Wzero-as-null-pointer-constant
+    )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
     target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra)
@@ -338,10 +346,6 @@ if(AVIF_ENABLE_COVERAGE)
         message(WARNING "libavif: Ignoring request for coverage (AVIF_ENABLE_COVERAGE); only clang is currently supported.")
         set(AVIF_ENABLE_COVERAGE OFF)
     endif()
-endif()
-
-if(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
 endif()
 
 if(AVIF_ENABLE_EXPERIMENTAL_MINI)
@@ -551,6 +555,8 @@ if(AVIF_CODEC_AVM_ENABLED)
     target_sources(avif_obj PRIVATE src/codec_avm.c)
 
     avif_target_link_library(aom)
+    # C++ is needed because of tensorflow-lite.
+    set(AVIF_LIB_USE_CXX ON)
 
     message(STATUS "libavif: Codec enabled: avm (encode/decode)")
 endif()
@@ -565,13 +571,8 @@ endif()
 
 if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
-    if(AVIF_ENABLE_NODISCARD)
-        # [[nodiscard]] requires C++17.
-        set(CMAKE_CXX_STANDARD 17)
-        set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    else()
-        set(CMAKE_CXX_STANDARD 14)
-    endif()
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
@@ -591,7 +592,9 @@ endif()
 # Main avif library.
 set_target_properties(avif PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif PRIVATE avif_obj)
-target_include_directories(avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_include_directories(
+    avif PUBLIC $<BUILD_INTERFACE:${libavif_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(avif INTERFACE AVIF_DLL)
     if(AVIF_LIB_USE_CXX)
@@ -634,10 +637,6 @@ endif()
 
 if(CMAKE_SKIP_INSTALL_RULES)
     set(SKIP_INSTALL_ALL TRUE)
-endif()
-
-if(NOT SKIP_INSTALL_ALL)
-    include(GNUInstallDirs)
 endif()
 
 if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))

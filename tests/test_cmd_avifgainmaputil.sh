@@ -4,9 +4,13 @@
 #
 # tests for command lines (avifgainmaputil tool)
 
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
-AVIFGAINMAPUTIL="${BINARY_DIR}/avifgainmaputil"
+if [[ ! -z "$CONFIG" ]]; then
+  AVIFGAINMAPUTIL="${BINARY_DIR}/${CONFIG}/avifgainmaputil"
+else
+  AVIFGAINMAPUTIL="${BINARY_DIR}/avifgainmaputil"
+fi
 
 # Input file paths.
 INPUT_AVIF_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.avif"

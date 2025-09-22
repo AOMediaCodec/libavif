@@ -52,13 +52,13 @@ sed -i "s/meson setup \(.*\) \.\./meson setup \1${DAV1D_EXTRA_FLAGS} ../g" ./ext
 # Build libaom with sanitizer flags.
 # Adds extra flags: -DAOM_TARGET_CPU=generic for msan.
 if [[ "$SANITIZER" == "memory" ]]; then
-  sed -i 's/cmake \(.*\) \.\./cmake \1 -DAOM_TARGET_CPU=generic ../g' ./ext/aom.cmd
+  sed -i 's/cmake -G \(.*\)/cmake -G \1 -DAOM_TARGET_CPU=generic/g' ./ext/aom.cmd
 fi
 
 # Build libjpeg-turbo with sanitizer flags. Add extra flag -DWITH_SIMD=0 for msan.
 # See https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/README.md#memory-debugger-pitfalls
 if [[ "$SANITIZER" == "memory" ]]; then
-  sed -i 's/cmake -S libjpeg-turbo \(.*\)/cmake -S libjpeg-turbo \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
+  sed -i 's/cmake -G \(.*\)/cmake -G \1 -DWITH_SIMD=0/g' ./ext/libjpeg.cmd
 fi
 
 # Prepare dependencies.
@@ -66,14 +66,12 @@ cd ext && bash aom.cmd && bash dav1d.cmd && bash libjpeg.cmd &&
       bash libsharpyuv.cmd && bash libyuv.cmd && bash zlibpng.cmd && cd ..
 
 # build libavif
-mkdir build
-cd build
 EXTRA_CMAKE_FLAGS=""
 if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   CXXFLAGS="${CXXFLAGS} -DFUZZTEST_COMPATIBILITY_MODE"
   EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS} -DFUZZTEST_COMPATIBILITY_MODE=libfuzzer"
 fi
-cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
+cmake -G Ninja -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL \
       -DAVIF_CODEC_AOM_DECODE=ON -DAVIF_CODEC_AOM_ENCODE=ON \
       -DAVIF_FUZZTEST=LOCAL \
       -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL \
@@ -81,7 +79,7 @@ cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DA
       -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=OFF -DAVIF_ENABLE_WERROR=ON \
       ${EXTRA_CMAKE_FLAGS}
 
-ninja
+cmake --build build --config Release --parallel
 
 # Restrict fuzztest tests to the only compatible fuzz engine: libfuzzer.
 if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
@@ -92,7 +90,7 @@ if [[ "$FUZZING_ENGINE" == "libfuzzer" ]]; then
   # given entrypoint as argument.
   # The scripts will be named:
   # {binary_name}@{fuzztest_entrypoint}
-  FUZZ_TEST_BINARIES_OUT_PATHS=$(ls ./tests/avif_fuzztest_*)
+  FUZZ_TEST_BINARIES_OUT_PATHS=$(ls build/tests/avif_fuzztest_*)
   echo "Fuzz binaries: $FUZZ_TEST_BINARIES_OUT_PATHS"
   for fuzz_main_file in $FUZZ_TEST_BINARIES_OUT_PATHS; do
     FUZZ_TESTS=$($fuzz_main_file --list_fuzz_tests | cut -d ' ' -f 4)

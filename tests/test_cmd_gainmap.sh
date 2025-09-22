@@ -16,7 +16,7 @@
 #
 # tests for command lines (gain maps)
 
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 # Input file paths.
 INPUT_JPEG_GAINMAP="${TESTDATA_DIR}/paris_exif_xmp_gainmap_bigendian.jpg"

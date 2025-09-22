@@ -7,7 +7,7 @@
 #include <math.h>
 #include <string.h>
 
-static void avifGainMapSetDefaults(avifGainMap * gainMap)
+static void avifGainMapSetEncodingDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
         gainMap->gainMapMin[i] = (avifSignedFraction) { 1, 1 };
@@ -420,6 +420,11 @@ avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnost
             avifDiagnosticsPrintf(diag, "Per-channel denominator is 0 in gain map metadata");
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
+        if ((int64_t)gainMap->gainMapMax[i].n * gainMap->gainMapMin[i].d <
+            (int64_t)gainMap->gainMapMin[i].n * gainMap->gainMapMax[i].d) {
+            avifDiagnosticsPrintf(diag, "Per-channel max is less than per-channel min in gain map metadata");
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
         if (gainMap->gainMapGamma[i].n == 0) {
             avifDiagnosticsPrintf(diag, "Per-channel gamma is 0 in gain map metadata");
             return AVIF_RESULT_INVALID_ARGUMENT;
@@ -434,6 +439,35 @@ avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnost
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     return AVIF_RESULT_OK;
+}
+
+avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b)
+{
+    if (a->baseHdrHeadroom.n != b->baseHdrHeadroom.n || a->baseHdrHeadroom.d != b->baseHdrHeadroom.d ||
+        a->alternateHdrHeadroom.n != b->alternateHdrHeadroom.n || a->alternateHdrHeadroom.d != b->alternateHdrHeadroom.d) {
+        return AVIF_FALSE;
+    }
+    for (int c = 0; c < 3; ++c) {
+        if (a->gainMapMin[c].n != b->gainMapMin[c].n || a->gainMapMin[c].d != b->gainMapMin[c].d ||
+            a->gainMapMax[c].n != b->gainMapMax[c].n || a->gainMapMax[c].d != b->gainMapMax[c].d ||
+            a->gainMapGamma[c].n != b->gainMapGamma[c].n || a->gainMapGamma[c].d != b->gainMapGamma[c].d ||
+            a->baseOffset[c].n != b->baseOffset[c].n || a->baseOffset[c].d != b->baseOffset[c].d ||
+            a->alternateOffset[c].n != b->alternateOffset[c].n || a->alternateOffset[c].d != b->alternateOffset[c].d) {
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b)
+{
+    if (a->altICC.size != b->altICC.size || memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0 ||
+        a->altColorPrimaries != b->altColorPrimaries || a->altTransferCharacteristics != b->altTransferCharacteristics ||
+        a->altMatrixCoefficients != b->altMatrixCoefficients || a->altYUVRange != b->altYUVRange || a->altDepth != b->altDepth ||
+        a->altPlaneCount != b->altPlaneCount || a->altCLLI.maxCLL != b->altCLLI.maxCLL || a->altCLLI.maxPALL != b->altCLLI.maxPALL) {
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
 }
 
 static const float kEpsilon = 1e-10f;
@@ -535,7 +569,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         }
     }
 
-    avifGainMapSetDefaults(gainMap);
+    avifGainMapSetEncodingDefaults(gainMap);
     gainMap->useBaseColorSpace = (gainMapMathPrimaries == baseColorPrimaries);
 
     float (*baseGammaToLinear)(float) = avifTransferCharacteristicsGetGammaToLinearFunction(baseTransferCharacteristics);

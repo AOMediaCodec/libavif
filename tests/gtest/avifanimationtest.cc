@@ -17,23 +17,31 @@ TEST(AvifDecodeTest, AnimatedImage) {
   if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
   }
-  const char* file_name = "colors-animated-8bpc.avif";
-  DecoderPtr decoder(avifDecoderCreate());
-  ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
-                                 (std::string(data_path) + file_name).c_str()),
-            AVIF_RESULT_OK);
-  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
-  EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
-  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
-  EXPECT_EQ(decoder->imageCount, 5);
-  EXPECT_EQ(decoder->repetitionCount, 0);
-  for (int i = 0; i < 5; ++i) {
-    EXPECT_EQ(avifDecoderIsKeyframe(decoder.get(), i), i == 0);
-    EXPECT_EQ(avifDecoderNearestKeyframe(decoder.get(), i), 0);
-  }
-  for (int i = 0; i < 5; ++i) {
-    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  // Both files should give exactly the same result: the audio is ignored
+  // in 'colors-animated-8bpc-audio.avif' but shouldn't prevent the file from
+  // decoding.
+  for (const char* file_name :
+       {"colors-animated-8bpc.avif", "colors-animated-8bpc-audio.avif"}) {
+    SCOPED_TRACE(file_name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(), (std::string(data_path) + file_name).c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+        << decoder->diag.error;
+    ;
+    EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
+    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+    EXPECT_EQ(decoder->imageCount, 5);
+    EXPECT_EQ(decoder->repetitionCount, 0);
+    for (int i = 0; i < 5; ++i) {
+      EXPECT_EQ(avifDecoderIsKeyframe(decoder.get(), i), i == 0);
+      EXPECT_EQ(avifDecoderNearestKeyframe(decoder.get(), i), 0);
+    }
+    for (int i = 0; i < 5; ++i) {
+      EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    }
   }
 }
 
@@ -78,6 +86,54 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+}
+
+TEST(AvifDecodeTest, AnimatedImageWithDepthAndMetadata) {
+  // Depth is not supported and should be ignored.
+  const char* file_name = "colors-animated-8bpc-depth-exif-xmp.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageCount, 5);
+  EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
+  EXPECT_EQ(decoder->image->exif.size, 1126);
+  EXPECT_EQ(decoder->image->xmp.size, 3898);
+}
+
+TEST(AvifDecodeTest,
+     AnimatedImageWithDepthAndMetadataWithSourceSetToPrimaryItem) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+  // Depth is not supported and should be ignored.
+  const char* file_name = "colors-animated-8bpc-depth-exif-xmp.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      avifDecoderSetSource(decoder.get(), AVIF_DECODER_SOURCE_PRIMARY_ITEM),
+      AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_FALSE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  // imageCount is expected to be 1 because we are using primary item as the
+  // preferred source.
+  EXPECT_EQ(decoder->imageCount, 1);
+  EXPECT_EQ(decoder->repetitionCount, 0);
+  EXPECT_EQ(decoder->image->exif.size, 1126);
+  EXPECT_EQ(decoder->image->xmp.size, 3898);
+  // Get the first (and only) image.
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  // Subsequent calls should not return AVIF_RESULT_OK since there is only one
+  // image in the preferred source.
+  EXPECT_NE(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
 }
 
 TEST(AvifDecodeTest, AnimatedImageWithoutTracksShouldFail) {

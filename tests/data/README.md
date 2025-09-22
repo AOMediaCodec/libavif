@@ -2,6 +2,33 @@
 
 ## Still images
 
+### File [abc.png](abc.png)
+
+![](abc.png)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Black opaque letters "abc" written on a translucent white background.
+
+### File [abc_color_irot_alpha_irot.avif](abc_color_irot_alpha_irot.avif)
+
+![](abc_color_irot_alpha_irot.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+`abc.png` encoded with libavif and having a correct association between the
+`irot` transformative property and the alpha auxiliary image item corresponding
+to the same rotation applied to the color image item.
+
+### File [abc_color_irot_alpha_NOirot.avif](abc_color_irot_alpha_NOirot.avif)
+
+![](abc_color_irot_alpha_NOirot.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+`abc.png` encoded with libavif 1.3.0 and missing an association between the
+`irot` transformative property and the alpha auxiliary image item.
+
 ### File [circle-trns-after-plte.png](circle-trns-after-plte.png)
 
 ![](circle-trns-after-plte.png)
@@ -23,8 +50,9 @@ An opaque blue circle on a transparent green background.
 
 It is of color type 2 (PNG_COLOR_TYPE_RGB) and has a tRNS chunk before a PLTE
 chunk. Since the PNG specification version 1.2 says "the tRNS chunk [...] must
-follow the PLTE chunk, if any", libpng considers the tRNS chunk as invalid and
-ignores it.
+follow the PLTE chunk, if any", libpng 1.6.46 or older considers the tRNS chunk
+as invalid and ignores it. The behavior changed starting with libpng 1.6.47.
+See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
 
 ### File [circle_custom_properties.avif](circle_custom_properties.avif)
 
@@ -146,6 +174,15 @@ photographer or Signature Edits."
 
 Source: Picture from https://www.signatureedits.com/free-raw-photos/, rescaled, modified color balance and converted
 with GIMP+Darktable to 16b PNG, metadata removed with `exiftool -All=`.
+
+#### File [weld_sato_12B_8B_q0.avif](weld_sato_12B_8B_q0.avif)
+
+![](weld_sato_12B_8B_q0.avif)
+
+License: Same as for `weld_16bit.png`.
+
+Source: `weld_16bit.png` encoded with `AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B` at quality 0 and
+fastest effort.
 
 ## Metadata
 
@@ -692,6 +729,18 @@ Source : same as seine_sdr_gainmap_srgb.avif before commit 10b7232
 An image with a `tmap` item (i.e. a gain map) but no 'tmap' brand in the `ftyp` box.
 The gain map should be ignored by the decoder since the `tmap` brand is missing.
 
+### File [seine_hdr_gainmap_wrongaltr.avif](seine_hdr_gainmap_wrongaltr.avif)
+
+![](seine_hdr_gainmap_wrongaltr.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : same as seine_hdr_gainmap_wrongaltr.avif but edited with a hex editor
+to swap the two entity ids inside the 'altr' box.
+
+An image with a `tmap` item (i.e. a gain map) but the `altr` box does not show
+it as being preferred over the primary image item so it should be ignored.
+
 ### File [seine_sdr_gainmap_gammazero.avif](seine_sdr_gainmap_gammazero.avif)
 
 ![](seine_sdr_gainmap_gammazero.avif)
@@ -830,6 +879,21 @@ An animated AVIF image file with the following attributes:
 * Repetition Count: 0
 * Frame count: 5
 
+### File [colors-animated-8bpc-audio.avif](colors-animated-8bpc-audio.avif)
+
+![](colors-animated-8bpc-audio.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Same as `colors-animated-8bpc.avif` but with an audio track added using MP4Box:
+
+`MP4Box -add audio.aac colors-animated-8bpc-audio.avif`
+
+audio.aac was recorded with QuickTime and converted/truncated to the same length as the
+image sequence with ffmpeg:
+
+`ffmpeg -i audio.m4a -t 0.17 audio.aac`
+
 ### File [colors-animated-8bpc-alpha-exif-xmp.avif](colors-animated-8bpc-alpha-exif-xmp.avif)
 
 ![](colors-animated-8bpc-alpha-exif-xmp.avif)
@@ -838,6 +902,15 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: `colors-animated-8bpc.avif` but translucent and with the Exif/XMP chunks of
 `paris_exif_xmp_icc.jpg`. The repetition is infinite.
+
+### File [colors-animated-8bpc-depth-exif-xmp.avif](colors-animated-8bpc-depth-exif-xmp.avif)
+
+![](colors-animated-8bpc-depth-exif-xmp.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `colors-animated-8bpc-alpha-exif-xmp.avif` but with the alpha URI manually
+changed to depth using a hex editor.
 
 ### File [colors-animated-12bpc-keyframes-0-2-3.avif](colors-animated-12bpc-keyframes-0-2-3.avif)
 

@@ -13,6 +13,8 @@
 # But most of the time you will be running this test with 'make test' or
 # 'ctest -V -R test_cmd_enc_gainmap_boxes_golden'
 
+set -eu
+
 # ===================================
 # ========== Encode files ===========
 # ===================================

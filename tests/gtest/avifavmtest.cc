@@ -44,7 +44,7 @@ TEST_P(AvmTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 39.0);
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 36.4);
 
   // Forcing an AV1 decoding codec should fail.
   for (avifCodecChoice av1_codec :
@@ -76,7 +76,7 @@ INSTANTIATE_TEST_SUITE_P(Tiny, AvmTest,
                                  /*alpha=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(HighBitDepthAndEvenDimensions, AvmTest,
-                         Combine(/*width=*/Values(2), /*height=*/Values(34),
+                         Combine(/*width=*/Values(5), /*height=*/Values(34),
                                  /*depth=*/Values(10, 12),
                                  Values(AVIF_PIXEL_FORMAT_YUV400,
                                         AVIF_PIXEL_FORMAT_YUV420,

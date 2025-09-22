@@ -11,6 +11,23 @@
 #include "avifpng.h"
 #include "y4m.h"
 
+char * avifFileFormatToString(avifAppFileFormat format)
+{
+    switch (format) {
+        case AVIF_APP_FILE_FORMAT_UNKNOWN:
+            return "unknown";
+        case AVIF_APP_FILE_FORMAT_AVIF:
+            return "AVIF";
+        case AVIF_APP_FILE_FORMAT_JPEG:
+            return "JPEG";
+        case AVIF_APP_FILE_FORMAT_PNG:
+            return "PNG";
+        case AVIF_APP_FILE_FORMAT_Y4M:
+            return "Y4M";
+    }
+    return "unknown";
+}
+
 // |a| and |b| hold int32_t values. The int64_t type is used so that we can negate INT32_MIN without
 // overflowing int32_t.
 static int64_t calcGCD(int64_t a, int64_t b)
@@ -128,14 +145,20 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Gain map       : ");
     avifImage * gainMapImage = avif->gainMap ? avif->gainMap->image : NULL;
     if (gainMapImage != NULL) {
-        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Image is %s\n",
+        printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Headroom %.2f (%s), Alternate Headroom %.2f (%s)\n",
                gainMapImage->width,
                gainMapImage->height,
                gainMapImage->depth,
                avifPixelFormatToString(gainMapImage->yuvFormat),
                (gainMapImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
                gainMapImage->matrixCoefficients,
-               (avif->gainMap->baseHdrHeadroom.n == 0) ? "SDR" : "HDR");
+               avif->gainMap->baseHdrHeadroom.d == 0 ? 0
+                                                     : (double)avif->gainMap->baseHdrHeadroom.n / avif->gainMap->baseHdrHeadroom.d,
+               (avif->gainMap->baseHdrHeadroom.n == 0) ? "SDR" : "HDR",
+               avif->gainMap->alternateHdrHeadroom.d == 0
+                   ? 0
+                   : (double)avif->gainMap->alternateHdrHeadroom.n / avif->gainMap->alternateHdrHeadroom.d,
+               (avif->gainMap->alternateHdrHeadroom.n == 0) ? "SDR" : "HDR");
         printf(" * Alternate image:\n");
         printf("    * Color Primaries: %u\n", avif->gainMap->altColorPrimaries);
         printf("    * Transfer Char. : %u\n", avif->gainMap->altTransferCharacteristics);
@@ -285,6 +308,7 @@ avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size)
 }
 
 avifAppFileFormat avifReadImage(const char * filename,
+                                avifAppFileFormat inputFormat,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
@@ -299,15 +323,18 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter)
 {
-    const avifAppFileFormat format = avifGuessFileFormat(filename);
-    if (format == AVIF_APP_FILE_FORMAT_Y4M) {
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        inputFormat = avifGuessFileFormat(filename);
+    }
+
+    if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (!y4mRead(filename, imageSizeLimit, image, sourceTiming, frameIter)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {
             *outDepth = image->depth;
         }
-    } else if (format == AVIF_APP_FILE_FORMAT_JPEG) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // imageSizeLimit is also used to limit Exif and XMP metadata here.
         if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
@@ -315,7 +342,7 @@ avifAppFileFormat avifReadImage(const char * filename,
         if (outDepth) {
             *outDepth = 8;
         }
-    } else if (format == AVIF_APP_FILE_FORMAT_PNG) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(filename,
                          image,
                          requestedFormat,
@@ -329,11 +356,14 @@ avifAppFileFormat avifReadImage(const char * filename,
                          outDepth)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
-    } else {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
         return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    } else {
+        fprintf(stderr, "Unsupported file format %s for input file: %s\n", avifFileFormatToString(inputFormat), filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
     }
-    return format;
+    return inputFormat;
 }
 
 avifBool avifReadEntireFile(const char * filename, avifRWData * raw)
@@ -416,7 +446,7 @@ int avifQueryCPUCount(void)
 
 #include <sys/sysctl.h>
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     int mib[4];
     int numCPU;
@@ -442,7 +472,7 @@ int avifQueryCPUCount()
 
 // Emscripten
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     return 1;
 }
@@ -453,7 +483,7 @@ int avifQueryCPUCount()
 
 #include <unistd.h>
 
-int avifQueryCPUCount()
+int avifQueryCPUCount(void)
 {
     int numCPU = (int)sysconf(_SC_NPROCESSORS_ONLN);
     return (numCPU > 0) ? numCPU : 1;

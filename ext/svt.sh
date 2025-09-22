@@ -1,10 +1,10 @@
 # If you want to use a local build of SVT-AV1, you must clone the SVT-AV1 repo in this directory first,
 # then set CMake's AVIF_CODEC_SVT to LOCAL.
-# cmake and ninja must be in your PATH.
+# cmake must be in your PATH.
 
 set -e
 
-git clone -b v2.3.0 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+git clone -b v3.1.2 --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
 
 cd SVT-AV1
 cd Build/linux

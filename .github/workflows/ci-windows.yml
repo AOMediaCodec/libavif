@@ -2,9 +2,6 @@
 #
 #   * The os matrix consists of windows-latest only.
 #   * Installs Visual Studio in the os image.
-#   * Doesn't install cmake 3.17.x, because only cmake 3.18 or later, with the
-#     following bug fix, detects Visual Studio compilers correctly:
-#     https://gitlab.kitware.com/cmake/cmake/-/issues/20585
 #   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
 #     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
 #   * Builds with local libjpeg (-DAVIF_JPEG=LOCAL).
@@ -36,6 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
+        generator: [Ninja, "Visual Studio 17 2022"]
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -45,6 +43,7 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
+          extra-cache-key: ${{ matrix.generator }}
 
       - name: Build libyuv
         if: steps.setup.outputs.ext-cache-hit != 'true'
@@ -58,7 +57,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G Ninja -S . -B build
+          cmake -G "${{ matrix.generator }}" -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
@@ -67,17 +66,23 @@ jobs:
           -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
           -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
-          -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
-      - name: Build libavif (ninja)
-        working-directory: ./build
-        run: ninja
+      - name: Build libavif
+        run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
         working-directory: ./build
-        run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+        run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+      - name: Set the config folder for Ninja
+        if: ${{ matrix.generator == 'Ninja' }}
+        run:
+          echo "CONFIG_DIR=" >> $env:GITHUB_ENV
+      - name: Set the config folder for multi-config MSVC
+        if: ${{ matrix.generator != 'Ninja' }}
+        run:
+          echo "CONFIG_DIR=Release\" >> $env:GITHUB_ENV
       - name: Check static link bundling
         run: >
           cl .\apps\avifenc.c .\apps\shared\*.c .\third_party\iccjpeg\iccjpeg.c /nologo
@@ -85,16 +90,16 @@ jobs:
           -I.\apps\shared -I.\include -I.\third_party\iccjpeg
           -external:W0
           -external:I.\build\_deps\libpng-src
-          -external:I.\build\libjpeg\src\libjpeg
+          -external:I.\build\libjpeg\src\libjpeg\src
           -external:I.\build\libjpeg\src\libjpeg-build
           -external:I.\build\_deps\zlib-src
           -external:I.\build\_deps\libpng
           -external:I.\build\_deps\zlib
           /link
-          build\libjpeg\src\libjpeg-build\jpeg-static.lib
-          build\_deps\libpng\libpng16_static.lib
-          build\_deps\zlib\zlibstatic.lib
-          build\avif.lib
+          build\libjpeg\src\libjpeg-build\${env:CONFIG_DIR}jpeg-static.lib
+          build\_deps\libpng\${env:CONFIG_DIR}libpng16_static.lib
+          build\_deps\zlib\${env:CONFIG_DIR}zlibstatic.lib
+          build\${env:CONFIG_DIR}avif.lib
           ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
           /out:avifenc.exe
 

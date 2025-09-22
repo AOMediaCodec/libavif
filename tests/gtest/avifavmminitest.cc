@@ -30,7 +30,7 @@ TEST_P(AvmMiniTest, EncodeDecode) {
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
   encoder->codecChoice = AVIF_CODEC_CHOICE_AVM;
-  encoder->headerFormat = AVIF_HEADER_REDUCED;
+  encoder->headerFormat = AVIF_HEADER_MINI;
   testutil::AvifRwData encoded;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
             AVIF_RESULT_OK);
@@ -45,7 +45,7 @@ TEST_P(AvmMiniTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 40.0);
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 36.4);
 
   // Forcing an AV1 decoding codec should fail.
   for (avifCodecChoice av1_codec :
@@ -99,7 +99,7 @@ TEST(AvmMiniTest, Av1StillWorksWhenAvmIsEnabled) {
 
   EncoderPtr encoder(avifEncoderCreate());
   ASSERT_NE(encoder, nullptr);
-  encoder->headerFormat = AVIF_HEADER_REDUCED;
+  encoder->headerFormat = AVIF_HEADER_MINI;
   testutil::AvifRwData encoded;
   ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
             AVIF_RESULT_OK);

@@ -18,17 +18,12 @@ fi
 # When updating the libgav1 version, make the same change to libgav1.cmd.
 git clone -b v0.19.0 --depth 1 https://chromium.googlesource.com/codecs/libgav1
 
-cd libgav1
-mkdir build
-cd build
+mkdir libgav1/build
 
 ABI_LIST="armeabi-v7a arm64-v8a x86 x86_64"
 for abi in ${ABI_LIST}; do
-  mkdir "${abi}"
-  cd "${abi}"
-  cmake ../.. \
-    -G Ninja \
-    -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchains/android.cmake \
+  cmake -G Ninja -S libgav1 -B "libgav1/build/${abi}" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android.cmake \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DLIBGAV1_ANDROID_NDK_PATH=${1} \
@@ -37,8 +32,5 @@ for abi in ${ABI_LIST}; do
     -DLIBGAV1_ENABLE_TESTS=0 \
     -DLIBGAV1_MAX_BITDEPTH=12 \
     -DANDROID_ABI=${abi}
-  ninja
-  cd ..
+  cmake --build "libgav1/build/${abi}" --config Release --parallel
 done
-
-cd ../..

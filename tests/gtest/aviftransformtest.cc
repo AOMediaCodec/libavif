@@ -96,6 +96,84 @@ TEST(TransformTest, ClopIrotImor) {
   EXPECT_EQ(std::string(imor.boxtype, imor.boxtype + 4), "imor");
 }
 
+TEST(TransformTest, IrotAlphaEncodedDecoded) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+
+  ImagePtr image = testutil::ReadImage(data_path, "abc.png");
+  image->transformFlags |= AVIF_TRANSFORM_IROT;
+  image->irot.angle = 1;
+
+  // Encode.
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->quality = AVIF_QUALITY_LOSSLESS;
+  encoder->speed = AVIF_SPEED_FASTEST;
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  // Decode.
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+  // Note that rav1e does not support lossless encoding as of v0.8.0.
+  // Otherwise AreImagesEqual() could be used here.
+  EXPECT_TRUE(testutil::AreImagesSimilar(*image, *decoded));
+
+  // Check with existing correct AVIF file.
+  const std::string ref_path =
+      std::string(data_path) + "abc_color_irot_alpha_irot.avif";
+  ImagePtr ref_decoded(avifImageCreateEmpty());
+  ASSERT_NE(ref_decoded, nullptr);
+  DecoderPtr ref_decoder(avifDecoderCreate());
+  ASSERT_NE(ref_decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadFile(ref_decoder.get(), ref_decoded.get(),
+                                ref_path.c_str()),
+            AVIF_RESULT_OK);
+  // Note that rav1e does not support lossless encoding as of v0.8.0.
+  // Otherwise AreImagesEqual() could be used here.
+  EXPECT_TRUE(testutil::AreImagesSimilar(*decoded, *ref_decoded));
+
+  // The rendering of the images should be compared but that is outside the
+  // scope of libavif.
+}
+
+TEST(TransformTest, AlphaIrotNoIrot) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+
+  const std::string ref_path =
+      std::string(data_path) + "abc_color_irot_alpha_irot.avif";
+  ImagePtr ref_decoded(avifImageCreateEmpty());
+  ASSERT_NE(ref_decoded, nullptr);
+  DecoderPtr ref_decoder(avifDecoderCreate());
+  ASSERT_NE(ref_decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadFile(ref_decoder.get(), ref_decoded.get(),
+                                ref_path.c_str()),
+            AVIF_RESULT_OK);
+
+  // Read a file missing an 'irot' property associated with the alpha auxiliary
+  // image item. While this should not lead to the same output, libavif still
+  // decodes it the same way because libavif used to encode it without that
+  // association.
+  const std::string path =
+      std::string(data_path) + "abc_color_irot_alpha_NOirot.avif";
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
+            AVIF_RESULT_OK);
+  EXPECT_TRUE(testutil::AreImagesEqual(*decoded, *ref_decoded));
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

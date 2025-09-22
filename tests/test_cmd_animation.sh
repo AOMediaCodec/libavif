@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-source $(dirname "$0")/cmd_test_common.sh
+source $(dirname "$0")/cmd_test_common.sh || exit
 
 # Input file paths.
 INPUT_Y4M_0="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
@@ -82,6 +82,18 @@ pushd ${TMP_DIR}
   out=$("${AVIFENC}" -s 8 "${INPUT_Y4M_0}" "${INPUT_Y4M_1}" -o "${ENCODED_FILE}")
   findstr "Encoding frame 0 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)]" "${out}"
   findstr "Encoding frame 1 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)]" "${out}"
+
+  # Test updating of tiling options.
+  out=$("${AVIFENC}" -s 10 "${INPUT_Y4M_0}" --tilerowslog2:u 1 "${INPUT_Y4M_1}" --tilecolslog2:u 2 "${INPUT_Y4M_0}" --autotiling:u "${INPUT_Y4M_1}" --tilecolslog2:u 1 "${INPUT_Y4M_0}" -o "${ENCODED_FILE}")
+  findstr "Encoding frame 0 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], automatic tiling" "${out}"
+  findstr "Encoding frame 1 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [1], tileColsLog2 [0]" "${out}"
+  findstr "Encoding frame 2 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [1], tileColsLog2 [2]" "${out}"
+  findstr "Encoding frame 3 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], automatic tiling" "${out}"
+  findstr "Encoding frame 4 [1/25 ts] color quality [60 (Medium)], alpha quality [60 (Medium)], tileRowsLog2 [0], tileColsLog2 [1]" "${out}"
+  # --autotiling:u and --tilerowslog2:u R --tilecolslog2:u C are mutually exclusive.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M_0}" --autotiling:u --tilerowslog2:u 1 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 "${INPUT_Y4M_0}" --autotiling:u --tilecolslog2:u 2 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 "${INPUT_Y4M_0}" --autotiling:u --tilerowslog2:u 1 --tilecolslog2:u 2 "${INPUT_Y4M_1}" -o "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0

@@ -137,6 +137,10 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
 // Returns true if both images have the same features and pixel values.
 bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2);
 
+// Returns true if both images have the same features and close pixel values.
+bool AreImagesSimilar(const avifImage& image1, const avifImage& image2,
+                      double min_psnr = 30, bool ignore_alpha = false);
+
 // Returns the Peak Signal-to-Noise Ratio of image1 compared to image2.
 // A value of 99dB means all samples are exactly the same.
 // A negative value means that the input images cannot be compared.

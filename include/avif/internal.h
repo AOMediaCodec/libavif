@@ -273,10 +273,8 @@ typedef enum avifReformatMode
     AVIF_REFORMAT_MODE_YUV_COEFFICIENTS = 0, // Normal YUV conversion using coefficients
     AVIF_REFORMAT_MODE_IDENTITY,             // Pack GBR directly into YUV planes (AVIF_MATRIX_COEFFICIENTS_IDENTITY)
     AVIF_REFORMAT_MODE_YCGCO,                // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO
-#if defined(AVIF_ENABLE_EXPERIMENTAL_YCGCO_R)
-    AVIF_REFORMAT_MODE_YCGCO_RE, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
-    AVIF_REFORMAT_MODE_YCGCO_RO, // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
-#endif
+    AVIF_REFORMAT_MODE_YCGCO_RE,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
+    AVIF_REFORMAT_MODE_YCGCO_RO,             // YUV conversion using AVIF_MATRIX_COEFFICIENTS_YCGCO_RO
 } avifReformatMode;
 
 typedef enum avifAlphaMultiplyMode
@@ -289,12 +287,13 @@ typedef enum avifAlphaMultiplyMode
 // Information about an RGB color space.
 typedef struct avifRGBColorSpaceInfo
 {
-    uint32_t channelBytes; // Number of bytes per channel.
-    uint32_t pixelBytes;   // Number of bytes per pixel (= channelBytes * num channels).
-    uint32_t offsetBytesR; // Offset in bytes of the red channel in a pixel.
-    uint32_t offsetBytesG; // Offset in bytes of the green channel in a pixel.
-    uint32_t offsetBytesB; // Offset in bytes of the blue channel in a pixel.
-    uint32_t offsetBytesA; // Offset in bytes of the alpha channel in a pixel.
+    uint32_t channelBytes;    // Number of bytes per channel.
+    uint32_t pixelBytes;      // Number of bytes per pixel (= channelBytes * num channels).
+    uint32_t offsetBytesR;    // Offset in bytes of the red channel in a pixel.
+    uint32_t offsetBytesG;    // Offset in bytes of the green channel in a pixel.
+    uint32_t offsetBytesB;    // Offset in bytes of the blue channel in a pixel.
+    uint32_t offsetBytesA;    // Offset in bytes of the alpha channel in a pixel.
+    uint32_t offsetBytesGray; // Offset in bytes of the gray channel in a pixel.
 
     int maxChannel;    // Maximum value for a channel (e.g. 255 for 8 bit).
     float maxChannelF; // Same as maxChannel but as a float.
@@ -420,6 +419,7 @@ typedef enum avifItemCategory
 avifBool avifIsAlpha(avifItemCategory itemCategory);
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+// AVIF allows up to 32 inputs for sample transforms but we only support a smaller number.
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS \
     (AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA - AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR)
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS \
@@ -808,6 +808,9 @@ uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfiguration
 // ---------------------------------------------------------------------------
 // gain maps
 
+// Initializes avifGainMap to default values.
+void avifGainMapSetDefaults(avifGainMap * gainMap);
+
 // Finds the approximate min/max values from the given gain map values, excluding outliers.
 // Uses a histogram, with outliers defined as having at least one empty bucket between them
 // and the rest of the distribution. Discards at most 0.1% of values.
@@ -815,6 +818,10 @@ uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfiguration
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, float * rangeMin, float * rangeMax);
 
 avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
+
+// Returns true if both gain maps have the same metadata. Pixels are not checked.
+avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b);
+avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b);
 
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
