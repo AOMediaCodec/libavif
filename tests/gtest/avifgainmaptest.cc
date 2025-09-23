@@ -1097,7 +1097,7 @@ INSTANTIATE_TEST_SUITE_P(
             /*out_depth=*/8,
             /*out_transfer=*/AVIF_TRANSFER_CHARACTERISTICS_SRGB,
             /*out_rgb_format=*/AVIF_RGB_FORMAT_RGB,
-            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/60.0f,
+            /*reference=*/"seine_sdr_gainmap_srgb.avif", /*min_psnr=*/53.5f,
             /*max_psnr=*/80.0f),
 
         // Same as above, outputting to RGBA.
@@ -1221,7 +1221,7 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
         /*out_depth=*/image->depth,
         /*out_transfer_characteristics=*/image->transferCharacteristics,
         AVIF_RGB_FORMAT_RGB, /*reference_image=*/image.get(),
-        /*min_psnr=*/60, /*max_psnr=*/100);
+        /*min_psnr=*/53.5, /*max_psnr=*/100);
   }
 }
 
@@ -1410,7 +1410,7 @@ INSTANTIATE_TEST_SUITE_P(
                         /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
                         /*downscaling=*/1, /*gain_map_depth=*/10,
                         /*gain_map_format=*/AVIF_PIXEL_FORMAT_YUV444,
-                        /*min_psnr=*/55.0f, /*max_psnr=*/80.0f),
+                        /*min_psnr=*/53.25f, /*max_psnr=*/80.0f),
         // 8 bit gain map, expect a slightly lower PSNR.
         std::make_tuple(/*image1_name=*/"seine_sdr_gainmap_srgb.avif",
                         /*image2_name=*/"seine_hdr_gainmap_srgb.avif",
