@@ -80,6 +80,13 @@ unsigned int avifLibYUVVersion(void)
 // These defines are used to create a NULL reference to libyuv functions that
 // did not exist prior to a particular version of libyuv.
 // Versions prior to 1755 are considered too old and not used (see CMakeLists.txt).
+#if LIBYUV_VERSION < 1902
+// RAWToJ444 was added in libyuv version 1902.
+// See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6207845.
+// NEON was added afterward, but the version was not increased.
+// See https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6220890
+#define RAWToJ444 NULL
+#endif
 #if LIBYUV_VERSION < 1844
 // I444ToRGB24Matrix() and I422ToRGB24MatrixFilter() were added in libyuv version 1844.
 //
@@ -217,6 +224,12 @@ static int avifReorderARGBThenConvertToYUV(int (*ReorderARGB)(const uint8_t *, i
                                                height);                        \
     }
 
+#if LIBYUV_VERSION < 1903
+// AVIF_RGB_FORMAT_RGB
+// RAWToI444 was added in libyuv version 1903.
+// https://chromium-review.googlesource.com/c/libyuv/libyuv/+/6223658
+AVIF_DEFINE_CONVERSION(RAWToI444, RAWToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
+#endif
 #if LIBYUV_VERSION < 1840
 // AVIF_RGB_FORMAT_RGBA
 AVIF_DEFINE_CONVERSION(ABGRToJ422, ABGRToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
@@ -226,7 +239,6 @@ AVIF_DEFINE_CONVERSION(ABGRToJ420, ABGRToARGB, ARGBToJ420, AVIF_PIXEL_FORMAT_YUV
 // These are not yet implemented in libyuv so they cannot be guarded by a version check.
 // The "avif" prefix avoids any redefinition if they are available in libyuv one day.
 // AVIF_RGB_FORMAT_RGB
-AVIF_DEFINE_CONVERSION(avifRAWToI444, RAWToARGB, ARGBToI444, AVIF_PIXEL_FORMAT_YUV444)
 AVIF_DEFINE_CONVERSION(avifRAWToI422, RAWToARGB, ARGBToI422, AVIF_PIXEL_FORMAT_YUV422)
 AVIF_DEFINE_CONVERSION(avifRAWToJ422, RAWToARGB, ARGBToJ422, AVIF_PIXEL_FORMAT_YUV422)
 // AVIF_RGB_FORMAT_RGBA
@@ -323,7 +335,7 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 // AVIF_RANGE_LIMITED
                 {
                     // { NONE,    YUV444,    YUV422,    YUV420,    YUV400 }        // AVIF_RGB_FORMAT_
-                    { NULL, avifRAWToI444, avifRAWToI422, RAWToI420, NULL },       // RGB
+                    { NULL, RAWToI444, avifRAWToI422, RAWToI420, NULL },           // RGB
                     { NULL, avifABGRToI444, avifABGRToI422, ABGRToI420, NULL },    // RGBA
                     { NULL, avifBGRAToI444, avifBGRAToI422, BGRAToI420, NULL },    // ARGB
                     { NULL, avifRGB24ToI444, avifRGB24ToI422, RGB24ToI420, NULL }, // BGR
@@ -334,7 +346,7 @@ avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBImage * r
                 // AVIF_RANGE_FULL
                 {
                     // { NONE, YUV444, YUV422,   YUV420,   YUV400 }       // AVIF_RGB_FORMAT_
-                    { NULL, NULL, avifRAWToJ422, RAWToJ420, NULL },       // RGB
+                    { NULL, RAWToJ444, avifRAWToJ422, RAWToJ420, NULL },  // RGB
                     { NULL, NULL, ABGRToJ422, ABGRToJ420, NULL },         // RGBA
                     { NULL, NULL, avifBGRAToJ422, avifBGRAToJ420, NULL }, // ARGB
                     { NULL, NULL, avifRGB24ToJ422, RGB24ToJ420, NULL },   // BGR
