@@ -494,6 +494,8 @@ avifEncoder * avifEncoderCreate(void)
         return NULL;
     }
     encoder->headerFormat = AVIF_HEADER_DEFAULT;
+    encoder->creationTime = 0;
+    encoder->modificationTime = 0;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_NONE;
 #endif
@@ -3219,10 +3221,14 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
+    uint64_t now = (uint64_t)time(NULL);
+    uint64_t creationTime = (encoder->creationTime != 0) ? encoder->creationTime : now;
+    uint64_t modificationTime = (encoder->modificationTime != 0) ? encoder->modificationTime : now;
     // The epoch for creation_time and modification_time is midnight, Jan. 1,
     // 1904, in UTC time. Add the number of seconds between that epoch and the
     // Unix epoch.
-    uint64_t now = (uint64_t)time(NULL) + 2082844800;
+    creationTime += 2082844800;
+    modificationTime += 2082844800;
 
     avifRWStream s;
     avifRWStreamStart(&s, output);
@@ -3586,8 +3592,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         avifBoxMarker mvhd;
         AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "mvhd", AVIF_BOX_SIZE_TBD, 1, 0, &mvhd));
-        AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                          // unsigned int(64) creation_time;
-        AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                          // unsigned int(64) modification_time;
+        AVIF_CHECKRES(avifRWStreamWriteU64(&s, creationTime));                 // unsigned int(64) creation_time;
+        AVIF_CHECKRES(avifRWStreamWriteU64(&s, modificationTime));             // unsigned int(64) modification_time;
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)encoder->timescale)); // unsigned int(32) timescale;
         AVIF_CHECKRES(avifRWStreamWriteU64(&s, durationInTimescales));         // unsigned int(64) duration;
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00010000)); // template int(32) rate = 0x00010000; // typically 1.0
@@ -3621,8 +3627,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifBoxMarker tkhd;
             AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "tkhd", AVIF_BOX_SIZE_TBD, 1, 1, &tkhd));
-            AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                    // unsigned int(64) creation_time;
-            AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                    // unsigned int(64) modification_time;
+            AVIF_CHECKRES(avifRWStreamWriteU64(&s, creationTime));           // unsigned int(64) creation_time;
+            AVIF_CHECKRES(avifRWStreamWriteU64(&s, modificationTime));       // unsigned int(64) modification_time;
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, itemIndex + 1));          // unsigned int(32) track_ID;
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));                      // const unsigned int(32) reserved = 0;
             AVIF_CHECKRES(avifRWStreamWriteU64(&s, durationInTimescales));   // unsigned int(64) duration;
@@ -3668,8 +3674,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
             avifBoxMarker mdhd;
             AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "mdhd", AVIF_BOX_SIZE_TBD, 1, 0, &mdhd));
-            AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                          // unsigned int(64) creation_time;
-            AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                          // unsigned int(64) modification_time;
+            AVIF_CHECKRES(avifRWStreamWriteU64(&s, creationTime));                 // unsigned int(64) creation_time;
+            AVIF_CHECKRES(avifRWStreamWriteU64(&s, modificationTime));             // unsigned int(64) modification_time;
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)encoder->timescale)); // unsigned int(32) timescale;
             AVIF_CHECKRES(avifRWStreamWriteU64(&s, framesDurationInTimescales));   // unsigned int(64) duration;
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 21956)); // bit(1) pad = 0; unsigned int(5)[3] language; ("und")
