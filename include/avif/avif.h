@@ -1603,12 +1603,13 @@ typedef struct avifEncoder
     // Version 1.2.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
 
-    // creationTime and modificationTime are only used when encoding an image sequence (animated
-    // image).
-    //
-    // creationTime and modificationTime are in seconds since midnight, Jan. 1, 1970 UTC (the Unix
-    // epoch). If set to 0 (the default), libavif uses the current time.
+    // Only used when encoding an image sequence (animated image). In seconds since midnight,
+    // Jan. 1, 1970 UTC (the Unix epoch). If set to 0 (the default), libavif sets the creation time
+    // to the modification time.
     uint64_t creationTime;
+    // Only used when encoding an image sequence (animated image). In seconds since midnight,
+    // Jan. 1, 1970 UTC (the Unix epoch). If set to 0 (the default), libavif sets the modification
+    // time to the current time.
     uint64_t modificationTime;
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)

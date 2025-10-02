@@ -3222,8 +3222,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
     uint64_t now = (uint64_t)time(NULL);
-    uint64_t creationTime = (encoder->creationTime != 0) ? encoder->creationTime : now;
     uint64_t modificationTime = (encoder->modificationTime != 0) ? encoder->modificationTime : now;
+    uint64_t creationTime = (encoder->creationTime != 0) ? encoder->creationTime : modificationTime;
     // The epoch for creation_time and modification_time is midnight, Jan. 1,
     // 1904, in UTC time. Add the number of seconds between that epoch and the
     // Unix epoch.
