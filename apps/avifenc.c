@@ -41,6 +41,8 @@ typedef struct
     int layers;
     int speed;
     avifHeaderFormatFlags headerFormat;
+    uint64_t creationTime;
+    uint64_t modificationTime;
 
     avifBool paspPresent;
     uint32_t paspValues[2];
@@ -244,6 +246,8 @@ static void syntaxLong(void)
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
     printf("    --timescale,--fps V               : Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second. (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
+    printf("    --creation-time                   : Creation time for image sequences, in seconds since 1970-01-01 00:00:00 UTC (the Unix epoch). (Default: 0, use the modification time)\n");
+    printf("    --modification-time               : Modification time for image sequences, in seconds since 1970-01-01 00:00:00 UTC (the Unix epoch). (Default: 0, use the current time)\n");
     printf("    -k,--keyframe INTERVAL            : Maximum keyframe interval for image sequences (any set of INTERVAL consecutive frames will have at least one keyframe). Set to 0 to disable (default).\n");
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
@@ -1174,6 +1178,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->keyframeInterval = settings->keyframeInterval;
     encoder->repetitionCount = settings->repetitionCount;
     encoder->headerFormat = settings->headerFormat;
+    encoder->creationTime = settings->creationTime;
+    encoder->modificationTime = settings->modificationTime;
     encoder->extraLayerCount = settings->layers - 1;
     if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings)) {
         goto cleanup;
@@ -1475,6 +1481,8 @@ int main(int argc, char * argv[])
     settings.layers = 0;
     settings.speed = 6;
     settings.headerFormat = AVIF_HEADER_DEFAULT;
+    settings.creationTime = 0;
+    settings.modificationTime = 0;
     settings.repetitionCount = AVIF_REPETITION_COUNT_INFINITE;
     settings.keyframeInterval = 0;
     settings.ignoreExif = AVIF_FALSE;
@@ -1899,6 +1907,22 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             settings.outputTiming.timescale = (uint64_t)timescaleInt;
+        } else if (!strcmp(arg, "--creation-time")) {
+            NEXTARG();
+            long long creationTime = strtoll(arg, NULL, 0);
+            if (creationTime < 0 || (unsigned long long)creationTime > UINT64_MAX) {
+                fprintf(stderr, "ERROR: Invalid creation time: %lld\n", creationTime);
+                goto cleanup;
+            }
+            settings.creationTime = (uint64_t)creationTime;
+        } else if (!strcmp(arg, "--modification-time")) {
+            NEXTARG();
+            long long modificationTime = strtoll(arg, NULL, 0);
+            if (modificationTime < 0 || (unsigned long long)modificationTime > UINT64_MAX) {
+                fprintf(stderr, "ERROR: Invalid modification time: %lld\n", modificationTime);
+                goto cleanup;
+            }
+            settings.modificationTime = (uint64_t)modificationTime;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
             settings.codecChoice = avifCodecChoiceFromName(arg);
