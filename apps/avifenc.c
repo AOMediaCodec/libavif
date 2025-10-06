@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1910,18 +1911,30 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--creation-time")) {
             NEXTARG();
             long long creationTime = strtoll(arg, NULL, 0);
-            if (creationTime < 0 || (unsigned long long)creationTime > UINT64_MAX) {
+            if (creationTime < 0) {
                 fprintf(stderr, "ERROR: Invalid creation time: %lld\n", creationTime);
                 goto cleanup;
             }
+#if LLONG_MAX > UINT64_MAX
+            if ((unsigned long long)creationTime > UINT64_MAX) {
+                fprintf(stderr, "ERROR: Invalid creation time: %lld\n", creationTime);
+                goto cleanup;
+            }
+#endif
             settings.creationTime = (uint64_t)creationTime;
         } else if (!strcmp(arg, "--modification-time")) {
             NEXTARG();
             long long modificationTime = strtoll(arg, NULL, 0);
-            if (modificationTime < 0 || (unsigned long long)modificationTime > UINT64_MAX) {
+            if (modificationTime < 0) {
                 fprintf(stderr, "ERROR: Invalid modification time: %lld\n", modificationTime);
                 goto cleanup;
             }
+#if LLONG_MAX > UINT64_MAX
+            if ((unsigned long long)modificationTime > UINT64_MAX) {
+                fprintf(stderr, "ERROR: Invalid modification time: %lld\n", modificationTime);
+                goto cleanup;
+            }
+#endif
             settings.modificationTime = (uint64_t)modificationTime;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
