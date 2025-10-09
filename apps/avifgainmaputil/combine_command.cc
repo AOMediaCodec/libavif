@@ -61,6 +61,18 @@ CombineCommand::CombineCommand()
           "Set or override the CICP values for the alternate image, expressed "
           "as P/T/M  where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients.");
+  argparse_
+      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
+          arg_base_clli_, "--clli-base")
+      .help(
+          "Override content light level information of the base image,"
+          "expressed as:  MaxCLL,MaxPALL.");
+  argparse_
+      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
+          arg_alternate_clli_, "--clli-alternate")
+      .help(
+          "Override content light level information of the alternate image,"
+          "expressed as:  MaxCLL,MaxPALL.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
 }
@@ -155,6 +167,13 @@ avifResult CombineCommand::Run() {
         return AVIF_RESULT_INVALID_ARGUMENT;
       }
     }
+  }
+
+  if (arg_base_clli_.provenance() == argparse::Provenance::SPECIFIED) {
+    base_image->clli = arg_base_clli_.value();
+  }
+  if (arg_alternate_clli_.provenance() == argparse::Provenance::SPECIFIED) {
+    base_image->gainMap->altCLLI = arg_alternate_clli_.value();
   }
 
   EncoderPtr encoder(avifEncoderCreate());

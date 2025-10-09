@@ -20,6 +20,8 @@ class CombineCommand : public ProgramCommand {
   argparse::ArgValue<std::string> arg_output_filename_;
   argparse::ArgValue<CicpValues> arg_base_cicp_;
   argparse::ArgValue<CicpValues> arg_alternate_cicp_;
+  argparse::ArgValue<avifContentLightLevelInformationBox> arg_base_clli_;
+  argparse::ArgValue<avifContentLightLevelInformationBox> arg_alternate_clli_;
   argparse::ArgValue<int> arg_downscaling_;
   argparse::ArgValue<int> arg_gain_map_quality_;
   argparse::ArgValue<int> arg_gain_map_depth_;
