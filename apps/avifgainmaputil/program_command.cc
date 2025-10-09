@@ -52,6 +52,7 @@ argparse::ConvertedValue<CicpValues> CicpConverter::from_str(
         "Invalid CICP values, expected format: P/T/M where each "
         "value is a positive integer, got: " +
         str);
+    return converted_value;
   }
 
   CicpValues cicp = {};
@@ -64,5 +65,27 @@ argparse::ConvertedValue<CicpValues> CicpConverter::from_str(
 }
 
 std::vector<std::string> CicpConverter::default_choices() { return {}; }
+
+argparse::ConvertedValue<avifContentLightLevelInformationBox>
+ClliConverter::from_str(const std::string& str) {
+  argparse::ConvertedValue<avifContentLightLevelInformationBox> converted_value;
+
+  std::vector<uint16_t> clli;
+  if (!ParseList(str, ',', 2, &clli)) {
+    converted_value.set_error(
+        "Invalid CLLI values, expected format: maxCLL,maxPALL where "
+        "both maxCLL and maxPALL are positive integers, got: " +
+        str);
+    return converted_value;
+  }
+  avifContentLightLevelInformationBox clli_box = {};
+  clli_box.maxCLL = clli[0];
+  clli_box.maxPALL = clli[1];
+  converted_value.set_value(clli_box);
+
+  return converted_value;
+}
+
+std::vector<std::string> ClliConverter::default_choices() { return {}; }
 
 }  // namespace avif
