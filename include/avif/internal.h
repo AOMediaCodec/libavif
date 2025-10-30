@@ -150,11 +150,11 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 // Appends an opaque image item property.
-AVIF_API avifResult avifImagePushProperty(avifImage * image,
-                                          const uint8_t boxtype[4],
-                                          const uint8_t usertype[16],
-                                          const uint8_t * boxPayload,
-                                          size_t boxPayloadSize);
+avifResult avifImagePushProperty(avifImage * image,
+                                 const uint8_t boxtype[4],
+                                 const uint8_t usertype[16],
+                                 const uint8_t * boxPayload,
+                                 size_t boxPayloadSize);
 
 // Check if the FourCC property value is a known value
 AVIF_NODISCARD avifBool avifIsKnownPropertyType(const uint8_t boxtype[4]);
