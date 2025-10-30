@@ -19,6 +19,7 @@ class ConvertCommand : public ProgramCommand {
   argparse::ArgValue<std::string> arg_output_filename_;
   argparse::ArgValue<bool> arg_swap_base_;
   argparse::ArgValue<CicpValues> arg_cicp_;
+  argparse::ArgValue<avifContentLightLevelInformationBox> arg_clli_;
   argparse::ArgValue<int> arg_downscaling_;
   argparse::ArgValue<int> arg_gain_map_quality_;
   argparse::ArgValue<int> arg_gain_map_depth_;
