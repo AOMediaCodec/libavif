@@ -165,6 +165,10 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return libyuvResult;
     }
 
+    if (rgb->format == AVIF_RGB_FORMAT_GRAYA || rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     assert(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
@@ -278,6 +282,10 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
     avifResult libyuvResult = avifRGBImageUnpremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
+    }
+
+    if (rgb->format == AVIF_RGB_FORMAT_GRAYA || rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     assert(rgb->depth >= 8 && rgb->depth <= 16);
