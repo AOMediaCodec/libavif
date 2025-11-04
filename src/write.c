@@ -1432,6 +1432,7 @@ static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
     (*codec)->diag = &encoder->diag;
     (*codec)->maxThreads = encoder->maxThreads;
     (*codec)->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+    (*codec)->imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     AVIF_CHECKRES(avifImageCreateAllocate(decodedBaseImage, original, numBits, planes));
     avifBool isLimitedRangeAlpha = AVIF_FALSE; // Ignored.
     AVIF_CHECKERR((*codec)->getNextImage(*codec, &sample, planes == AVIF_PLANES_A, &isLimitedRangeAlpha, *decodedBaseImage),

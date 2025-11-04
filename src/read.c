@@ -6620,6 +6620,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
         avifBool isLimitedRangeAlpha = AVIF_FALSE;
         tile->codec->maxThreads = decoder->maxThreads;
         tile->codec->imageSizeLimit = decoder->imageSizeLimit;
+        tile->codec->imageDimensionLimit = decoder->imageDimensionLimit;
         if (!tile->codec->getNextImage(tile->codec, sample, avifIsAlpha(tile->input->itemCategory), &isLimitedRangeAlpha, tile->image)) {
             avifDiagnosticsPrintf(&decoder->diag, "tile->codec->getNextImage() failed");
             return avifGetErrorForItemCategory(tile->input->itemCategory);
