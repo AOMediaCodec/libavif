@@ -96,6 +96,8 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
+    assert(sample);
+
     if (!codec->internal->decoderInitialized) {
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
