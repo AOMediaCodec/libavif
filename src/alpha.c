@@ -165,10 +165,6 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return libyuvResult;
     }
 
-    if (rgb->format == AVIF_RGB_FORMAT_GRAYA || rgb->format == AVIF_RGB_FORMAT_AGRAY) {
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
-
     assert(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
@@ -198,7 +194,7 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
-        } else {
+        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
                 uint16_t * pixel = (uint16_t *)row;
@@ -218,6 +214,43 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
+        } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint16_t * pixel = (uint16_t *)row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint16_t a = pixel[1];
+                    if (a >= max) {
+                        // opaque is no-op
+                    } else if (a == 0) {
+                        // result must be zero
+                        pixel[0] = 0;
+                    } else {
+                        // a < maxF is always true now, so we don't need clamp here
+                        pixel[0] = (uint16_t)avifRoundf((float)pixel[0] * (float)a / maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint16_t * pixel = (uint16_t *)row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint16_t a = pixel[0];
+                    if (a >= max) {
+                    } else if (a == 0) {
+                        pixel[1] = 0;
+                    } else {
+                        pixel[1] = (uint16_t)avifRoundf((float)pixel[1] * (float)a / maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     } else {
         if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
@@ -241,7 +274,7 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
-        } else {
+        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
                 uint8_t * pixel = row;
@@ -261,6 +294,41 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
+        } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint8_t * pixel = row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint8_t a = pixel[1];
+                    // uint8_t can't exceed 255
+                    if (a == max) {
+                    } else if (a == 0) {
+                        pixel[0] = 0;
+                    } else {
+                        pixel[0] = (uint8_t)avifRoundf((float)pixel[0] * (float)a / maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint8_t * pixel = row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint8_t a = pixel[0];
+                    if (a == max) {
+                    } else if (a == 0) {
+                        pixel[1] = 0;
+                    } else {
+                        pixel[1] = (uint8_t)avifRoundf((float)pixel[1] * (float)a / maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     }
 
@@ -282,10 +350,6 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
     avifResult libyuvResult = avifRGBImageUnpremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
-    }
-
-    if (rgb->format == AVIF_RGB_FORMAT_GRAYA || rgb->format == AVIF_RGB_FORMAT_AGRAY) {
-        return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     assert(rgb->depth >= 8 && rgb->depth <= 16);
@@ -319,7 +383,7 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
-        } else {
+        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
                 uint16_t * pixel = (uint16_t *)row;
@@ -342,6 +406,44 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
+        } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint16_t * pixel = (uint16_t *)row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint16_t a = pixel[1];
+                    if (a >= max) {
+                        // opaque is no-op
+                    } else if (a == 0) {
+                        // prevent division by zero
+                        pixel[0] = 0;
+                    } else {
+                        float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
+                        pixel[0] = (uint16_t)AVIF_MIN(c1, maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint16_t * pixel = (uint16_t *)row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint16_t a = pixel[0];
+                    if (a >= max) {
+                    } else if (a == 0) {
+                        pixel[1] = 0;
+                    } else {
+                        float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
+                        pixel[1] = (uint16_t)AVIF_MIN(c1, maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     } else {
         if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
@@ -367,7 +469,7 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
-        } else {
+        } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
                 uint8_t * pixel = row;
@@ -390,6 +492,42 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
                 }
                 row += rgb->rowBytes;
             }
+        } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint8_t * pixel = row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint8_t a = pixel[1];
+                    if (a == max) {
+                    } else if (a == 0) {
+                        pixel[0] = 0;
+                    } else {
+                        float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
+                        pixel[0] = (uint8_t)AVIF_MIN(c1, maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
+            uint8_t * row = rgb->pixels;
+            for (uint32_t j = 0; j < rgb->height; ++j) {
+                uint8_t * pixel = row;
+                for (uint32_t i = 0; i < rgb->width; ++i) {
+                    uint8_t a = pixel[0];
+                    if (a == max) {
+                    } else if (a == 0) {
+                        pixel[1] = 0;
+                    } else {
+                        float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
+                        pixel[1] = (uint8_t)AVIF_MIN(c1, maxF);
+                    }
+                    pixel += 2;
+                }
+                row += rgb->rowBytes;
+            }
+        } else {
+            return AVIF_RESULT_NOT_IMPLEMENTED;
         }
     }
 

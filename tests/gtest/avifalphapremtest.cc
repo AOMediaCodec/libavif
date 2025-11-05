@@ -72,10 +72,20 @@ TEST(AlphaMultiplyTest, GrayAImagePremultiplyAlpha) {
   rgb.format = AVIF_RGB_FORMAT_GRAYA;  // 2 channels with alpha
   ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
   memset(rgb.pixels, 1, (size_t)rgb.rowBytes * rgb.height);
-  // avifRGBImagePremultiplyAlpha assumes 4 channels and would overrun the
-  // 2-channel buffer. Until this bug (issue #2886) is fixed, it should return
-  // AVIF_RESULT_NOT_IMPLEMENTED.
-  EXPECT_EQ(avifRGBImagePremultiplyAlpha(&rgb), AVIF_RESULT_NOT_IMPLEMENTED);
+  EXPECT_EQ(avifRGBImagePremultiplyAlpha(&rgb), AVIF_RESULT_OK);
+  avifRGBImageFreePixels(&rgb);
+}
+
+TEST(AlphaMultiplyTest, AGrayImagePremultiplyAlpha) {
+  avifRGBImage rgb;
+  memset(&rgb, 0, sizeof(rgb));
+  rgb.width = 6;
+  rgb.height = 1;
+  rgb.depth = 8;
+  rgb.format = AVIF_RGB_FORMAT_AGRAY;  // 2 channels with alpha
+  ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+  memset(rgb.pixels, 1, (size_t)rgb.rowBytes * rgb.height);
+  EXPECT_EQ(avifRGBImagePremultiplyAlpha(&rgb), AVIF_RESULT_OK);
   avifRGBImageFreePixels(&rgb);
 }
 
