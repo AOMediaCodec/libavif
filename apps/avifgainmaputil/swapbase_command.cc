@@ -142,7 +142,7 @@ SwapBaseCommand::SwapBaseCommand()
       .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
           arg_base_clli_, "--clli")
       .help(
-          "Override the input image's content light level information,"
+          "Override the input image's content light level information, "
           "expressed as:  MaxCLL,MaxPALL.");
   argparse_
       .add_argument<avifContentLightLevelInformationBox, ClliConverter>(

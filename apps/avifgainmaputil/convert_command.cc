@@ -32,7 +32,7 @@ ConvertCommand::ConvertCommand()
       .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
           arg_clli_, "--clli")
       .help(
-          "Set the content light level information of the alternate image,"
+          "Set the content light level information of the alternate image, "
           "expressed as:  MaxCLL,MaxPALL.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);
   arg_image_read_.Init(argparse_);

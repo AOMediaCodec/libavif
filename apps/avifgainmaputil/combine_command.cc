@@ -65,13 +65,13 @@ CombineCommand::CombineCommand()
       .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
           arg_base_clli_, "--clli-base")
       .help(
-          "Override content light level information of the base image,"
+          "Override content light level information of the base image, "
           "expressed as:  MaxCLL,MaxPALL.");
   argparse_
       .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
           arg_alternate_clli_, "--clli-alternate")
       .help(
-          "Override content light level information of the alternate image,"
+          "Override content light level information of the alternate image, "
           "expressed as:  MaxCLL,MaxPALL.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
