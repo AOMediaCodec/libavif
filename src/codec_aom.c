@@ -96,6 +96,8 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
+    assert(sample);
+
     if (!codec->internal->decoderInitialized) {
         aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
         struct aom_codec_stream_info streamInfo = { 0 };

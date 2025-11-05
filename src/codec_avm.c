@@ -59,6 +59,8 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                                      avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
+    assert(sample);
+
     if (!codec->internal->decoderInitialized) {
         AVIF_CHECKRES(avifCheckCodecVersionAVM());
 
