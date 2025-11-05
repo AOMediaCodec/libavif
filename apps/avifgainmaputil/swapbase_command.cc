@@ -56,7 +56,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
   avifRGBImage swapped_rgb;
   avifRGBImageSetDefaults(&swapped_rgb, swapped);
 
-  avifContentLightLevelInformationBox clli = image.gainMap->image->clli;
+  avifContentLightLevelInformationBox clli = image.gainMap->altCLLI;
   const bool compute_clli =
       !tone_mapping_to_sdr && clli.maxCLL == 0 && clli.maxPALL == 0;
 
@@ -138,6 +138,18 @@ SwapBaseCommand::SwapBaseCommand()
           " expressed as P/T/M where P = color primaries, T = transfer "
           "characteristics, M = matrix coefficients. This will become the CICP "
           "of the base image after swapping.");
+  argparse_
+      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
+          arg_base_clli_, "--clli")
+      .help(
+          "Override the input image's content light level information, "
+          "expressed as:  MaxCLL,MaxPALL.");
+  argparse_
+      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
+          arg_alternate_clli_, "--alt-clli")
+      .help(
+          "Override content light level information for the alternate image "
+          "in the input image, expressed as:  MaxCLL,MaxPALL.");
 }
 
 avifResult SwapBaseCommand::Run() {
@@ -170,6 +182,13 @@ avifResult SwapBaseCommand::Run() {
         arg_alt_cicp_.value().transfer_characteristics;
     image->gainMap->altMatrixCoefficients =
         arg_alt_cicp_.value().matrix_coefficients;
+  }
+
+  if (arg_base_clli_.provenance() == argparse::Provenance::SPECIFIED) {
+    image->clli = arg_base_clli_.value();
+  }
+  if (arg_alternate_clli_.provenance() == argparse::Provenance::SPECIFIED) {
+    image->gainMap->altCLLI = arg_alternate_clli_.value();
   }
 
   int depth = arg_image_read_.depth;

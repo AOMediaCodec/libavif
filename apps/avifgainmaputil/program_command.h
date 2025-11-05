@@ -71,6 +71,13 @@ struct CicpConverter {
   std::vector<std::string> default_choices();
 };
 
+struct ClliConverter {
+  // Methods expected by argparse.
+  argparse::ConvertedValue<avifContentLightLevelInformationBox> from_str(
+      const std::string& str);
+  std::vector<std::string> default_choices();
+};
+
 // Basic flags for image writing.
 struct BasicImageEncodeArgs {
   argparse::ArgValue<int> speed;

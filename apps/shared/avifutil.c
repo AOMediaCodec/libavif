@@ -174,8 +174,8 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
         if (avif->gainMap->altPlaneCount) {
             printf("    * Planes         : %u\n", avif->gainMap->altPlaneCount);
         }
-        if (gainMapImage->clli.maxCLL > 0 || gainMapImage->clli.maxPALL > 0) {
-            printf("    * CLLI           : %hu, %hu\n", gainMapImage->clli.maxCLL, gainMapImage->clli.maxPALL);
+        if (avif->gainMap->altCLLI.maxCLL > 0 || avif->gainMap->altCLLI.maxPALL > 0) {
+            printf("    * CLLI           : %hu, %hu\n", avif->gainMap->altCLLI.maxCLL, avif->gainMap->altCLLI.maxPALL);
         }
         printf("\n");
     } else if (avif->gainMap != NULL) {
