@@ -97,18 +97,13 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      avifImage * image)
 {
     if (!codec->internal->decoderInitialized) {
-        if (!sample) {
-            // Nothing to decode: no need to initialize anything.
-            return AVIF_FALSE;
-        }
         aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
         struct aom_codec_stream_info streamInfo = { 0 };
         if (aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo) != AOM_CODEC_OK) {
-            // The sample is incorrect or there are not enough bytes yet: no need to initialize anything.
             return AVIF_FALSE;
         }
         if (streamInfo.w == 0 || streamInfo.h == 0) {
-            // The sequence header was not found: no need to initialize anything.
+            // The sequence header was not found: treat it as an error.
             return AVIF_FALSE;
         }
         if (avifDimensionsTooLarge(streamInfo.w, streamInfo.h, codec->imageSizeLimit, codec->imageDimensionLimit)) {
