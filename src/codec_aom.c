@@ -97,13 +97,25 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      avifImage * image)
 {
     if (!codec->internal->decoderInitialized) {
+        aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
+        struct aom_codec_stream_info streamInfo = { 0 };
+        if (aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo) != AOM_CODEC_OK) {
+            return AVIF_FALSE;
+        }
+        if (streamInfo.w == 0 || streamInfo.h == 0) {
+            // The sequence header was not found: treat it as an error.
+            return AVIF_FALSE;
+        }
+        if (avifDimensionsTooLarge(streamInfo.w, streamInfo.h, codec->imageSizeLimit, codec->imageDimensionLimit)) {
+            return AVIF_FALSE;
+        }
+
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
         cfg.threads = codec->maxThreads;
         cfg.allow_lowbitdepth = 1;
 
-        aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
-        if (aom_codec_dec_init(&codec->internal->decoder, decoder_interface, &cfg, 0)) {
+        if (aom_codec_dec_init(&codec->internal->decoder, decoderInterface, &cfg, 0)) {
             return AVIF_FALSE;
         }
         codec->internal->decoderInitialized = AVIF_TRUE;

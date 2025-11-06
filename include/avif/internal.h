@@ -606,10 +606,11 @@ typedef struct avifCodec
     avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
 
     // Decoder options (for getNextImage):
-    int maxThreads;          // See avifDecoder::maxThreads.
-    uint32_t imageSizeLimit; // See avifDecoder::imageSizeLimit.
-    uint8_t operatingPoint;  // Operating point, defaults to 0.
-    avifBool allLayers;      // if true, the underlying codec must decode all layers, not just the best layer
+    int maxThreads;               // See avifDecoder::maxThreads.
+    uint32_t imageSizeLimit;      // See avifDecoder::imageSizeLimit.
+    uint32_t imageDimensionLimit; // See avifDecoder::imageDimensionLimit.
+    uint8_t operatingPoint;       // Operating point, defaults to 0.
+    avifBool allLayers;           // if true, the underlying codec must decode all layers, not just the best layer
 
     avifCodecGetNextImageFunc getNextImage;
     avifCodecEncodeImageFunc encodeImage;
