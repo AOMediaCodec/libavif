@@ -47,7 +47,7 @@ fi
 if [[ "$SANITIZER" == "memory" ]]; then
   DAV1D_EXTRA_FLAGS="${DAV1D_EXTRA_FLAGS} -Denable_asm=false"
 fi
-sed -i "s/meson setup \(.*\) \.\./meson setup \1${DAV1D_EXTRA_FLAGS} ../g" ./ext/dav1d.cmd
+sed -i "s:meson setup \(.*\) dav1d/build dav1d:meson setup \1 ${DAV1D_EXTRA_FLAGS} dav1d/build dav1d:g" ./ext/dav1d.cmd
 
 # Build libaom with sanitizer flags.
 # Adds extra flags: -DAOM_TARGET_CPU=generic for msan.
