@@ -5521,6 +5521,8 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     return AVIF_RESULT_OK;
 }
 
+// If cicpSet is not NULL, the caller must set |*cicpSet| to AVIF_FALSE before
+// calling this function.
 // On success, this function returns AVIF_RESULT_OK and does the following:
 // * If a nclx property was found in |properties|:
 //   - Set |*colorPrimaries|, |*transferCharacteristics|, |*matrixCoefficients|
@@ -5536,6 +5538,7 @@ static avifResult avifReadColorNclxProperty(const avifPropertyArray * properties
                                             avifRange * yuvRange,
                                             avifBool * cicpSet)
 {
+    assert(cicpSet == NULL || *cicpSet == AVIF_FALSE);
     avifBool colrNCLXSeen = AVIF_FALSE;
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
         avifProperty * prop = &properties->prop[propertyIndex];
@@ -5775,7 +5778,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     avifRange yuvRange = AVIF_RANGE_FULL;
-    avifBool cicpSet;
+    avifBool cicpSet = AVIF_FALSE;
     // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
     AVIF_CHECKRES(
         avifReadColorNclxProperty(&gainMapItemTmp->properties, &colorPrimaries, &transferCharacteristics, &matrixCoefficients, &yuvRange, &cicpSet));
