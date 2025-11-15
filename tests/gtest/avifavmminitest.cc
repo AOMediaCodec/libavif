@@ -70,11 +70,16 @@ INSTANTIATE_TEST_SUITE_P(Basic, AvmMiniTest,
                                         AVIF_PIXEL_FORMAT_YUV444),
                                  /*alpha=*/Values(false, true)));
 
+// TODO(wtc): Re-enable when
+// https://gitlab.com/AOMediaCodec/avm/-/merge_requests/2692 is imported into
+// Google's internal repository.
+#if 0
 INSTANTIATE_TEST_SUITE_P(Tiny, AvmMiniTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  /*alpha=*/Values(false)));
+#endif
 
 // TODO(yguyon): Implement or fix in avm then test the following combinations.
 INSTANTIATE_TEST_SUITE_P(DISABLED_Broken, AvmMiniTest,
