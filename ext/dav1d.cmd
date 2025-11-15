@@ -9,7 +9,7 @@
 : #     "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
 : # When updating the dav1d version, make the same change to dav1d_android.sh.
-git clone -b 1.5.1 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 1.5.2 --depth 1 https://code.videolan.org/videolan/dav1d.git
 
 : # macOS might require: -Dc_args=-fno-stack-check
 : # Build with asan: -Db_sanitize=address -Db_lundef=false
