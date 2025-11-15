@@ -5775,7 +5775,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     avifRange yuvRange = AVIF_RANGE_FULL;
-    avifBool cicpSet;
+    avifBool cicpSet = AVIF_FALSE;
     // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
     AVIF_CHECKRES(
         avifReadColorNclxProperty(&gainMapItemTmp->properties, &colorPrimaries, &transferCharacteristics, &matrixCoefficients, &yuvRange, &cicpSet));
