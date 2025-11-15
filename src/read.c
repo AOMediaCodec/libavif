@@ -5771,15 +5771,6 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         return AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
     }
 
-    avifColorPrimaries colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-    avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    avifRange yuvRange = AVIF_RANGE_FULL;
-    avifBool cicpSet;
-    // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
-    AVIF_CHECKRES(
-        avifReadColorNclxProperty(&gainMapItemTmp->properties, &colorPrimaries, &transferCharacteristics, &matrixCoefficients, &yuvRange, &cicpSet));
-
     // -- Everything is valid, do memory allocations and fill in output data. --
 
     decoder->image->gainMap = avifGainMapCreate();
@@ -5790,12 +5781,13 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         decoder->image->gainMap->image = avifImageCreateEmpty();
         avifImage * image = decoder->image->gainMap->image;
         AVIF_CHECKERR(image, AVIF_RESULT_OUT_OF_MEMORY);
-        if (cicpSet) {
-            image->colorPrimaries = colorPrimaries;
-            image->transferCharacteristics = transferCharacteristics;
-            image->matrixCoefficients = matrixCoefficients;
-            image->yuvRange = yuvRange;
-        }
+        // Look for a colr nclx box. Other colr box types (e.g. ICC) are not supported.
+        AVIF_CHECKRES(avifReadColorNclxProperty(&gainMapItemTmp->properties,
+                                                &image->colorPrimaries,
+                                                &image->transferCharacteristics,
+                                                &image->matrixCoefficients,
+                                                &image->yuvRange,
+                                                NULL));
     }
 
     // Only set the output pointer after everything has been validated.
