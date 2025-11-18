@@ -196,10 +196,8 @@ typedef enum AVIF_NODISCARD avifResult
     AVIF_RESULT_ENCODE_GAIN_MAP_FAILED = 30,
     AVIF_RESULT_DECODE_GAIN_MAP_FAILED = 31,
     AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE = 32,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED = 33,
     AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED = 34,
-#endif
 
     // Kept for backward compatibility; please use the symbols above instead.
     AVIF_RESULT_NO_AV1_ITEMS_FOUND = AVIF_RESULT_MISSING_IMAGE_ITEM
@@ -721,13 +719,12 @@ AVIF_API void avifGainMapDestroy(avifGainMap * gainMap);
 
 // ---------------------------------------------------------------------------
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-// Sample Transforms are a HIGHLY EXPERIMENTAL FEATURE. The format might still
-// change and images containing a sample transform item encoded with the current
-// version of libavif might not decode with a future version of libavif.
-// Use at your own risk.
-// This is based on a proposal from the Alliance for Open Media.
-
+// Sample Transforms are a mechanism introduced in the version 1.2.0 of the
+// AVIF specification. They enable the creation of derived images that are
+// constructed from multiple input images according to a mathematical formula.
+// This can for example be used to enable higher bit depths even when the
+// underlying codec does not natively support 16-bit or higher precision.
+// See https://aomediacodec.github.io/av1-avif/v1.2.0.html#sample-transform.
 typedef enum avifSampleTransformRecipe
 {
     AVIF_SAMPLE_TRANSFORM_NONE,
@@ -758,7 +755,6 @@ typedef enum avifSampleTransformRecipe
     // truncation and/or compression.
     AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B
 } avifSampleTransformRecipe;
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 // ---------------------------------------------------------------------------
 // Opaque image item properties
@@ -1612,10 +1608,8 @@ typedef struct avifEncoder
     // time to the current time.
     uint64_t modificationTime;
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
     avifSampleTransformRecipe sampleTransformRecipe; // Changeable encoder setting.
-#endif
 } avifEncoder;
 
 // Creates an encoder initialized with default settings values.

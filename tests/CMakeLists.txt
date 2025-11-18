@@ -75,11 +75,7 @@ if(AVIF_GTEST)
 endif()
 
 if(AVIF_GTEST)
-    if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-        add_avif_gtest_with_data(avif16bittest)
-        add_avif_gtest(avifsampletransformtest)
-    endif()
-
+    add_avif_gtest_with_data(avif16bittest)
     add_avif_gtest(avifallocationtest)
     add_avif_gtest_with_data(avifalphanoispetest)
     add_avif_gtest(avifalphapremtest)
@@ -132,6 +128,7 @@ if(AVIF_GTEST)
     add_avif_gtest(avifrgbtest)
     add_avif_gtest(avifrgbtoyuvtest)
     add_avif_gtest(avifrgbtoyuvthreadingtest)
+    add_avif_gtest(avifsampletransformtest)
     add_avif_gtest_with_data(avifscaletest)
     add_avif_gtest_with_data(avifsize0test)
     add_avif_gtest(avifstreamtest)
@@ -146,12 +143,21 @@ if(AVIF_GTEST)
     add_avif_gtest(avify4mtest)
 
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
-        # These tests are supported with aom being the encoder. If the aom encoder is unavailable,
-        # these tests are disabled because other codecs may not implement all the necessary features.
-        # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
         set_tests_properties(
-            avifallocationtest avifgridapitest avifincrtest aviflosslesstest avifmetadatatest avifpixitest PROPERTIES DISABLED
-                                                                                                                      True
+            # These tests are supported with aom being the encoder. If the aom encoder is unavailable,
+            # these tests are disabled because other codecs may not implement all the necessary features.
+            # For example, SVT-AV1 requires 4:2:0 images with even dimensions of at least 64x64 px.
+            avifallocationtest
+            avifgridapitest
+            avifincrtest
+            aviflosslesstest
+            avifmetadatatest
+            avifpixitest
+            # rav1e and svt do not support encoder changes (potentially different bit depth between
+            # primary item and bit depth extension).
+            avif16bittest
+            avifaltrtest
+            PROPERTIES DISABLED True
         )
 
         message(STATUS "Some tests are disabled because aom is unavailable for encoding.")
@@ -328,6 +334,7 @@ if(AVIF_CODEC_AVM_ENABLED)
         set_tests_properties(aviftest PROPERTIES DISABLED True)
         if(AVIF_GTEST)
             set_tests_properties(
+                avif16bittest
                 avifallocationtest
                 avifaltrtest
                 avifbasictest
@@ -355,9 +362,6 @@ if(AVIF_CODEC_AVM_ENABLED)
             set_tests_properties(avifgainmaptest PROPERTIES DISABLED True)
             if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
                 set_tests_properties(avifjpeggainmaptest PROPERTIES DISABLED True)
-            endif()
-            if(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-                set_tests_properties(avif16bittest PROPERTIES DISABLED True)
             endif()
         endif()
 

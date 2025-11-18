@@ -37,6 +37,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Removed since 1.3.0
 
 * Remove ext/avm.cmd.
+* Remove the AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag.
 
 ## [1.3.0] - 2025-05-09
 

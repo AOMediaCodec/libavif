@@ -11,12 +11,6 @@
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
 
-#if !defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
-// Make sure this test is compiled with
-// AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM enabled when libavif is.
-enum avifSampleTransformRecipe {};  // Redefinition error otherwise.
-#endif
-
 namespace avif {
 namespace {
 
@@ -25,7 +19,6 @@ const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 // Verifies that avifDecoderParse() takes the 'sato' image item from the same
 // 'atlr' group as the primary item into account.
 TEST(AltrTest, SampleTransformDepthEqualToInput) {
@@ -57,7 +50,6 @@ TEST(AltrTest, SampleTransformDepthEqualToInput) {
   // std::ofstream("weld_sato_12B_8B_q0.avif", std::ios::binary)
   //     .write(reinterpret_cast<char*>(encoded.data), encoded.size);
 }
-#endif  // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 // Verifies that avifDecoderNextImage() returns the same sample bit depth as
 // avifDecoderParse().
@@ -72,11 +64,7 @@ TEST(AltrTest, SampleTransformDepthParseNextEqual) {
 
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   const uint32_t depth = decoder->image->depth;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
   EXPECT_EQ(depth, 16);
-#else
-  EXPECT_EQ(depth, 12);
-#endif  // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
   ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   EXPECT_EQ(decoder->image->depth, depth);
