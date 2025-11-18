@@ -42,6 +42,8 @@ typedef struct
     int layers;
     int speed;
     avifHeaderFormatFlags headerFormat;
+    int depthExtension;
+    int depthOverlap;
     uint64_t creationTime;
     uint64_t modificationTime;
 
@@ -221,7 +223,8 @@ static void syntaxLong(void)
     printf("    --mini                            : EXPERIMENTAL: Use reduced header if possible (backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D                      : Output depth, one of 8, 10 or 12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    -d,--depth D                      : Primary item output bit depth per channel. One of: 8/10/12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    --depthext Dext Doverlap          : Bit depth extension using Sample Transforms. Allowed [D Dext Doverlap] combinations: [D 0 0]/[8 8 0]/[12 4 0]/[12 8 4]\n");
     printf("    -y,--yuv FORMAT                   : Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
@@ -530,7 +533,9 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifBool * sourceIsRGB,
                                    avifAppSourceTiming * sourceTiming,
                                    avifChromaDownsampling chromaDownsampling,
-                                   avifAppFileFormat inputFormat)
+                                   avifAppFileFormat inputFormat,
+                                   int depthExtension,
+                                   int depthOverlap)
 {
     if (imageIndex < input->cacheCount) {
         const avifInputCacheEntry * cached = &input->cache[imageIndex];
@@ -603,10 +608,26 @@ static avifBool avifInputReadImage(avifInput * input,
             inputFormat = AVIF_APP_FILE_FORMAT_Y4M;
         }
     }
+
+    if (input->requestedDepth == 0 && (depthExtension != 0 || depthOverlap != 0)) {
+        fprintf(stderr, "ERROR: --depth must be specified when --depthext is\n");
+        return AVIF_FALSE;
+    }
+    const int requestedDepth = input->requestedDepth == 0 ? 0 : (input->requestedDepth + depthExtension - depthOverlap);
+    if (requestedDepth != 0 && requestedDepth != 8 && requestedDepth != 10 && requestedDepth != 12 && requestedDepth != 16) {
+        fprintf(stderr,
+                "ERROR: Unsupported depth %d = %d + extension %d - overlap %d\n",
+                requestedDepth,
+                input->requestedDepth,
+                depthExtension,
+                depthOverlap);
+        return AVIF_FALSE;
+    }
+
     if (avifReadImage(currentFile->filename,
                       inputFormat,
                       input->requestedFormat,
-                      input->requestedDepth,
+                      requestedDepth,
                       chromaDownsampling,
                       ignoreColorProfile,
                       ignoreExif,
@@ -655,7 +676,9 @@ static avifBool avifInputReadImage(avifInput * input,
                                   sourceIsRGB,
                                   sourceTiming,
                                   chromaDownsampling,
-                                  inputFormat);
+                                  inputFormat,
+                                  depthExtension,
+                                  depthOverlap);
     }
     return AVIF_TRUE;
 }
@@ -1009,7 +1032,9 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 /*sourceIsRGB=*/NULL,
                                 /*sourceTiming=*/NULL,
                                 settings->chromaDownsampling,
-                                settings->inputFormat)) {
+                                settings->inputFormat,
+                                settings->depthExtension,
+                                settings->depthOverlap)) {
             goto cleanup;
         }
         if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", avifPrettyFilename(nextFile->filename))) {
@@ -1111,7 +1136,9 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
                                     settings->chromaDownsampling,
-                                    settings->inputFormat)) {
+                                    settings->inputFormat,
+                                    settings->depthExtension,
+                                    settings->depthOverlap)) {
                 goto cleanup;
             }
             // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
@@ -1197,6 +1224,22 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         encoder->qualityGainMap = settings->qualityGainMap;
     }
 #endif
+
+    if (firstImage->depth == 16 && settings->depthExtension == 8 && settings->depthOverlap == 0) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B;
+    } else if (firstImage->depth == 16 && settings->depthExtension == 4 && settings->depthOverlap == 0) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B;
+    } else if (firstImage->depth == 16 && settings->depthExtension == 8 && settings->depthOverlap == 4) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B;
+    } else if (settings->depthExtension != 0 || settings->depthOverlap != 0) {
+        fprintf(stderr,
+                "ERROR: Unsupported bit depth extension scheme: %u = %d + %d - %d\n",
+                firstImage->depth,
+                (int)firstImage->depth - settings->depthExtension,
+                settings->depthExtension,
+                settings->depthOverlap);
+        goto cleanup;
+    }
 
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speedStr[16];
@@ -1609,8 +1652,21 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
             input.requestedDepth = atoi(arg);
-            if ((input.requestedDepth != 8) && (input.requestedDepth != 10) && (input.requestedDepth != 12)) {
+            if (input.requestedDepth != 8 && input.requestedDepth != 10 && input.requestedDepth != 12) {
                 fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
+                goto cleanup;
+            }
+        } else if (!strcmp(arg, "--depthext")) {
+            NEXTARG();
+            settings.depthExtension = atoi(arg);
+            if (settings.depthExtension != 0 && settings.depthExtension != 4 && settings.depthExtension != 8) {
+                fprintf(stderr, "ERROR: invalid depth extension: %s\n", arg);
+                goto cleanup;
+            }
+            NEXTARG();
+            settings.depthOverlap = atoi(arg);
+            if (settings.depthOverlap > settings.depthExtension || (settings.depthOverlap != 0 && settings.depthOverlap != 4)) {
+                fprintf(stderr, "ERROR: invalid depth overlap: %s\n", arg);
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
@@ -2388,7 +2444,9 @@ int main(int argc, char * argv[])
                             &sourceWasRGB,
                             &firstSourceTiming,
                             settings.chromaDownsampling,
-                            settings.inputFormat)) {
+                            settings.inputFormat,
+                            settings.depthExtension,
+                            settings.depthOverlap)) {
         goto cleanup;
     }
 
@@ -2633,7 +2691,9 @@ int main(int argc, char * argv[])
                                     /*sourceIsRGB=*/NULL,
                                     /*sourceTiming=*/NULL,
                                     settings.chromaDownsampling,
-                                    settings.inputFormat)) {
+                                    settings.inputFormat,
+                                    settings.depthExtension,
+                                    settings.depthOverlap)) {
                 goto cleanup;
             }
             // Let avifEncoderAddImageGrid() verify the grid integrity (valid cell sizes, depths etc.).
