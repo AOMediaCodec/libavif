@@ -75,42 +75,40 @@ const char * avifResultToString(avifResult result)
 {
     // clang-format off
     switch (result) {
-        case AVIF_RESULT_OK:                            return "OK";
-        case AVIF_RESULT_INVALID_FTYP:                  return "Invalid ftyp";
-        case AVIF_RESULT_NO_CONTENT:                    return "No content";
-        case AVIF_RESULT_NO_YUV_FORMAT_SELECTED:        return "No YUV format selected";
-        case AVIF_RESULT_REFORMAT_FAILED:               return "Reformat failed";
-        case AVIF_RESULT_UNSUPPORTED_DEPTH:             return "Unsupported depth";
-        case AVIF_RESULT_ENCODE_COLOR_FAILED:           return "Encoding of color planes failed";
-        case AVIF_RESULT_ENCODE_ALPHA_FAILED:           return "Encoding of alpha plane failed";
-        case AVIF_RESULT_BMFF_PARSE_FAILED:             return "BMFF parsing failed";
-        case AVIF_RESULT_MISSING_IMAGE_ITEM:            return "Missing or empty image item";
-        case AVIF_RESULT_DECODE_COLOR_FAILED:           return "Decoding of color planes failed";
-        case AVIF_RESULT_DECODE_ALPHA_FAILED:           return "Decoding of alpha plane failed";
-        case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH:     return "Color and alpha planes size mismatch";
-        case AVIF_RESULT_ISPE_SIZE_MISMATCH:            return "Plane sizes don't match ispe values";
-        case AVIF_RESULT_NO_CODEC_AVAILABLE:            return "No codec available";
-        case AVIF_RESULT_NO_IMAGES_REMAINING:           return "No images remaining";
-        case AVIF_RESULT_INVALID_EXIF_PAYLOAD:          return "Invalid Exif payload";
-        case AVIF_RESULT_INVALID_IMAGE_GRID:            return "Invalid image grid";
-        case AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION: return "Invalid codec-specific option";
-        case AVIF_RESULT_TRUNCATED_DATA:                return "Truncated data";
-        case AVIF_RESULT_IO_NOT_SET:                    return "IO not set";
-        case AVIF_RESULT_IO_ERROR:                      return "IO Error";
-        case AVIF_RESULT_WAITING_ON_IO:                 return "Waiting on IO";
-        case AVIF_RESULT_INVALID_ARGUMENT:              return "Invalid argument";
-        case AVIF_RESULT_NOT_IMPLEMENTED:               return "Not implemented";
-        case AVIF_RESULT_OUT_OF_MEMORY:                 return "Out of memory";
-        case AVIF_RESULT_CANNOT_CHANGE_SETTING:         return "Cannot change some setting during encoding";
-        case AVIF_RESULT_INCOMPATIBLE_IMAGE:            return "The image is incompatible with already encoded images";
-        case AVIF_RESULT_INTERNAL_ERROR:                return "Internal error";
-        case AVIF_RESULT_ENCODE_GAIN_MAP_FAILED:        return "Encoding of gain map planes failed";
-        case AVIF_RESULT_DECODE_GAIN_MAP_FAILED:        return "Decoding of gain map planes failed";
-        case AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE:     return "Invalid tone mapped image item";
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
+        case AVIF_RESULT_OK:                             return "OK";
+        case AVIF_RESULT_INVALID_FTYP:                   return "Invalid ftyp";
+        case AVIF_RESULT_NO_CONTENT:                     return "No content";
+        case AVIF_RESULT_NO_YUV_FORMAT_SELECTED:         return "No YUV format selected";
+        case AVIF_RESULT_REFORMAT_FAILED:                return "Reformat failed";
+        case AVIF_RESULT_UNSUPPORTED_DEPTH:              return "Unsupported depth";
+        case AVIF_RESULT_ENCODE_COLOR_FAILED:            return "Encoding of color planes failed";
+        case AVIF_RESULT_ENCODE_ALPHA_FAILED:            return "Encoding of alpha plane failed";
+        case AVIF_RESULT_BMFF_PARSE_FAILED:              return "BMFF parsing failed";
+        case AVIF_RESULT_MISSING_IMAGE_ITEM:             return "Missing or empty image item";
+        case AVIF_RESULT_DECODE_COLOR_FAILED:            return "Decoding of color planes failed";
+        case AVIF_RESULT_DECODE_ALPHA_FAILED:            return "Decoding of alpha plane failed";
+        case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH:      return "Color and alpha planes size mismatch";
+        case AVIF_RESULT_ISPE_SIZE_MISMATCH:             return "Plane sizes don't match ispe values";
+        case AVIF_RESULT_NO_CODEC_AVAILABLE:             return "No codec available";
+        case AVIF_RESULT_NO_IMAGES_REMAINING:            return "No images remaining";
+        case AVIF_RESULT_INVALID_EXIF_PAYLOAD:           return "Invalid Exif payload";
+        case AVIF_RESULT_INVALID_IMAGE_GRID:             return "Invalid image grid";
+        case AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION:  return "Invalid codec-specific option";
+        case AVIF_RESULT_TRUNCATED_DATA:                 return "Truncated data";
+        case AVIF_RESULT_IO_NOT_SET:                     return "IO not set";
+        case AVIF_RESULT_IO_ERROR:                       return "IO Error";
+        case AVIF_RESULT_WAITING_ON_IO:                  return "Waiting on IO";
+        case AVIF_RESULT_INVALID_ARGUMENT:               return "Invalid argument";
+        case AVIF_RESULT_NOT_IMPLEMENTED:                return "Not implemented";
+        case AVIF_RESULT_OUT_OF_MEMORY:                  return "Out of memory";
+        case AVIF_RESULT_CANNOT_CHANGE_SETTING:          return "Cannot change some setting during encoding";
+        case AVIF_RESULT_INCOMPATIBLE_IMAGE:             return "The image is incompatible with already encoded images";
+        case AVIF_RESULT_INTERNAL_ERROR:                 return "Internal error";
+        case AVIF_RESULT_ENCODE_GAIN_MAP_FAILED:         return "Encoding of gain map planes failed";
+        case AVIF_RESULT_DECODE_GAIN_MAP_FAILED:         return "Decoding of gain map planes failed";
+        case AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE:      return "Invalid tone mapped image item";
         case AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED: return "Encoding of sample transformed image failed";
         case AVIF_RESULT_DECODE_SAMPLE_TRANSFORM_FAILED: return "Decoding of sample transformed image failed";
-#endif
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
@@ -1017,12 +1015,10 @@ avifBool avifIsAlpha(avifItemCategory itemCategory)
     if (itemCategory == AVIF_ITEM_ALPHA) {
         return AVIF_TRUE;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (itemCategory >= AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA &&
         itemCategory < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS) {
         return AVIF_TRUE;
     }
-#endif
     return AVIF_FALSE;
 }
 

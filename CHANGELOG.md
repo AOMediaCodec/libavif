@@ -11,6 +11,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Added since 1.3.0
 
 * Allow avifenc to read png or jpeg files through stdin using --stdin-format.
+* Support some Sample Transform schemes as defined in the version 1.2 of the
+  AVIF specification.
 
 ### Changed since 1.3.0
 
@@ -37,6 +39,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Removed since 1.3.0
 
 * Remove ext/avm.cmd.
+* Remove the AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag.
 
 ## [1.3.0] - 2025-05-09
 

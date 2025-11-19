@@ -163,7 +163,6 @@ AVIF_NODISCARD avifBool avifIsValidUUID(const uint8_t uuid[16]);
 
 // ---------------------------------------------------------------------------
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 // Mapping used in the coding of Sample Transform metadata.
 typedef enum avifSampleTransformBitDepth
 {
@@ -240,8 +239,6 @@ avifResult avifImageApplyOperations(avifImage * dstImage,
                                     uint8_t numInputImageItems,
                                     const avifImage * inputImageItems[],
                                     avifPlanesFlags planes);
-
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 // ---------------------------------------------------------------------------
 // Alpha
@@ -405,20 +402,17 @@ typedef enum avifItemCategory
     AVIF_ITEM_COLOR,
     AVIF_ITEM_ALPHA,
     AVIF_ITEM_GAIN_MAP,
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     AVIF_ITEM_SAMPLE_TRANSFORM, // Sample Transform derived image item 'sato'.
     // Extra input image items for AVIF_ITEM_SAMPLE_TRANSFORM. "Extra" because AVIF_ITEM_COLOR could be one too.
     AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR,
     AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_COLOR,
     AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA,
     AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_ALPHA,
-#endif
     AVIF_ITEM_CATEGORY_COUNT
 } avifItemCategory;
 
 avifBool avifIsAlpha(avifItemCategory itemCategory);
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 // AVIF allows up to 32 inputs for sample transforms but we only support a smaller number.
 #define AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS \
     (AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA - AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR)
@@ -428,7 +422,6 @@ avifBool avifIsAlpha(avifItemCategory itemCategory);
 #define AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR
 #define AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY \
     (AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS - 1)
-#endif
 
 // ---------------------------------------------------------------------------
 // Grid AVIF images

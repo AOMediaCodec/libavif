@@ -496,9 +496,7 @@ avifEncoder * avifEncoderCreate(void)
     encoder->headerFormat = AVIF_HEADER_DEFAULT;
     encoder->creationTime = 0;
     encoder->modificationTime = 0;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_NONE;
-#endif
     return encoder;
 }
 
@@ -541,9 +539,7 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     encoder->data->lastTileRowsLog2 = encoder->data->tileRowsLog2;
     encoder->data->lastTileColsLog2 = encoder->data->tileColsLog2;
     lastEncoder->scalingMode = encoder->scalingMode;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     lastEncoder->sampleTransformRecipe = encoder->sampleTransformRecipe;
-#endif
 }
 
 // This function detects changes made on avifEncoder. It returns true on success (i.e., if every
@@ -597,11 +593,9 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
         *encoderChanges |= AVIF_ENCODER_CHANGE_CODEC_SPECIFIC;
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (lastEncoder->sampleTransformRecipe != encoder->sampleTransformRecipe) {
         return AVIF_FALSE;
     }
-#endif
 
     return AVIF_TRUE;
 }
@@ -1067,7 +1061,6 @@ static avifResult avifImageCopyAltImageMetadata(avifImage * altImageMetadata, co
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 static avifResult avifEncoderWriteSampleTransformTokens(avifRWStream * s, const avifSampleTransformExpression * expression)
 {
     AVIF_ASSERT_OR_RETURN(expression->count <= 255);
@@ -1112,7 +1105,6 @@ static avifResult avifEncoderWriteSampleTransformPayload(avifEncoder * encoder, 
     avifRWStreamFinishWrite(&s);
     return AVIF_RESULT_OK;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const avifRWData * exif)
 {
@@ -1230,9 +1222,7 @@ static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantize
 static const char infeNameColor[] = "Color";
 static const char infeNameAlpha[] = "Alpha";
 static const char infeNameGainMap[] = "GMap";
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 static const char infeNameSampleTransform[] = "SampleTransform";
-#endif
 
 static const char * getInfeName(avifItemCategory itemCategory)
 {
@@ -1242,11 +1232,9 @@ static const char * getInfeName(avifItemCategory itemCategory)
     if (itemCategory == AVIF_ITEM_GAIN_MAP) {
         return infeNameGainMap;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
         return infeNameSampleTransform;
     }
-#endif
     return infeNameColor;
 }
 
@@ -1297,7 +1285,6 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     return AVIF_RESULT_OK;
 }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
 static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
                                                           uint32_t gridCols,
                                                           uint32_t gridRows,
@@ -1546,7 +1533,6 @@ static avifResult avifEncoderCreateBitDepthExtensionImage(avifEncoder * encoder,
     }
     return result;
 }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
 static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
 {
@@ -1590,12 +1576,10 @@ static avifResult avifGetErrorForItemCategory(avifItemCategory itemCategory)
     if (itemCategory == AVIF_ITEM_GAIN_MAP) {
         return AVIF_RESULT_ENCODE_GAIN_MAP_FAILED;
     }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM ||
         (itemCategory >= AVIF_SAMPLE_TRANSFORM_MIN_CATEGORY && itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY)) {
         return AVIF_RESULT_ENCODE_SAMPLE_TRANSFORM_FAILED;
     }
-#endif
     return avifIsAlpha(itemCategory) ? AVIF_RESULT_ENCODE_ALPHA_FAILED : AVIF_RESULT_ENCODE_COLOR_FAILED;
 }
 
@@ -1724,13 +1708,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
     const avifImage * firstCell = cellImages[0];
     const avifImage * bottomRightCell = cellImages[cellCount - 1];
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     AVIF_CHECKERR(firstCell->depth == 8 || firstCell->depth == 10 || firstCell->depth == 12 ||
                       (firstCell->depth == 16 && encoder->sampleTransformRecipe != AVIF_SAMPLE_TRANSFORM_NONE),
                   AVIF_RESULT_UNSUPPORTED_DEPTH);
-#else
-    AVIF_CHECKERR(firstCell->depth == 8 || firstCell->depth == 10 || firstCell->depth == 12, AVIF_RESULT_UNSUPPORTED_DEPTH);
-#endif
     AVIF_CHECKERR(firstCell->yuvFormat != AVIF_PIXEL_FORMAT_NONE, AVIF_RESULT_NO_YUV_FORMAT_SELECTED);
     if (!firstCell->width || !firstCell->height || !bottomRightCell->width || !bottomRightCell->height) {
         return AVIF_RESULT_NO_CONTENT;
@@ -1961,7 +1941,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             gainMapItem->dimgFromID = toneMappedItemID;
         }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
@@ -1972,7 +1951,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         } else {
             AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_NONE, AVIF_RESULT_NOT_IMPLEMENTED);
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
         // -----------------------------------------------------------------------
         // Create metadata items (Exif, XMP)
@@ -2066,7 +2044,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                             : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
                                                                          : encoder->data->quantizer;
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
             // Remember original quantizer values in case they change, to reset them afterwards.
             int * encoderMinQuantizer = isAlpha ? &encoder->minQuantizerAlpha : &encoder->minQuantizer;
             int * encoderMaxQuantizer = isAlpha ? &encoder->maxQuantizerAlpha : &encoder->maxQuantizer;
@@ -2099,7 +2076,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 cellImagePlaceholder = sampleTransformedImage; // Transfer ownership.
                 cellImage = cellImagePlaceholder;
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
 
             // If alpha channel is present, set disableLaggedOutput to AVIF_TRUE. If the encoder supports it, this enables
             // avifEncoderDataShouldForceKeyframeForAlpha to force a keyframe in the alpha channel whenever a keyframe has been
@@ -2115,14 +2091,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                /*disableLaggedOutput=*/encoder->data->alphaPresent,
                                                                addImageFlags,
                                                                item->encodeOutput);
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
             // Revert quality settings if they changed.
             if (*encoderMinQuantizer != originalMinQuantizer || *encoderMaxQuantizer != originalMaxQuantizer) {
                 avifEncoderBackupSettings(encoder); // Remember last encoding settings for next avifEncoderDetectChanges().
                 *encoderMinQuantizer = originalMinQuantizer;
                 *encoderMaxQuantizer = originalMaxQuantizer;
             }
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
             if (cellImagePlaceholder) {
                 avifImageDestroy(cellImagePlaceholder);
             }
@@ -2366,11 +2340,9 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
         return AVIF_FALSE;
     }
 
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
     if (encoder->sampleTransformRecipe != AVIF_SAMPLE_TRANSFORM_NONE) {
         return AVIF_FALSE;
     }
-#endif
 
     // Check for maximum field values and maximum chunk sizes.
 
@@ -2881,12 +2853,10 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         if (isToneMappedImage) {
             hasIpmaToWrite = AVIF_TRUE;
         }
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         const avifBool isSampleTransformImage = !memcmp(item->type, "sato", 4);
         if (isSampleTransformImage) {
             hasIpmaToWrite = AVIF_TRUE;
         }
-#endif
         item->associations.count = 0;
         if (!hasIpmaToWrite) {
             continue;
@@ -2959,7 +2929,6 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         }
         const avifBool isAlpha = avifIsAlpha(item->itemCategory);
         uint8_t depth = (uint8_t)itemMetadata->depth;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM)
         if (encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
@@ -2981,7 +2950,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_NONE, AVIF_RESULT_NOT_IMPLEMENTED);
         }
         assert(isSampleTransformImage == (item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM));
-#endif // AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM
+
         if (hasPixi) {
             avifItemPropertyDedupStart(dedup);
             uint8_t channelCount = (isAlpha || (itemMetadata->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) ? 1 : 3;
