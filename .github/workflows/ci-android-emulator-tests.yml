@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       # This is needed for faster emulators. See:
       # https://github.com/ReactiveCircus/android-emulator-runner?tab=readme-ov-file#running-hardware-accelerated-emulators-on-linux-runners
       - name: Enable KVM group perms
@@ -55,7 +55,7 @@ jobs:
           java-version: "17"
           distribution: "temurin"
       - name: Run Instrumented Tests on the Emulator
-        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
+        uses: reactivecircus/android-emulator-runner@b530d96654c385303d652368551fb075bc2f0b6b # v2.35.0
         with:
           working-directory: android_jni
           api-level: 31
