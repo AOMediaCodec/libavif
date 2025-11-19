@@ -642,7 +642,7 @@ typedef struct avifGainMap
     // cells.
 
     // Parameters for converting the gain map from its image encoding to log2 space.
-    // gainMapLog2 = lerp(gainMapMin, gainMapMax, pow(gainMapEncoded, gainMapGamma));
+    // gainMapLog2 = lerp(gainMapMin, gainMapMax, pow(gainMapEncoded, 1/gainMapGamma));
     // where 'lerp' is a linear interpolation function.
     // Minimum value in the gain map, log2-encoded, per RGB channel.
     avifSignedFraction gainMapMin[3];
@@ -654,7 +654,7 @@ typedef struct avifGainMap
 
     // Parameters used in gain map computation/tone mapping to avoid numerical
     // instability.
-    // toneMappedLinear = ((baseImageLinear + baseOffset) * exp(gainMapLog * w)) - alternateOffset;
+    // toneMappedLinear = ((baseImageLinear + baseOffset) * exp2(gainMapLog * w)) - alternateOffset;
     // Where 'w' is a weight parameter based on the display's HDR capacity
     // (see below).
 
