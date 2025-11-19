@@ -11,6 +11,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Added since 1.3.0
 
 * Allow avifenc to read png or jpeg files through stdin using --stdin-format.
+* Support some Sample Transform schemes.
 
 ### Changed since 1.3.0
 
