@@ -42,8 +42,8 @@ typedef struct
     int layers;
     int speed;
     avifHeaderFormatFlags headerFormat;
-    int depthExtension;
-    int depthOverlap;
+    uint32_t depthExtension;
+    uint32_t depthOverlap;
     uint64_t creationTime;
     uint64_t modificationTime;
 
@@ -223,8 +223,8 @@ static void syntaxLong(void)
     printf("    --mini                            : EXPERIMENTAL: Use reduced header if possible (backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D                      : Primary item output bit depth per channel. One of: 8/10/12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
-    printf("    --depthext Dext Doverlap          : Bit depth extension using Sample Transforms. Allowed [D Dext Doverlap] combinations: [D 0 0]/[8 8 0]/[12 4 0]/[12 8 4]\n");
+    printf("    -d,--depth D                      : Output bit depth per channel. One of: 8/10/12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    --depth-ext Dext,Doverlap         : Bit depth extension added to the primary item's --depth D. Allowed [D Dext Doverlap] combinations: [D 0 0]/[8 8 0]/[12 4 0]/[12 8 4]\n");
     printf("    -y,--yuv FORMAT                   : Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
@@ -534,8 +534,8 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifAppSourceTiming * sourceTiming,
                                    avifChromaDownsampling chromaDownsampling,
                                    avifAppFileFormat inputFormat,
-                                   int depthExtension,
-                                   int depthOverlap)
+                                   uint32_t depthExtension,
+                                   uint32_t depthOverlap)
 {
     if (imageIndex < input->cacheCount) {
         const avifInputCacheEntry * cached = &input->cache[imageIndex];
@@ -610,7 +610,7 @@ static avifBool avifInputReadImage(avifInput * input,
     }
 
     if (input->requestedDepth == 0 && (depthExtension != 0 || depthOverlap != 0)) {
-        fprintf(stderr, "ERROR: --depth must be specified when --depthext is\n");
+        fprintf(stderr, "ERROR: --depth must be specified when --depth-ext is\n");
         return AVIF_FALSE;
     }
     const int requestedDepth = input->requestedDepth == 0 ? 0 : (input->requestedDepth + depthExtension - depthOverlap);
@@ -1233,9 +1233,9 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B;
     } else if (settings->depthExtension != 0 || settings->depthOverlap != 0) {
         fprintf(stderr,
-                "ERROR: Unsupported bit depth extension scheme: %u = %d + %d - %d\n",
+                "ERROR: Unsupported bit depth extension scheme: %u = %d + %u - %u\n",
                 firstImage->depth,
-                (int)firstImage->depth - settings->depthExtension,
+                (int)firstImage->depth - (int)settings->depthExtension,
                 settings->depthExtension,
                 settings->depthOverlap);
         goto cleanup;
@@ -1656,15 +1656,19 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
                 goto cleanup;
             }
-        } else if (!strcmp(arg, "--depthext")) {
+        } else if (!strcmp(arg, "--depth-ext")) {
             NEXTARG();
-            settings.depthExtension = atoi(arg);
+            uint32_t depthValues[2];
+            if (!parseU32List(depthValues, 2, arg, ',')) {
+                fprintf(stderr, "ERROR: Invalid depth extension and overlap values: %s\n", arg);
+                goto cleanup;
+            }
+            settings.depthExtension = depthValues[0];
             if (settings.depthExtension != 0 && settings.depthExtension != 4 && settings.depthExtension != 8) {
                 fprintf(stderr, "ERROR: invalid depth extension: %s\n", arg);
                 goto cleanup;
             }
-            NEXTARG();
-            settings.depthOverlap = atoi(arg);
+            settings.depthOverlap = depthValues[1];
             if (settings.depthOverlap > settings.depthExtension || (settings.depthOverlap != 0 && settings.depthOverlap != 4)) {
                 fprintf(stderr, "ERROR: invalid depth overlap: %s\n", arg);
                 goto cleanup;
