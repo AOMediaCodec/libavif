@@ -1208,7 +1208,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     } else if (input->requestedDepth == 12 && input->requestedDepthExtension == 8) {
         encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B;
     } else if (input->requestedDepthExtension != 0) {
-        fprintf(stderr, "ERROR: Unsupported bit depth extension scheme: %u + %u\n", input->requestedDepth, input->requestedDepthExtension);
+        fprintf(stderr, "ERROR: Unsupported bit depth extension scheme: %d + %d\n", input->requestedDepth, input->requestedDepthExtension);
         goto cleanup;
     }
 
