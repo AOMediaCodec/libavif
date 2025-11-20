@@ -435,6 +435,7 @@ static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, con
 
 #define XML_NAME_SPACE_GAIN_MAP "http://ns.adobe.com/hdr-gain-map/1.0/"
 #define XML_NAME_SPACE_RDF "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+#define XML_NAME_SPACE_XMP_NOTE "http://ns.adobe.com/xmp/note/"
 
 // Finds an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // Returns NULL if not found.
@@ -466,19 +467,12 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
     return NULL;
 }
 
-// Use XML_PARSE_RECOVER and XML_PARSE_NOERROR to avoid failing/printing errors for invalid XML.
-// In particular, if the jpeg files contains extended XMP, avifJPEGReadInternal simply concatenates it to
-// standard XMP, which is not a valid XML tree.
-// TODO(maryla): better handle extended XMP. If the gain map metadata is in the extended part,
-// the current code won't detect it.
-#define LIBXML2_XML_PARSING_FLAGS (XML_PARSE_RECOVER | XML_PARSE_NOERROR)
-
 // Returns true if there is an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // On the main image, this signals that the file also contains a gain map.
 // On a subsequent image, this signals that it is a gain map.
 static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSize)
 {
-    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
+    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
     if (document == NULL) {
         return AVIF_FALSE; // Probably and out of memory error.
     }
@@ -660,7 +654,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
 avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap)
 {
-    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, LIBXML2_XML_PARSING_FLAGS);
+    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
     if (document == NULL) {
         return AVIF_FALSE; // Probably an out of memory error.
     }
@@ -883,7 +877,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
     memset(&rgb, 0, sizeof(avifRGBImage));
 
     // Standard XMP segment followed by all extended XMP segments.
-    avifRWData totalXMP = { NULL, 0 };
+    avifRWData extendedXMP = { NULL, 0 };
     // Each byte set to 0 is a missing byte. Each byte set to 1 was read and copied to totalXMP.
     avifRWData extendedXMPReadBytes = { NULL, 0 };
 
@@ -1115,21 +1109,16 @@ static avifBool avifJPEGReadInternal(FILE * f,
                         fprintf(stderr, "XMP extraction failed: extended XMP segment GUID mismatch\n");
                         goto cleanup;
                     }
-                    if (totalExtendedXMPSize != (totalXMP.size - standardXMPSize)) {
+                    if (totalExtendedXMPSize != extendedXMP.size) {
                         fprintf(stderr, "XMP extraction failed: extended XMP total size mismatch\n");
                         goto cleanup;
                     }
                 } else {
                     memcpy(extendedXMPGUID, guid, AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH);
 
-                    if (avifRWDataRealloc(&totalXMP, (size_t)standardXMPSize + totalExtendedXMPSize) != AVIF_RESULT_OK) {
-                        fprintf(stderr, "XMP extraction failed: out of memory\n");
-                        goto cleanup;
-                    }
-                    memcpy(totalXMP.data, standardXMPData, standardXMPSize);
-
-                    // Keep track of the bytes that were set.
-                    if (avifRWDataRealloc(&extendedXMPReadBytes, totalExtendedXMPSize) != AVIF_RESULT_OK) {
+                    // Allocate the extended XMP and keep track of the bytes that were set.
+                    if (avifRWDataRealloc(&extendedXMP, (size_t)totalExtendedXMPSize) != AVIF_RESULT_OK ||
+                        avifRWDataRealloc(&extendedXMPReadBytes, totalExtendedXMPSize) != AVIF_RESULT_OK) {
                         fprintf(stderr, "XMP extraction failed: out of memory\n");
                         goto cleanup;
                     }
@@ -1139,7 +1128,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 }
                 // According to Adobe XMP Specification Part 3 section 1.1.3.1:
                 //   "A robust JPEG reader should tolerate the marker segments in any order."
-                memcpy(&totalXMP.data[standardXMPSize + extendedXMPOffset], &marker->data[AVIF_JPEG_OFFSET_TILL_EXTENDED_XMP], extendedXMPSize);
+                memcpy(&extendedXMP.data[extendedXMPOffset], &marker->data[AVIF_JPEG_OFFSET_TILL_EXTENDED_XMP], extendedXMPSize);
 
                 // Make sure no previously read data was overwritten by the current segment.
                 if (memchr(&extendedXMPReadBytes.data[extendedXMPOffset], 1, extendedXMPSize)) {
@@ -1163,7 +1152,10 @@ static avifBool avifJPEGReadInternal(FILE * f,
             uint8_t xmpNote[AVIF_JPEG_XMP_NOTE_TAG_LENGTH + AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH];
             memcpy(xmpNote, AVIF_JPEG_XMP_NOTE_TAG, AVIF_JPEG_XMP_NOTE_TAG_LENGTH);
             memcpy(xmpNote + AVIF_JPEG_XMP_NOTE_TAG_LENGTH, extendedXMPGUID, AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH);
-            if (!avifJPEGFindSubstr(standardXMPData, standardXMPSize, xmpNote, sizeof(xmpNote))) {
+            avifBool foundAlternativeXmpNote;
+            if (avifJPEGFindSubstr(standardXMPData, standardXMPSize, xmpNote, sizeof(xmpNote))) {
+                foundAlternativeXmpNote = AVIF_FALSE;
+            } else {
                 // Try the alternative before returning an error.
                 uint8_t alternativeXmpNote[AVIF_JPEG_ALTERNATIVE_XMP_NOTE_TAG_LENGTH + AVIF_JPEG_EXTENDED_XMP_GUID_LENGTH];
                 memcpy(alternativeXmpNote, AVIF_JPEG_ALTERNATIVE_XMP_NOTE_TAG, AVIF_JPEG_ALTERNATIVE_XMP_NOTE_TAG_LENGTH);
@@ -1172,17 +1164,119 @@ static avifBool avifJPEGReadInternal(FILE * f,
                     fprintf(stderr, "XMP extraction failed: standard and extended XMP GUID mismatch\n");
                     goto cleanup;
                 }
+                foundAlternativeXmpNote = AVIF_TRUE;
             }
+            (void)foundAlternativeXmpNote;
 
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
+            // Initialize the XMP RDF.
+            avifBool hasError = AVIF_FALSE;
+            xmlDoc * extendedXMPDoc = NULL;
+            xmlChar * xmlBuff = NULL;
+            xmlDoc * xmpDoc = xmlReadMemory((const char *)standardXMPData, (int)standardXMPSize, "standard.xml", NULL, /*options=*/0);
+            xmlNode * xmpRdf = (xmlNode *)avifJPEGFindXMLNodeByName(xmlDocGetRootElement(xmpDoc),
+                                                                    XML_NAME_SPACE_RDF,
+                                                                    "RDF",
+                                                                    /*recursive=*/AVIF_TRUE);
+            if (!xmpRdf) {
+                fprintf(stderr, "XMP extraction failed: cannot find RDF node\n");
+                hasError = AVIF_TRUE;
+                goto cleanup_xml;
+            }
             // According to Adobe XMP Specification Part 3 section 1.1.3.1:
             //   "A JPEG reader must [...] remove the xmpNote:HasExtendedXMP property."
-            // This constraint is ignored here because leaving the xmpNote:HasExtendedXMP property is rather harmless
-            // and editing XMP metadata is quite involved.
+            avifBool foundHasExtendedXMP = AVIF_FALSE;
+            xmlNode * descNode = xmpRdf->children;
+            while (!foundHasExtendedXMP && descNode != NULL) {
+                if (descNode->type == XML_ELEMENT_NODE && descNode->ns != NULL &&
+                    xmlStrcmp(descNode->ns->href, (const xmlChar *)XML_NAME_SPACE_RDF) == 0 &&
+                    xmlStrcmp(descNode->name, (const xmlChar *)"Description") == 0) {
+                    // Remove the HasExtendedXMP property.
+                    if (foundAlternativeXmpNote) {
+                        xmlNodePtr cur = descNode->children;
+                        while (cur != NULL) {
+                            if (cur->type == XML_ELEMENT_NODE && cur->ns != NULL &&
+                                xmlStrcmp(cur->name, (const xmlChar *)"HasExtendedXMP") == 0 &&
+                                xmlStrcmp(cur->ns->href, (const xmlChar *)XML_NAME_SPACE_XMP_NOTE) == 0) {
+                                // We must Unlink and Free the node.
+                                xmlUnlinkNode(cur);
+                                xmlFreeNode(cur);
+                                foundHasExtendedXMP = AVIF_TRUE;
+                                break;
+                            }
+                            cur = cur->next;
+                        }
+                    } else {
+                        xmlAttrPtr attr =
+                            xmlHasNsProp(descNode, (const xmlChar *)"HasExtendedXMP", (const xmlChar *)XML_NAME_SPACE_XMP_NOTE);
+
+                        if (attr) {
+                            xmlRemoveProp(attr);
+                            foundHasExtendedXMP = AVIF_TRUE;
+                            break;
+                        }
+                    }
+                }
+                // Check next sibling in case there are multiple Descriptions.
+                descNode = descNode->next;
+            }
+            if (!foundHasExtendedXMP) {
+                fprintf(stderr, "XMP extraction failed: cannot find HasExtendedXMP property\n");
+                hasError = AVIF_TRUE;
+                goto cleanup_xml;
+            }
+
+            // Read the extended XMP.
+            extendedXMPDoc = xmlReadMemory((const char *)extendedXMP.data,
+                                           (int)extendedXMP.size,
+                                           "extended.xml",
+                                           NULL,
+                                           /*options=*/0);
+            const xmlNode * extendedXMPRdf = avifJPEGFindXMLNodeByName(xmlDocGetRootElement(extendedXMPDoc),
+                                                                       XML_NAME_SPACE_RDF,
+                                                                       "RDF",
+                                                                       /*recursive=*/AVIF_TRUE);
+            if (!extendedXMPRdf) {
+                fprintf(stderr, "XMP extraction failed: invalid standard XMP segment\n");
+                hasError = AVIF_TRUE;
+                goto cleanup_xml;
+            }
+            // Copy the extended nodes over.
+            xmlNode * cur = extendedXMPRdf->xmlChildrenNode;
+            while (cur != NULL) {
+                // Copy the child.
+                xmlNode * childCopy = xmlDocCopyNode(cur, xmpDoc, 1);
+                xmlAddChild(xmpRdf, childCopy);
+                cur = cur->next;
+            }
+
+            // Dump the new XMP to avif->xmp.
+            int buffer_size;
+            xmlDocDumpFormatMemory(xmpDoc, &xmlBuff, &buffer_size, 1);
+            if (xmlBuff == NULL) {
+                fprintf(stderr, "Error: Could not dump XML to memory.\n");
+                hasError = AVIF_TRUE;
+                goto cleanup_xml;
+            }
 
             avifRWDataFree(&avif->xmp);
-            avif->xmp = totalXMP;
-            totalXMP.data = NULL;
-            totalXMP.size = 0;
+            if (avifRWDataRealloc(&avif->xmp, (size_t)buffer_size) != AVIF_RESULT_OK) {
+                fprintf(stderr, "XMP copy failed: out of memory\n");
+                hasError = AVIF_TRUE;
+                goto cleanup_xml;
+            }
+            memcpy(avif->xmp.data, xmlBuff, buffer_size);
+        cleanup_xml:
+            xmlFreeDoc(xmpDoc);
+            xmlFreeDoc(extendedXMPDoc);
+            xmlFree(xmlBuff);
+            if (hasError) {
+                goto cleanup;
+            }
+#else
+            fprintf(stderr, "Must be compiled with libxml2 to handle HasExtendedXMP property\n");
+            goto cleanup;
+#endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
         } else if (standardXMPData) {
             if (avifImageSetMetadataXMP(avif, standardXMPData, standardXMPSize) != AVIF_RESULT_OK) {
                 fprintf(stderr, "XMP extraction failed: out of memory\n");
@@ -1236,7 +1330,7 @@ cleanup:
     jpeg_destroy_decompress(&cinfo);
     free(iccData);
     avifRGBImageFreePixels(&rgb);
-    avifRWDataFree(&totalXMP);
+    avifRWDataFree(&extendedXMP);
     avifRWDataFree(&extendedXMPReadBytes);
     return ret;
 }

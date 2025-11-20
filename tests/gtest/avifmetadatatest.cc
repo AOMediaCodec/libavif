@@ -384,6 +384,7 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
 TEST(MetadataTest, ExtendedXMP) {
   const ImagePtr image =
       testutil::ReadImage(data_path, "dog_exif_extended_xmp_icc.jpg");
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
   ASSERT_NE(image, nullptr);
   ASSERT_NE(image->xmp.size, 0u);
   ASSERT_LT(image->xmp.size,
@@ -394,11 +395,15 @@ TEST(MetadataTest, ExtendedXMP) {
     ASSERT_NE(temp_image, nullptr);
     EXPECT_TRUE(testutil::AreByteSequencesEqual(image->xmp, temp_image->xmp));
   }
+#else
+  ASSERT_EQ(image, nullptr);
+#endif
 }
 
 TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   const ImagePtr image =
       testutil::ReadImage(data_path, "paris_extended_xmp.jpg");
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
   ASSERT_NE(image, nullptr);
   ASSERT_GT(image->xmp.size, size_t{65536 * 2});
 
@@ -410,6 +415,9 @@ TEST(MetadataTest, MultipleExtendedXMPAndAlternativeGUIDTag) {
   temp_image = WriteAndReadImage(*image, "paris_extended_xmp.jpg");
   ASSERT_NE(temp_image, nullptr);
   ASSERT_EQ(temp_image->xmp.size, 0u);  // XMP was dropped.
+#else
+  ASSERT_EQ(image, nullptr);
+#endif
 }
 
 //------------------------------------------------------------------------------

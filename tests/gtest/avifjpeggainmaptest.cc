@@ -201,22 +201,16 @@ TEST(JpegTest, ExtendedXmp) {
 <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about="stuff" xmlns:xmpNote="http://ns.adobe.com/xmp/note/"
+        xmpNote:HasExtendedXMP="F280A6636D6DC3D306B925078C2924D3">
+      <stuff></stuff>
+    </rdf:Description>
     <rdf:Description rdf:about="stuff"
       xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/" hdrgm:Version="1.0"
       hdrgm:BaseRenditionIsHDR="False"
       hdrgm:HDRCapacityMin="0"
       hdrgm:HDRCapacityMax="3.9">
     </rdf:Description>
-  </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>
-
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-    <!-- Imagine this is some extended xmp that avifenc concatenated to
-      the main XMP. As a result we have invalid XMP but should still be
-      able to parse it. -->
-    <stuff></stuff>
   </rdf:RDF>
 </x:xmpmeta>
   )";
