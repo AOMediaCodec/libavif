@@ -21,8 +21,8 @@ source $(dirname "$0")/cmd_test_common.sh || exit
 # Input file path.
 INPUT_PNG="${TESTDATA_DIR}/weld_16bit.png"
 # Output file names.
-ENCODED_FILE="avif_test_cmd_depthext.avif"
-DECODED_FILE="avif_test_cmd_depthext_decoded.png"
+ENCODED_FILE="avif_test_cmd_depth_extension.avif"
+DECODED_FILE="avif_test_cmd_depth_extension_decoded.png"
 
 cleanup() {
   pushd ${TMP_DIR}
@@ -41,19 +41,19 @@ pushd ${TMP_DIR}
   "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 12 -o "${ENCODED_FILE}"
 
   echo "Specified depth and depth extension"
-  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 8 --depth-ext 0,0 -o "${ENCODED_FILE}"
+  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 8,0 -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 8 --depth-ext 8,0 -o "${ENCODED_FILE}"
+  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 8,8 -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 12 --depth-ext 4,0 -o "${ENCODED_FILE}"
+  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 12,4 -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 12 --depth-ext 8,4 -o "${ENCODED_FILE}"
+  "${AVIFENC}" "${INPUT_PNG}" --speed 9 --depth 12,8 -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
 
-  echo "Missing --depth"
-  "${AVIFENC}" "${INPUT_PNG}" --depth-ext 8,0 -o "${ENCODED_FILE}" && exit 1
-  echo "Unsupported --depth-ext"
-  "${AVIFENC}" "${INPUT_PNG}" --depth 8 --depth-ext 10,2 -o "${ENCODED_FILE}" && exit 1
+  echo "Unsupported depth"
+  "${AVIFENC}" "${INPUT_PNG}" --depth 16 -o "${ENCODED_FILE}" && exit 1
+  echo "Unsupported depth extension"
+  "${AVIFENC}" "${INPUT_PNG}" --depth 10,6 -o "${ENCODED_FILE}" && exit 1
 popd
 
 exit 0
