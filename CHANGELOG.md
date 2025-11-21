@@ -13,6 +13,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Allow avifenc to read png or jpeg files through stdin using --stdin-format.
 * Support some Sample Transform schemes as defined in the version 1.2 of the
   AVIF specification.
+* Add an optional argument to the --depth flag of avifenc used to enable a bit
+  depth extension scheme in the encoded file.
 
 ### Changed since 1.3.0
 
