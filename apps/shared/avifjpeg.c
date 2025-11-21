@@ -1284,8 +1284,14 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 goto cleanup;
             }
 #else
-            fprintf(stderr, "Must be compiled with libxml2 to handle HasExtendedXMP property\n");
-            goto cleanup;
+            fprintf(stderr, "WARNING: must be compiled with libxml2 to copy extended XMP properly\n");
+            avifRWDataFree(&avif->xmp);
+            if (avifRWDataRealloc(&avif->xmp, (size_t)standardXMPSize + extendedXMP.size) != AVIF_RESULT_OK) {
+                fprintf(stderr, "XMP copy failed: out of memory\n");
+                goto cleanup;
+            }
+            memcpy(avif->xmp.data, standardXMPData, standardXMPSize);
+            memcpy(avif->xmp.data + standardXMPSize, extendedXMP.data, extendedXMP.size);
 #endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
         } else if (standardXMPData) {
             if (avifImageSetMetadataXMP(avif, standardXMPData, standardXMPSize) != AVIF_RESULT_OK) {
