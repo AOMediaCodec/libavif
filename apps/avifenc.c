@@ -172,6 +172,7 @@ typedef struct avifInput
     struct y4mFrameIterator * frameIter;
     avifPixelFormat requestedFormat;
     int requestedDepth;
+    int requestedDepthExtension;
 
     avifBool cacheEnabled;
     avifInputCacheEntry * cache;
@@ -221,7 +222,9 @@ static void syntaxLong(void)
     printf("    --mini                            : EXPERIMENTAL: Use reduced header if possible (backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D                      : Output depth, one of 8, 10 or 12. (JPEG/PNG only; For y4m or stdin, depth is retained)\n");
+    printf("    -d,--depth D[,Dextension]         : D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m or stdin: bit depth is retained)\n");
+    printf("                                        If specified, Dextension adds a hidden encoded image of Dextension bit depth in the same file as the primary image to reach 16-bit depth at decoding.\n");
+    printf("                                        See avifSampleTransformRecipe for the supported combinations (8,8 and 12,4 and 12,8).\n");
     printf("    -y,--yuv FORMAT                   : Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained)\n");
     printf("                                        For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400. For all other cases, auto defaults to 444\n");
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
@@ -603,10 +606,11 @@ static avifBool avifInputReadImage(avifInput * input,
             inputFormat = AVIF_APP_FILE_FORMAT_Y4M;
         }
     }
+
     if (avifReadImage(currentFile->filename,
                       inputFormat,
                       input->requestedFormat,
-                      input->requestedDepth,
+                      input->requestedDepthExtension == 0 ? input->requestedDepth : 16,
                       chromaDownsampling,
                       ignoreColorProfile,
                       ignoreExif,
@@ -1198,6 +1202,17 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 #endif
 
+    if (input->requestedDepth == 8 && input->requestedDepthExtension == 8) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B;
+    } else if (input->requestedDepth == 12 && input->requestedDepthExtension == 4) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B;
+    } else if (input->requestedDepth == 12 && input->requestedDepthExtension == 8) {
+        encoder->sampleTransformRecipe = AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B;
+    } else if (input->requestedDepthExtension != 0) {
+        fprintf(stderr, "ERROR: Unsupported bit depth extension scheme: %d + %d\n", input->requestedDepth, input->requestedDepthExtension);
+        goto cleanup;
+    }
+
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speedStr[16];
     if (settings->speed == AVIF_SPEED_DEFAULT) {
@@ -1608,9 +1623,17 @@ int main(int argc, char * argv[])
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
-            input.requestedDepth = atoi(arg);
-            if ((input.requestedDepth != 8) && (input.requestedDepth != 10) && (input.requestedDepth != 12)) {
-                fprintf(stderr, "ERROR: invalid depth: %s\n", arg);
+            uint32_t depthValues[2] = { 0, 0 };
+            if (parseU32List(depthValues, 1, arg, ',') || parseU32List(depthValues, 2, arg, ',')) {
+                if ((depthValues[0] != 8 && depthValues[0] != 10 && depthValues[0] != 12) ||
+                    (depthValues[1] != 0 && depthValues[1] != 4 && depthValues[1] != 8)) {
+                    fprintf(stderr, "ERROR: unsupported depth or depth extension: %s\n", arg);
+                    goto cleanup;
+                }
+                input.requestedDepth = (int)depthValues[0];
+                input.requestedDepthExtension = (int)depthValues[1];
+            } else {
+                fprintf(stderr, "ERROR: invalid depth and depth extension combination: %s\n", arg);
                 goto cleanup;
             }
         } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
