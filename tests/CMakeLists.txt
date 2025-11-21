@@ -266,6 +266,8 @@ if(AVIF_BUILD_APPS)
 
     if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    else()
+        set_tests_properties(test_cmd_stdin PROPERTIES DISABLED True)
     endif()
 
     if(AVIF_ENABLE_GOLDEN_TESTS AND AVIF_CODEC_AOM_ENCODE)
