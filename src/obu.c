@@ -497,7 +497,6 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
         header->av1C.chromaSubsamplingY = (uint8_t)subsampling_y;
 #endif // !CONFIG_CWG_E242_CHROMA_FORMAT_IDC
 
-#if CONFIG_NEW_CSP
         if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
             uint8_t chromaSamplePosition = 6; // CSP_UNSPECIFIED
             const int csp_present_flag = avifBitsRead(bits, 1);
@@ -528,12 +527,6 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
             }
             header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
         }
-#else  // !CONFIG_NEW_CSP
-        if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            header->chromaSamplePosition = (avifChromaSamplePosition)avifBitsRead(bits, 2); // chroma_sample_position
-            header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
-        }
-#endif // CONFIG_NEW_CSP
     }
 
     return !bits->error;
@@ -652,7 +645,6 @@ static avifBool av1SequenceHeaderParse(avifSequenceHeader * header, const avifRO
 #if defined(AVIF_CODEC_AVM)
 static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
-#if CONFIG_NEW_OBU_HEADER
     avifROData obus = *sample;
 
     // Find the sequence header OBU
@@ -697,55 +689,6 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
         obus.size -= (size_t)obu_payload_size + init_byte_pos;
     }
     return AVIF_FALSE;
-#else  // !CONFIG_NEW_OBU_HEADER
-    avifROData obus = *sample;
-
-    // Find the sequence header OBU
-    while (obus.size > 0) {
-        avifBits bits;
-        avifBitsInit(&bits, obus.data, obus.size);
-
-        // obu_header()
-        const uint32_t obu_forbidden_bit = avifBitsRead(&bits, 1);
-        if (obu_forbidden_bit != 0) {
-            return AVIF_FALSE;
-        }
-        const uint32_t obu_type = avifBitsRead(&bits, 4);
-        const uint32_t obu_extension_flag = avifBitsRead(&bits, 1);
-        const uint32_t obu_has_size_field = avifBitsRead(&bits, 1);
-        avifBitsRead(&bits, 1); // obu_reserved_1bit
-
-        if (obu_extension_flag) {   // obu_extension_header()
-            avifBitsRead(&bits, 8); // temporal_id, spatial_id, extension_header_reserved_3bits
-        }
-
-        uint32_t obu_size = 0;
-        if (obu_has_size_field)
-            obu_size = avifBitsReadUleb128(&bits);
-        else
-            obu_size = (int)obus.size - 1 - obu_extension_flag;
-
-        if (bits.error) {
-            return AVIF_FALSE;
-        }
-
-        const uint32_t init_bit_pos = avifBitsReadPos(&bits);
-        const uint32_t init_byte_pos = init_bit_pos >> 3;
-        if (obu_size > obus.size - init_byte_pos)
-            return AVIF_FALSE;
-
-        if (obu_type == 1) { // Sequence Header
-            avifBits seqHdrBits;
-            avifBitsInit(&seqHdrBits, obus.data + init_byte_pos, obu_size);
-            return parseAV2SequenceHeader(&seqHdrBits, header);
-        }
-
-        // Skip this OBU
-        obus.data += (size_t)obu_size + init_byte_pos;
-        obus.size -= (size_t)obu_size + init_byte_pos;
-    }
-    return AVIF_FALSE;
-#endif // CONFIG_NEW_OBU_HEADER
 }
 #endif // defined(AVIF_CODEC_AVM)
 

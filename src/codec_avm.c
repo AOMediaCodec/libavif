@@ -90,11 +90,7 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         nextFrame = aom_codec_get_frame(&codec->internal->decoder, &codec->internal->iter);
         if (nextFrame) {
             if (spatialID != AVIF_SPATIAL_ID_UNSET) {
-#if CONFIG_NEW_OBU_HEADER
                 if (spatialID == nextFrame->mlayer_id) {
-#else
-                if (spatialID == nextFrame->spatial_id) {
-#endif // CONFIG_NEW_OBU_HEADER
                     // Found the correct spatial_id.
                     break;
                 }
@@ -167,7 +163,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
 
         image->yuvFormat = yuvFormat;
         image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
-#if CONFIG_NEW_CSP
         if (codec->internal->image->csp == AOM_CSP_LEFT) {
             // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
@@ -180,9 +175,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         } else {
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
         }
-#else
-        image->yuvChromaSamplePosition = (avifChromaSamplePosition)codec->internal->image->csp;
-#endif // CONFIG_NEW_CSP
 
         image->colorPrimaries = (avifColorPrimaries)codec->internal->image->cp;
         image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
@@ -323,12 +315,12 @@ static avifBool aomOptionParseEnum(const char * str, const struct aomOptionEnumL
     return AVIF_FALSE;
 }
 
-static const struct aomOptionEnumList endUsageEnum[] = {                     //
-                                                         { "vbr", AOM_VBR }, // Variable Bit Rate (VBR) mode
-                                                         { "cbr", AOM_CBR }, // Constant Bit Rate (CBR) mode
-                                                         { "cq", AOM_CQ },   // Constrained Quality (CQ) mode
-                                                         { "q", AOM_Q },     // Constant Quality (Q) mode
-                                                         { NULL, 0 }
+static const struct aomOptionEnumList endUsageEnum[] = { //
+    { "vbr", AOM_VBR },                                  // Variable Bit Rate (VBR) mode
+    { "cbr", AOM_CBR },                                  // Constant Bit Rate (CBR) mode
+    { "cq", AOM_CQ },                                    // Constrained Quality (CQ) mode
+    { "q", AOM_Q },                                      // Constant Quality (Q) mode
+    { NULL, 0 }
 };
 
 // Returns true if <key> equals <name> or <prefix><name>, where <prefix> is "color:" or "alpha:"
@@ -632,13 +624,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         }
         if (encoder->extraLayerCount > 0) {
             int layerCount = encoder->extraLayerCount + 1;
-            if (aom_codec_control(&codec->internal->encoder,
-#if CONFIG_NEW_OBU_HEADER
-                                  AOME_SET_NUMBER_MLAYERS,
-#else
-                                  AOME_SET_NUMBER_SPATIAL_LAYERS,
-#endif // CONFIG_NEW_OBU_HEADER
-                                  layerCount) != AOM_CODEC_OK) {
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_NUMBER_MLAYERS, layerCount) != AOM_CODEC_OK) {
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
@@ -784,13 +770,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (encoder->extraLayerCount > 0) {
-        aom_codec_control(&codec->internal->encoder,
-#if CONFIG_NEW_OBU_HEADER
-                          AOME_SET_MLAYER_ID,
-#else
-                          AOME_SET_SPATIAL_LAYER_ID,
-#endif // CONFIG_NEW_OBU_HEADER
-                          codec->internal->currentLayer);
+        aom_codec_control(&codec->internal->encoder, AOME_SET_MLAYER_ID, codec->internal->currentLayer);
     }
 
     aom_scaling_mode_t aomScalingMode;
@@ -906,7 +886,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
         //   The values of the fields in the AV1CodecConfigurationBox shall match those
         //   of the Sequence Header OBU in the AV1 Image Item Data.
-#if CONFIG_NEW_CSP
         if (image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL) {
             // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
             aomImage.csp = AOM_CSP_LEFT;
@@ -919,9 +898,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         } else { // AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN or invalid values
             aomImage.csp = AOM_CSP_UNSPECIFIED;
         }
-#else
-        aomImage.csp = (aom_chroma_sample_position_t)image->yuvChromaSamplePosition;
-#endif // CONFIG_NEW_CSP
 
         // AV1-ISOBMFF specification, Section 2.3.4:
         //   The value of full_range_flag in the 'colr' box SHALL match the color_range
