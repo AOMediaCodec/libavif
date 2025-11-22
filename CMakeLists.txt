@@ -545,8 +545,6 @@ if(AVIF_CODEC_AVM_ENABLED)
     endif()
 
     target_compile_definitions(avif_obj PUBLIC -DAVIF_CODEC_AVM=1)
-    # TODO(wtc): Remove after research-v12.0.0 has been imported into Google's internal repository.
-    target_compile_definitions(avif_obj PRIVATE -DCONFIG_NEW_CSP=1 -DCONFIG_NEW_OBU_HEADER=1)
     target_sources(avif_obj PRIVATE src/codec_avm.c)
 
     avif_target_link_library(aom)
