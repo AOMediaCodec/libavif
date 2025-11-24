@@ -2073,6 +2073,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
                 AVIF_CHECKRES(
                     avifEncoderCreateBitDepthExtensionImage(encoder, item, itemWillBeEncodedLosslessly, cellImage, &sampleTransformedImage));
+                assert(cellImagePlaceholder == NULL);
                 cellImagePlaceholder = sampleTransformedImage; // Transfer ownership.
                 cellImage = cellImagePlaceholder;
             }
