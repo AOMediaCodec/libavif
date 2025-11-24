@@ -6245,12 +6245,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 AVIF_ASSERT_OR_RETURN(inputImageItem->dimgIdx < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
                 avifItemCategory * category = &data->sampleTransformInputImageItems[inputImageItem->dimgIdx];
                 avifBool foundItem = AVIF_FALSE;
-                avifItemCategory alphaCategory = AVIF_ITEM_CATEGORY_COUNT;
                 for (int c = AVIF_ITEM_COLOR; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
                     if (mainItems[c] && inputImageItem->id == mainItems[c]->id) {
                         *category = c;
                         AVIF_CHECKERR(*category == AVIF_ITEM_COLOR, AVIF_RESULT_NOT_IMPLEMENTED);
-                        alphaCategory = AVIF_ITEM_ALPHA;
                         foundItem = AVIF_TRUE;
                         break;
                     }
@@ -6259,7 +6257,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     AVIF_CHECKERR(numExtraInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS,
                                   AVIF_RESULT_NOT_IMPLEMENTED);
                     *category = (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems);
-                    alphaCategory = (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems);
+                    const avifItemCategory alphaCategory =
+                        (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems);
                     mainItems[*category] = inputImageItem;
                     ++numExtraInputImageItems;
 
