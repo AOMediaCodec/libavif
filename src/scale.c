@@ -141,7 +141,8 @@ avifResult avifImageScaleWithLimit(avifImage * image,
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_A);
         if (allocationResult != AVIF_RESULT_OK) {
             avifDiagnosticsPrintf(diag, "Allocation of alpha plane failed: %s", avifResultToString(allocationResult));
-            return AVIF_RESULT_OUT_OF_MEMORY;
+            result = AVIF_RESULT_OUT_OF_MEMORY;
+            goto cleanup;
         }
 
         if (image->depth > 8) {
