@@ -49,13 +49,23 @@ static avifBool rav1eSupports400(void)
     return minorVersion >= 4;
 }
 
+static int rav1eQualityToQuantizer(int quality)
+{
+    int quantizer;
+
+    quality = AVIF_CLAMP(quality, 0, 100);
+    quantizer = ((100 - quality) * 255 + 50) / 100;
+
+    return quantizer;
+}
+
 static avifResult rav1eCodecEncodeImage(avifCodec * codec,
                                         avifEncoder * encoder,
                                         const avifImage * image,
                                         avifBool alpha,
                                         int tileRowsLog2,
                                         int tileColsLog2,
-                                        int quantizer,
+                                        int quality,
                                         avifEncoderChanges encoderChanges,
                                         avifBool disableLaggedOutput,
                                         uint32_t addImageFlags,
@@ -159,15 +169,7 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
             goto cleanup;
         }
 
-        int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-        if (alpha) {
-            minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-        }
-        minQuantizer = (minQuantizer * 255) / 63; // Rescale quantizer values as rav1e's QP range is [0,255]
-        quantizer = (quantizer * 255) / 63;
-        if (rav1e_config_parse_int(rav1eConfig, "min_quantizer", minQuantizer) == -1) {
-            goto cleanup;
-        }
+        quantizer = rav1eQualityToQuantizer(quality);
         if (rav1e_config_parse_int(rav1eConfig, "quantizer", quantizer) == -1) {
             goto cleanup;
         }
