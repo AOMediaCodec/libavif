@@ -373,6 +373,33 @@ static avifBool avifKeyEqualsName(const char * key, const char * name, avifBool 
            (!strncmp(key, shortPrefix, shortPrefixLen) && !strcmp(key + shortPrefixLen, name));
 }
 
+static const struct aomOptionEnumList tuningEnum[] = { //
+    { "psnr", AOM_TUNE_PSNR },                         //
+    { "ssim", AOM_TUNE_SSIM },                         //
+#if defined(AOM_HAVE_TUNE_IQ)
+    { "iq", AOM_TUNE_IQ },
+#endif
+    { NULL, 0 }
+};
+
+static avifBool avifAOMOptionsIsTuneIq(const avifCodec * codec, avifBool alpha)
+{
+#if defined(AOM_HAVE_TUNE_IQ)
+    for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        int val;
+        if (avifKeyEqualsName(entry->key, "tune", alpha)) {
+            if (aomOptionParseEnum(entry->value, tuningEnum, &val)) {
+                if (val == AOM_TUNE_IQ) {
+                    return AVIF_TRUE;
+                }
+            }
+        }
+    }
+#endif
+    return AVIF_FALSE;
+}
+
 static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, struct aom_codec_enc_cfg * cfg)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
@@ -406,12 +433,6 @@ struct aomOptionDef
     aomOptionType type;
     // If type is AVIF_AOM_OPTION_ENUM, this must be set. Otherwise should be NULL.
     const struct aomOptionEnumList * enums;
-};
-
-static const struct aomOptionEnumList tuningEnum[] = { //
-    { "psnr", AOM_TUNE_PSNR },                         //
-    { "ssim", AOM_TUNE_SSIM },                         //
-    { NULL, 0 }
 };
 
 static const struct aomOptionDef aomOptionDefs[] = {
@@ -557,13 +578,54 @@ static avifBool doesLevelMatch(int width, int height, int levelWidth, int levelH
 
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
+// Quality (q) to quantizer (qp) formula for tune=iq (Image Quality), expressed as a look-up table for more clarity.
+// The x axis of the table represents the ones digit, while the y axis represents the tens digit
+// of the quality value [0-100], which is then mapped to a quantizer value [0-63].
+// The formula below is a piecewise linear function. Each segment was empirically selected to correct for the
+// non-linear bitrate increase from encoding with tune=iq (relative to tune=ssim), with a goal to make tune=iq behave
+// like tune=ssim at matching quality levels, with an overall smaller (but still predictable) file size and a similar
+// to better quality.
+// - [ 0 -  6]: quantizer = 63 - round(quality / 3)
+// - [ 7 - 28]: quantizer = 61 - round((quality - 6) / 2)
+// - [29 - 54]: quantizer = 50 - round((quality - 29) * 6 / 10)
+// - [55 - 99]: quantizer = 34 - round((quality - 54) * 34 / 45) + 1
+// - [    100]: quantizer = 0
+static const int tuneIqQualityToQuantizer[101] = {
+//1s digit: x0  x1  x2  x3  x4  x5  x6  x7  x8  x9.    10s digit:
+            63, 63, 63, 62, 62, 62, 61, 61, 60, 60, // 0x
+            59, 59, 58, 58, 57, 57, 56, 56, 55, 55, // 1x
+            54, 54, 53, 53, 52, 52, 51, 51, 50, 50, // 2x
+            49, 49, 48, 48, 47, 46, 46, 45, 44, 44, // 3x
+            43, 43, 42, 41, 41, 40, 40, 39, 39, 38, // 4x
+            38, 37, 37, 36, 35, 34, 34, 33, 32, 31, // 5x
+            30, 30, 29, 28, 28, 27, 26, 25, 25, 24, // 6x
+            23, 22, 22, 21, 20, 19, 19, 18, 17, 16, // 7x
+            15, 15, 14, 13, 12, 12, 11, 10,  9,  9, // 8x
+             8,  7,  6,  6,  5,  4,  3,  3,  2,  1, // 9x
+             0  // quality 100
+};
+
+static int aomQualityToQuantizer(int quality, avifBool isTuneIq)
+{
+    int quantizer;
+
+    quality = AVIF_CLAMP(quality, 0, 100);
+    if (isTuneIq) {
+        quantizer = tuneIqQualityToQuantizer[quality];
+    } else {
+        quantizer = ((100 - quality) * 63 + 50) / 100;
+    }
+
+    return quantizer;
+}
+
 static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
                                       int tileRowsLog2,
                                       int tileColsLog2,
-                                      int quantizer,
+                                      int quality,
                                       avifEncoderChanges encoderChanges,
                                       avifBool disableLaggedOutput,
                                       avifAddImageFlags addImageFlags,
@@ -571,6 +633,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+    avifBool isTuneIq = avifAOMOptionsIsTuneIq(codec, alpha);
+    int quantizer = aomQualityToQuantizer(quality, isTuneIq);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -786,17 +850,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        int minQuantizer;
-        int maxQuantizer;
-        if (alpha) {
-            minQuantizer = encoder->minQuantizerAlpha;
-            maxQuantizer = encoder->maxQuantizerAlpha;
-        } else {
-            minQuantizer = encoder->minQuantizer;
-            maxQuantizer = encoder->maxQuantizer;
-        }
-        minQuantizer = AVIF_CLAMP(minQuantizer, 0, 63);
-        maxQuantizer = AVIF_CLAMP(maxQuantizer, 0, 63);
+        int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+        int maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
             // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
             // maxQuantizer to the target quantizer.
@@ -930,42 +985,24 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // We are not ready for dimension change for now.
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
-        if (alpha) {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
-                cfg->rc_min_quantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-                cfg->rc_max_quantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
-                quantizerUpdated = AVIF_TRUE;
-            }
-        } else {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER | AVIF_ENCODER_CHANGE_MAX_QUANTIZER)) {
-                cfg->rc_min_quantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-                cfg->rc_max_quantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
-                quantizerUpdated = AVIF_TRUE;
-            }
-        }
-        const int quantizerChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA : AVIF_ENCODER_CHANGE_QUANTIZER;
-        if (encoderChanges & quantizerChangedBit) {
+
+        const int qualityChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUALITY_ALPHA : AVIF_ENCODER_CHANGE_QUALITY;
+        if (encoderChanges & qualityChangedBit) {
+            int minQuantizer;
+            int maxQuantizer;
+
             if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
                 // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
                 // maxQuantizer to the target quantizer.
                 if (quantizer == AVIF_QUANTIZER_LOSSLESS) {
-                    cfg->rc_min_quantizer = AVIF_QUANTIZER_LOSSLESS;
-                    cfg->rc_max_quantizer = AVIF_QUANTIZER_LOSSLESS;
+                    minQuantizer = AVIF_QUANTIZER_LOSSLESS;
+                    maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
                 } else {
-                    int minQuantizer;
-                    int maxQuantizer;
-                    if (alpha) {
-                        minQuantizer = encoder->minQuantizerAlpha;
-                        maxQuantizer = encoder->maxQuantizerAlpha;
-                    } else {
-                        minQuantizer = encoder->minQuantizer;
-                        maxQuantizer = encoder->maxQuantizer;
-                    }
-                    minQuantizer = AVIF_CLAMP(minQuantizer, 0, 63);
-                    maxQuantizer = AVIF_CLAMP(maxQuantizer, 0, 63);
-                    cfg->rc_min_quantizer = AVIF_MAX(quantizer - 4, minQuantizer);
-                    cfg->rc_max_quantizer = AVIF_MIN(quantizer + 4, maxQuantizer);
+                    minQuantizer = AVIF_MAX(quantizer - 4, AVIF_QUANTIZER_BEST_QUALITY);
+                    maxQuantizer = AVIF_MIN(quantizer + 4, AVIF_QUANTIZER_WORST_QUALITY);
                 }
+                cfg->rc_min_quantizer = minQuantizer;
+                cfg->rc_max_quantizer = maxQuantizer;
                 quantizerUpdated = AVIF_TRUE;
             }
         }
@@ -985,7 +1022,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_COLS_LOG2) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
         }
-        if (encoderChanges & quantizerChangedBit) {
+        if (encoderChanges & qualityChangedBit) {
             if ((cfg->rc_end_usage == AOM_CQ) || (cfg->rc_end_usage == AOM_Q)) {
                 aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, quantizer);
             }

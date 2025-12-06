@@ -115,13 +115,6 @@ EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
   }
   encoder->codecChoice = codec_choice;
   encoder->maxThreads = max_threads;
-  // minQuantizer must be at most maxQuantizer.
-  encoder->minQuantizer = std::min(min_quantizer, max_quantizer);
-  encoder->maxQuantizer = std::max(min_quantizer, max_quantizer);
-  encoder->minQuantizerAlpha =
-      std::min(min_quantizer_alpha, max_quantizer_alpha);
-  encoder->maxQuantizerAlpha =
-      std::max(min_quantizer_alpha, max_quantizer_alpha);
   encoder->tileRowsLog2 = tile_rows_log2;
   encoder->tileColsLog2 = tile_cols_log2;
   encoder->speed = speed;

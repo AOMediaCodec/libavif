@@ -39,17 +39,12 @@ void TestEncodeDecode(avifCodecChoice codec,
   }
 
   if (use_cq) {
-    encoder->minQuantizer = 0;
-    encoder->maxQuantizer = 63;
     ASSERT_EQ(
         avifEncoderSetCodecSpecificOption(encoder.get(), "end-usage", "q"),
         AVIF_RESULT_OK);
     ASSERT_EQ(
         avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "63"),
         AVIF_RESULT_OK);
-  } else {
-    encoder->minQuantizer = 63;
-    encoder->maxQuantizer = 63;
   }
 
   ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
@@ -59,9 +54,6 @@ void TestEncodeDecode(avifCodecChoice codec,
   if (use_cq) {
     ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder.get(), "cq-level", "0"),
               AVIF_RESULT_OK);
-  } else {
-    encoder->minQuantizer = 0;
-    encoder->maxQuantizer = 0;
   }
 
   if (!can_encode) {
@@ -137,8 +129,6 @@ TEST(ChangeSettingTest, UnchangeableSetting) {
   encoder->speed = AVIF_SPEED_FASTEST;
   encoder->timescale = 1;
   ASSERT_EQ(encoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
-  encoder->minQuantizer = 63;
-  encoder->maxQuantizer = 63;
 
   ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME),

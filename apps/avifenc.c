@@ -882,18 +882,6 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
     if (settings->qualityAlpha.set) {
         encoder->qualityAlpha = settings->qualityAlpha.value;
     }
-    if (settings->minQuantizer.set) {
-        encoder->minQuantizer = settings->minQuantizer.value;
-    }
-    if (settings->maxQuantizer.set) {
-        encoder->maxQuantizer = settings->maxQuantizer.value;
-    }
-    if (settings->minQuantizerAlpha.set) {
-        encoder->minQuantizerAlpha = settings->minQuantizerAlpha.value;
-    }
-    if (settings->maxQuantizerAlpha.set) {
-        encoder->maxQuantizerAlpha = settings->maxQuantizerAlpha.value;
-    }
     if (settings->tileRowsLog2.set) {
         encoder->tileRowsLog2 = settings->tileRowsLog2.value;
     }
@@ -2283,7 +2271,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizer.set && fileSettings->maxQuantizer.set) {
                 fprintf(stderr,
-                        "WARNING: --min and --max are deprecated, please use -q 0..100 instead. "
+                        "WARNING: --min and --max are ignored, please use -q 0..100 instead. "
                         "--min %d --max %d is equivalent to -q %d\n",
                         fileSettings->minQuantizer.value,
                         fileSettings->maxQuantizer.value,
@@ -2291,7 +2279,7 @@ int main(int argc, char * argv[])
             }
             if (fileSettings->minQuantizerAlpha.set && fileSettings->maxQuantizerAlpha.set) {
                 fprintf(stderr,
-                        "WARNING: --minalpha and --maxalpha are deprecated, please use --qalpha 0..100 instead. "
+                        "WARNING: --minalpha and --maxalpha are ignored, please use --qalpha 0..100 instead. "
                         "--minalpha %d --maxalpha %d is equivalent to --qalpha %d\n",
                         fileSettings->minQuantizerAlpha.value,
                         fileSettings->maxQuantizerAlpha.value,
