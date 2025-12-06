@@ -544,8 +544,8 @@ typedef enum avifEncoderChange
     AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA = (1 << 3),
     AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2 = (1 << 4),
     AVIF_ENCODER_CHANGE_TILE_COLS_LOG2 = (1 << 5),
-    AVIF_ENCODER_CHANGE_QUANTIZER = (1 << 6),
-    AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA = (1 << 7),
+    AVIF_ENCODER_CHANGE_QUALITY = (1 << 6),
+    AVIF_ENCODER_CHANGE_QUALITY_ALPHA = (1 << 7),
     AVIF_ENCODER_CHANGE_SCALING_MODE = (1 << 8),
 
     AVIF_ENCODER_CHANGE_CODEC_SPECIFIC = (1 << 30)
@@ -565,10 +565,10 @@ typedef avifBool (*avifCodecGetNextImageFunc)(struct avifCodec * codec,
 // encoder->tileRowsLog2, encoder->tileColsLog2, and encoder->autoTiling. The caller of
 // avifCodecEncodeImageFunc is responsible for automatic tiling if encoder->autoTiling is set to
 // AVIF_TRUE. The actual tiling values are passed to avifCodecEncodeImageFunc as parameters.
-// Similarly, avifCodecEncodeImageFunc should use the quantizer parameter instead of
-// encoder->quality and encoder->qualityAlpha. If disableLaggedOutput is AVIF_TRUE, then the encoder will emit the output frame
-// without any lag (if supported). Note that disableLaggedOutput is only used by the first call to this function (which
-// initializes the encoder) and is ignored by the subsequent calls.
+// Similarly, avifCodecEncodeImageFunc should use the quality parameter instead of
+// encoder->quality, encoder->qualityAlpha, and encoder->qualityGainMap. If disableLaggedOutput is AVIF_TRUE, then
+// the encoder will emit the output frame without any lag (if supported). Note that disableLaggedOutput is only
+// used by the first call to this function (which initializes the encoder) and is ignored by the subsequent calls.
 //
 // Note: The caller of avifCodecEncodeImageFunc always passes encoder->data->tileRowsLog2 and
 // encoder->data->tileColsLog2 as the tileRowsLog2 and tileColsLog2 arguments. Because
@@ -581,7 +581,7 @@ typedef avifResult (*avifCodecEncodeImageFunc)(struct avifCodec * codec,
                                                avifBool alpha,
                                                int tileRowsLog2,
                                                int tileColsLog2,
-                                               int quantizer,
+                                               int quality,
                                                avifEncoderChanges encoderChanges,
                                                avifBool disableLaggedOutput,
                                                avifAddImageFlags addImageFlags,

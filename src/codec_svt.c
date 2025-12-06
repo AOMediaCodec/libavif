@@ -44,13 +44,20 @@ typedef struct avifCodecInternal
 static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf);
 static avifResult dequeue_frame(avifCodec * codec, avifCodecEncodeOutput * output, avifBool done_sending_pics);
 
+static int svtQualityToQuantizer(int quality)
+{
+    const int quantizer = ((100 - quality) * 63 + 50) / 100;
+
+    return quantizer;
+}
+
 static avifResult svtCodecEncodeImage(avifCodec * codec,
                                       avifEncoder * encoder,
                                       const avifImage * image,
                                       avifBool alpha,
                                       int tileRowsLog2,
                                       int tileColsLog2,
-                                      int quantizer,
+                                      int quality,
                                       avifEncoderChanges encoderChanges,
                                       avifBool disableLaggedOutput,
                                       uint32_t addImageFlags,
@@ -180,7 +187,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 62);
             svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
-        svt_config->qp = quantizer;
+        svt_config->qp = svtQualityToQuantizer(quality);
 
         if (tileRowsLog2 != 0) {
             svt_config->tile_rows = tileRowsLog2;

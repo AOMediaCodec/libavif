@@ -221,18 +221,19 @@ typedef struct avifEncoderData
 {
     avifEncoderItemArray items;
     avifEncoderFrameArray frames;
-    // Map the encoder settings quality and qualityAlpha to quantizer and quantizerAlpha
-    int quantizer;
-    int quantizerAlpha;
-    int quantizerGainMap;
+    // quality values for the image, alpha, and gain map
+    // Note: these three fields are the actual quality values after the default values are resolved
+    int quality;
+    int qualityAlpha;
+    int qualityGainMap;
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;
     avifEncoder lastEncoder;
-    // lastQuantizer and lastQuantizerAlpha are the quantizer and quantizerAlpha values used last
-    // time
-    int lastQuantizer;
-    int lastQuantizerAlpha;
+    // lastQuality and lastQualityAlpha are the quality and qualityAlpha values used last time
+    // Note: Gain maps are supported for still images only, so we don't need a "lastQualityGainMap"
+    int lastQuality;
+    int lastQualityAlpha;
     // lastTileRowsLog2 and lastTileColsLog2 are the actual tiling values used last time
     int lastTileRowsLog2;
     int lastTileColsLog2;
@@ -534,8 +535,8 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
     lastEncoder->maxQuantizerAlpha = encoder->maxQuantizerAlpha;
-    encoder->data->lastQuantizer = encoder->data->quantizer;
-    encoder->data->lastQuantizerAlpha = encoder->data->quantizerAlpha;
+    encoder->data->lastQuality = encoder->data->quality;
+    encoder->data->lastQualityAlpha = encoder->data->qualityAlpha;
     encoder->data->lastTileRowsLog2 = encoder->data->tileRowsLog2;
     encoder->data->lastTileColsLog2 = encoder->data->tileColsLog2;
     lastEncoder->scalingMode = encoder->scalingMode;
@@ -562,11 +563,11 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
         return AVIF_FALSE;
     }
 
-    if (encoder->data->lastQuantizer != encoder->data->quantizer) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_QUANTIZER;
+    if (encoder->data->lastQuality != encoder->data->quality) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_QUALITY;
     }
-    if (encoder->data->lastQuantizerAlpha != encoder->data->quantizerAlpha) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA;
+    if (encoder->data->lastQualityAlpha != encoder->data->qualityAlpha) {
+        *encoderChanges |= AVIF_ENCODER_CHANGE_QUALITY_ALPHA;
     }
     if (lastEncoder->minQuantizer != encoder->minQuantizer) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
@@ -1204,19 +1205,21 @@ static avifResult avifImageCopyAndPad(avifImage * const dstImage, const avifImag
     return AVIF_RESULT_OK;
 }
 
-static int avifQualityToQuantizer(int quality, int minQuantizer, int maxQuantizer)
+static int avifGetQuality(int quality, int minQuantizer, int maxQuantizer)
 {
     int quantizer;
+
     if (quality == AVIF_QUALITY_DEFAULT) {
         // In older libavif releases, avifEncoder didn't have the quality and qualityAlpha fields.
-        // Supply a default value for quantizer.
+        // Supply a default value for quality.
         quantizer = (minQuantizer + maxQuantizer) / 2;
         quantizer = AVIF_CLAMP(quantizer, 0, 63);
+        quality = ((63 - quantizer) * 100 + 31) / 63;
     } else {
         quality = AVIF_CLAMP(quality, 0, 100);
-        quantizer = ((100 - quality) * 63 + 50) / 100;
     }
-    return quantizer;
+
+    return quality;
 }
 
 static const char infeNameColor[] = "Color";
@@ -1800,21 +1803,21 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     }
 
     // -----------------------------------------------------------------------
-    // Map quality settings to quantizer values.
-    encoder->data->quantizer = avifQualityToQuantizer(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
+    // Populate encoder data (color) quality, qualityAlpha and qualityGainMap.
+    encoder->data->quality = avifGetQuality(encoder->quality, encoder->minQuantizer, encoder->maxQuantizer);
+
     // If alpha quality, and min and max alpha quantizer have their default values, default to the same quality as color.
     if (encoder->qualityAlpha == AVIF_QUALITY_DEFAULT && encoder->minQuantizerAlpha == AVIF_QUANTIZER_BEST_QUALITY &&
         encoder->maxQuantizerAlpha == AVIF_QUANTIZER_WORST_QUALITY) {
-        encoder->data->quantizerAlpha = encoder->data->quantizer;
+        encoder->data->qualityAlpha = encoder->data->quality;
     } else {
-        encoder->data->quantizerAlpha =
-            avifQualityToQuantizer(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
+        encoder->data->qualityAlpha = avifGetQuality(encoder->qualityAlpha, encoder->minQuantizerAlpha, encoder->maxQuantizerAlpha);
     }
     if (encoder->qualityGainMap == AVIF_QUALITY_DEFAULT) {
-        encoder->data->quantizerGainMap = encoder->data->quantizer; // Default to the same quality as color.
+        encoder->data->qualityGainMap = encoder->data->quality; // Default to the same quality as color.
     } else {
-        encoder->data->quantizerGainMap =
-            avifQualityToQuantizer(encoder->qualityGainMap, AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
+        encoder->data->qualityGainMap =
+            avifGetQuality(encoder->qualityGainMap, AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
     }
 
     // -----------------------------------------------------------------------
@@ -2040,9 +2043,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             }
 
             const avifBool isAlpha = avifIsAlpha(item->itemCategory);
-            int quantizer = isAlpha                                      ? encoder->data->quantizerAlpha
-                            : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->quantizerGainMap
-                                                                         : encoder->data->quantizer;
+            int quality = isAlpha                                      ? encoder->data->qualityAlpha
+                          : (item->itemCategory == AVIF_ITEM_GAIN_MAP) ? encoder->data->qualityGainMap
+                                                                       : encoder->data->quality;
 
             // Remember original quantizer values in case they change, to reset them afterwards.
             int * encoderMinQuantizer = isAlpha ? &encoder->minQuantizerAlpha : &encoder->minQuantizer;
@@ -2056,7 +2059,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                     (item->itemCategory == AVIF_ITEM_COLOR || item->itemCategory == AVIF_ITEM_ALPHA)) {
                     // Encoding the least significant bits of a sample does not make any sense if the
                     // other bits are lossily compressed. Encode the most significant bits losslessly.
-                    quantizer = AVIF_QUANTIZER_LOSSLESS;
+                    quality = AVIF_QUALITY_LOSSLESS;
                     *encoderMinQuantizer = AVIF_QUANTIZER_LOSSLESS;
                     *encoderMaxQuantizer = AVIF_QUANTIZER_LOSSLESS;
                     if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
@@ -2065,7 +2068,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
 
                 // Replace cellImage by the first or second input to the AVIF_ITEM_SAMPLE_TRANSFORM derived image item.
-                const avifBool itemWillBeEncodedLosslessly = (quantizer == AVIF_QUANTIZER_LOSSLESS);
+                const avifBool itemWillBeEncodedLosslessly = (quality == AVIF_QUALITY_LOSSLESS);
                 avifImage * sampleTransformedImage = NULL;
                 if (cellImagePlaceholder) {
                     avifImageDestroy(cellImagePlaceholder); // Replaced by sampleTransformedImage.
@@ -2087,7 +2090,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                                                isAlpha,
                                                                encoder->data->tileRowsLog2,
                                                                encoder->data->tileColsLog2,
-                                                               quantizer,
+                                                               quality,
                                                                encoderChanges,
                                                                /*disableLaggedOutput=*/encoder->data->alphaPresent,
                                                                addImageFlags,

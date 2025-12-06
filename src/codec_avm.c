@@ -438,6 +438,12 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
     return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
 }
 
+static int avmQualityToQuantizer(int quality, uint32_t depth)
+{
+    int quantizer = ((100 - quality) * 63 + 50) / 100;
+    return quantizer;
+}
+
 static avifBool avmCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
 static avifResult avmCodecEncodeImage(avifCodec * codec,
@@ -446,7 +452,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                                       avifBool alpha,
                                       int tileRowsLog2,
                                       int tileColsLog2,
-                                      int quantizer,
+                                      int quality,
                                       avifEncoderChanges encoderChanges,
                                       avifBool disableLaggedOutput,
                                       avifAddImageFlags addImageFlags,
@@ -454,6 +460,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
+    int quantizer = avmQualityToQuantizer(quality, image->depth);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -706,8 +713,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                 quantizerUpdated = AVIF_TRUE;
             }
         }
-        const int quantizerChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA : AVIF_ENCODER_CHANGE_QUANTIZER;
-        if (encoderChanges & quantizerChangedBit) {
+        const int qualityChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUALITY_ALPHA : AVIF_ENCODER_CHANGE_QUALITY;
+        if (encoderChanges & qualityChangedBit) {
             if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
                 // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
                 // maxQuantizer to the target quantizer.
@@ -748,7 +755,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_COLS_LOG2) {
             aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
         }
-        if (encoderChanges & quantizerChangedBit) {
+        if (encoderChanges & qualityChangedBit) {
             if ((cfg->rc_end_usage == AOM_CQ) || (cfg->rc_end_usage == AOM_Q)) {
                 aom_codec_control(&codec->internal->encoder, AOME_SET_QP, quantizer);
             }
