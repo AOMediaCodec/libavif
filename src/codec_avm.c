@@ -440,7 +440,8 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
 
 static int avmQualityToQuantizer(int quality, uint32_t depth)
 {
-    int quantizer = ((100 - quality) * 63 + 50) / 100;
+    const int quantizer = ((100 - quality) * 63 + 50) / 100;
+
     return quantizer;
 }
 
