@@ -389,6 +389,35 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
     return AVIF_TRUE;
 }
 
+static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha)
+{
+    avifBool ret = AVIF_FALSE;
+
+#if !defined(AOM_HAVE_TUNE_IQ)
+// Define the tune IQ value here if libaom doesn't define it. The enum value is guaranteed to never change
+// in libaom, so this definition won't ever get out of sync.
+#define AOM_TUNE_IQ 10
+#endif
+
+    // Tune IQ string -> enum mapping
+    static const struct aomOptionEnumList tuneIqEnum[] = {
+        { "iq", AOM_TUNE_IQ },
+    };
+
+    for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        int val;
+        // If there are multiple "tune" options specified, honor the last one.
+        // For consistent behavior, handle both cases where tune IQ was either specified as a string (tune=iq),
+        // or as an enum value (tune=10).
+        if (avifKeyEqualsName(entry->key, "tune", alpha) && aomOptionParseEnum(entry->value, tuneIqEnum, &val)) {
+            ret = (val == AOM_TUNE_IQ);
+        }
+    }
+
+    return ret;
+}
+
 #if !defined(HAVE_AOM_CODEC_SET_OPTION)
 typedef enum
 {
@@ -555,11 +584,47 @@ static avifBool doesLevelMatch(int width, int height, int levelWidth, int levelH
     return lumaPels <= levelLumaPels && width <= levelWidth * levelDimMult && height <= levelHeight * levelDimMult;
 }
 
+// Quality (q) to quantizer (qp) formula for tune=iq (Image Quality), expressed as a look-up table for more clarity.
+// The x axis of the table represents the ones digit, while the y axis represents the tens digit
+// of the quality value [0-100], which is then mapped to a quantizer value [0-63].
+// The formula below is a piecewise linear function. Each segment was empirically selected to correct for the
+// non-linear bitrate increase from encoding with tune=iq (relative to tune=ssim), with a goal to make tune=iq behave
+// like tune=ssim at matching quality levels, with an overall smaller (but still predictable) file size and a similar
+// to better quality.
+// The qp of tune=ssim <= qp of tune=iq for all quality values because tune=iq needs a larger qp to reduce file size.
+// - [ 0 -  6]: quantizer = 63 - round(quality / 3)
+// - [ 7 - 28]: quantizer = 61 - round((quality - 6) / 2)
+// - [29 - 54]: quantizer = 50 - round((quality - 29) * 6 / 10)
+// - [55 - 99]: quantizer = 34 - round((quality - 54) * 34 / 45) + 1
+// - [    100]: quantizer = 0
+// clang-format off
+static const int tuneIqQualityToQuantizer[101] = {
+// 1s digit: *0  *1  *2  *3  *4  *5  *6  *7  *8  *9     10s digit:
+             63, 63, 63, 62, 62, 62, 61, 61, 60, 60, // 0*
+             59, 59, 58, 58, 57, 57, 56, 56, 55, 55, // 1*
+             54, 54, 53, 53, 52, 52, 51, 51, 50, 50, // 2*
+             49, 49, 48, 48, 47, 46, 46, 45, 44, 44, // 3*
+             43, 43, 42, 41, 41, 40, 40, 39, 39, 38, // 4*
+             38, 37, 37, 36, 35, 34, 34, 33, 32, 31, // 5*
+             30, 30, 29, 28, 28, 27, 26, 25, 25, 24, // 6*
+             23, 22, 22, 21, 20, 19, 19, 18, 17, 16, // 7*
+             15, 15, 14, 13, 12, 12, 11, 10,  9,  9, // 8*
+              8,  7,  6,  6,  5,  4,  3,  3,  2,  1, // 9*
+              0  // quality 100
+};
+// clang-format on
+
 static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
 
-static int aomQualityToQuantizer(int quality)
+static int aomQualityToQuantizer(int quality, avifBool isTuneIq)
 {
-    const int quantizer = ((100 - quality) * 63 + 50) / 100;
+    int quantizer;
+
+    if (isTuneIq) {
+        quantizer = tuneIqQualityToQuantizer[quality];
+    } else {
+        quantizer = ((100 - quality) * 63 + 50) / 100;
+    }
 
     return quantizer;
 }
@@ -578,7 +643,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
-    const int quantizer = aomQualityToQuantizer(quality);
+    const avifBool tuneIq = avifImageUsesTuneIq(codec, alpha);
+    const int quantizer = aomQualityToQuantizer(quality, tuneIq);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
     // encoder, config should be applied for each frame, so we don't care about changes on these

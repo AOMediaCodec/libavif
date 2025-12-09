@@ -37,6 +37,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Always forward the CICP color primaries, transfer characteristics,
   and matrix coefficients to the AV1 encoder, which writes them in the Sequence
   Header OBU, for compatibility with libraries that wrongly ignore the colr box.
+* Use a "quality to quantizer (QP)" mapping formula designed for AOM_TUNE_IQ.
 
 ### Removed since 1.3.0
 
