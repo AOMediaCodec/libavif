@@ -56,13 +56,12 @@ runs:
       shell: bash
 
     - name: Install libraries
-      uses: johnwason/vcpkg-action@v6
+      uses: johnwason/vcpkg-action@caa1c94fbb94d8b023a0cc93edf10cd3791349a7 # v7.0.1
       id: vcpkg
       with:
         pkgs: libjpeg-turbo libpng zlib ${{ steps.aom.outputs.WIN_LIBRARIES }} ${{ steps.dav1d.outputs.WIN_LIBRARIES }} ${{ steps.libxml2.outputs.WIN_LIBRARIES }} ${{ steps.libyuv.outputs.WIN_LIBRARIES }}
         triplet: x64-windows-release
         token: ${{ github.token }}
-        github-binarycache: true
         cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
 
     - uses: ./.github/actions/setup-common
