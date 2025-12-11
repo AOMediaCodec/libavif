@@ -15,6 +15,12 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF specification.
 * Add an optional argument to the --depth flag of avifenc used to enable a bit
   depth extension scheme in the encoded file.
+* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
+* Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
+* Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
+* Update LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
+* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
 
 ### Changed since 1.3.0
 

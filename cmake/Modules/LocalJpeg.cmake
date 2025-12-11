@@ -1,4 +1,4 @@
-set(AVIF_JPEG_TAG "3.1.1")
+set(AVIF_JPEG_TAG "3.1.3")
 
 add_library(JPEG::JPEG STATIC IMPORTED GLOBAL)
 
