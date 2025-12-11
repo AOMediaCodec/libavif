@@ -47,8 +47,8 @@ jobs:
 
       - name: Install rav1e
         run: |
-          $LINK = "https://github.com/xiph/rav1e/releases/download/v0.7.1"
-          $FILE = "rav1e-0.7.1-windows-msvc-generic"
+          $LINK = "https://github.com/xiph/rav1e/releases/download/v0.8.1"
+          $FILE = "rav1e-0.8.1-windows-msvc-generic"
           curl -LO "$LINK/$FILE.zip"
           mkdir -p ${{ github.workspace }}\tmp
           7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
