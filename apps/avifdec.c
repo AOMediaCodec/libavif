@@ -359,7 +359,7 @@ int main(int argc, char * argv[])
 
     const avifBool decodeAllFrames = frameIndex == DECODE_ALL_FRAMES;
     int currIndex = decodeAllFrames ? 0 : frameIndex;
-    while (AVIF_TRUE) {
+    for (;;) {
         result = decodeAllFrames ? avifDecoderNextImage(decoder) : avifDecoderNthImage(decoder, frameIndex);
         if (result != AVIF_RESULT_OK) {
             break;
