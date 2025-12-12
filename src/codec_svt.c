@@ -240,7 +240,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #endif
 
 #if SVT_AV1_CHECK_VERSION(3, 0, 0)
-        svt_config->lossless = quantizer == AVIF_QUANTIZER_LOSSLESS;
+        svt_config->lossless = quality == AVIF_QUALITY_LOSSLESS;
         // TODO: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/2245 - Enable when resolved.
         // svt_config->avif = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) != 0;
 #endif
