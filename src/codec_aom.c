@@ -585,29 +585,37 @@ static avifBool doesLevelMatch(int width, int height, int levelWidth, int levelH
 }
 
 // Quality (q) to quantizer (qp) formula for tune=iq (Image Quality), expressed as a look-up table for more clarity.
-// The x axis of the table represents the ones digit, while the y axis represents the tens digit
-// of the quality value [0-100], which is then mapped to a quantizer value [0-63].
 // The formula below is a piecewise linear function. Each segment was empirically selected to correct for the
-// non-linear bitrate increase from encoding with tune=iq (relative to tune=ssim), with a goal to make tune=iq behave
-// like tune=ssim at matching quality levels, with an overall smaller (but still predictable) file size and a similar
-// to better quality.
-// The qp of tune=ssim <= qp of tune=iq for all quality values because tune=iq needs a larger qp to reduce file size.
-// - [ 0 -  6]: quantizer = 63 - round(quality / 3)
-// - [ 7 - 28]: quantizer = 61 - round((quality - 6) / 2)
-// - [29 - 54]: quantizer = 50 - round((quality - 29) * 6 / 10)
-// - [55 - 99]: quantizer = 34 - round((quality - 54) * 34 / 45) + 1
-// - [    100]: quantizer = 0
+// non-linear bitrate increase from encoding content with tune=iq relative to tune=ssim with the same qp.
+//
+// | Quality | Quantizer                          | Step size |
+// |---------|------------------------------------|-----------|
+// |  0 -  6 | 63 - floor(quality / 3)            |         3 |
+// |  7 - 28 | 61 - round((quality - 7) / 2)      |         2 |
+// | 29 - 53 | 50 - round((quality - 29) * 3 / 5) |      1.66 |
+// | 54 - 99 | 35 - round((quality - 54) * 3 / 4) |      1.33 |
+// |     100 | 0 (lossless)                       |         1 |
+//
+// The formula has these properties, in addition to the general conversion formula properties described in avif.h:
+// - Encoding and decoding time with tune=iq are closer to tune=ssim's at a given quality level, with an
+//   overall smaller (but still predictable) file size and a similar to better quality
+// - The qp of tune=ssim <= qp of tune=iq for all quality values
+// - Quality 60 (the default in avifenc) = qp 30
+// - The step size of the quantizers monotonically decreases as quality increases (from 3 to 1)
+//
+// The x axis of the table represents the ones digit, while the y axis represents the tens digit
+// of the q value [0-100], which is then mapped to a qp value [0-63].
 // clang-format off
 static const int tuneIqQualityToQuantizer[101] = {
 // 1s digit: *0  *1  *2  *3  *4  *5  *6  *7  *8  *9     10s digit:
              63, 63, 63, 62, 62, 62, 61, 61, 60, 60, // 0*
              59, 59, 58, 58, 57, 57, 56, 56, 55, 55, // 1*
              54, 54, 53, 53, 52, 52, 51, 51, 50, 50, // 2*
-             49, 49, 48, 48, 47, 46, 46, 45, 44, 44, // 3*
-             43, 43, 42, 41, 41, 40, 40, 39, 39, 38, // 4*
-             38, 37, 37, 36, 35, 34, 34, 33, 32, 31, // 5*
-             30, 30, 29, 28, 28, 27, 26, 25, 25, 24, // 6*
-             23, 22, 22, 21, 20, 19, 19, 18, 17, 16, // 7*
+             49, 49, 48, 48, 47, 46, 46, 45, 45, 44, // 3*
+             43, 43, 42, 42, 41, 40, 40, 39, 39, 38, // 4*
+             37, 37, 36, 36, 35, 34, 33, 33, 32, 31, // 5*
+             30, 30, 29, 28, 27, 27, 26, 25, 24, 24, // 6*
+             23, 22, 21, 21, 20, 19, 18, 18, 17, 16, // 7*
              15, 15, 14, 13, 12, 12, 11, 10,  9,  9, // 8*
               8,  7,  6,  6,  5,  4,  3,  3,  2,  1, // 9*
               0  // quality 100
