@@ -438,11 +438,11 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
     return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
 }
 
-static int avmQualityToQuantizer(int quality)
+static int avmQualityToQuantizer(int quality, uint32_t depth)
 {
     const int quantizer = ((100 - quality) * 63 + 50) / 100;
 
-    return quantizer;
+    return avmScaleQuantizer(quantizer, depth);
 }
 
 static avifBool avmCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
@@ -461,7 +461,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
-    int quantizer = avmQualityToQuantizer(quality);
+    const int quantizer = avmQualityToQuantizer(quality, image->depth);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -586,8 +586,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             minQuantizer = encoder->minQuantizer;
             maxQuantizer = encoder->maxQuantizer;
         }
-        // Scale from aom's [0:63] to avm's [0:255]. TODO(yguyon): Accept [0:255] directly in avifEncoder.
-        quantizer = avmScaleQuantizer(quantizer, image->depth);
         minQuantizer = avmScaleQuantizer(minQuantizer, image->depth);
         maxQuantizer = avmScaleQuantizer(maxQuantizer, image->depth);
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
@@ -700,7 +698,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // We are not ready for dimension change for now.
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
-        quantizer = avmScaleQuantizer(quantizer, image->depth);
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
                 cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizerAlpha, image->depth);
