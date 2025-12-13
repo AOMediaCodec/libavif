@@ -425,7 +425,6 @@ static avifBool avifFindAOMScalingMode(const avifFraction * avifMode, AOM_SCALIN
 // Scales from aom's [0:63] to avm's [M:255], where M=0/-48/-96 for 8/10/12 bit.
 // See --min-qp help in
 // https://gitlab.com/AOMediaCodec/avm/-/blob/main/apps/aomenc.c
-// TODO(yguyon): Accept [M:255] directly in avifEncoder.
 static int avmScaleQuantizer(int quantizer, uint32_t depth)
 {
     if (depth == 10) {
@@ -438,11 +437,19 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
     return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
 }
 
-static int avmQualityToQuantizer(int quality)
+// Converts quality to avm's quantizer in the range of [M:255], where M=0/-48/-96 for 8/10/12 bit.
+// See --min-qp help in
+// https://gitlab.com/AOMediaCodec/avm/-/blob/main/apps/aomenc.c
+static int avmQualityToQuantizer(int quality, uint32_t depth)
 {
-    const int quantizer = ((100 - quality) * 63 + 50) / 100;
-
-    return quantizer;
+    if (depth == 10) {
+        return 255 - (quality * (255 + 48) + 50) / 100;
+    }
+    if (depth == 12) {
+        return 255 - (quality * (255 + 96) + 50) / 100;
+    }
+    assert(depth == 8);
+    return 255 - (quality * 255 + 50) / 100;
 }
 
 static avifBool avmCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * output);
@@ -461,7 +468,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
-    int quantizer = avmQualityToQuantizer(quality);
+    const int quantizer = avmQualityToQuantizer(quality, image->depth);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -586,8 +593,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             minQuantizer = encoder->minQuantizer;
             maxQuantizer = encoder->maxQuantizer;
         }
-        // Scale from aom's [0:63] to avm's [0:255]. TODO(yguyon): Accept [0:255] directly in avifEncoder.
-        quantizer = avmScaleQuantizer(quantizer, image->depth);
         minQuantizer = avmScaleQuantizer(minQuantizer, image->depth);
         maxQuantizer = avmScaleQuantizer(maxQuantizer, image->depth);
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
@@ -700,7 +705,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // We are not ready for dimension change for now.
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
-        quantizer = avmScaleQuantizer(quantizer, image->depth);
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
                 cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizerAlpha, image->depth);
