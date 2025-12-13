@@ -438,7 +438,7 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
     return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
 }
 
-static int avmQualityToQuantizer(int quality, uint32_t depth)
+static int avmQualityToQuantizer(int quality)
 {
     const int quantizer = ((100 - quality) * 63 + 50) / 100;
 
@@ -461,7 +461,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 {
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
-    int quantizer = avmQualityToQuantizer(quality, image->depth);
+    int quantizer = avmQualityToQuantizer(quality);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AV2
     // encoder, config should be applied for each frame, so we don't care about changes on these
