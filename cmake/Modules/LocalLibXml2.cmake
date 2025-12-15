@@ -2,7 +2,7 @@ set(AVIF_LIBXML_GIT_TAG "v2.15.1")
 
 # First, whether the library exists.
 set(PREFIXES lib ${AVIF_LIBRARY_PREFIX})
-set(SUFFIXES "s" "sd" " ")
+set(SUFFIXES "s" "sd" "")
 foreach(PREFIX IN LISTS PREFIXES)
     foreach(SUFFIX IN LISTS SUFFIXES)
         set(LIB_FILENAME

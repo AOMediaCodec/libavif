@@ -23,6 +23,10 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          libjpeg-turbo: "LOCAL"
+          libxml2: "LOCAL"
+          libyuv: "LOCAL"
+          zlibpng: "LOCAL"
 
       - name: Build aom
         if: steps.setup.outputs.ext-cache-hit != 'true'

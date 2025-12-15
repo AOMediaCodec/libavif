@@ -13,10 +13,16 @@ inputs:
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
+  libjpeg-turbo:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   libxml2:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
   libyuv:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  zlibpng:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
 outputs:
@@ -35,31 +41,36 @@ runs:
       shell: bash
 
     - name: Install libaom library
-      id: aom
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
-      run: echo "WIN_LIBRARIES=aom" >> "$GITHUB_OUTPUT"
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} aom" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libdav1d library
-      id: dav1d
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
-      run: echo "WIN_LIBRARIES=dav1d" >> "$GITHUB_OUTPUT"
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} dav1d" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install libjpeg-turbo library
+      if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libjpeg-turbo" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libxml2 library
-      id: libxml2
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
-      run: echo "WIN_LIBRARIES=libxml2" >> "$GITHUB_OUTPUT"
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libyuv library
-      id: libyuv
       if: ${{ inputs.libyuv == 'SYSTEM' }}
-      run: echo "WIN_LIBRARIES=libyuv" >> "$GITHUB_OUTPUT"
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libyuv" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install zlibpng library
+      if: ${{ inputs.zlibpng == 'SYSTEM' }}
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libpng zlib" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install libraries
       uses: johnwason/vcpkg-action@caa1c94fbb94d8b023a0cc93edf10cd3791349a7 # v7.0.1
+      if: env.AVIF_WIN_LIBRARIES != ''
       id: vcpkg
       with:
-        pkgs: libjpeg-turbo libpng zlib ${{ steps.aom.outputs.WIN_LIBRARIES }} ${{ steps.dav1d.outputs.WIN_LIBRARIES }} ${{ steps.libxml2.outputs.WIN_LIBRARIES }} ${{ steps.libyuv.outputs.WIN_LIBRARIES }}
+        pkgs: ${{ env.AVIF_WIN_LIBRARIES }}
         triplet: x64-windows-release
         token: ${{ github.token }}
         cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}

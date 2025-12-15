@@ -38,6 +38,7 @@ jobs:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
           libyuv: "SYSTEM"
+          zlibpng: "SYSTEM"
 
       - name: Set clang as compiler on Linux
         if: runner.os == 'Linux'

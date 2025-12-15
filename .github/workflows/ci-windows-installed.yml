@@ -30,15 +30,17 @@ jobs:
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
-          codec-rav1e: "SYSTEM"
+          codec-rav1e: "OFF"
           extra-cache-key: ${{ matrix.compiler }}
+          libjpeg-turbo: "SYSTEM"
           libxml2: "SYSTEM"
           libyuv: "SYSTEM"
+          zlibpng: "SYSTEM"
       - name: Leave compiler as default
         if: matrix.compiler == 'msvc'
         run: |
-          echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
-          echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=cl" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=cl" >> $env:GITHUB_ENV
       - name: Set clang-cl as compiler
         if: matrix.compiler == 'clang-cl'
         run: |

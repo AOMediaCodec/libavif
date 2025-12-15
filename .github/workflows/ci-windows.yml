@@ -44,6 +44,10 @@ jobs:
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
           extra-cache-key: ${{ matrix.generator }}
+          libjpeg-turbo: "LOCAL"
+          libxml2: "LOCAL"
+          libyuv: "LOCAL"
+          zlibpng: "LOCAL"
 
       - name: Prepare libavif (cmake)
         run: >
@@ -59,6 +63,7 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
+          -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
       - name: Build libavif
         run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
