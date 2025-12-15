@@ -17,7 +17,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up Python
-      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: "3.x"
     - name: Set up latest CMake
@@ -38,7 +38,7 @@ runs:
       uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
     - name: Set up nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' }}
-      uses: ilammy/setup-nasm@13cbeb366c45c4379d3478cdcbadd8295feb5028 # v1.5.1
+      uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
     - name: Set up rust
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
       uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
