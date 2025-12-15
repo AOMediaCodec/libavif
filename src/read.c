@@ -1,6 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include "avif/avif.h"
 #include "avif/internal.h"
 
 #include <assert.h>
@@ -1832,27 +1833,41 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
         }
     }
 
-    avifImage srcView;
-    avifImageSetDefaults(&srcView);
+    // Only keep the relevant planes in the destination image. Otherwise,
+    // unjustified failures may come from trying to copy alpha tiles with odd
+    // coordinates into the dstImage when the chroma planes are subsampled.
     avifImage dstView;
     avifImageSetDefaults(&dstView);
-    avifCropRect dstViewRect = { 0, 0, firstTile->image->width, firstTile->image->height };
+    const avifCropRect srcViewRect = { 0, 0, dstImage->width, dstImage->height };
+    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstView, dstImage, &srcViewRect) == AVIF_RESULT_OK);
+    if (avifIsAlpha(tile->input->itemCategory)) {
+        avifImageFreePlanes(&dstView, AVIF_PLANES_YUV);
+        dstView.yuvFormat = AVIF_PIXEL_FORMAT_NONE;
+    } else {
+        avifImageFreePlanes(&dstView, AVIF_PLANES_A);
+    }
+
+    avifImage srcTileView;
+    avifImageSetDefaults(&srcTileView);
+    avifImage dstTileView;
+    avifImageSetDefaults(&dstTileView);
+    avifCropRect dstTileViewRect = { 0, 0, firstTile->image->width, firstTile->image->height };
     if (info->grid.rows > 0 && info->grid.columns > 0) {
         unsigned int rowIndex = tileIndex / info->grid.columns;
         unsigned int colIndex = tileIndex % info->grid.columns;
-        dstViewRect.x = firstTile->image->width * colIndex;
-        dstViewRect.y = firstTile->image->height * rowIndex;
-        if (dstViewRect.x + dstViewRect.width > info->grid.outputWidth) {
-            dstViewRect.width = info->grid.outputWidth - dstViewRect.x;
+        dstTileViewRect.x = firstTile->image->width * colIndex;
+        dstTileViewRect.y = firstTile->image->height * rowIndex;
+        if (dstTileViewRect.x + dstTileViewRect.width > info->grid.outputWidth) {
+            dstTileViewRect.width = info->grid.outputWidth - dstTileViewRect.x;
         }
-        if (dstViewRect.y + dstViewRect.height > info->grid.outputHeight) {
-            dstViewRect.height = info->grid.outputHeight - dstViewRect.y;
+        if (dstTileViewRect.y + dstTileViewRect.height > info->grid.outputHeight) {
+            dstTileViewRect.height = info->grid.outputHeight - dstTileViewRect.y;
         }
     }
-    const avifCropRect srcViewRect = { 0, 0, dstViewRect.width, dstViewRect.height };
-    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstView, dstImage, &dstViewRect) == AVIF_RESULT_OK &&
-                          avifImageSetViewRect(&srcView, tile->image, &srcViewRect) == AVIF_RESULT_OK);
-    avifImageCopySamples(&dstView, &srcView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    const avifCropRect srcTileViewRect = { 0, 0, dstTileViewRect.width, dstTileViewRect.height };
+    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstTileView, &dstView, &dstTileViewRect) == AVIF_RESULT_OK);
+    AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&srcTileView, tile->image, &srcTileViewRect) == AVIF_RESULT_OK);
+    avifImageCopySamples(&dstTileView, &srcTileView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
     return AVIF_RESULT_OK;
 }
 
