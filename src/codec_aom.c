@@ -353,13 +353,11 @@ static avifBool aomOptionParseEnum(const char * str, const struct aomOptionEnumL
     return AVIF_FALSE;
 }
 
-static const struct aomOptionEnumList endUsageEnum[] = { //
-    { "vbr", AOM_VBR },                                  // Variable Bit Rate (VBR) mode
-    { "cbr", AOM_CBR },                                  // Constant Bit Rate (CBR) mode
-    { "cq", AOM_CQ },                                    // Constrained Quality (CQ) mode
-    { "q", AOM_Q },                                      // Constant Quality (Q) mode
-    { NULL, 0 }
-};
+static const struct aomOptionEnumList endUsageEnum[] = { { "vbr", AOM_VBR }, // Variable Bit Rate (VBR) mode
+                                                         { "cbr", AOM_CBR }, // Constant Bit Rate (CBR) mode
+                                                         { "cq", AOM_CQ },   // Constrained Quality (CQ) mode
+                                                         { "q", AOM_Q },     // Constant Quality (Q) mode
+                                                         { NULL, 0 } };
 
 // Returns true if <key> equals <name> or <prefix><name>, where <prefix> is "color:" or "alpha:"
 // or the abbreviated form "c:" or "a:".
@@ -400,9 +398,8 @@ static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha)
 #endif
 
     // Tune IQ string -> enum mapping
-    static const struct aomOptionEnumList tuneIqEnum[] = {
-        { "iq", AOM_TUNE_IQ },
-    };
+    static const struct aomOptionEnumList tuneIqEnum[] = { { "iq", AOM_TUNE_IQ }, // Image Quality (IQ) mode
+                                                           { NULL, 0 } };
 
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
         const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
