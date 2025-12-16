@@ -139,6 +139,7 @@ if(AVIF_GTEST)
 
     add_avif_gtest(aviftilingtest)
     add_avif_gtest_with_data(aviftransformtest)
+    add_avif_gtest_with_data(aviftunetest)
     add_avif_gtest(avifutilstest)
     add_avif_gtest(avify4mtest)
 
@@ -153,6 +154,7 @@ if(AVIF_GTEST)
             aviflosslesstest
             avifmetadatatest
             avifpixitest
+            aviftunetest
             # rav1e and svt do not support encoder changes (potentially different bit depth between
             # primary item and bit depth extension).
             avif16bittest
@@ -356,6 +358,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifprogressivetest
                 avifpropertytest
                 avifrangetest
+                aviftunetest
                 avify4mtest
                 PROPERTIES DISABLED True
             )
