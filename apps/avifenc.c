@@ -861,6 +861,32 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             }
         }
     }
+
+    // Copy over metadata blobs to the first cell since avifImageSetViewRect() does not copy any
+    // properties that require an allocation.
+    avifImage * firstCell = gridCells[0];
+    if (gridSplitImage->icc.size > 0) {
+        const avifResult result = avifImageSetProfileICC(firstCell, gridSplitImage->icc.data, gridSplitImage->icc.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set ICC profile on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
+    if (gridSplitImage->exif.size > 0) {
+        const avifResult result = avifImageSetMetadataExif(firstCell, gridSplitImage->exif.data, gridSplitImage->exif.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set Exif metadata on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
+    if (gridSplitImage->xmp.size > 0) {
+        const avifResult result = avifImageSetMetadataXMP(firstCell, gridSplitImage->xmp.data, gridSplitImage->xmp.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set XMP metadata on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
+
     return AVIF_TRUE;
 }
 
