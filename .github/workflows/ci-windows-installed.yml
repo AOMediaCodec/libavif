@@ -32,31 +32,21 @@ jobs:
           codec-dav1d: "SYSTEM"
           codec-rav1e: "SYSTEM"
           extra-cache-key: ${{ matrix.compiler }}
+          libjpeg-turbo: "SYSTEM"
           libxml2: "SYSTEM"
           libyuv: "SYSTEM"
+          zlibpng: "SYSTEM"
       - name: Leave compiler as default
         if: matrix.compiler == 'msvc'
         run: |
-          echo "AVIF_CMAKE_C_COMPILER=" >> $env:GITHUB_ENV
-          echo "AVIF_CMAKE_CXX_COMPILER=" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=cl" >> $env:GITHUB_ENV
+          echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=cl" >> $env:GITHUB_ENV
       - name: Set clang-cl as compiler
         if: matrix.compiler == 'clang-cl'
         run: |
           echo "AVIF_CMAKE_C_COMPILER=-DCMAKE_C_COMPILER=clang-cl" >> $env:GITHUB_ENV
           echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
-      - name: Install rav1e
-        run: |
-          $LINK = "https://github.com/xiph/rav1e/releases/download/v0.8.1"
-          $FILE = "rav1e-0.8.1-windows-msvc-generic"
-          curl -LO "$LINK/$FILE.zip"
-          mkdir -p ${{ github.workspace }}\tmp
-          7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
-          # Do not mv the folder's content to not overwrite, and rsync is not installed.
-          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\bin\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin
-          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
-          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
-          mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
       - name: Prepare libavif (cmake)
         run: >
           cmake ${{ steps.setup.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
