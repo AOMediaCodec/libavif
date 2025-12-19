@@ -8,12 +8,12 @@
 <BrandEntry AlternateBrand="miaf"/>
 <BrandEntry AlternateBrand="MA1B"/>
 </FileTypeBox>
-<MetaBox Size="488" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
+<MetaBox Size="1226" Type="meta" Version="0" Flags="0" Specification="p12" Container="file moov trak moof traf udta" >
 <HandlerBox Size="33" Type="hdlr" Version="0" Flags="0" Specification="p12" Container="mdia meta minf" hdlrType="pict" Name="" reserved1="0" reserved2="data:application/octet-string,000000000000000000000000">
 </HandlerBox>
 <PrimaryItemBox Size="14" Type="pitm" Version="0" Flags="0" Specification="p12" Container="meta" item_ID="1">
 </PrimaryItemBox>
-<ItemLocationBox Size="86" Type="iloc" Version="0" Flags="0" Specification="p12" Container="meta" offset_size="4" length_size="4" base_offset_size="0" index_size="0">
+<ItemLocationBox Size="114" Type="iloc" Version="0" Flags="0" Specification="p12" Container="meta" offset_size="4" length_size="4" base_offset_size="0" index_size="0">
 <ItemLocationEntry item_ID="1" data_reference_index="0" base_offset="0" construction_method="0">
 <ItemExtentEntry extent_offset="REDACTED" extent_length="REDACTED" extent_index="0" />
 </ItemLocationEntry>
@@ -29,8 +29,14 @@
 <ItemLocationEntry item_ID="5" data_reference_index="0" base_offset="0" construction_method="0">
 <ItemExtentEntry extent_offset="REDACTED" extent_length="REDACTED" extent_index="0" />
 </ItemLocationEntry>
+<ItemLocationEntry item_ID="6" data_reference_index="0" base_offset="0" construction_method="0">
+<ItemExtentEntry extent_offset="REDACTED" extent_length="REDACTED" extent_index="0" />
+</ItemLocationEntry>
+<ItemLocationEntry item_ID="7" data_reference_index="0" base_offset="0" construction_method="0">
+<ItemExtentEntry extent_offset="REDACTED" extent_length="REDACTED" extent_index="0" />
+</ItemLocationEntry>
 </ItemLocationBox>
-<ItemInfoBox Size="144" Type="iinf" Version="0" Flags="0" Specification="p12" Container="meta" >
+<ItemInfoBox Size="213" Type="iinf" Version="0" Flags="0" Specification="p12" Container="meta" >
 <ItemInfoEntryBox Size="26" Type="infe" Version="2" Flags="0" Specification="p12" Container="iinf" item_ID="1" item_protection_index="0" item_name="Color" content_type="(null)" content_encoding="(null)" item_type="grid">
 </ItemInfoEntryBox>
 <ItemInfoEntryBox Size="26" Type="infe" Version="2" Flags="1" Specification="p12" Container="iinf" item_ID="2" item_protection_index="0" item_name="Color" content_type="(null)" content_encoding="(null)" item_type="av01">
@@ -41,17 +47,27 @@
 </ItemInfoEntryBox>
 <ItemInfoEntryBox Size="26" Type="infe" Version="2" Flags="1" Specification="p12" Container="iinf" item_ID="5" item_protection_index="0" item_name="Color" content_type="(null)" content_encoding="(null)" item_type="av01">
 </ItemInfoEntryBox>
+<ItemInfoEntryBox Size="25" Type="infe" Version="2" Flags="0" Specification="p12" Container="iinf" item_ID="6" item_protection_index="0" item_name="Exif" content_type="(null)" content_encoding="(null)" item_type="Exif">
+</ItemInfoEntryBox>
+<ItemInfoEntryBox Size="44" Type="infe" Version="2" Flags="0" Specification="p12" Container="iinf" item_ID="7" item_protection_index="0" item_name="XMP" content_type="application/rdf+xml" content_encoding="(null)" item_type="mime">
+</ItemInfoEntryBox>
 </ItemInfoBox>
-<ItemReferenceBox Size="32" Type="iref" Version="0" Flags="0" Specification="p12" Container="meta" >
+<ItemReferenceBox Size="60" Type="iref" Version="0" Flags="0" Specification="p12" Container="meta" >
 <ItemReferenceBox Size="20" Type="dimg" Specification="p12" Container="iref" from_item_id="1">
 <ItemReferenceBoxEntry ItemID="2"/>
 <ItemReferenceBoxEntry ItemID="3"/>
 <ItemReferenceBoxEntry ItemID="4"/>
 <ItemReferenceBoxEntry ItemID="5"/>
 </ItemReferenceBox>
+<ItemReferenceBox Size="14" Type="cdsc" Specification="p12" Container="iref" from_item_id="6">
+<ItemReferenceBoxEntry ItemID="1"/>
 </ItemReferenceBox>
-<ItemPropertiesBox Size="167" Type="iprp" Specification="iff" Container="meta" >
-<ItemPropertyContainerBox Size="104" Type="ipco" Specification="iff" Container="iprp" >
+<ItemReferenceBox Size="14" Type="cdsc" Specification="p12" Container="iref" from_item_id="7">
+<ItemReferenceBoxEntry ItemID="1"/>
+</ItemReferenceBox>
+</ItemReferenceBox>
+<ItemPropertiesBox Size="780" Type="iprp" Specification="iff" Container="meta" >
+<ItemPropertyContainerBox Size="712" Type="ipco" Specification="iff" Container="iprp" >
 <ImageSpatialExtentsPropertyBox Size="20" Type="ispe" Version="0" Flags="0" Specification="iff" Container="ipco" image_width="4032" image_height="3024">
 </ImageSpatialExtentsPropertyBox>
 <PixelInformationPropertyBox Size="16" Type="pixi" Version="0" Flags="0" Specification="iff" Container="ipco" >
@@ -59,6 +75,8 @@
 <BitPerChannel bits_per_channel="8"/>
 <BitPerChannel bits_per_channel="8"/>
 </PixelInformationPropertyBox>
+<ColourInformationBox Size="608" Type="colr" Specification="iff" Container="video_sample_entry ipco encv resv" colour_type="prof">
+<profile><![CDATA[AAACVAAAAAAEAAAAbW50clJHQiBYWVogB+AADAAIAAkAJgAcYWNzcAAAAAAAAAAAR09PRwAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1HT09HdeGmsTw0N2MQyKtmBjKiigAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALZGVzYwAAAQgAAABAY3BydAAAAUgAAABad3RwdAAAAaQAAAAUYmtwdAAAAbgAAAAUclhZWgAAAcwAAAAUZ1hZWgAAAeAAAAAUYlhZWgAAAfQAAAAUclRSQwAAAggAAAAgY2hhZAAAAigAAAAsYlRSQwAAAggAAAAgZ1RSQwAAAggAAAAgbWx1YwAAAAAAAAABAAAADGVuVVMAAAAkAAAAHABzAFIARwBCACAASQBFAEMANgAxADkANgA2AC0AMgAuADEAAG1sdWMAAAAAAAAAAQAAAAxlblVTAAAAPgAAABwAQwBvAHAAeQByAGkAZwBoAHQAIAAoAGMAKQAgADIAMAAxADYAIABHAG8AbwBnAGwAZQAgAEkAbgBjAC4AAAAAWFlaIAAAAAAAAPNRAAEAAAABFsxYWVogAAAAAAAAAAAAAAAAAAAAAFhZWiAAAAAAAABvoAAAOPUAAAOQWFlaIAAAAAAAAGKXAAC3hwAAGNlYWVogAAAAAAAAJJ8AAA+EAAC2w3BhcmEAAAAAAAMAAAACZmYAAPKnAAANWQAAE9AAAApbc2YzMgAAAAAAAQxCAAAF3v//8ycAAAeTAAD9kP//+6P///2kAAAD3AAAwG4=]]></profile></ColourInformationBox>
 <ColourInformationBox Size="19" Type="colr" Specification="iff" Container="video_sample_entry ipco encv resv" colour_type="nclx" colour_primaries="2" transfer_characteristics="2" matrix_coefficients="6" full_range_flag="1">
 </ColourInformationBox>
 <ImageRotationBox Size="9" Type="irot" Specification="iff" Container="ipco" angle="270">
@@ -70,40 +88,45 @@
 </AV1Config>
 </AV1ConfigurationBox>
 </ItemPropertyContainerBox>
-<ItemPropertyAssociationBox Size="55" Type="ipma" Version="0" Flags="0" Specification="iff" Container="iprp" entry_count="5">
-<AssociationEntry item_ID="1" association_count="4">
+<ItemPropertyAssociationBox Size="60" Type="ipma" Version="0" Flags="0" Specification="iff" Container="iprp" entry_count="5">
+<AssociationEntry item_ID="1" association_count="5">
 <Property index="1" essential="0"/>
 <Property index="2" essential="0"/>
 <Property index="3" essential="0"/>
-<Property index="4" essential="1"/>
+<Property index="4" essential="0"/>
+<Property index="5" essential="1"/>
 </AssociationEntry>
-<AssociationEntry item_ID="2" association_count="5">
-<Property index="5" essential="0"/>
+<AssociationEntry item_ID="2" association_count="6">
+<Property index="6" essential="0"/>
 <Property index="2" essential="0"/>
-<Property index="6" essential="1"/>
+<Property index="7" essential="1"/>
 <Property index="3" essential="0"/>
-<Property index="4" essential="1"/>
+<Property index="4" essential="0"/>
+<Property index="5" essential="1"/>
 </AssociationEntry>
-<AssociationEntry item_ID="3" association_count="5">
-<Property index="5" essential="0"/>
+<AssociationEntry item_ID="3" association_count="6">
+<Property index="6" essential="0"/>
 <Property index="2" essential="0"/>
-<Property index="6" essential="1"/>
+<Property index="7" essential="1"/>
 <Property index="3" essential="0"/>
-<Property index="4" essential="1"/>
+<Property index="4" essential="0"/>
+<Property index="5" essential="1"/>
 </AssociationEntry>
-<AssociationEntry item_ID="4" association_count="5">
-<Property index="5" essential="0"/>
+<AssociationEntry item_ID="4" association_count="6">
+<Property index="6" essential="0"/>
 <Property index="2" essential="0"/>
-<Property index="6" essential="1"/>
+<Property index="7" essential="1"/>
 <Property index="3" essential="0"/>
-<Property index="4" essential="1"/>
+<Property index="4" essential="0"/>
+<Property index="5" essential="1"/>
 </AssociationEntry>
-<AssociationEntry item_ID="5" association_count="5">
-<Property index="5" essential="0"/>
+<AssociationEntry item_ID="5" association_count="6">
+<Property index="6" essential="0"/>
 <Property index="2" essential="0"/>
-<Property index="6" essential="1"/>
+<Property index="7" essential="1"/>
 <Property index="3" essential="0"/>
-<Property index="4" essential="1"/>
+<Property index="4" essential="0"/>
+<Property index="5" essential="1"/>
 </AssociationEntry>
 </ItemPropertyAssociationBox>
 </ItemPropertiesBox>
