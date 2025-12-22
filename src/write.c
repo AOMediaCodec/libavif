@@ -1404,6 +1404,9 @@ static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
     // Find the encoded bytes of the base image item.
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
+        if (item->codec == NULL) {
+            continue; // Non-image item such as metadata.
+        }
         if ((item->itemCategory != AVIF_ITEM_COLOR || planes != AVIF_PLANES_YUV) &&
             (item->itemCategory != AVIF_ITEM_ALPHA || planes != AVIF_PLANES_A)) {
             continue;

@@ -18,9 +18,9 @@ namespace {
 const char* data_path = nullptr;
 
 class SampleTransformTest
-    : public testing::TestWithParam<
-          std::tuple<avifSampleTransformRecipe, avifPixelFormat,
-                     /*create_alpha=*/bool, /*quality=*/int>> {};
+    : public testing::TestWithParam<std::tuple<
+          avifSampleTransformRecipe, avifPixelFormat, /*create_alpha=*/bool,
+          /*quality=*/int, /*add_xmp=*/bool>> {};
 
 //------------------------------------------------------------------------------
 
@@ -29,6 +29,7 @@ TEST_P(SampleTransformTest, Avif16bit) {
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
   const bool create_alpha = std::get<2>(GetParam());
   const int quality = std::get<3>(GetParam());
+  const bool add_xmp = std::get<4>(GetParam());
 
   const ImagePtr image = testutil::ReadImage(
       data_path, "weld_16bit.png", yuv_format, /*requested_depth=*/16);
@@ -38,6 +39,11 @@ TEST_P(SampleTransformTest, Avif16bit) {
     image->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
     image->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
     image->imageOwnsAlphaPlane = false;
+  }
+  if (add_xmp) {
+    const uint8_t xmp[] = {1, 2, 3, 4};
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), xmp, sizeof(xmp)),
+              AVIF_RESULT_OK);
   }
 
   EncoderPtr encoder(avifEncoderCreate());
@@ -106,8 +112,8 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV420,
                         AVIF_PIXEL_FORMAT_YUV400),
         /*create_alpha=*/testing::Values(false),
-        /*quality=*/
-        testing::Values(AVIF_QUALITY_DEFAULT)));
+        testing::Values(AVIF_QUALITY_DEFAULT),
+        /*add_xmp=*/testing::Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     BitDepthExtensions, SampleTransformTest,
@@ -116,8 +122,8 @@ INSTANTIATE_TEST_SUITE_P(
                         AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(false),
-        /*quality=*/
-        testing::Values(AVIF_QUALITY_LOSSLESS)));
+        testing::Values(AVIF_QUALITY_LOSSLESS),
+        /*add_xmp=*/testing::Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     ResidualBitDepthExtension, SampleTransformTest,
@@ -126,8 +132,8 @@ INSTANTIATE_TEST_SUITE_P(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(false),
-        /*quality=*/
-        testing::Values(AVIF_QUALITY_DEFAULT)));
+        testing::Values(AVIF_QUALITY_DEFAULT),
+        /*add_xmp=*/testing::Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Alpha, SampleTransformTest,
@@ -135,8 +141,18 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(true),
-        /*quality=*/
-        testing::Values(AVIF_QUALITY_LOSSLESS)));
+        testing::Values(AVIF_QUALITY_LOSSLESS),
+        /*add_xmp=*/testing::Values(false)));
+
+INSTANTIATE_TEST_SUITE_P(
+    WithXmp, SampleTransformTest,
+    testing::Combine(
+        testing::Values(
+            AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        /*create_alpha=*/testing::Values(false),
+        testing::Values(AVIF_QUALITY_LOSSLESS),
+        /*add_xmp=*/testing::Values(true)));
 
 // TODO(yguyon): Test grids with bit depth extensions.
 
