@@ -420,6 +420,10 @@ static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha)
         }
     }
 
+    // In practice this function should also return true if avifEncoderSetCodecSpecificOption("tune", "iq")
+    // was called for a previous frame and not called (or called with NULL) for this frame, because the tune
+    // option persists across frames in libaom. However AOM_TUNE_IQ is only supported with still images in
+    // libavif and libaom as of today, so there is no need to remember this option across frames.
     return ret;
 }
 
@@ -648,10 +652,21 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    avifBool useLibavifDefaultTuneMetric = AVIF_FALSE;        // If true, override libaom's default tune option.
+    aom_tune_metric libavifDefaultTuneMetric = AOM_TUNE_PSNR; // Meaningless unless useLibavifDefaultTuneMetric.
+    if (quality != AVIF_QUALITY_LOSSLESS && !avifAOMOptionsContainExplicitTuning(codec, alpha)) {
+        useLibavifDefaultTuneMetric = AVIF_TRUE;
+        libavifDefaultTuneMetric = AOM_TUNE_SSIM;
+    }
+
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
-    const avifBool tuneIq = avifImageUsesTuneIq(codec, alpha);
-    const int quantizer = aomQualityToQuantizer(quality, tuneIq);
+    // True if libavif knows that tune=iq is used, either by default by libavif, or explicitly set by the user.
+    // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v1.13.1 and earlier versions).
+    // This is only accurate for the first frame but tune=iq is only supported for still images in libavif and
+    // for all-intra coding in libaom (at least up to v1.13.1) anyway.
+    const avifBool useTuneIq = useLibavifDefaultTuneMetric ? libavifDefaultTuneMetric == AOM_TUNE_IQ : avifImageUsesTuneIq(codec, alpha);
+    const int quantizer = aomQualityToQuantizer(quality, useTuneIq);
 
     // For encoder->scalingMode.horizontal and encoder->scalingMode.vertical to take effect in AOM
     // encoder, config should be applied for each frame, so we don't care about changes on these
@@ -990,10 +1005,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
 #endif
 
-        if (!avifAOMOptionsContainExplicitTuning(codec, alpha)) {
-            if (aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, AOM_TUNE_SSIM) != AOM_CODEC_OK) {
-                return AVIF_RESULT_UNKNOWN_ERROR;
-            }
+        if (useLibavifDefaultTuneMetric &&
+            aom_codec_control(&codec->internal->encoder, AOME_SET_TUNING, libavifDefaultTuneMetric) != AOM_CODEC_OK) {
+            return AVIF_RESULT_UNKNOWN_ERROR;
         }
         if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
@@ -1074,6 +1088,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_CODEC_SPECIFIC) {
+            // Do not apply libavifDefaultTuneMetric even if useLibavifDefaultTuneMetric is true:
+            // codec-specific settings persist on the libaom side, so keep the same behavior for tune.
             if (!avifProcessAOMOptionsPostInit(codec, alpha)) {
                 return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
             }
