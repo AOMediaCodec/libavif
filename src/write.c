@@ -229,7 +229,7 @@ typedef struct avifEncoderData
     // tileRowsLog2 and tileColsLog2 are the actual tiling values after automatic tiling is handled
     int tileRowsLog2;
     int tileColsLog2;
-    avifEncoder lastEncoder;
+    avifEncoder lastEncoder; // Shallow state at last avifEncoderAddImageInternal() call.
     // lastQuality and lastQualityAlpha are the quality and qualityAlpha values used last time
     // Note: Gain maps are supported for still images only, so we don't need a "lastQualityGainMap"
     int lastQuality;
