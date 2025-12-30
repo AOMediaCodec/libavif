@@ -597,13 +597,15 @@ ImagePtr ReadImage(const char* folder_path, const char* file_name,
                    avifBool ignore_xmp, avifBool ignore_gain_map) {
   ImagePtr image(avifImageCreateEmpty());
   if (!image ||
-      avifReadImage((std::string(folder_path) + file_name).c_str(),
-                    AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
-                    requested_format, requested_depth, chroma_downsampling,
-                    ignore_icc, ignore_exif, ignore_xmp, ignore_gain_map,
-                    AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-                    /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-                    /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+      avifReadImage(
+          (std::string(folder_path) + file_name).c_str(),
+          AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */, requested_format,
+          requested_depth, chroma_downsampling,
+          /*requestedFormatGainMap=*/AVIF_PIXEL_FORMAT_NONE /* auto */,
+          ignore_icc, ignore_exif, ignore_xmp, ignore_gain_map,
+          AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+          /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+          /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return nullptr;
   }
   return image;

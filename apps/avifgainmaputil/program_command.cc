@@ -32,6 +32,8 @@ argparse::ConvertedValue<int> PixelFormatConverter::from_str(
     converted_value.set_value(AVIF_PIXEL_FORMAT_YUV420);
   } else if (str == "400") {
     converted_value.set_value(AVIF_PIXEL_FORMAT_YUV400);
+  } else if (str == "auto") {
+    converted_value.set_value(AVIF_PIXEL_FORMAT_NONE);
   } else {
     converted_value.set_error("Invalid argument value");
   }

@@ -22,7 +22,6 @@ class ConvertCommand : public ProgramCommand {
   argparse::ArgValue<avifContentLightLevelInformationBox> arg_clli_;
   argparse::ArgValue<int> arg_downscaling_;
   argparse::ArgValue<int> arg_gain_map_quality_;
-  argparse::ArgValue<int> arg_gain_map_depth_;
   argparse::ArgValue<int> arg_gain_map_pixel_format_;
   BasicImageEncodeArgs arg_image_encode_;
   ImageReadArgs arg_image_read_;
