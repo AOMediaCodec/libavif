@@ -308,7 +308,7 @@ static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
 }
 
 // Reads 'numBytes' at 'offset', stores them in 'bytes' and increases 'offset'.
-static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint32_t * offset, uint32_t numBytes)
+static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, size_t * offset, uint32_t numBytes)
 {
     if ((UINT32_MAX - *offset) < numBytes || data->size < (*offset + numBytes)) {
         return AVIF_FALSE;
@@ -318,7 +318,7 @@ static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint
     return AVIF_TRUE;
 }
 
-static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, uint32_t * offset, avifBool isBigEndian)
+static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, size_t * offset, avifBool isBigEndian)
 {
     uint8_t bytes[4];
     AVIF_CHECK(avifJPEGReadBytes(data, bytes, offset, 4));
@@ -326,11 +326,139 @@ static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, uint32_t 
     return AVIF_TRUE;
 }
 
-static avifBool avifJPEGReadU16(const avifROData * data, uint16_t * v, uint32_t * offset, avifBool isBigEndian)
+static avifBool avifJPEGReadS32(const avifROData * data, int32_t * v, size_t * offset, avifBool isBigEndian)
+{
+    uint32_t u;
+    AVIF_CHECK(avifJPEGReadU32(data, &u, offset, isBigEndian));
+    *v = (int32_t)u;
+    return AVIF_TRUE;
+}
+
+static avifBool avifJPEGReadU16(const avifROData * data, uint16_t * v, size_t * offset, avifBool isBigEndian)
 {
     uint8_t bytes[2];
     AVIF_CHECK(avifJPEGReadBytes(data, bytes, offset, 2));
     *v = isBigEndian ? avifJPEGReadUint16BigEndian(bytes) : avifJPEGReadUint16LittleEndian(bytes);
+    return AVIF_TRUE;
+}
+
+// Searches for the HDR headroom in the Exif metadata for JPEGs captured on iPhones.
+// Returns false in case of reading error or if the headroom could not be found.
+// References:
+// https://developer.apple.com/documentation/appkit/applying-apple-hdr-effect-to-your-photos
+// https://www.media.mit.edu/pia/Research/deepview/exif.html
+// https://www.cipa.jp/std/documents/download_e.html?CIPA_DC-008-2024-E
+// https://exiftool.org/TagNames/EXIF.html
+// Exif metadata consists of a list of IFDs (Image File Directory), each containing a list of tags.
+// The first IFD (IFD0) is expected to contain a tag called ExifOffset (id 0x8769) which contains
+// the offset to another IFD, the Exif IFD.
+// The Exif IFD is expected to contain a tag called MakerNotes (id 0x927c) which contains an offset
+// to proprietary notes data specific to the camera vendor. In the case of Apple, it consists of a
+// header starting with 'Apple iOS'  etc. followed by another IFD. This last IFD contains the tags
+// 33 and 48 which are used to compute the headroom.
+avifBool avifGetExifAppleHeadroom(const avifROData * exif, double * altHeadroom)
+{
+    *altHeadroom = 0.0f;
+    size_t offset = 0;
+
+    const avifResult result = avifGetExifTiffHeaderOffset(exif->data, exif->size, &offset);
+    if (result != AVIF_RESULT_OK) {
+        return AVIF_FALSE; // Couldn't find the TIFF header
+    }
+
+    avifBool isBigEndian = (exif->data[offset] == 'M');
+    offset += 4; // Skip the TIFF header.
+
+    uint32_t offsetToIfd;
+    AVIF_CHECK(avifJPEGReadU32(exif, &offsetToIfd, &offset, isBigEndian));
+
+    const uint8_t appleMakerNotesHeader[] = { 'A', 'p', 'p', 'l', 'e', ' ', 'i', 'O', 'S', 0x00, 0x00, 0x01, 'M', 'M' };
+    const size_t appleMakerNotesHeaderSize = sizeof(appleMakerNotesHeader);
+    avifBool inAppleMakerNotes = AVIF_FALSE;
+
+    // According to the Skia implementation, "Many images have a maker33 but not a maker48."
+    // We assume the missing value (if any) to be zero.
+    avifBool hasMaker33Or48 = AVIF_FALSE;
+    double maker33 = 0.0;
+    double maker48 = 0.0;
+
+    int numIfds = 0;
+    const int maxIfds = 3; // Prevent infinite looping caused by malformed data.
+    while (offsetToIfd != 0 && numIfds++ < maxIfds) {
+        offset = offsetToIfd;
+        avifBool offsetToNextIfdAlreadySet = AVIF_FALSE;
+
+        uint16_t fieldCount;
+        AVIF_CHECK(avifJPEGReadU16(exif, &fieldCount, &offset, isBigEndian));
+
+        for (uint16_t field = 0; field < fieldCount; ++field) {
+            uint16_t tagId;
+            uint16_t dataFormat;
+            uint32_t numComponents;
+            uint32_t tagData;
+            AVIF_CHECK(avifJPEGReadU16(exif, &tagId, &offset, isBigEndian));
+            AVIF_CHECK(avifJPEGReadU16(exif, &dataFormat, &offset, isBigEndian));
+            AVIF_CHECK(avifJPEGReadU32(exif, &numComponents, &offset, isBigEndian));
+            AVIF_CHECK(avifJPEGReadU32(exif, &tagData, &offset, isBigEndian));
+            if (tagId == 0x8769) { // Exif Offset (offset to a sub IFD)
+                // Move back to just before the tagData which contians the offset of the Exif IFD.
+                offset -= 4;
+                break;
+            } else if (tagId == 0x927c) { // Maker Notes
+                uint32_t makerNotesOffset = tagData;
+                // From https://exiftool.org/makernote_types.html
+                // Apple Maker Notes contain a header (below) followed by an IFD.
+                if (!memcmp(&exif->data[makerNotesOffset], appleMakerNotesHeader, appleMakerNotesHeaderSize)) {
+                    offsetToIfd = makerNotesOffset + (uint32_t)appleMakerNotesHeaderSize;
+                    inAppleMakerNotes = AVIF_TRUE;
+                    offsetToNextIfdAlreadySet = AVIF_TRUE;
+                    // Apple Maker Notes are always big endian, regardless of the endianness of the top level Exif.
+                    isBigEndian = AVIF_TRUE;
+                    break;
+                }
+            } else if (inAppleMakerNotes && (tagId == 33 || tagId == 48) && dataFormat == 10) {
+                // Offsets in the Apple Maker Notes are relative to the Maker Notes field.
+                size_t tmpOffset = (size_t)offsetToIfd - appleMakerNotesHeaderSize + (size_t)tagData;
+                int32_t numerator;
+                uint32_t denominator;
+                AVIF_CHECK(avifJPEGReadS32(exif, &numerator, &tmpOffset, isBigEndian));
+                AVIF_CHECK(avifJPEGReadU32(exif, &denominator, &tmpOffset, isBigEndian));
+                const double v = (double)numerator / denominator;
+                if (tagId == 33) {
+                    maker33 = v;
+                } else {
+                    maker48 = v;
+                }
+                hasMaker33Or48 = AVIF_TRUE;
+            }
+        }
+
+        if (!offsetToNextIfdAlreadySet) {
+            AVIF_CHECK(avifJPEGReadU32(exif, &offsetToIfd, &offset, isBigEndian));
+        }
+    }
+
+    if (!hasMaker33Or48) {
+        return AVIF_FALSE;
+    }
+
+    // From https://developer.apple.com/documentation/appkit/applying-apple-hdr-effect-to-your-photos
+    double stops;
+    if (maker33 < 1.0) {
+        if (maker48 <= 0.01) {
+            stops = -20.0 * maker48 + 1.8;
+        } else {
+            stops = -0.101 * maker48 + 1.601;
+        }
+    } else {
+        if (maker48 <= 0.01) {
+            stops = -70.0 * maker48 + 3.0;
+        } else {
+            stops = -0.303 * maker48 + 2.303;
+        }
+    }
+    *altHeadroom = stops;
+
     return AVIF_TRUE;
 }
 
@@ -434,12 +562,13 @@ static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, con
 }
 
 #define XML_NAME_SPACE_GAIN_MAP "http://ns.adobe.com/hdr-gain-map/1.0/"
+#define XML_NAME_SPACE_APPLE_GAIN_MAP "http://ns.apple.com/HDRGainMap/1.0/"
 #define XML_NAME_SPACE_RDF "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 #define XML_NAME_SPACE_XMP_NOTE "http://ns.adobe.com/xmp/note/"
 
 // Finds an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // Returns NULL if not found.
-static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
+static const xmlNode * avifJPEGFindIsoGainMapXMPNode(const xmlNode * rootNode)
 {
     // See XMP specification https://github.com/adobe/XMP-Toolkit-SDK/blob/main/docs/XMPSpecificationPart1.pdf
     // ISO 16684-1:2011 7.1 "For this serialization, a single XMP packet shall be serialized using a single rdf:RDF XML element."
@@ -467,17 +596,67 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode)
     return NULL;
 }
 
-// Returns true if there is an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
-// On the main image, this signals that the file also contains a gain map.
+// Finds an 'rdf:Description' node containing a <HDRGainMap:HDRGainMapVersion> child.
+static const xmlNode * avifJPEGFindAppleGainMapXMPNode(const xmlNode * rootNode)
+{
+    // See XMP specification https://github.com/adobe/XMP-Toolkit-SDK/blob/main/docs/XMPSpecificationPart1.pdf
+    // ISO 16684-1:2011 7.1 "For this serialization, a single XMP packet shall be serialized using a single rdf:RDF XML element."
+    // 7.3 "Other XML elements may appear around the rdf:RDF element."
+    const xmlNode * rdfNode = avifJPEGFindXMLNodeByName(rootNode, XML_NAME_SPACE_RDF, "RDF", /*recursive=*/AVIF_TRUE);
+    if (rdfNode == NULL) {
+        return NULL;
+    }
+    for (const xmlNode * node = rdfNode->children; node != NULL; node = node->next) {
+        // Loop through rdf:Description children.
+        // 7.4 "A single XMP packet shall be serialized using a single rdf:RDF XML element. The rdf:RDF element content
+        // shall consist of only zero or more rdf:Description elements."
+        if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)XML_NAME_SPACE_RDF) &&
+            !xmlStrcmp(node->name, (const xmlChar *)"Description")) {
+            // Look for a <HDRGainMap:HDRGainMapVersion> child.
+            for (const xmlNode * child = node->children; child != NULL; child = child->next) {
+                if (child->ns && !xmlStrcmp(child->ns->href, (const xmlChar *)XML_NAME_SPACE_APPLE_GAIN_MAP) &&
+                    !xmlStrcmp(child->name, (const xmlChar *)"HDRGainMapVersion")) {
+                    return node;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode, avifBool * isAppleGainMap)
+{
+    if (isAppleGainMap) {
+        *isAppleGainMap = AVIF_FALSE;
+    }
+    const xmlNode * node = avifJPEGFindIsoGainMapXMPNode(rootNode);
+    if (node) {
+        return node;
+    }
+    node = avifJPEGFindAppleGainMapXMPNode(rootNode);
+    if (node) {
+        if (isAppleGainMap) {
+            *isAppleGainMap = AVIF_TRUE;
+        }
+        return node;
+    }
+    return NULL;
+}
+
+// Returns true if there is an 'rdf:Description' node containing a gain map version attribute
+// (ISO style) or child element (Apple style).
+// On the main image, this signals that the file also contains a gain map (for ISO gain maps). Apple style gain maps
+// do not have gain map XMP on the main image.
 // On a subsequent image, this signals that it is a gain map.
-static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSize)
+// If not null, isAppleGainMap is set to AVIF_TRUE for an Apple style gain map, and AVIF_FALSE for an ISO gain map.
+static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSize, avifBool * isAppleGainMap)
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
     if (document == NULL) {
         return AVIF_FALSE; // Probably and out of memory error.
     }
     const xmlNode * rootNode = xmlDocGetRootElement(document);
-    const xmlNode * node = avifJPEGFindGainMapXMPNode(rootNode);
+    const xmlNode * node = avifJPEGFindGainMapXMPNode(rootNode, isAppleGainMap);
     const avifBool found = (node != NULL);
     xmlFreeDoc(document);
     return found;
@@ -492,13 +671,14 @@ static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
                                             const char * propertyName,
                                             uint32_t maxValues,
                                             const char * values[],
-                                            uint32_t * numValues)
+                                            uint32_t * numValues,
+                                            const char * nameSpace)
 {
     *numValues = 0;
 
     // Search attributes.
     for (xmlAttr * prop = descriptionNode->properties; prop != NULL; prop = prop->next) {
-        if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)XML_NAME_SPACE_GAIN_MAP) &&
+        if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)nameSpace) &&
             !xmlStrcmp(prop->name, (const xmlChar *)propertyName) && prop->children != NULL && prop->children->content != NULL) {
             // Properties should have just one child containing the property's value
             // (in fact the 'children' field is documented as "the value of the property").
@@ -510,7 +690,7 @@ static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
 
     // Search child nodes.
     for (const xmlNode * node = descriptionNode->children; node != NULL; node = node->next) {
-        if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)XML_NAME_SPACE_GAIN_MAP) &&
+        if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)nameSpace) &&
             !xmlStrcmp(node->name, (const xmlChar *)propertyName) && node->children) {
             // Multiple values can be specified with a Seq tag: <rdf:Seq><rdf:li>value1</rdf:li><rdf:li>value2</rdf:li>...</rdf:Seq>
             const xmlNode * seq = avifJPEGFindXMLNodeByName(node, XML_NAME_SPACE_RDF, "Seq", /*recursive=*/AVIF_FALSE);
@@ -546,13 +726,17 @@ static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
 // values for this property, since the array will be left untouched if the property is not found.
 // Returns AVIF_TRUE if the property was successfully parsed, or if it was not found, since all properties
 // are optional. Returns AVIF_FALSE in case of error (invalid metadata XMP).
-static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNode, const char * propertyName, double * values, uint32_t numDoubles)
+static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNode,
+                                                   const char * propertyName,
+                                                   double * values,
+                                                   uint32_t numDoubles,
+                                                   const char * nameSpace)
 {
     assert(numDoubles <= GAIN_MAP_PROPERTY_MAX_VALUES);
     const char * textValues[GAIN_MAP_PROPERTY_MAX_VALUES];
     uint32_t numValues;
-    if (!avifJPEGFindGainMapProperty(descriptionNode, propertyName, /*maxValues=*/numDoubles, &textValues[0], &numValues)) {
-        return AVIF_TRUE; // Property was not found, but it's not an error since they're optional.
+    if (!avifJPEGFindGainMapProperty(descriptionNode, propertyName, /*maxValues=*/numDoubles, &textValues[0], &numValues, nameSpace)) {
+        return AVIF_TRUE; // Property was not found, but it's not an error since they're all optional.
     }
     if (numValues != 1 && numValues != numDoubles) {
         return AVIF_FALSE; // Invalid, we expect either 1 or exactly numDoubles values.
@@ -587,14 +771,44 @@ static inline void SwapDoubles(double * x, double * y)
     *y = tmp;
 }
 
+static avifBool avifJPEGParseGainMapXMPPropertiesAppleFormat(const xmlNode * descNode, avifGainMap * gainMap)
+{
+    double hdrHeadroomLinear = 1.0;
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRGainMapHeadroom", &hdrHeadroomLinear, /*numDoubles=*/1, XML_NAME_SPACE_APPLE_GAIN_MAP));
+    const double hdrHeadroom = log2(hdrHeadroomLinear);
+
+    avifSignedFraction hdrHeadroomSFraction;
+    AVIF_CHECK(avifDoubleToSignedFraction(hdrHeadroom, &hdrHeadroomSFraction));
+
+    for (int i = 0; i < 3; ++i) {
+        gainMap->gainMapMin[i].n = 0; // Min = 0 (log2)
+        gainMap->gainMapMin[i].d = 1;
+        gainMap->gainMapMax[i] = hdrHeadroomSFraction;
+        gainMap->gainMapGamma[i].n = 1; // Gamma = 1.
+        gainMap->gainMapGamma[i].d = 1;
+        gainMap->baseOffset[i].n = 0; // Base offset = 0.
+        gainMap->baseOffset[i].d = 1;
+        gainMap->alternateOffset[i].n = 0; // Alternate offset = 0.
+        gainMap->alternateOffset[i].d = 1;
+    }
+    gainMap->baseHdrHeadroom.n = 0; // Base headroom = 0 (SDR)
+    gainMap->baseHdrHeadroom.d = 1;
+    AVIF_CHECK(avifDoubleToUnsignedFraction(hdrHeadroom, &gainMap->alternateHdrHeadroom));
+
+    return AVIF_TRUE;
+}
+
 // Parses gain map metadata from XMP.
 // See https://developer.android.com/media/platform/hdr-image-format
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
-static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMap * gainMap)
+static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avifGainMap * gainMap, avifBool * isAppleGainMap)
 {
-    const xmlNode * descNode = avifJPEGFindGainMapXMPNode(rootNode);
+    const xmlNode * descNode = avifJPEGFindGainMapXMPNode(rootNode, isAppleGainMap);
     if (descNode == NULL) {
         return AVIF_FALSE;
+    }
+    if (*isAppleGainMap) {
+        return avifJPEGParseGainMapXMPPropertiesAppleFormat(descNode, gainMap);
     }
 
     double baseHdrHeadroom = 0.0;
@@ -604,13 +818,14 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     double gainMapGamma[3] = { 1.0, 1.0, 1.0 };
     double baseOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
     double alternateOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3));
+    const char * ns = XML_NAME_SPACE_GAIN_MAP;
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3, ns));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3, ns));
 
     AVIF_CHECK(alternateHdrHeadroom > baseHdrHeadroom);
     AVIF_CHECK(baseHdrHeadroom >= 0);
@@ -623,7 +838,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
     uint32_t numValues;
     const char * baseRenditionIsHDR;
-    if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues)) {
+    if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues, ns)) {
         if (!strcmp(baseRenditionIsHDR, "True")) {
             SwapDoubles(&baseHdrHeadroom, &alternateHdrHeadroom);
             for (int c = 0; c < 3; ++c) {
@@ -652,14 +867,14 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
 // Parses gain map metadata from an XMP payload.
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
-avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap)
+avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap, avifBool * isAppleGainMap)
 {
     xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
     if (document == NULL) {
         return AVIF_FALSE; // Probably an out of memory error.
     }
     xmlNode * rootNode = xmlDocGetRootElement(document);
-    const avifBool res = avifJPEGParseGainMapXMPProperties(rootNode, gainMap);
+    const avifBool res = avifJPEGParseGainMapXMPProperties(rootNode, gainMap, isAppleGainMap);
     xmlFreeDoc(document);
     return res;
 }
@@ -675,7 +890,7 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                                    avifImage * avif,
                                                    avifChromaDownsampling chromaDownsampling)
 {
-    uint32_t offset = 0;
+    size_t offset = 0;
 
     const uint8_t littleEndian[4] = { 0x49, 0x49, 0x2A, 0x00 }; // "II*\0"
     const uint8_t bigEndian[4] = { 0x4D, 0x4D, 0x00, 0x2A };    // "MM\0*"
@@ -787,11 +1002,24 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                   sizeLimit)) {
             continue;
         }
-        if (avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
+        if (avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size, NULL)) {
             return AVIF_TRUE;
         }
     }
 
+    return AVIF_FALSE;
+}
+
+// Returns AVIF_TRUE if the file contains a Multi Picture Format segment.
+static avifBool hasMpfSegment(struct jpeg_decompress_struct * cinfo)
+{
+    const avifROData tagMpf = { (const uint8_t *)AVIF_JPEG_MPF_HEADER, AVIF_JPEG_MPF_HEADER_LENGTH };
+    for (jpeg_saved_marker_ptr marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
+        if ((marker->marker == (JPEG_APP0 + 2)) && (marker->data_length > tagMpf.size) &&
+            !memcmp(marker->data, tagMpf.data, tagMpf.size)) {
+            return AVIF_TRUE;
+        }
+    }
     return AVIF_FALSE;
 }
 
@@ -804,8 +1032,10 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
 static avifBool avifJPEGExtractGainMapImage(FILE * f,
                                             uint32_t sizeLimit,
                                             struct jpeg_decompress_struct * cinfo,
+                                            avifImage * baseImage,
                                             avifGainMap * gainMap,
-                                            avifChromaDownsampling chromaDownsampling)
+                                            avifChromaDownsampling chromaDownsampling,
+                                            avifBool expectIsoGainMap)
 {
     const avifROData tagMpf = { (const uint8_t *)AVIF_JPEG_MPF_HEADER, AVIF_JPEG_MPF_HEADER_LENGTH };
     for (jpeg_saved_marker_ptr marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
@@ -824,16 +1054,33 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
                 if (f == stdin) {
                     // Not supported because fseek doesn't work on stdin.
                     fprintf(stderr, "Warning: gain map transcoding is not supported with sdtin\n");
-                } else {
+                } else if (expectIsoGainMap) {
                     fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
                 }
                 avifImageDestroy(image);
                 return AVIF_FALSE;
             }
-            if (!avifJPEGParseGainMapXMP(image->xmp.data, image->xmp.size, gainMap)) {
-                fprintf(stderr, "Warning: failed to parse gain map metadata\n");
+
+            avifBool isAppleGainMap;
+            if (!avifJPEGParseGainMapXMP(image->xmp.data, image->xmp.size, gainMap, &isAppleGainMap)) {
+                fprintf(stderr, "Warning: failed to parse gain map XMP metadata\n");
                 avifImageDestroy(image);
                 return AVIF_FALSE;
+            }
+            if (isAppleGainMap && gainMap->alternateHdrHeadroom.n == 0) {
+                // Look for the headroom in the Exif metadata if it wasn't in the XMP.
+                // Newer images have it in the XMP, but for older versions it's only in Exif.
+                const avifROData exif = { baseImage->exif.data, baseImage->exif.size };
+                double headroom;
+                if (baseImage->exif.size == 0 || !avifGetExifAppleHeadroom(&exif, &headroom) || headroom <= 0.0 ||
+                    !avifDoubleToUnsignedFraction(headroom, &gainMap->alternateHdrHeadroom) ||
+                    !avifDoubleToSignedFraction(headroom, &gainMap->gainMapMax[0])) {
+                    fprintf(stderr, "Warning: could not find headroom in Exif or XMP metadata\n");
+                    avifImageDestroy(image);
+                    return AVIF_FALSE;
+                }
+                gainMap->gainMapMax[1] = gainMap->gainMapMax[0];
+                gainMap->gainMapMax[2] = gainMap->gainMapMax[0];
             }
 
             gainMap->image = image;
@@ -1303,15 +1550,16 @@ static avifBool avifJPEGReadInternal(FILE * f,
     }
 
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-    // The primary XMP block (for the main image) must contain a node with an hdrgm:Version field if and only if a gain map is present.
-    if (!ignoreGainMap && avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size)) {
+    if (!ignoreGainMap && hasMpfSegment(&cinfo)) {
+        avifBool expectIsoGainMap = AVIF_FALSE;
+        avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size, &expectIsoGainMap);
         avifGainMap * gainMap = avifGainMapCreate();
         if (gainMap == NULL) {
             fprintf(stderr, "Creating gain map failed: out of memory\n");
             goto cleanup;
         }
         // Ignore the return value: continue even if we fail to find/parse/decode the gain map.
-        if (avifJPEGExtractGainMapImage(f, sizeLimit, &cinfo, gainMap, chromaDownsampling)) {
+        if (avifJPEGExtractGainMapImage(f, sizeLimit, &cinfo, avif, gainMap, chromaDownsampling, expectIsoGainMap)) {
             // Since jpeg doesn't provide this metadata, assume the values are the same as the base image
             // with a PQ transfer curve.
             gainMap->altColorPrimaries = avif->colorPrimaries;
