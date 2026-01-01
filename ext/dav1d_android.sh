@@ -15,7 +15,7 @@ if [ $# -ne 1 ]; then
   echo "Usage: ${0} <path_to_android_ndk>"
   exit 1
 fi
-git clone -b 1.5.2 --depth 1 https://code.videolan.org/videolan/dav1d.git
+git clone -b 1.5.3 --depth 1 https://code.videolan.org/videolan/dav1d.git
 mkdir dav1d/build
 
 # This only works on linux and mac.
