@@ -4231,7 +4231,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_metadata_flag ? 20 : 10) gainmap_metadata_size;
         AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemDataSize, largeItemDataFlag ? 28 : 15),
                       AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_item_data_flag ? 28 : 15) gainmap_item_data_size;
-        if (gainmapItemDataSize > 0) {
+        if (gainmapItemDataSize != 0) {
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapItemCodecConfigSize, largeCodecConfigFlag ? 12 : 3),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_codec_config_flag ? 12 : 3) gainmap_item_codec_config_size;
         }
@@ -4297,7 +4297,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         }
     }
     avifCodecConfigurationBox gainmapItemCodecConfig = { 0 };
-    if (hasHdr && hasGainmap) {
+    if (hasHdr && hasGainmap && gainmapItemDataSize != 0) {
         if (gainmapItemCodecConfigSize == 0) {
             gainmapItemCodecConfigSize = mainItemCodecConfigSize;
             gainmapItemCodecConfig = mainItemCodecConfig;
