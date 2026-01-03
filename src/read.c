@@ -4436,13 +4436,17 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
 
-    if (hasAlpha) {
+    if (alphaItemCodecConfigSize != 0) {
         // Property with fixed index 6.
         avifProperty * alphaCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
         AVIF_CHECKERR(alphaCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
         alphaCodecConfigProp->u.av1C = alphaItemCodecConfig;
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
+    } else {
+        AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
+    }
 
+    if (hasAlpha) {
         // Property with fixed index 7.
         alphaItem->auxForID = colorItem->id;
         colorItem->premByID = alphaIsPremultiplied;
@@ -4462,8 +4466,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         alphaPixiProp->u.pixi.planeDepths[0] = (uint8_t)bitDepth;
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaPixiProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
-        // Placeholders 6, 7 and 8.
-        AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY);
+        // Placeholders 7 and 8.
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY);
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY);
     }
