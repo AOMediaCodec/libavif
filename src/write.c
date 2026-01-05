@@ -237,9 +237,9 @@ typedef struct avifEncoderData
     // lastTileRowsLog2 and lastTileColsLog2 are the actual tiling values used last time
     int lastTileRowsLog2;
     int lastTileColsLog2;
+    // Holds metadata about the base image
     avifImage * imageMetadata;
-    // For convenience, holds metadata derived from the avifGainMap struct (when present) about the
-    // altenate image
+    // Holds metadata derived from the avifGainMap struct (when present) about the alternate image
     avifImage * altImageMetadata;
     uint16_t lastItemID;
     uint16_t primaryItemID;
