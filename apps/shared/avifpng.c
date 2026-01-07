@@ -214,7 +214,7 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
 // Could also be used to handle those chunks (not done right now for simplicity).
 static int avifPNGReadUnknownChunk(png_structp png_ptr, png_unknown_chunkp chunk)
 {
-    // If needed, the argument can be retreived with: (MyType*)png_get_user_chunk_ptr(png_ptr);
+    // If needed, the argument can be retrieved with: (MyType*)png_get_user_chunk_ptr(png_ptr);
     (void)png_ptr;
     if (!memcmp(chunk->name, "cICP\0", 5)) {
         fprintf(stderr, "Warning: Unsupported cICP chunk. libpng version >= 1.6.45 needed.\n");
@@ -380,6 +380,7 @@ static avifBool avifPNGReadImpl(FILE * f,
         if (png_get_cICP(png, info, &cicpColorPrimaries, &cicpTransferFunction, &cicpMatrixCoefficients, &cicpVideoFullRangeFlag)) {
             avif->colorPrimaries = cicpColorPrimaries;
             avif->transferCharacteristics = cicpTransferFunction;
+            // The matrix coefficient and full range flag are ignored: they are about YUV encoding and the PNG values are irrelevant.
         } else
 #endif
             if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
