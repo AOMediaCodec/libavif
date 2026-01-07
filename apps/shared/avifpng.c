@@ -210,14 +210,24 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
     return AVIF_TRUE;
 }
 
-// Callback for unknown chunks. Used to detect chunks that we are missing support for.
-// Could also be used to handle those chunks (not done right now for simplicity).
+typedef struct avifUnknownCicpChunkData
+{
+    avifImage * avif;
+    avifBool cicpChunkRead;
+} avifUnknownCicpChunkData;
+
+// Callback for unknown chunks. Used to detect/handle chunks that we are missing support for.
 static int avifPNGReadUnknownChunk(png_structp png_ptr, png_unknown_chunkp chunk)
 {
-    // If needed, the argument can be retrieved with: (MyType*)png_get_user_chunk_ptr(png_ptr);
-    (void)png_ptr;
+    avifUnknownCicpChunkData * data = (avifUnknownCicpChunkData *)png_get_user_chunk_ptr(png_ptr);
+    avifImage * avif = data->avif;
     if (!memcmp(chunk->name, "cICP\0", 5)) {
-        fprintf(stderr, "Warning: Unsupported cICP chunk. libpng version >= 1.6.45 needed.\n");
+        if (chunk->size > 2) {
+            data->cicpChunkRead = AVIF_TRUE;
+            avif->colorPrimaries = chunk->data[0];
+            avif->transferCharacteristics = chunk->data[1];
+            // The matrix coefficient and full range flag are ignored.
+        }
     }
     return 1;
 }
@@ -283,7 +293,8 @@ static avifBool avifPNGReadImpl(FILE * f,
         goto cleanup;
     }
 
-    png_set_read_user_chunk_fn(png, NULL, &avifPNGReadUnknownChunk);
+    avifUnknownCicpChunkData unknownChunkData = { avif, AVIF_FALSE };
+    png_set_read_user_chunk_fn(png, &unknownChunkData, &avifPNGReadUnknownChunk);
 
     png_init_io(png, f);
     png_set_sig_bytes(png, 8);
@@ -383,7 +394,9 @@ static avifBool avifPNGReadImpl(FILE * f,
             // The matrix coefficient and full range flag are ignored: they are about YUV encoding and the PNG values are irrelevant.
         } else
 #endif
-            if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+            if (unknownChunkData.cicpChunkRead) {
+            // Already handled in avifPNGReadUnknownChunk()
+        } else if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
             if (!rawColorTypeIsGray && avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "

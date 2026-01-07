@@ -48,14 +48,10 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs.* 8$"
 
   # Check the cICP chunk gets read
-  if "${AVIFENC}" -s 8 "${INPUT_CICP_PNG}" -o "${ENCODED_FILE}" 2>&1 | grep "Unsupported cICP chunk"; then
-    # Old version of libpng: cICP is not supported and the png reader generates an ICC profile instead
-    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "ICC Profile.* Present"
-  else
-    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries.* 1$"
-    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char.* 4$"
-    "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs.* 6$"
-  fi
+  "${AVIFENC}" -s 8 "${INPUT_CICP_PNG}" -o "${ENCODED_FILE}"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries.* 1$"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Transfer Char.* 4$"
+  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Matrix Coeffs.* 6$"
 
   # RGB ICC cannot be kept when asking for gray.
   "${AVIFENC}" -s 10 "${INPUT_ICC_JPG}" --yuv 400 -o "${ENCODED_FILE}" && exit 1
