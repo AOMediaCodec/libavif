@@ -28,8 +28,8 @@ TEST(LosslessTest, YCGCO_RO) {
       /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/false, /*ignoreExif=*/false, /*ignoreXMP=*/false,
-      /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
-      AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(), /*outDepth=*/nullptr,
+      /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+      /*outDepth=*/nullptr,
       /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
   ASSERT_EQ(file_format, AVIF_APP_FILE_FORMAT_UNKNOWN);
 }
@@ -51,7 +51,7 @@ void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
       /*requestedFormat=*/pixel_format, /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
-      /*ignoreXMP=*/false, /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
+      /*ignoreXMP=*/false, /*ignoreGainMap=*/true,
       AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(), /*outDepth=*/nullptr,
       /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
   if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
@@ -72,17 +72,17 @@ void GetIsGray(const std::string& path, bool& is_gray) {
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-  ASSERT_NE(AVIF_APP_FILE_FORMAT_UNKNOWN,
-            avifReadImage(
-                path.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
-                AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
-                /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                /*ignoreColorProfile=*/true, /*ignoreExif=*/true,
-                /*ignoreXMP=*/true,
-                /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
-                AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-                /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
-                /*frameIter=*/nullptr));
+  ASSERT_NE(
+      AVIF_APP_FILE_FORMAT_UNKNOWN,
+      avifReadImage(
+          path.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+          AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
+          /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+          /*ignoreColorProfile=*/true, /*ignoreExif=*/true,
+          /*ignoreXMP=*/true,
+          /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
+          /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
+          /*frameIter=*/nullptr));
   is_gray = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
 }
 

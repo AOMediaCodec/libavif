@@ -120,7 +120,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Provide an XMP metadata payload to be associated with the primary item (implies \--ignore-xmp).
 
 **\--icc** _FILENAME_
-:   Provide an ICC profile payload to be associated with the primary item (implies \--ignore-icc).
+:   Provide an ICC profile payload to be associated with the primary item (implies \--ignore-profile).
 
 **\--timescale**, **\--fps** _V_
 :   Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second. (Default: 30)

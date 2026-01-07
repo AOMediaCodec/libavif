@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
                       AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                       /*ignoreColorProfile==*/AVIF_FALSE,
                       /*ignoreExif=*/AVIF_FALSE,
-                      /*ignoreXMP=*/AVIF_FALSE, /*allowChangingCicp=*/AVIF_TRUE,
+                      /*ignoreXMP=*/AVIF_FALSE,
                       // TODO(maryla): also compare gain maps.
                       /*ignoreGainMap=*/AVIF_TRUE,
                       /*imageSizeLimit=*/std::numeric_limits<uint32_t>::max(),

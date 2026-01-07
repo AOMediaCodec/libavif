@@ -73,6 +73,8 @@ struct y4mFrameIterator;
 // 'ignoreGainMap' is only relevant for jpeg files that have a gain map
 // and only if AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION is ON
 // (requires libxml2). Otherwise it has no effect.
+// May set the image's colorPrimaries, transferCharacteristics and ICC fields
+// based on color information found in the image (unless ignoreColorProfile is true).
 avifAppFileFormat avifReadImage(const char * filename,
                                 avifAppFileFormat inputFormat,
                                 avifPixelFormat requestedFormat,
@@ -81,7 +83,6 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
-                                avifBool allowChangingCicp,
                                 avifBool ignoreGainMap,
                                 uint32_t imageSizeLimit,
                                 avifImage * image,

@@ -38,8 +38,8 @@ ImagePtr ReadImageLosslessBitDepth(const std::string& path,
                     AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                     /*ignoreColorProfile=*/true,
                     /*ignoreExif=*/true, /*ignoreXMP=*/true,
-                    /*allowChangingCicp=*/true, /*ignoreGainMap=*/true,
-                    AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(), &output_depth,
+                    /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
+                    image.get(), &output_depth,
                     /*sourceTiming=*/nullptr,
                     /*frameIter=*/nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     return nullptr;
