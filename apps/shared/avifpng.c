@@ -376,7 +376,7 @@ static avifBool avifPNGReadImpl(FILE * f,
         png_uint_32 iccpDataLen = 0;
         int srgbIntent;
         // PNG specification Third Edition Section 4.3 lists color space information chunk types by priority:
-        //   Chunk Type	    Priority
+        //   Chunk Type     Priority
         //   cICP           1
         //   iCCP           2
         //   sRGB           3
