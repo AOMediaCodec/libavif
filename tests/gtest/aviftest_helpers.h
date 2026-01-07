@@ -171,7 +171,6 @@ ImagePtr ReadImage(const char* folder_path, const char* file_name,
                        AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                    avifBool ignore_icc = false, avifBool ignore_exif = false,
                    avifBool ignore_xmp = false,
-                   avifBool allow_changing_cicp = true,
                    avifBool ignore_gain_map = false);
 // Convenient wrapper around avifPNGWrite() for debugging purposes.
 // Do not remove.

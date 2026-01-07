@@ -133,6 +133,15 @@ License: released by the Eastman Kodak Company for unrestricted usage
 It is [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif) converted to
 grayscale and tagged as Gamma 1.6 gAMA PNG chunk.
 
+#### File [kodim03_grayscale_cicp.png](kodim03_grayscale_cicp.png)
+
+![](kodim03_grayscale_cicp.png)
+
+License: released by the Eastman Kodak Company for unrestricted usage
+
+It is [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif) converted to
+grayscale and tagged with a cICP chunk.
+
 #### File [kodim03_grayscale_gamma1.6-reference.png](kodim03_grayscale_gamma1.6-reference.png)
 
 ![](kodim03_grayscale_gamma1.6-reference.png)

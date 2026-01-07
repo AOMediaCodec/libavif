@@ -59,7 +59,6 @@ avifResult ConvertCommand::Run() {
       arg_image_read_.ignore_profile,
       /*ignoreExif=*/false,
       /*ignoreXMP=*/false,
-      /*allowChangingCicp=*/true,
       /*ignoreGainMap=*/false, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
       /*outDepth=*/nullptr,
       /*sourceTiming=*/nullptr,

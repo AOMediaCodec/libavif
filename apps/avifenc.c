@@ -607,6 +607,8 @@ static avifBool avifInputReadImage(avifInput * input,
         }
     }
 
+    const avifColorPrimaries colorPrimariesBefore = dstImage->colorPrimaries;
+    const avifTransferCharacteristics transferCharacteristicsBefore = dstImage->transferCharacteristics;
     if (avifReadImage(currentFile->filename,
                       inputFormat,
                       input->requestedFormat,
@@ -615,7 +617,6 @@ static avifBool avifInputReadImage(avifInput * input,
                       ignoreColorProfile,
                       ignoreExif,
                       ignoreXMP,
-                      allowChangingCicp,
                       ignoreGainMap,
                       UINT32_MAX,
                       dstImage,
@@ -630,6 +631,11 @@ static avifBool avifInputReadImage(avifInput * input,
             fprintf(stderr, "Specify --input-format if the input is not y4m\n");
         }
         return AVIF_FALSE;
+    }
+    if (!allowChangingCicp) {
+        // Restore the previous primaries/transfer in case avifReadImage changed them.
+        dstImage->colorPrimaries = colorPrimariesBefore;
+        dstImage->transferCharacteristics = transferCharacteristicsBefore;
     }
 
     if (!input->frameIter) {

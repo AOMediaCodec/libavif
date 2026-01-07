@@ -77,7 +77,7 @@ TEST(JpegTest, ReadJpegWithGainMap) {
         testutil::ReadImage(data_path, filename, AVIF_PIXEL_FORMAT_YUV444, 8,
                             AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
                             /*ignore_icc=*/false, /*ignore_exif=*/false,
-                            /*ignore_xmp=*/true, /*allow_changing_cicp=*/true,
+                            /*ignore_xmp=*/true,
                             /*ignore_gain_map=*/false);
     ASSERT_NE(image, nullptr);
     ASSERT_NE(image->gainMap, nullptr);
@@ -104,7 +104,7 @@ TEST(JpegTest, IgnoreGainMap) {
       data_path, "paris_exif_xmp_gainmap_littleendian.jpg",
       AVIF_PIXEL_FORMAT_YUV444, 8, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignore_icc=*/false, /*ignore_exif=*/false,
-      /*ignore_xmp=*/false, /*allow_changing_cicp=*/true,
+      /*ignore_xmp=*/false,
       /*ignore_gain_map=*/true);
   ASSERT_NE(image, nullptr);
   ASSERT_EQ(image->gainMap, nullptr);

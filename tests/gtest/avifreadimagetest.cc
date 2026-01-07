@@ -114,26 +114,6 @@ TEST(PngTest, ColorGamma22) {
   EXPECT_EQ(image->icc.size, 0u);
 }
 
-// Verify that color info does not get overwritten if allow_changing_cicp is
-// false.
-TEST(PngTest, ColorGamma22ForbitChangingCicp) {
-  const ImagePtr image = testutil::ReadImage(
-      data_path, "ffffcc-gamma2.2.png",
-      /*requested_format=*/AVIF_PIXEL_FORMAT_NONE,
-      /*requested_depth=*/0, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-      /*ignore_icc=*/false, /*ignore_exif*/ false,
-      /*ignore_xmp=*/false, /*allow_changing_cicp=*/false);
-  ASSERT_NE(image, nullptr);
-
-  // Color info should still be unspecified even if file gamma is 2.2
-  EXPECT_EQ(image->colorPrimaries, AVIF_COLOR_PRIMARIES_UNSPECIFIED);
-  EXPECT_EQ(image->transferCharacteristics,
-            AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
-
-  // should not generate ICC profile
-  EXPECT_EQ(image->icc.size, 0u);
-}
-
 // Verify we can read a color PNG file tagged as gamma 1.6 through gAMA chunk,
 // and generate a color profile for it.
 TEST(PngTest, ColorGamma16) {
@@ -301,7 +281,7 @@ static avifAppFileFormat avifReadImageForRGB2Gray2RGB(const std::string& path,
       /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
-      /*ignoreXMP=*/false, /*allowChangingCicp=*/true,
+      /*ignoreXMP=*/false,
       /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
       /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
       /*frameIter=*/nullptr);
@@ -470,7 +450,7 @@ TEST(ImageSizeLimitTest, AllFormats) {
           filepath.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
           AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
           AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, /*ignoreColorProfile=*/true,
-          /*ignoreExif=*/true, /*ignoreXMP=*/true, /*allowChangingCicp=*/true,
+          /*ignoreExif=*/true, /*ignoreXMP=*/true,
           /*ignoreGainMap=*/true, image_size_limit, image.get(),
           /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
           /*frameIter=*/nullptr);
