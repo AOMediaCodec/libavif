@@ -148,6 +148,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         } else if (sample) {
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
+                avifDiagnosticsPrintf(codec->diag,
+                                      "aom_codec_decode() failed: %s: %s",
+                                      aom_codec_error(&codec->internal->decoder),
+                                      aom_codec_error_detail(&codec->internal->decoder));
                 return AVIF_FALSE;
             }
             spatialID = sample->spatialID;
