@@ -21,6 +21,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
 * Update LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
 * Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
+* Add support for PNG cICP chunk when decoding PNG files.
 
 ### Changed since 1.3.0
 

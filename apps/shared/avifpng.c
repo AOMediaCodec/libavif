@@ -216,17 +216,37 @@ typedef struct avifUnknownCicpChunkData
     avifBool cicpChunkRead;
 } avifUnknownCicpChunkData;
 
+static void avifSetPNGCicp(avifImage * avif,
+                           png_byte cicpColorPrimaries,
+                           png_byte cicpTransferCharacteristics,
+                           png_byte cicpMatrixCoefficients,
+                           png_byte cicpVideoFullRangeFlag)
+{
+    avif->colorPrimaries = cicpColorPrimaries;
+    avif->transferCharacteristics = cicpTransferCharacteristics;
+    // PNG specification Third Edition Section 4.3:
+    //  RGB is currently the only supported color model in PNG, and as such Matrix Coefficients shall be set to 0.
+    // Note that we don't set avif->matrixCoefficients to this value as the Avif's YUV matrix is independent from the PNG's.
+    if (cicpMatrixCoefficients != 0) {
+        fprintf(stderr, "Warning: Unsupported PNG CICP matrix coefficient value %d. Expected to be 0.\n", cicpMatrixCoefficients);
+    }
+    // Narrow range PNG files are uncommon and would require conversion to full range which we don't support for now for simplicity.
+    // See also https://github.com/w3c/png/issues/312#issuecomment-2325281113 and https://svgees.us/blog/cICP.html#the-other-two-numbers
+    // Similarly, we don't set avif->yuvRange to this value as the Avif's YUV range is independent from the PNG's.
+    if (cicpVideoFullRangeFlag != 1) {
+        fprintf(stderr, "Warning: Unsupported PNG CICP full range flag value %d. Expected to be 1.\n", cicpVideoFullRangeFlag);
+    }
+}
+
 // Callback for unknown chunks. Used to detect/handle chunks that we are missing support for.
 static int avifPNGReadUnknownChunk(png_structp png_ptr, png_unknown_chunkp chunk)
 {
     avifUnknownCicpChunkData * data = (avifUnknownCicpChunkData *)png_get_user_chunk_ptr(png_ptr);
     avifImage * avif = data->avif;
-    if (!memcmp(chunk->name, "cICP\0", 5)) {
-        if (chunk->size > 2) {
+    if (!memcmp(chunk->name, "cICP", 4)) {
+        if (chunk->size >= 4) {
             data->cicpChunkRead = AVIF_TRUE;
-            avif->colorPrimaries = chunk->data[0];
-            avif->transferCharacteristics = chunk->data[1];
-            // The matrix coefficient and full range flag are ignored.
+            avifSetPNGCicp(avif, chunk->data[0], chunk->data[1], chunk->data[2], chunk->data[3]);
         }
     }
     return 1;
@@ -385,13 +405,11 @@ static avifBool avifPNGReadImpl(FILE * f,
         //   Priority number should take precedence and any higher-numbered chunk types should be ignored.
 #if defined(PNG_cICP_SUPPORTED)
         png_byte cicpColorPrimaries;
-        png_byte cicpTransferFunction;
+        png_byte cicpTransferCharacteristics;
         png_byte cicpMatrixCoefficients;
         png_byte cicpVideoFullRangeFlag;
-        if (png_get_cICP(png, info, &cicpColorPrimaries, &cicpTransferFunction, &cicpMatrixCoefficients, &cicpVideoFullRangeFlag)) {
-            avif->colorPrimaries = cicpColorPrimaries;
-            avif->transferCharacteristics = cicpTransferFunction;
-            // The matrix coefficient and full range flag are ignored: they are about YUV encoding and the PNG values are irrelevant.
+        if (png_get_cICP(png, info, &cicpColorPrimaries, &cicpTransferCharacteristics, &cicpMatrixCoefficients, &cicpVideoFullRangeFlag)) {
+            avifSetPNGCicp(avif, cicpColorPrimaries, cicpTransferCharacteristics, cicpMatrixCoefficients, cicpVideoFullRangeFlag);
         } else
 #endif
             if (unknownChunkData.cicpChunkRead) {
