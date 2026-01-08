@@ -660,7 +660,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     aom_tune_metric libavifDefaultTuneMetric = AOM_TUNE_PSNR; // Meaningless unless useLibavifDefaultTuneMetric.
     if (quality != AVIF_QUALITY_LOSSLESS && !avifAOMOptionsContainExplicitTuning(codec, alpha)) {
         useLibavifDefaultTuneMetric = AVIF_TRUE;
-        libavifDefaultTuneMetric = AOM_TUNE_SSIM;
+        if (alpha) {
+            // Minimize ringing for alpha.
+            libavifDefaultTuneMetric = AOM_TUNE_PSNR;
+        } else {
+            libavifDefaultTuneMetric = AOM_TUNE_SSIM;
+        }
     }
 
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
