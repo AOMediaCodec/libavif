@@ -171,6 +171,7 @@ typedef struct avifInput
     int fileIndex;
     struct y4mFrameIterator * frameIter;
     avifPixelFormat requestedFormat;
+    avifPixelFormat requestedFormatGainMap;
     int requestedDepth;
     int requestedDepthExtension;
 
@@ -262,6 +263,9 @@ static void syntaxLong(void)
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
+    printf("    --yuv-gain-map FORMAT             : Output format for the gain map, one of 'auto' (default), 444, 422, 420 or 400.\n");
+    printf("                                        'auto' honors the JPEG's internal format, if possible.\n");
+
 #endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
     printf("    --crop CROPX,CROPY,CROPW,CROPH    : Add clap property (clean aperture), but calculated from a crop rectangle\n");
@@ -615,6 +619,7 @@ static avifBool avifInputReadImage(avifInput * input,
                       input->requestedFormat,
                       input->requestedDepthExtension == 0 ? input->requestedDepth : 16,
                       chromaDownsampling,
+                      input->requestedFormatGainMap,
                       ignoreColorProfile,
                       ignoreExif,
                       ignoreXMP,
@@ -1679,6 +1684,8 @@ int main(int argc, char * argv[])
                 input.requestedFormat = AVIF_PIXEL_FORMAT_YUV420;
             } else if (!strcmp(arg, "400")) {
                 input.requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
+            } else if (!strcmp(arg, "auto")) {
+                input.requestedFormat = AVIF_PIXEL_FORMAT_NONE;
             } else {
                 fprintf(stderr, "ERROR: invalid format: %s\n", arg);
                 goto cleanup;
@@ -2037,6 +2044,22 @@ int main(int argc, char * argv[])
             }
             settings.qualityGainMap = qualityGainMap;
             settings.qualityGainMapIsConstrained = AVIF_TRUE;
+        } else if (!strcmp(arg, "--yuv-gain-map")) {
+            NEXTARG();
+            if (!strcmp(arg, "444")) {
+                input.requestedFormatGainMap = AVIF_PIXEL_FORMAT_YUV444;
+            } else if (!strcmp(arg, "422")) {
+                input.requestedFormatGainMap = AVIF_PIXEL_FORMAT_YUV422;
+            } else if (!strcmp(arg, "420")) {
+                input.requestedFormatGainMap = AVIF_PIXEL_FORMAT_YUV420;
+            } else if (!strcmp(arg, "400")) {
+                input.requestedFormatGainMap = AVIF_PIXEL_FORMAT_YUV400;
+            } else if (!strcmp(arg, "auto")) {
+                input.requestedFormatGainMap = AVIF_PIXEL_FORMAT_NONE;
+            } else {
+                fprintf(stderr, "ERROR: invalid format: %s\n", arg);
+                goto cleanup;
+            }
 #endif
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();

@@ -15,6 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF specification.
 * Add an optional argument to the --depth flag of avifenc used to enable a bit
   depth extension scheme in the encoded file.
+* Add support for converting jpeg files with Apple style gain maps.
+* Add --yuv-gain-map flag to avifenc and to avifgainmaputil convert command.
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
 * Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
@@ -47,6 +49,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Set tuning before applying the user-provided specific aom codec options.
 * Use AOM_TUNE_PSNR by default when encoding alpha with libaom because
   AOM_TUNE_SSIM causes ringing for alpha.
+* Allow setting 'auto' as the value of avifenc's --yuv flag, as documented.
 
 ### Removed since 1.3.0
 

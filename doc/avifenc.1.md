@@ -144,6 +144,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--qgain-map** _Q_
 :   Quality for the gain map in 0..100 where 100 is lossless.
 
+**\--yuv-gain-map** _Q_
+:   Output format for the gain map, one of 'auto' (default), 444, 422, 420 or 400.
+    'auto' honors the JPEG's internal format, if possible.
+
 **\--pasp** _H_,_V_
 :   Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing.
 

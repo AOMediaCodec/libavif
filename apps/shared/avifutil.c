@@ -312,6 +312,7 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifPixelFormat requestedFormat,
                                 int requestedDepth,
                                 avifChromaDownsampling chromaDownsampling,
+                                avifPixelFormat requestedFormatGainMap,
                                 avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
@@ -335,7 +336,17 @@ avifAppFileFormat avifReadImage(const char * filename,
         }
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         // imageSizeLimit is also used to limit Exif and XMP metadata here.
-        if (!avifJPEGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreGainMap, imageSizeLimit)) {
+        if (!avifJPEGRead(filename,
+                          image,
+                          requestedFormat,
+                          requestedDepth,
+                          chromaDownsampling,
+                          requestedFormatGainMap,
+                          ignoreColorProfile,
+                          ignoreExif,
+                          ignoreXMP,
+                          ignoreGainMap,
+                          imageSizeLimit)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
         if (outDepth) {

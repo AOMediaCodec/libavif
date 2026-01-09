@@ -34,6 +34,12 @@ ConvertCommand::ConvertCommand()
       .help(
           "Set the content light level information of the alternate image, "
           "expressed as:  MaxCLL,MaxPALL.");
+  argparse_
+      .add_argument<int, PixelFormatConverter>(arg_gain_map_pixel_format_,
+                                               "--yuv-gain-map")
+      .choices({"444", "422", "420", "400", "auto"})
+      .help("Output format for the gain map")
+      .default_value("auto");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);
   arg_image_read_.Init(argparse_);
 }
@@ -46,6 +52,8 @@ avifResult ConvertCommand::Run() {
 #else
   const avifPixelFormat pixel_format =
       static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
+  const avifPixelFormat pixel_format_gain_map =
+      static_cast<avifPixelFormat>(arg_gain_map_pixel_format_.value());
 
   ImagePtr image(avifImageCreateEmpty());
   if (image == nullptr) {
@@ -56,7 +64,7 @@ avifResult ConvertCommand::Run() {
       arg_input_filename_.value().c_str(),
       AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */, pixel_format,
       arg_image_read_.depth, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-      arg_image_read_.ignore_profile,
+      pixel_format_gain_map, arg_image_read_.ignore_profile,
       /*ignoreExif=*/false,
       /*ignoreXMP=*/false,
       /*ignoreGainMap=*/false, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),

@@ -80,6 +80,7 @@ void ReadImageFile(const std::string& arbitrary_bytes,
   const avifAppFileFormat file_format = avifReadImage(
       file_path.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
       requested_format, requested_depth, chroma_downsampling,
+      /*requestedFormatGainMap=*/AVIF_PIXEL_FORMAT_NONE /* auto */,
       ignore_color_profile, ignore_exif, ignore_xmp, ignore_gain_map,
       imageSizeLimit, avif_image.get(), &out_depth, &timing,
       /*frameIter=*/nullptr);

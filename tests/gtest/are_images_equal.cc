@@ -31,18 +31,19 @@ int main(int argc, char** argv) {
   for (int i : {0, 1}) {
     // Make sure no color conversion happens.
     decoded[i]->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
-    if (avifReadImage(argv[i + 1],
-                      AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
-                      requestedFormat, kRequestedDepth,
-                      AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-                      /*ignoreColorProfile==*/AVIF_FALSE,
-                      /*ignoreExif=*/AVIF_FALSE,
-                      /*ignoreXMP=*/AVIF_FALSE,
-                      // TODO(maryla): also compare gain maps.
-                      /*ignoreGainMap=*/AVIF_TRUE,
-                      /*imageSizeLimit=*/std::numeric_limits<uint32_t>::max(),
-                      decoded[i].get(), &depth[i], nullptr,
-                      nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+    if (avifReadImage(
+            argv[i + 1], AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
+            requestedFormat, kRequestedDepth,
+            AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+            /*requestedFormatGainMap=*/AVIF_PIXEL_FORMAT_NONE /* auto */,
+            /*ignoreColorProfile==*/AVIF_FALSE,
+            /*ignoreExif=*/AVIF_FALSE,
+            /*ignoreXMP=*/AVIF_FALSE,
+            // TODO(maryla): also compare gain maps.
+            /*ignoreGainMap=*/AVIF_TRUE,
+            /*imageSizeLimit=*/std::numeric_limits<uint32_t>::max(),
+            decoded[i].get(), &depth[i], nullptr,
+            nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cerr << "Image " << argv[i + 1] << " cannot be read." << std::endl;
       return 2;
     }
