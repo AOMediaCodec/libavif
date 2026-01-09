@@ -503,6 +503,14 @@ if(AVIF_CODEC_SVT_ENABLED)
     set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} SvtAv1Enc")
 endif()
 
+if(AVIF_CODEC_AVM)
+    # Avoid the following error:
+    #   CMake Error: Error required internal CMake variable not set, cmake may not be built correctly.
+    #   Missing variable is: CMAKE_ASM_COMPILE_OBJECT
+    # For some reason this must be done before check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
+    enable_language(ASM)
+endif()
+
 check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
 if(AVIF_CODEC_AOM_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_AOM=1)
@@ -534,20 +542,14 @@ if(AVIF_CODEC_AOM_ENABLED)
     endif()
 endif()
 
-check_avif_option(AVIF_CODEC_AVM TARGET aom PKG_NAME avm)
+check_avif_option(AVIF_CODEC_AVM TARGET avm PKG_NAME avm)
 if(AVIF_CODEC_AVM_ENABLED)
     message(WARNING "libavif: AV2 support with avm is experimental. Only use for testing.")
-
-    # The avm repository is a fork of aom and inherited a lot of folders, files and build artifacts named the same way.
-    # Having both dependencies at the same time generates conflicts in includes, binary lookups etc.
-    if(AVIF_CODEC_AOM_ENABLED)
-        message(FATAL_ERROR "libavif: aom conflicts with avm, bailing out")
-    endif()
 
     target_compile_definitions(avif_obj PUBLIC -DAVIF_CODEC_AVM=1)
     target_sources(avif_obj PRIVATE src/codec_avm.c)
 
-    avif_target_link_library(aom)
+    avif_target_link_library(avm)
     # C++ is needed because of tensorflow-lite.
     set(AVIF_LIB_USE_CXX ON)
 
