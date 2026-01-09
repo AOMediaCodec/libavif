@@ -32,7 +32,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.1
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.14.4
 * Update aom.cmd/LocalAom.cmake: v3.13.1
-* Update LocalAom.cmake: AVM research-v12.0.0
+* Update LocalAvm.cmake: research-v13.0.0
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
   rav1e v0.8.1
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v3.1.2
