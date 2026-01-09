@@ -21,6 +21,7 @@ source $(dirname "$0")/cmd_test_common.sh || exit
 # Input file paths.
 INPUT_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 INPUT_JPG="${TESTDATA_DIR}/paris_exif_xmp_icc.jpg"
+INPUT_JPG_WEIRD_ICC="${TESTDATA_DIR}/paris_exif_xmp_modified_icc.jpg"
 INPUT_ICC="${TESTDATA_DIR}/sRGB2014.icc"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
@@ -42,7 +43,7 @@ trap cleanup EXIT
 pushd ${TMP_DIR}
   # Metadata test.
   echo "Testing metadata enc"
-  for INPUT in "${INPUT_PNG}" "${INPUT_JPG}"; do
+  for INPUT in "${INPUT_PNG}" "${INPUT_JPG}" "${INPUT_JPG_WEIRD_ICC}"; do
     "${AVIFENC}" "${INPUT}" -o "${ENCODED_FILE}"
 
     # Ignoring a metadata chunk should produce a different output file.
