@@ -228,9 +228,9 @@ static void avifSetPNGCicp(avifImage * avif,
     //  RGB is currently the only supported color model in PNG, and as such Matrix Coefficients shall be set to 0.
     // Note that we don't set avif->matrixCoefficients to this value as the Avif's YUV matrix is independent from the PNG's.
     if (cicpMatrixCoefficients != 0) {
-        fprintf(stderr, "Warning: Unsupported PNG CICP matrix coefficient value %d. Expected to be 0.\n", cicpMatrixCoefficients);
+        fprintf(stderr, "Warning: Unsupported PNG CICP matrix coefficients value %d. Expected to be 0.\n", cicpMatrixCoefficients);
     }
-    // Narrow range PNG files are uncommon and would require conversion to full range which we don't support for now for simplicity.
+    // Limited range PNG files are uncommon and would require conversion to full range which we don't support for now for simplicity.
     // See also https://github.com/w3c/png/issues/312#issuecomment-2325281113 and https://svgees.us/blog/cICP.html#the-other-two-numbers
     // Similarly, we don't set avif->yuvRange to this value as the Avif's YUV range is independent from the PNG's.
     if (cicpVideoFullRangeFlag != 1) {
