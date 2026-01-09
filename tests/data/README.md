@@ -233,6 +233,15 @@ Source: Personal photo edited with Gimp 2.10.
 |    5087 | 0xffe2 APP2 |    612 | `ICC_PROFILE......T........mntrRG chunk 1/1` |
 |         |             |        | ...                                          |
 
+### File [paris_exif_xmp_modified_icc.jpg](paris_exif_xmp_modified_icc.jpg)
+
+![](paris_exif_xmp_modified_icc.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as paris_exif_xmp_icc.jpg but edited to have libpng report 'PCS illuminant is not D50'
+(the byte at position 0x1440 was changed from 0x2D to 0x2C).
+
 ### File [paris_extended_xmp.jpg](paris_extended_xmp.jpg)
 
 ![](paris_extended_xmp.jpg)

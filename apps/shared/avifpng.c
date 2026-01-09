@@ -677,6 +677,9 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         fprintf(stderr, "Cannot init libpng (png): %s\n", outputFilename);
         goto cleanup;
     }
+
+    png_set_benign_errors(png, 1); // Treat benign errors as warnings.
+
     info = png_create_info_struct(png);
     if (!info) {
         fprintf(stderr, "Cannot init libpng (info): %s\n", outputFilename);
