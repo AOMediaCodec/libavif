@@ -21,6 +21,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
 * Update LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
 * Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
+* Add support for PNG cICP chunk when decoding PNG files. If a PNG file contains
+  a cICP chunk and other color information chunks, such as iCCP (ICC profile),
+  the other chunks are ignored as per the PNG Specification Third Edition
+  Section 4.3.
 
 ### Changed since 1.3.0
 
