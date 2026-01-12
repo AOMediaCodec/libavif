@@ -423,9 +423,9 @@ static avifBool avifFindAVMScalingMode(const avifFraction * avifMode, AVM_SCALIN
     return AVIF_FALSE;
 }
 
-// Scales from avm's [0:63] to avm's [M:255], where M=0/-48/-96 for 8/10/12 bit.
+// Scales from aom's [0:63] to avm's [M:255], where M=0/-48/-96 for 8/10/12 bit.
 // See --min-qp help in
-// https://gitlab.com/AVMediaCodec/avm/-/blob/main/apps/avmenc.c
+// https://gitlab.com/AOMediaCodec/avm/-/blob/main/apps/avmenc.c
 static int avmScaleQuantizer(int quantizer, uint32_t depth)
 {
     if (depth == 10) {
@@ -440,7 +440,7 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
 
 // Converts quality to avm's quantizer in the range of [M:255], where M=0/-48/-96 for 8/10/12 bit.
 // See --min-qp help in
-// https://gitlab.com/AVMediaCodec/avm/-/blob/main/apps/avmenc.c
+// https://gitlab.com/AOMediaCodec/avm/-/blob/main/apps/avmenc.c
 static int avmQualityToQuantizer(int quality, uint32_t depth)
 {
     if (depth == 10) {
@@ -549,7 +549,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             cfg->g_limit = 1;
 
             // Use the default settings of the new AVM_USAGE_ALL_INTRA (added in
-            // https://crbug.com/avmedia/2959).
+            // https://crbug.com/aomedia/2959).
             //
             // Set g_lag_in_frames to 0 to reduce the number of frame buffers
             // (from 20 to 2) in libavm's lookahead structure. This reduces
@@ -801,11 +801,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     avm_image_t avmImage;
     // We prefer to simply set the avmImage.planes[] pointers to the plane buffers in 'image'. When
     // doing this, we set avmImage.w equal to avmImage.d_w and avmImage.h equal to avmImage.d_h and
-    // do not "align" avmImage.w and avmImage.h. Unfortunately this exposes a libavm bug in libavm
-    // (https://crbug.com/avmedia/3113) if chroma is subsampled and image->width or image->height is
+    // do not "align" avmImage.w and avmImage.h. Unfortunately this exposes a libaom bug in libavm
+    // (https://crbug.com/aomedia/3113) if chroma is subsampled and image->width or image->height is
     // equal to 1. To work around this libavm bug, we allocate the avmImage.planes[] buffers and
     // copy the image YUV data if image->width or image->height is equal to 1. This bug has been
-    // fixed in libavm v3.1.3 but not in libavm.
+    // fixed in libaom v3.1.3 but not in libavm.
     //
     // Note: The exact condition for the bug is
     //   ((image->width == 1) && (chroma is subsampled horizontally)) ||
