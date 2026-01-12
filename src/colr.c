@@ -70,7 +70,7 @@ avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char
     return AVIF_COLOR_PRIMARIES_UNKNOWN;
 }
 
-avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float * gamma)
+avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float *gamma)
 {
     if (gamma == NULL) {
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -88,10 +88,6 @@ avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, 
         case AVIF_TRANSFER_CHARACTERISTICS_LINEAR:
             *gamma = 1.0f;
             return AVIF_RESULT_OK;
-
-        case AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN:
-        case AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED:
-            return AVIF_RESULT_INVALID_ARGUMENT;
 
         default:
             // Not representable as a single gamma value (e.g. sRGB, BT.709, PQ, HLG, etc.).
