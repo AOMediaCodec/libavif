@@ -70,9 +70,7 @@ avifColorPrimaries avifColorPrimariesFind(const float inPrimaries[8], const char
     return AVIF_COLOR_PRIMARIES_UNKNOWN;
 }
 
-avifResult avifTransferCharacteristicsGetGamma(
-    avifTransferCharacteristics atc,
-    float *gamma)
+avifResult avifTransferCharacteristicsGetGamma(avifTransferCharacteristics atc, float *gamma)
 {
     if (gamma == NULL) {
         return AVIF_RESULT_INVALID_ARGUMENT;
