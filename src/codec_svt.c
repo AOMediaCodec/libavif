@@ -245,8 +245,12 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
 #if SVT_AV1_CHECK_VERSION(3, 0, 0)
         svt_config->lossless = quality == AVIF_QUALITY_LOSSLESS;
-        // TODO: https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/2245 - Enable when resolved.
-        // svt_config->avif = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) != 0;
+#endif
+
+#if SVT_AV1_CHECK_VERSION(4, 0, 0)
+        // Although the `avif` option was added in v3.0.0, it had a serious bug that was not fixed
+        // until v4.0.0. See https://gitlab.com/AOMediaCodec/SVT-AV1/-/issues/2245.
+        svt_config->avif = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) != 0;
 #endif
 
         res = svt_av1_enc_set_parameter(codec->internal->svt_encoder, svt_config);
