@@ -64,17 +64,31 @@ struct CicpValues {
   avifMatrixCoefficients matrix_coefficients;
 };
 
-// CicpValues converter for use with argparse.
+// CicpValues converter for use with argparse. Parses the format 'P/T/M'.
 struct CicpConverter {
   // Methods expected by argparse.
   argparse::ConvertedValue<CicpValues> from_str(const std::string& str);
   std::vector<std::string> default_choices();
 };
 
+// avifContentLightLevelInformationBox converter for use with argparse.
+// Parses the format 'maxCLL,maxPALL'.
 struct ClliConverter {
   // Methods expected by argparse.
   argparse::ConvertedValue<avifContentLightLevelInformationBox> from_str(
       const std::string& str);
+  std::vector<std::string> default_choices();
+};
+
+struct GridOptions {
+  int grid_cols = 0;
+  int grid_rows = 0;
+};
+
+// GridOptions converter for use with argpase. Parses the format 'MxN'.
+struct GridOptionsConverter {
+  // Methods expected by argparse.
+  argparse::ConvertedValue<GridOptions> from_str(const std::string& str);
   std::vector<std::string> default_choices();
 };
 
@@ -83,6 +97,7 @@ struct BasicImageEncodeArgs {
   argparse::ArgValue<int> speed;
   argparse::ArgValue<int> quality;
   argparse::ArgValue<int> quality_alpha;
+  argparse::ArgValue<GridOptions> grid;
 
   // can_have_alpha should be true if the image can have alpha and the
   // output format can be avif.
@@ -100,6 +115,9 @@ struct BasicImageEncodeArgs {
           .help("Quality for alpha (0-100, where 100 is lossless)")
           .default_value("100");
     }
+    argparse.add_argument<GridOptions, GridOptionsConverter>(grid, "--grid")
+        .help("Encode a grid AVIF with M cols and N rows, expressed as MxN")
+        .default_value("1x1");
   }
 };
 

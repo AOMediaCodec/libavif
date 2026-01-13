@@ -30,6 +30,8 @@ encode_test_files() {
         "${AVIFENC}" -s 9 "${TESTDATA_DIR}/$f" -o "$f.avif"
     done
 
+    "${AVIFENC}" -s 9 --yuv 444 --grid 2x2 "${TESTDATA_DIR}/paris_exif_xmp_gainmap_bigendian.jpg" -o "paris_exif_xmp_gainmap_bigendian_grid.avif"
+
     # Ignore gain map.
     "${AVIFENC}" -s 9 --ignore-gain-map "${TESTDATA_DIR}/paris_exif_xmp_gainmap_bigendian.jpg" \
       -o "paris_exif_xmp_gainmap_bigendian_ignore.jpg.avif"

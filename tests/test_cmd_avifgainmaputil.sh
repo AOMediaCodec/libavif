@@ -50,7 +50,7 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
       -q 50 --qgain-map 90 --ignore-profile
   "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR2020}" "${AVIF_OUTPUT}" \
-      -q 50 --downscaling 2 --yuv-gain-map 400
+      -q 50 --downscaling 2 --yuv-gain-map 400 --grid 2x2
 
   "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_HDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
       -q 90 --qgain-map 90

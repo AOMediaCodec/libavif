@@ -127,7 +127,9 @@ avifResult ConvertCommand::Run() {
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
   const avifResult result =
-      WriteAvif(image.get(), encoder.get(), arg_output_filename_);
+      WriteAvifGrid(image.get(), arg_image_encode_.grid.value().grid_cols,
+                    arg_image_encode_.grid.value().grid_rows, encoder.get(),
+                    arg_output_filename_);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";

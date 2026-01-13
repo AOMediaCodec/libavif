@@ -1,5 +1,7 @@
 #include "program_command.h"
 
+#include <vector>
+
 namespace avif {
 
 ProgramCommand::ProgramCommand(const std::string& name,
@@ -87,5 +89,24 @@ ClliConverter::from_str(const std::string& str) {
 }
 
 std::vector<std::string> ClliConverter::default_choices() { return {}; }
+
+argparse::ConvertedValue<GridOptions> GridOptionsConverter::from_str(
+    const std::string& str) {
+  argparse::ConvertedValue<GridOptions> converted_value;
+
+  std::vector<int> grid_dims;
+  if (!ParseList(str, 'x', 2, &grid_dims) || grid_dims[0] <= 0 ||
+      grid_dims[1] <= 0) {
+    converted_value.set_error("Invalid grid dimensions: " + str);
+    return converted_value;
+  }
+  GridOptions grid_options = {grid_dims[0], grid_dims[1]};
+
+  converted_value.set_value(grid_options);
+
+  return converted_value;
+}
+
+std::vector<std::string> GridOptionsConverter::default_choices() { return {}; }
 
 }  // namespace avif

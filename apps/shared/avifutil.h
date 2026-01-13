@@ -52,6 +52,13 @@ avifAppFileFormat avifGuessFileFormat(const char * filename);
 // Guesses the format of a buffer by looking at the first bytes.
 avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size);
 
+// Returns the best cell size for a given horizontal or vertical dimension.
+avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint32_t numCells, avifBool isSubsampled, uint32_t * cellSize);
+
+// Splits an image into a grid of cells, including its gain map, if any.
+// The returned cells must be destroyed with avifImageDestroy().
+avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells);
+
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
 // should be ignored. This structure is used to override the timing defaults in avifenc when the

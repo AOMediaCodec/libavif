@@ -11,7 +11,9 @@
 namespace avif {
 
 // Writes an image in any of the supported formats based on the file extension.
-avifResult WriteImage(const avifImage* image,
+// Grid images are supported by Avif only, grid_cols/grid_rows is ignored for
+// other formats.
+avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
                       const std::string& output_filename, int quality,
                       int speed);
 // Reads an image in any of the supported formats. Ignores any gain map.
@@ -22,6 +24,11 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
 // Reads an image in avif format given a pre-configured encoder.
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename);
+
+// If grid_cols*grid_rows > 1, splits 'image' into a grid and writes it to an
+// AVIF file. Otherwise, just writes a single AVIF image.
+avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
+                         avifEncoder* encoder, const std::string& filename);
 
 // Reads an image in avif format given a pre-configured decoder.
 // The image can be accessed at decoder->image.

@@ -36,8 +36,10 @@ avifResult ExtractGainMapCommand::Run() {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
-  return WriteImage(decoder->image->gainMap->image, arg_output_filename_,
-                    arg_image_encode_.quality, arg_image_encode_.speed);
+  return WriteImage(
+      decoder->image->gainMap->image, arg_image_encode_.grid.value().grid_cols,
+      arg_image_encode_.grid.value().grid_rows, arg_output_filename_,
+      arg_image_encode_.quality, arg_image_encode_.speed);
 }
 
 }  // namespace avif
