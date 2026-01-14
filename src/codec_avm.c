@@ -650,7 +650,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
 
         // Set color_config() in the sequence header OBU.
         if (alpha) {
-            // AV2-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+            // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
             //   The color_range field in the Sequence Header OBU shall be set to 1.
             avm_codec_control(&codec->internal->encoder, AV2E_SET_COLOR_RANGE, AVM_CR_FULL_RANGE);
 
@@ -663,25 +663,23 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // libavm's defaults are AVM_CSP_UNKNOWN and 0 (studio/limited range).
             // Call avm_codec_control() only if the values are not the defaults.
 
-            // AV2-AVIF specification, Section 2.2.1. "AV2 Item Configuration Property":
-            //   The values of the fields in the AV2CodecConfigurationBox shall match those
-            //   of the Sequence Header OBU in the AV2 Image Item Data.
+            // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+            //   The values of the fields in the AV1CodecConfigurationBox shall match those
+            //   of the Sequence Header OBU in the AV1 Image Item Data.
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
                 avm_codec_control(&codec->internal->encoder, AV2E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
             }
 
-            // AV2-ISOBMFF specification, Section 2.3.4:
+            // AV1-ISOBMFF specification, Section 2.3.4:
             //   The value of full_range_flag in the 'colr' box SHALL match the color_range
             //   flag in the Sequence Header OBU.
             if (image->yuvRange != AVIF_RANGE_LIMITED) {
                 avm_codec_control(&codec->internal->encoder, AV2E_SET_COLOR_RANGE, (int)image->yuvRange);
             }
 
-            // Section 2.3.4 of AV2-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
+            // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
             // values in the Sequence Header OBU, unless the latter has 2/2/2 (Unspecified).
             // So set CICP values to 2/2/2 (Unspecified) in the Sequence Header OBU for simplicity.
-            // It may also save 3 bytes since the AV2 encoder can set color_description_present_flag to 0
-            // (see Section 5.5.2 "Color config syntax" of the AV2 specification).
             // libavm's defaults are AVM_CICP_CP_UNSPECIFIED, AVM_CICP_TC_UNSPECIFIED, and
             // AVM_CICP_MC_UNSPECIFIED. No need to call avm_codec_control().
             // avm_image_t::cp, avm_image_t::tc and avm_image_t::mc are ignored by avm_codec_encode().
@@ -849,11 +847,11 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     avifBool monochromeRequested = AVIF_FALSE;
 
     if (alpha) {
-        // AV2-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The color_range field in the Sequence Header OBU shall be set to 1.
         avmImage.range = AVM_CR_FULL_RANGE;
 
-        // AV2-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
+        // AV1-AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The mono_chrome field in the Sequence Header OBU shall be set to 1.
         // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
         monochromeRequested = AVIF_TRUE;
@@ -896,9 +894,9 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             }
         }
 
-        // AV2-AVIF specification, Section 2.2.1. "AV2 Item Configuration Property":
-        //   The values of the fields in the AV2CodecConfigurationBox shall match those
-        //   of the Sequence Header OBU in the AV2 Image Item Data.
+        // AV1-AVIF specification, Section 2.2.1. "AV1 Item Configuration Property":
+        //   The values of the fields in the AV1CodecConfigurationBox shall match those
+        //   of the Sequence Header OBU in the AV1 Image Item Data.
         if (image->yuvChromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL) {
             // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
             avmImage.csp = AVM_CSP_LEFT;
@@ -912,7 +910,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             avmImage.csp = AVM_CSP_UNSPECIFIED;
         }
 
-        // AV2-ISOBMFF specification, Section 2.3.4:
+        // AV1-ISOBMFF specification, Section 2.3.4:
         //   The value of full_range_flag in the 'colr' box SHALL match the color_range
         //   flag in the Sequence Header OBU.
         avmImage.range = (avm_color_range_t)image->yuvRange;

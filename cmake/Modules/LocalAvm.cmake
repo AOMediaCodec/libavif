@@ -12,6 +12,7 @@ if(EXISTS "${LIB_FILENAME}")
     target_include_directories(avm INTERFACE $<BUILD_INTERFACE:${AVM_EXT_SOURCE_DIR}/build.libavif>)
 
     # Add link dependency flags
+    # TODO: b/398931194 - Check if this is necessary
     if(WIN32)
         set(ENV{PKG_CONFIG_PATH} "${AVM_EXT_SOURCE_DIR}/build.libavif;$ENV{PKG_CONFIG_PATH}")
     else()

@@ -358,19 +358,19 @@ enum
     AV2_CHROMA_FORMAT_422 = 3,
 };
 
-static avifBool av2ChromaSamplePositionToAv1ChromaSamplePosition(uint32_t av2ChromaSamplePosition, avifSequenceHeader * header)
+static avifChromaSamplePosition av2ChromaSamplePositionToAv1ChromaSamplePosition(uint32_t av2ChromaSamplePosition)
 {
     if (av2ChromaSamplePosition == 0) {
         // AVM_CSP_LEFT: Horizontal offset 0, vertical offset 0.5
-        header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+        return AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
     } else if (av2ChromaSamplePosition == 1) {
         // AVM_CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
-        header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        return AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     } else if (av2ChromaSamplePosition == 2) {
         // AVM_CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
-        header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+        return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
     } else {
-        header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        return AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
     }
 }
 
@@ -435,28 +435,6 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
         } else {
             return AVIF_FALSE;
         }
-
-#if !CONFIG_CWG_F270_CI_OBU
-        if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-            uint8_t chromaSamplePosition = 6; // AVM_CSP_UNSPECIFIED
-            const int csp_present_flag = avifBitsRead(bits, 1);
-            if (csp_present_flag) {
-                chromaSamplePosition = avifBitsRead(bits, 1);
-            }
-        } else if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            uint8_t chromaSamplePosition = 6; // AVM_CSP_UNSPECIFIED
-            const int csp_present_flag = avifBitsRead(bits, 1);
-            if (csp_present_flag) {
-                chromaSamplePosition = avifBitsRead(bits, 3);
-                if (chromaSamplePosition > 5) {
-                    // Invalid chroma_sample_position.
-                    return AVIF_FALSE;
-                }
-            }
-            header->chromaSamplePosition = av2ChromaSamplePositionToAv1ChromaSamplePosition(chromaSamplePosition);
-            header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
-        }
-#endif // !CONFIG_CWG_F270_CI_OBU
     }
 
     return !bits->error;
@@ -485,6 +463,8 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 
 #if defined(AVIF_CODEC_AVM)
 // See https://gitlab.com/AOMediaCodec/avm/-/blob/research-v13.0.0/common/av2_config.c?ref_type=tags#L290
+// TODO: b/398931194 - Follow read_sequence_header_obu() instead, see
+//                     https://gitlab.com/AOMediaCodec/avm/-/blob/research-v13.0.0/common/av2_config.c?ref_type=tags#L292
 static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
 #if CONFIG_CWG_E242_SEQ_HDR_ID
@@ -555,7 +535,7 @@ static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeade
 
     if (chromaSamplePositionPresent) {
         const uint32_t chromaSamplePosition = avifBitsReadVLC(bits); // ci_chroma_sample_position_0
-        header->chromaSamplePosition = av2ChromaSamplePositionToAv1ChromaSamplePosition(chromaSamplePosition, header);
+        header->chromaSamplePosition = av2ChromaSamplePositionToAv1ChromaSamplePosition(chromaSamplePosition);
         header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
     }
 
@@ -623,6 +603,7 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
     avifROData obus = *sample;
 
     // Find the Sequence Header OBU, and the Content Interpretation OBU if any.
+    // TODO: b/398931194 - Find when to stop looking for a CI OBU.
     while (obus.size > 0) {
         avifBits bits;
         avifBitsInit(&bits, obus.data, obus.size);
@@ -663,10 +644,7 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
                 return AVIF_FALSE;
             }
             sequenceHeaderFound = AVIF_TRUE;
-#if !CONFIG_CWG_F270_CI_OBU
-            break;
-#endif
-        } else if (obu_type == OBU_CONTENT_INTERPRETATION) { // Content Interpretation
+        } else if (obu_type == OBU_CONTENT_INTERPRETATION) { // optional Content Interpretation
             if (!sequenceHeaderFound) {
                 return AVIF_FALSE;
             }
@@ -681,7 +659,6 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
         obus.data += (size_t)obu_payload_size + init_byte_pos;
         obus.size -= (size_t)obu_payload_size + init_byte_pos;
     }
-    // Note: check for contentInterpretationFound instead if CI OBU is mandatory.
     return sequenceHeaderFound;
 }
 #endif // defined(AVIF_CODEC_AVM)
