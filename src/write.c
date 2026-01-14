@@ -1343,7 +1343,7 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
     AVIF_ASSERT_OR_RETURN(colorItemID < bitDepthExtensionColorItemId);
     avifEncoderItem * colorItem = avifEncoderDataFindItemByID(encoder->data, colorItemID);
     AVIF_ASSERT_OR_RETURN(colorItem != NULL);
-    AVIF_ASSERT_OR_RETURN(colorItem->dimgFromID == 0); // Our internal API only allows one dimg value per item.
+    AVIF_ASSERT_OR_RETURN(colorItem->dimgFromID == 0); // The internal API only allows one dimg value per item.
     colorItem->dimgFromID = sampleTransformItemID;
     bitDepthExtensionColorItem->dimgFromID = sampleTransformItemID;
 
@@ -1391,6 +1391,7 @@ static avifResult avifImageCreateAllocate(avifImage ** sampleTransformedImage, c
 // Finds the encoded base image and decodes it. Callers of this function must free
 // *codec and *decodedBaseImage if not null, whether the function succeeds or not.
 static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
+                                                 uint32_t cellIndex,
                                                  const avifImage * original,
                                                  uint32_t numBits,
                                                  avifPlanesFlag planes,
@@ -1411,8 +1412,11 @@ static avifResult avifEncoderDecodeSatoBaseImage(avifEncoder * encoder,
             (item->itemCategory != AVIF_ITEM_ALPHA || planes != AVIF_PLANES_A)) {
             continue;
         }
+        if (item->cellIndex != cellIndex) {
+            continue;
+        }
 
-        AVIF_ASSERT_OR_RETURN(item->encodeOutput != NULL); // TODO: Support grids?
+        AVIF_ASSERT_OR_RETURN(item->encodeOutput != NULL);
         AVIF_ASSERT_OR_RETURN(item->encodeOutput->samples.count == 1);
         AVIF_ASSERT_OR_RETURN(item->encodeOutput->samples.sample[0].data.size != 0);
         AVIF_ASSERT_OR_RETURN(sample.data.size == 0); // There should be only one base item.
@@ -1493,7 +1497,7 @@ static avifResult avifEncoderCreateSatoImage(avifEncoder * encoder,
             AVIF_CHECKRES(avifImageCreateAllocate(sampleTransformedImage, image, 8, planes));
             avifCodec * codec = NULL;
             avifImage * decodedBaseImage = NULL;
-            avifResult result = avifEncoderDecodeSatoBaseImage(encoder, image, 12, planes, &codec, &decodedBaseImage);
+            avifResult result = avifEncoderDecodeSatoBaseImage(encoder, item->cellIndex, image, 12, planes, &codec, &decodedBaseImage);
             if (result == AVIF_RESULT_OK) {
                 // decoded = main*16+hidden-128 so hidden = clamp_8b(original-main*16+128). Postfix notation.
                 const avifSampleTransformToken tokens[] = { { AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0, /*inputImageItemIndex=*/1 },
