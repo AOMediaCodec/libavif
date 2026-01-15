@@ -128,6 +128,19 @@ static uint32_t avifBitsReadVLC(avifBits * const bits)
     return numBits ? ((1U << numBits) - 1) + avifBitsRead(bits, numBits) : 0;
 }
 
+// Rice-Golomb coding with parameter n.
+static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
+{
+    for (uint32_t q = 0; q < 32; q++) {
+        const uint32_t rg_bit = avifBitsRead(bits, 1);
+        if (rg_bit == 0) {
+            const uint32_t remainder = avifBitsRead(bits, n);
+            return (q << n) + remainder;
+        }
+    }
+    return 0xFFFFFFFFU;
+}
+
 // ---------------------------------------------------------------------------
 // Variables in here use snake_case to self-document from the AV1 spec and the draft AV2 spec:
 //
@@ -374,12 +387,9 @@ static avifChromaSamplePosition av2ChromaSamplePositionToAv1ChromaSamplePosition
     }
 }
 
-static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceHeader * header)
+static avifBool parseAV2ChromaFormatBitdepth(avifBits * bits, avifSequenceHeader * header)
 {
     const uint32_t chromaFormatIdc = avifBitsReadVLC(bits);
-
-    header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
 
     const uint32_t bitdepthIdx = avifBitsReadVLC(bits);
     if (bitdepthIdx == 0) {
@@ -395,31 +405,11 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
     header->av1C.twelveBit = header->bitDepth == 12;
     header->av1C.monochrome = chromaFormatIdc == AV2_CHROMA_FORMAT_400;
 
-    uint32_t color_description_present_flag = avifBitsRead(bits, 1);
-    if (color_description_present_flag) {
-        header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
-        header->transferCharacteristics = (avifTransferCharacteristics)avifBitsRead(bits, 8); // transfer_characteristics
-        header->matrixCoefficients = (avifMatrixCoefficients)avifBitsRead(bits, 8);           // matrix_coefficients
-    } else {
-        header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-        header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-        header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    }
-
     if (header->av1C.monochrome) {
-        header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
         header->av1C.chromaSubsamplingX = 1;
         header->av1C.chromaSubsamplingY = 1;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-    } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 &&
-               header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
-               header->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-        header->range = AVIF_RANGE_FULL; // Assumed.
-        header->av1C.chromaSubsamplingX = 0;
-        header->av1C.chromaSubsamplingY = 0;
-        header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444; // chroma_format_idc is ignored in this path apparently.
     } else {
-        header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
         if (chromaFormatIdc == AV2_CHROMA_FORMAT_420) {
             header->av1C.chromaSubsamplingX = 1;
             header->av1C.chromaSubsamplingY = 1;
@@ -462,17 +452,13 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 }
 
 #if defined(AVIF_CODEC_AVM)
-// See https://gitlab.com/AOMediaCodec/avm/-/blob/research-v13.0.0/common/av2_config.c?ref_type=tags#L290
-// TODO: b/398931194 - Follow read_sequence_header_obu() instead, see
-//                     https://gitlab.com/AOMediaCodec/avm/-/blob/research-v13.0.0/common/av2_config.c?ref_type=tags#L292
+// See read_sequence_header_obu() in av2/decoder/obu.c.
 static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
-#if CONFIG_CWG_E242_SEQ_HDR_ID
     uint32_t seqHeaderId = avifBitsReadVLC(bits);
     if (seqHeaderId >= 16) {
         return AVIF_FALSE;
     }
-#endif // CONFIG_CWG_E242_SEQ_HDR_ID
 
     AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
     header->reduced_still_picture_header = (uint8_t)avifBitsRead(bits, 1); // single_picture_header_flag
@@ -499,13 +485,21 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
         avifBitsReadVLC(bits);   // conf_win_bottom_offset
     }
 
-    AVIF_CHECK(parseAV2SequenceHeaderColorConfig(bits, header));
+    AVIF_CHECK(parseAV2ChromaFormatBitdepth(bits, header));
+
+    header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    header->range = AVIF_RANGE_LIMITED;
+
+    header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
 
     // Other ignored fields.
     return !bits->error;
 }
 
-// See https://gitlab.com/AOMediaCodec/avm/-/blob/research-v13.0.0/common/av2_config.c?ref_type=tags#L457
+// See av2_read_content_interpretation_obu() in av2/decoder/obu_ci.c.
 static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeader * header)
 {
     const uint32_t scanTypeIdc = avifBitsRead(bits, 2);                 // ci_scan_type_idc
@@ -517,20 +511,52 @@ static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeade
     avifBitsRead(bits, 1);                                              // reserved_bit
 
     if (colorDescriptionPresent) {
-        // Override the Sequence Header's CICP values.
-        const uint32_t colorDescriptionIdc = avifBitsRead(bits, 2); // color_description_idc
+        // Override the default CICP values.
+        const uint32_t colorDescriptionIdc = avifBitsReadRG(bits, 2); // color_description_idc
+        if (colorDescriptionIdc == 0xFFFFFFFFU) {
+            return AVIF_FALSE;
+        }
         if (colorDescriptionIdc == 0) {
+            // Explicitly signaled
             // parse_content_intrepretation_obu() uses AV2C_READ_UVLC_BITS_OR_RETURN_ERROR()
             // but av2_write_content_interpretation_obu() uses avm_wb_write_literal().
             header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
             header->transferCharacteristics = (avifTransferCharacteristics)avifBitsRead(bits, 8); // transfer_characteristics
             header->matrixCoefficients = (avifMatrixCoefficients)avifBitsRead(bits, 8);           // matrix_coefficients
+        } else if (colorDescriptionIdc == 1) {
+            // BT.709 SDR
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                   // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT709; // 1
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;         // 5
+        } else if (colorDescriptionIdc == 2) {
+            // BT.2100 PQ
+            header->colorPrimaries = AVIF_TRANSFER_CHARACTERISTICS_LOG100;      // 9
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ; // 16
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;   // 9
+        } else if (colorDescriptionIdc == 3) {
+            // BT.2100 HLG
+            header->colorPrimaries = AVIF_TRANSFER_CHARACTERISTICS_LOG100;                // 9
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT; // 14
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;             // 9
+        } else if (colorDescriptionIdc == 4) {
+            // sRGB
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                  // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB; // 13
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;       // 0
+        } else if (colorDescriptionIdc == 5) {
+            // sYCC
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                  // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB; // 13
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;        // 5
         } else {
-            // Keep the Sequence Header's CICP values.
+            // Reserved
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;                   // 2
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED; // 2
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;           // 2
         }
         header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
     } else {
-        // Keep the Sequence Header's CICP values.
+        // Keep the default CICP values.
     }
 
     if (chromaSamplePositionPresent) {
@@ -603,7 +629,6 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
     avifROData obus = *sample;
 
     // Find the Sequence Header OBU, and the Content Interpretation OBU if any.
-    // TODO: b/398931194 - Find when to stop looking for a CI OBU.
     while (obus.size > 0) {
         avifBits bits;
         avifBitsInit(&bits, obus.data, obus.size);

@@ -1,7 +1,6 @@
 /build*
 /obj*
 /ext/aom
-/ext/avm
 /ext/ComplianceWarden
 /ext/dav1d
 /ext/fuzztest
