@@ -128,6 +128,7 @@ static uint32_t avifBitsReadVLC(avifBits * const bits)
     return numBits ? ((1U << numBits) - 1) + avifBitsRead(bits, numBits) : 0;
 }
 
+#if defined(AVIF_CODEC_AVM)
 // Rice-Golomb coding with parameter n.
 static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
 {
@@ -140,6 +141,7 @@ static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
     }
     return 0xFFFFFFFFU;
 }
+#endif // defined(AVIF_CODEC_AVM)
 
 // ---------------------------------------------------------------------------
 // Variables in here use snake_case to self-document from the AV1 spec and the draft AV2 spec:
@@ -568,7 +570,7 @@ static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeade
     // Other ignored fields.
     return !bits->error;
 }
-#endif
+#endif // defined(AVIF_CODEC_AVM)
 
 static avifBool av1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
