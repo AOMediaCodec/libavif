@@ -265,6 +265,9 @@ static const uint8_t * avifJPEGFindSubstr(const uint8_t * str, size_t strLength,
 #define AVIF_JPEG_EXTENDED_XMP_TAG "http://ns.adobe.com/xmp/extension/\0"
 #define AVIF_JPEG_EXTENDED_XMP_TAG_LENGTH 35
 
+#define AVIF_EXIF_APPLE_MAKER_NOTES_HEADER "Apple iOS\0\0\1MM"
+#define AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH 14
+
 // MPF tag (Multi-Picture Format)
 #define AVIF_JPEG_MPF_HEADER "MPF\0"
 #define AVIF_JPEG_MPF_HEADER_LENGTH 4
@@ -372,8 +375,6 @@ avifBool avifGetExifAppleHeadroom(const avifROData * exif, double * altHeadroom)
     uint32_t offsetToIfd;
     AVIF_CHECK(avifJPEGReadU32(exif, &offsetToIfd, &offset, isBigEndian));
 
-    const uint8_t appleMakerNotesHeader[] = { 'A', 'p', 'p', 'l', 'e', ' ', 'i', 'O', 'S', 0x00, 0x00, 0x01, 'M', 'M' };
-    const size_t appleMakerNotesHeaderSize = sizeof(appleMakerNotesHeader);
     avifBool inAppleMakerNotes = AVIF_FALSE;
 
     // According to the Skia implementation, "Many images have a maker33 but not a maker48."
@@ -401,15 +402,20 @@ avifBool avifGetExifAppleHeadroom(const avifROData * exif, double * altHeadroom)
             AVIF_CHECK(avifJPEGReadU32(exif, &numComponents, &offset, isBigEndian));
             AVIF_CHECK(avifJPEGReadU32(exif, &tagData, &offset, isBigEndian));
             if (tagId == 0x8769) { // Exif Offset (offset to a sub IFD)
-                // Move back to just before the tagData which contians the offset of the Exif IFD.
+                // Move back to just before the tagData which contains the offset of the Exif IFD.
                 offset -= 4;
                 break;
             } else if (tagId == 0x927c) { // Maker Notes
-                uint32_t makerNotesOffset = tagData;
+                size_t makerNotesOffset = tagData;
+                uint8_t makerTag[AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH];
+                AVIF_CHECK(avifJPEGReadBytes(exif, makerTag, &makerNotesOffset, AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH));
                 // From https://exiftool.org/makernote_types.html
                 // Apple Maker Notes contain a header (below) followed by an IFD.
-                if (!memcmp(&exif->data[makerNotesOffset], appleMakerNotesHeader, appleMakerNotesHeaderSize)) {
-                    offsetToIfd = makerNotesOffset + (uint32_t)appleMakerNotesHeaderSize;
+                if (!memcmp(&makerTag, AVIF_EXIF_APPLE_MAKER_NOTES_HEADER, AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH)) {
+                    if (makerNotesOffset > UINT32_MAX) {
+                        return AVIF_FALSE;
+                    }
+                    offsetToIfd = (uint32_t)makerNotesOffset;
                     inAppleMakerNotes = AVIF_TRUE;
                     offsetToNextIfdAlreadySet = AVIF_TRUE;
                     // Apple Maker Notes are always big endian, regardless of the endianness of the top level Exif.
@@ -418,11 +424,18 @@ avifBool avifGetExifAppleHeadroom(const avifROData * exif, double * altHeadroom)
                 }
             } else if (inAppleMakerNotes && (tagId == 33 || tagId == 48) && dataFormat == 10) {
                 // Offsets in the Apple Maker Notes are relative to the Maker Notes field.
-                size_t tmpOffset = (size_t)offsetToIfd - appleMakerNotesHeaderSize + (size_t)tagData;
+                if (offsetToIfd < AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH ||
+                    ((uint64_t)offsetToIfd - AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH + tagData) > SIZE_MAX) {
+                    return AVIF_FALSE; // Avoid under/over flow.
+                }
+                size_t tmpOffset = (size_t)offsetToIfd - AVIF_EXIF_APPLE_MAKER_NOTES_HEADER_LENGTH + (size_t)tagData;
                 int32_t numerator;
                 uint32_t denominator;
                 AVIF_CHECK(avifJPEGReadS32(exif, &numerator, &tmpOffset, isBigEndian));
                 AVIF_CHECK(avifJPEGReadU32(exif, &denominator, &tmpOffset, isBigEndian));
+                if (denominator == 0) {
+                    return AVIF_FALSE;
+                }
                 const double v = (double)numerator / denominator;
                 if (tagId == 33) {
                     maker33 = v;
@@ -775,6 +788,9 @@ static avifBool avifJPEGParseGainMapXMPPropertiesAppleFormat(const xmlNode * des
 {
     double hdrHeadroomLinear = 1.0;
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRGainMapHeadroom", &hdrHeadroomLinear, /*numDoubles=*/1, XML_NAME_SPACE_APPLE_GAIN_MAP));
+    if (hdrHeadroomLinear <= 0) {
+        return AVIF_FALSE;
+    }
     const double hdrHeadroom = log2(hdrHeadroomLinear);
 
     avifSignedFraction hdrHeadroomSFraction;
