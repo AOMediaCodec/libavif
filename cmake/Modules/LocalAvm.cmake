@@ -49,6 +49,8 @@ FetchContent_Declare(
     #   cd avm
     #   sed -i -e 's/  dist/  avm_dist/g' CMakeLists.txt
     #   git diff > LocalAvm.diff
+    # TODO: b/398931194 - Remove the patch when using a libavm version past
+    #                     https://gitlab.com/AOMediaCodec/avm/-/merge_requests/2985
     PATCH_COMMAND git apply ${AVIF_SOURCE_DIR}/cmake/Modules/LocalAvm.diff
 )
 # There can be a duplicate cpuinfo in SVT so find_package has to be used.

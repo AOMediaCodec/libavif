@@ -507,7 +507,8 @@ if(AVIF_CODEC_AVM)
     # Avoid the following error:
     #   CMake Error: Error required internal CMake variable not set, cmake may not be built correctly.
     #   Missing variable is: CMAKE_ASM_COMPILE_OBJECT
-    # For some reason this must be done before check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
+    # For some reason this must be done before check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom).
+    # See also https://gitlab.kitware.com/cmake/cmake/-/issues/25042.
     enable_language(ASM)
 endif()
 
