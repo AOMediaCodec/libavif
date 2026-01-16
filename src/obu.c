@@ -40,7 +40,9 @@
 #include <string.h>
 
 #if defined(AVIF_CODEC_AVM)
-#include "config/aom_config.h"
+// TODO: b/398931194 - Remove specific codec includes once AV2 is released.
+#include "avm/avm_codec.h"
+#include "config/avm_config.h"
 #endif
 
 // ---------------------------------------------------------------------------
@@ -126,6 +128,21 @@ static uint32_t avifBitsReadVLC(avifBits * const bits)
             return 0xFFFFFFFFU;
     return numBits ? ((1U << numBits) - 1) + avifBitsRead(bits, numBits) : 0;
 }
+
+#if defined(AVIF_CODEC_AVM)
+// Rice-Golomb coding with parameter n.
+static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
+{
+    for (uint32_t q = 0; q < 32; q++) {
+        const uint32_t rgBit = avifBitsRead(bits, 1);
+        if (rgBit == 0) {
+            const uint32_t remainder = avifBitsRead(bits, n);
+            return (q << n) + remainder;
+        }
+    }
+    return 0xFFFFFFFFU;
+}
+#endif // defined(AVIF_CODEC_AVM)
 
 // ---------------------------------------------------------------------------
 // Variables in here use snake_case to self-document from the AV1 spec and the draft AV2 spec:
@@ -349,21 +366,6 @@ static avifBool parseAV1SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
 }
 
 #if defined(AVIF_CODEC_AVM)
-#if CONFIG_CROP_WIN_CWG_F220
-static avifBool parseAV2SequenceHeaderCroppingWindow(avifBits * bits)
-{
-    if (avifBitsRead(bits, 1)) {     // seq_cropping_window_present_flag
-        (void)avifBitsReadVLC(bits); // seq_cropping_win_left_offset
-        (void)avifBitsReadVLC(bits); // seq_cropping_win_right_offset
-        (void)avifBitsReadVLC(bits); // seq_cropping_win_top_offset
-        (void)avifBitsReadVLC(bits); // seq_cropping_win_bottom_offset
-    }
-
-    return !bits->error;
-}
-#endif // CONFIG_CROP_WIN_CWG_F220
-
-#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
 enum
 {
     AV2_CHROMA_FORMAT_420 = 0,
@@ -371,14 +373,46 @@ enum
     AV2_CHROMA_FORMAT_444 = 2,
     AV2_CHROMA_FORMAT_422 = 3,
 };
-#endif // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
 
-// Note: Does not parse separate_uv_delta_q.
-static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceHeader * header)
+static avifChromaSamplePosition av2ChromaSamplePositionToAv1ChromaSamplePosition(uint32_t av2ChromaSamplePosition)
 {
-#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
+    if (av2ChromaSamplePosition == 0) {
+        // AVM_CSP_LEFT: Horizontal offset 0, vertical offset 0.5
+        return AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
+    } else if (av2ChromaSamplePosition == 1) {
+        // AVM_CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
+        return AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    } else if (av2ChromaSamplePosition == 2) {
+        // AVM_CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
+        return AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+    } else {
+        return AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    }
+}
+
+static avifBool parseAV2ChromaFormatBitdepth(avifBits * bits, avifSequenceHeader * header)
+{
     const uint32_t chromaFormatIdc = avifBitsReadVLC(bits);
-    if (chromaFormatIdc == AV2_CHROMA_FORMAT_420) {
+
+    const uint32_t bitdepthIdx = avifBitsReadVLC(bits);
+    if (bitdepthIdx == 0) {
+        header->bitDepth = 10;
+    } else if (bitdepthIdx == 1) {
+        header->bitDepth = 8;
+    } else if (bitdepthIdx == 2) {
+        header->bitDepth = 12;
+    } else {
+        return AVIF_FALSE;
+    }
+    header->av1C.highBitdepth = header->bitDepth > 8;
+    header->av1C.twelveBit = header->bitDepth == 12;
+    header->av1C.monochrome = chromaFormatIdc == AV2_CHROMA_FORMAT_400;
+
+    if (header->av1C.monochrome) {
+        header->av1C.chromaSubsamplingX = 1;
+        header->av1C.chromaSubsamplingY = 1;
+        header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+    } else if (chromaFormatIdc == AV2_CHROMA_FORMAT_420) {
         header->av1C.chromaSubsamplingX = 1;
         header->av1C.chromaSubsamplingY = 1;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
@@ -390,143 +424,8 @@ static avifBool parseAV2SequenceHeaderColorConfig(avifBits * bits, avifSequenceH
         header->av1C.chromaSubsamplingX = 1;
         header->av1C.chromaSubsamplingY = 0;
         header->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
-    } else if (chromaFormatIdc == AV2_CHROMA_FORMAT_400) {
-        header->av1C.chromaSubsamplingX = 1;
-        header->av1C.chromaSubsamplingY = 1;
-        header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
     } else {
         return AVIF_FALSE;
-    }
-#endif // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
-
-    header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
-#if CONFIG_CWG_E242_BITDEPTH
-    const uint32_t bitdepthLutIdx = avifBitsReadVLC(bits);
-    if (bitdepthLutIdx == 0) {
-        header->bitDepth = 10;
-    } else if (bitdepthLutIdx == 1) {
-        header->bitDepth = 8;
-    } else if (bitdepthLutIdx == 2) {
-        header->bitDepth = 12;
-    } else {
-        return AVIF_FALSE;
-    }
-    header->av1C.highBitdepth = header->bitDepth > 8;
-    header->av1C.twelveBit = header->bitDepth == 12;
-#else
-    header->bitDepth = 8;
-    uint32_t high_bitdepth = avifBitsRead(bits, 1);
-    header->av1C.highBitdepth = (uint8_t)high_bitdepth;
-    if ((header->av1C.seqProfile == 2) && high_bitdepth) {
-        uint32_t twelve_bit = avifBitsRead(bits, 1);
-        header->bitDepth = twelve_bit ? 12 : 10;
-        header->av1C.twelveBit = (uint8_t)twelve_bit;
-    } else /* if (seq_profile <= 2) */ {
-        header->bitDepth = high_bitdepth ? 10 : 8;
-        header->av1C.twelveBit = 0;
-    }
-#endif // CONFIG_CWG_E242_BITDEPTH
-#if CONFIG_CWG_E242_CHROMA_FORMAT_IDC
-    uint32_t mono_chrome = chromaFormatIdc == AV2_CHROMA_FORMAT_400;
-#else
-    uint32_t mono_chrome = 0;
-    if (header->av1C.seqProfile != 1) {
-        mono_chrome = avifBitsRead(bits, 1);
-    }
-#endif // CONFIG_CWG_E242_CHROMA_FORMAT_IDC
-    header->av1C.monochrome = (uint8_t)mono_chrome;
-    uint32_t color_description_present_flag = avifBitsRead(bits, 1);
-    if (color_description_present_flag) {
-        header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
-        header->transferCharacteristics = (avifTransferCharacteristics)avifBitsRead(bits, 8); // transfer_characteristics
-        header->matrixCoefficients = (avifMatrixCoefficients)avifBitsRead(bits, 8);           // matrix_coefficients
-    } else {
-        header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
-        header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-        header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    }
-    if (mono_chrome) {
-        header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
-        header->av1C.chromaSubsamplingX = 1;
-        header->av1C.chromaSubsamplingY = 1;
-        header->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
-    } else if (header->colorPrimaries == AVIF_COLOR_PRIMARIES_BT709 &&
-               header->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB &&
-               header->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) {
-        header->range = AVIF_RANGE_FULL;
-        header->av1C.chromaSubsamplingX = 0;
-        header->av1C.chromaSubsamplingY = 0;
-        header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-    } else {
-        header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
-#if !CONFIG_CWG_E242_CHROMA_FORMAT_IDC
-        uint32_t subsampling_x = 0;
-        uint32_t subsampling_y = 0;
-        switch (header->av1C.seqProfile) {
-            case 0:
-                subsampling_x = 1;
-                subsampling_y = 1;
-                header->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-                break;
-            case 1:
-                subsampling_x = 0;
-                subsampling_y = 0;
-                header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-                break;
-            case 2:
-                if (header->bitDepth == 12) {
-                    subsampling_x = avifBitsRead(bits, 1);
-                    if (subsampling_x) {
-                        subsampling_y = avifBitsRead(bits, 1);
-                    }
-                } else {
-                    subsampling_x = 1;
-                    subsampling_y = 0;
-                }
-                if (subsampling_x) {
-                    header->yuvFormat = subsampling_y ? AVIF_PIXEL_FORMAT_YUV420 : AVIF_PIXEL_FORMAT_YUV422;
-                } else {
-                    header->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-                }
-                break;
-            default:
-                return AVIF_FALSE;
-        }
-        header->av1C.chromaSubsamplingX = (uint8_t)subsampling_x;
-        header->av1C.chromaSubsamplingY = (uint8_t)subsampling_y;
-#endif // !CONFIG_CWG_E242_CHROMA_FORMAT_IDC
-
-        if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
-            uint8_t chromaSamplePosition = 6; // CSP_UNSPECIFIED
-            const int csp_present_flag = avifBitsRead(bits, 1);
-            if (csp_present_flag) {
-                chromaSamplePosition = avifBitsRead(bits, 1);
-            }
-        } else if (header->yuvFormat == AVIF_PIXEL_FORMAT_YUV420) {
-            uint8_t chromaSamplePosition = 6; // CSP_UNSPECIFIED
-            const int csp_present_flag = avifBitsRead(bits, 1);
-            if (csp_present_flag) {
-                chromaSamplePosition = avifBitsRead(bits, 3);
-                if (chromaSamplePosition > 5) {
-                    // Invalid chroma_sample_position.
-                    return AVIF_FALSE;
-                }
-            }
-            if (chromaSamplePosition == 0) {
-                // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
-                header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
-            } else if (chromaSamplePosition == 1) {
-                // CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
-                header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-            } else if (chromaSamplePosition == 2) {
-                // CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
-                header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
-            } else {
-                header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-            }
-            header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
-        }
     }
 
     return !bits->error;
@@ -554,42 +453,121 @@ static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 }
 
 #if defined(AVIF_CODEC_AVM)
-// See https://gitlab.com/AOMediaCodec/avm/-/blob/main/av1/decoder/decodeframe.c
+// See read_sequence_header_obu() in av2/decoder/obu.c.
 static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
-#if CONFIG_CWG_E242_SEQ_HDR_ID
     uint32_t seqHeaderId = avifBitsReadVLC(bits);
     if (seqHeaderId >= 16) {
         return AVIF_FALSE;
     }
-#endif // CONFIG_CWG_E242_SEQ_HDR_ID
-    // See read_sequence_header_obu() in avm.
+
     AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
+    header->reduced_still_picture_header = (uint8_t)avifBitsRead(bits, 1); // single_picture_header_flag
+    if (!header->reduced_still_picture_header) {
+        avifBitsRead(bits, 3); // seq_lcr_id
+        avifBitsRead(bits, 1); // still_picture
+        return AVIF_FALSE;
+    }
+    header->av1C.seqLevelIdx0 = (uint8_t)avifBitsRead(bits, 5);
+    if (header->av1C.seqLevelIdx0 > 7 && !header->reduced_still_picture_header) {
+        avifBitsRead(bits, 1); // single_tier_0
+        header->av1C.seqTier0 = 0;
+    }
 
     uint32_t frame_width_bits = avifBitsRead(bits, 4) + 1;
     uint32_t frame_height_bits = avifBitsRead(bits, 4) + 1;
     header->maxWidth = avifBitsRead(bits, frame_width_bits) + 1;   // max_frame_width
     header->maxHeight = avifBitsRead(bits, frame_height_bits) + 1; // max_frame_height
 
-#if CONFIG_CROP_WIN_CWG_F220
-    AVIF_CHECK(parseAV2SequenceHeaderCroppingWindow(bits));
-#endif // CONFIG_CROP_WIN_CWG_F220
+    if (avifBitsRead(bits, 1)) { // conf_window_flag
+        avifBitsReadVLC(bits);   // conf_win_left_offset
+        avifBitsReadVLC(bits);   // conf_win_right_offset
+        avifBitsReadVLC(bits);   // conf_win_top_offset
+        avifBitsReadVLC(bits);   // conf_win_bottom_offset
+    }
 
-    // See av1_read_color_config() in avm.
-    AVIF_CHECK(parseAV2SequenceHeaderColorConfig(bits, header));
+    AVIF_CHECK(parseAV2ChromaFormatBitdepth(bits, header));
 
-    // See read_sequence_header_obu() in avm.
-    AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
+    header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+    header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+    header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    header->range = AVIF_RANGE_LIMITED;
 
-    // See read_sequence_header_obu() in avm.
-    // Ignored field.
-    //   film_grain_params_present
+    header->chromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
 
-    // See av1_read_sequence_header_beyond_av1() in avm.
     // Other ignored fields.
     return !bits->error;
 }
-#endif
+
+// See av2_read_content_interpretation_obu() in av2/decoder/obu_ci.c.
+static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeader * header)
+{
+    const uint32_t scanTypeIdc = avifBitsRead(bits, 2);                 // ci_scan_type_idc
+    const uint32_t colorDescriptionPresent = avifBitsRead(bits, 1);     // ci_color_description_present_flag
+    const uint32_t chromaSamplePositionPresent = avifBitsRead(bits, 1); // ci_chroma_sample_position_present_flag
+    avifBitsRead(bits, 1);                                              // ci_aspect_ratio_info_present_flag
+    avifBitsRead(bits, 1);                                              // ci_timing_info_present_flag
+    avifBitsRead(bits, 1);                                              // ci_extension_present_flag
+    avifBitsRead(bits, 1);                                              // reserved_bit
+
+    if (colorDescriptionPresent) {
+        // Override the default CICP values.
+        const uint32_t colorDescriptionIdc = avifBitsReadRG(bits, 2); // color_description_idc
+        if (colorDescriptionIdc == 0xFFFFFFFFU) {
+            return AVIF_FALSE;
+        }
+        if (colorDescriptionIdc == 0) {
+            // Explicitly signaled
+            header->colorPrimaries = (avifColorPrimaries)avifBitsRead(bits, 8);                   // color_primaries
+            header->transferCharacteristics = (avifTransferCharacteristics)avifBitsRead(bits, 8); // transfer_characteristics
+            header->matrixCoefficients = (avifMatrixCoefficients)avifBitsRead(bits, 8);           // matrix_coefficients
+        } else if (colorDescriptionIdc == 1) {
+            // BT.709 SDR
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                   // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT709; // 1
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;         // 5
+        } else if (colorDescriptionIdc == 2) {
+            // BT.2100 PQ
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2100;               // 9
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ; // 16
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;   // 9
+        } else if (colorDescriptionIdc == 3) {
+            // BT.2100 HLG
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2100;                         // 9
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT; // 14
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;             // 9
+        } else if (colorDescriptionIdc == 4) {
+            // sRGB
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                  // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB; // 13
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;       // 0
+        } else if (colorDescriptionIdc == 5) {
+            // sYCC
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                  // 1
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB; // 13
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;        // 5
+        } else {
+            // Reserved
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;                   // 2
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED; // 2
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;           // 2
+        }
+        header->range = avifBitsRead(bits, 1) ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED; // color_range
+    } else {
+        // Keep the default CICP values.
+    }
+
+    if (chromaSamplePositionPresent) {
+        const uint32_t chromaSamplePosition = avifBitsReadVLC(bits); // ci_chroma_sample_position_0
+        header->chromaSamplePosition = av2ChromaSamplePositionToAv1ChromaSamplePosition(chromaSamplePosition);
+        header->av1C.chromaSamplePosition = (uint8_t)header->chromaSamplePosition;
+    }
+
+    // Other ignored fields.
+    return !bits->error;
+}
+#endif // defined(AVIF_CODEC_AVM)
 
 static avifBool av1SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
@@ -645,21 +623,22 @@ static avifBool av1SequenceHeaderParse(avifSequenceHeader * header, const avifRO
 #if defined(AVIF_CODEC_AVM)
 static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample)
 {
+    avifBool sequenceHeaderFound = AVIF_FALSE;
     avifROData obus = *sample;
 
-    // Find the sequence header OBU
+    // Find the Sequence Header OBU, and the Content Interpretation OBU if any.
     while (obus.size > 0) {
         avifBits bits;
         avifBitsInit(&bits, obus.data, obus.size);
 
-        const uint32_t obu_size = avifBitsReadUleb128(&bits);
+        const uint32_t obuSize = avifBitsReadUleb128(&bits);
 
         // obu_header()
-        const uint32_t obu_extension_flag = avifBitsRead(&bits, 1);
-        const uint32_t obu_type = avifBitsRead(&bits, 5);
+        const uint32_t obuExtensionFlag = avifBitsRead(&bits, 1);
+        const uint32_t obuType = avifBitsRead(&bits, 5);
         avifBitsRead(&bits, 2); // obu_tlayer_id
 
-        if (obu_extension_flag) {
+        if (obuExtensionFlag) {
             avifBitsRead(&bits, 8); // obu_mlayer_id, obu_xlayer_id
         }
 
@@ -667,28 +646,42 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
             return AVIF_FALSE;
         }
 
-        const uint32_t obu_header_size = 1 + obu_extension_flag;
-        if (obu_size < obu_header_size) {
+        const uint32_t obuHeaderSize = 1 + obuExtensionFlag;
+        if (obuSize < obuHeaderSize) {
             return AVIF_FALSE;
         }
-        const uint32_t obu_payload_size = obu_size - obu_header_size;
-        const uint32_t init_bit_pos = avifBitsReadPos(&bits);
-        const uint32_t init_byte_pos = init_bit_pos >> 3;
-        if (obu_payload_size > obus.size - init_byte_pos) {
+        const uint32_t obuPayloadSize = obuSize - obuHeaderSize;
+        const uint32_t initBitPos = avifBitsReadPos(&bits);
+        const uint32_t initBytePos = initBitPos >> 3;
+        if (obuPayloadSize > obus.size - initBytePos) {
             return AVIF_FALSE;
         }
 
-        if (obu_type == 1) { // Sequence Header
+        if (obuType == OBU_SEQUENCE_HEADER) {
+            if (sequenceHeaderFound) {
+                return AVIF_FALSE;
+            }
             avifBits seqHdrBits;
-            avifBitsInit(&seqHdrBits, obus.data + init_byte_pos, obu_payload_size);
-            return parseAV2SequenceHeader(&seqHdrBits, header);
+            avifBitsInit(&seqHdrBits, obus.data + initBytePos, obuPayloadSize);
+            if (!parseAV2SequenceHeader(&seqHdrBits, header)) {
+                return AVIF_FALSE;
+            }
+            sequenceHeaderFound = AVIF_TRUE;
+        } else if (obuType == OBU_CONTENT_INTERPRETATION) { // optional
+            if (!sequenceHeaderFound) {
+                return AVIF_FALSE;
+            }
+            avifBits ciBits;
+            avifBitsInit(&ciBits, obus.data + initBytePos, obuPayloadSize);
+            if (!parseAV2ContentInterpretation(&ciBits, header)) {
+                return AVIF_FALSE;
+            }
+            break;
         }
-
-        // Skip this OBU
-        obus.data += (size_t)obu_payload_size + init_byte_pos;
-        obus.size -= (size_t)obu_payload_size + init_byte_pos;
+        obus.data += (size_t)obuPayloadSize + initBytePos;
+        obus.size -= (size_t)obuPayloadSize + initBytePos;
     }
-    return AVIF_FALSE;
+    return sequenceHeaderFound;
 }
 #endif // defined(AVIF_CODEC_AVM)
 

@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b70f5a9f31..81b801d509 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1101,7 +1101,7 @@ if(NOT AVM_DIST_DIR)
+ endif()
+ 
+ add_custom_target(
+-  dist
++  avm_dist
+   COMMAND
+     ${CMAKE_COMMAND} -DAVM_ROOT=${AVM_ROOT} -DAVM_CONFIG_DIR=${AVM_CONFIG_DIR}
+     -DAVM_DIST_DIR=${AVM_DIST_DIR} -DAVM_DIST_APPS="${AVM_DIST_APPS}"
