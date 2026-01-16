@@ -634,11 +634,11 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
         const uint32_t obuSize = avifBitsReadUleb128(&bits);
 
         // obu_header()
-        const uint32_t obuExtensionFlag = avifBitsRead(&bits, 1);
+        const uint32_t obuHeaderExtensionFlag = avifBitsRead(&bits, 1);
         const uint32_t obuType = avifBitsRead(&bits, 5);
         avifBitsRead(&bits, 2); // obu_tlayer_id
 
-        if (obuExtensionFlag) {
+        if (obuHeaderExtensionFlag) {
             avifBitsRead(&bits, 8); // obu_mlayer_id, obu_xlayer_id
         }
 
@@ -646,7 +646,7 @@ static avifBool av2SequenceHeaderParse(avifSequenceHeader * header, const avifRO
             return AVIF_FALSE;
         }
 
-        const uint32_t obuHeaderSize = 1 + obuExtensionFlag;
+        const uint32_t obuHeaderSize = 1 + obuHeaderExtensionFlag;
         if (obuSize < obuHeaderSize) {
             return AVIF_FALSE;
         }
