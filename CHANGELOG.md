@@ -15,6 +15,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF specification.
 * Add an optional argument to the --depth flag of avifenc used to enable a bit
   depth extension scheme in the encoded file.
+* Add support for converting jpeg files with Apple style gain maps.
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
 * Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
