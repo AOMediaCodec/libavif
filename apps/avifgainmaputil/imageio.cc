@@ -82,6 +82,7 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
   }
   std::ofstream f(output_filename, std::ios::binary);
   f.write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  avifRWDataFree(&encoded);
   if (f.fail()) {
     std::cerr << "Failed to write image " << output_filename << ": "
               << std::strerror(errno) << "\n";
