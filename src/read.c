@@ -1725,7 +1725,7 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
 }
 
 // Allocates the dstImage. Also verifies some spec compliance rules for grids, if relevant.
-static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage)
+static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * data, const avifTileInfo * info, avifImage * dstImage, avifBool * cicpSet)
 {
     const avifTile * tile = &data->tiles.tile[info->firstTileIndex];
     uint32_t dstWidth;
@@ -1797,8 +1797,8 @@ static avifResult avifDecoderDataAllocateImagePlanes(avifDecoderData * data, con
         // Keep dstImage->yuvRange which is already set to its correct value
         // (extracted from the 'colr' box if parsed or from a Sequence Header OBU otherwise).
 
-        if (!data->cicpSet) {
-            data->cicpSet = AVIF_TRUE;
+        if (!*cicpSet) {
+            *cicpSet = AVIF_TRUE;
             dstImage->colorPrimaries = tile->image->colorPrimaries;
             dstImage->transferCharacteristics = tile->image->transferCharacteristics;
             dstImage->matrixCoefficients = tile->image->matrixCoefficients;
@@ -2320,24 +2320,35 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
+    // If item is a grid, check that its input image items share the same properties.
     for (uint32_t i = 0; i < item->meta->items.count; ++i) {
         avifDecoderItem * inputImageItem = item->meta->items.item[i];
         if (inputImageItem->dimgForID != item->id) {
             continue;
         }
-        // Even if inputImageItem is a grid, the ispe property from its first tile should have been copied to the grid item.
         const avifProperty * inputImageItemIspeProp = avifPropertyArrayFind(&inputImageItem->properties, "ispe");
         AVIF_ASSERT_OR_RETURN(inputImageItemIspeProp != NULL);
-        if (inputImageItemIspeProp->u.ispe.width != ispeProp->u.ispe.width ||
-            inputImageItemIspeProp->u.ispe.height != ispeProp->u.ispe.height) {
-            avifDiagnosticsPrintf(diag,
-                                  "The fields of the ispe property of item ID %u of type '%.4s' differs from item ID %u",
-                                  inputImageItem->id,
-                                  (const char *)inputImageItem->type,
-                                  item->id);
-            return AVIF_RESULT_BMFF_PARSE_FAILED;
+
+        for (uint32_t j = i + 1; j < item->meta->items.count; ++j) {
+            avifDecoderItem * otherInputImageItem = item->meta->items.item[j];
+            if (otherInputImageItem->dimgForID != item->id) {
+                continue;
+            }
+            const avifProperty * otherInputImageItemIspeProp = avifPropertyArrayFind(&otherInputImageItem->properties, "ispe");
+            AVIF_ASSERT_OR_RETURN(otherInputImageItemIspeProp != NULL);
+            if (inputImageItemIspeProp->u.ispe.width != otherInputImageItemIspeProp->u.ispe.width ||
+                inputImageItemIspeProp->u.ispe.height != otherInputImageItemIspeProp->u.ispe.height) {
+                avifDiagnosticsPrintf(diag,
+                                      "The fields of the ispe property of item ID %u of type '%.4s' differs from item ID %u",
+                                      inputImageItem->id,
+                                      (const char *)inputImageItem->type,
+                                      otherInputImageItem->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            // TODO(yguyon): Check that all input image items share the same codec config (except for the bit depth value).
         }
-        // TODO(yguyon): Check that all input image items share the same codec config (except for the bit depth value).
+        break;
     }
 
     AVIF_CHECKERR(avifPropertyArrayFind(&item->properties, "clap") == NULL, AVIF_RESULT_NOT_IMPLEMENTED);
@@ -5356,7 +5367,7 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
     } else {
         // In this case, we will use one codec instance when there is only one tile or when all of the following conditions are
         // met:
-        //   - The image must have exactly one layer (i.e.) decoder->imageCount == 1.
+        //   - The image must have exactly one layer (i.e. decoder->imageCount == 1).
         //   - All the tiles must have the same operating point (because the codecs take operating point once at initialization
         //     and do not allow it to be changed later).
         //   - All the tiles must have the same value for allLayers (because the codecs take allLayers once at initialization
@@ -5364,9 +5375,12 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
         //   - If the image has a single tile, it must not have a single tile alpha plane (in this case we will steal the planes
         //     from the decoder, so we cannot use the same decoder for both the color and the alpha planes).
         //   - All tiles have the same type (AV1 or AV2).
+        //   - No tile buffer access after another tile was decoded (i.e. no Sample Transform compositing because it happens
+        //     after decoding all tiles).
         // Otherwise, we will use |tiles.count| decoder instances (one instance for each tile).
-        avifBool canUseSingleCodecInstance = (data->tiles.count == 1) ||
-                                             (decoder->imageCount == 1 && avifTilesCanBeDecodedWithSameCodecInstance(data));
+        const avifBool canUseSingleCodecInstance =
+            ((data->tiles.count == 1) || (decoder->imageCount == 1 && avifTilesCanBeDecodedWithSameCodecInstance(data))) &&
+            data->sampleTransformNumInputImageItems == 0;
         if (canUseSingleCodecInstance) {
             AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec));
             for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
@@ -6692,7 +6706,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 dstImage = dstImage->gainMap->image;
             }
             if (tileIndex == 0) {
-                AVIF_CHECKRES(avifDecoderDataAllocateImagePlanes(decoder->data, info, dstImage));
+                AVIF_CHECKRES(avifDecoderDataAllocateImagePlanes(decoder->data, info, dstImage, &decoder->data->cicpSet));
             }
             AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, dstImage, tile, tileIndex));
         } else {
@@ -6745,6 +6759,76 @@ static avifBool avifDecoderDataFrameFullyDecoded(const avifDecoderData * data)
     return AVIF_TRUE;
 }
 
+// Composites hidden image items and/or the primary image item into the dstImage.
+// Tiles are aggregated into temporary buffers (reconstructedInputImages)
+// covering the whole dstImage dimensions in case of grids.
+// Non-null elements of reconstructedInputImages must be destroyed after calling this function.
+static avifResult avifDecoderApplySampleTransformForPlanesImpl(const avifDecoder * decoder,
+                                                               avifPlanesFlag planes,
+                                                               avifImage * dstImage,
+                                                               avifImage * reconstructedInputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS])
+{
+    AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems != 0);
+    AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
+    const avifImage * inputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
+    for (uint32_t i = 0; i < decoder->data->sampleTransformNumInputImageItems; ++i) {
+        avifItemCategory category = decoder->data->sampleTransformInputImageItems[i];
+        if (category == AVIF_ITEM_COLOR) {
+            // If the primary image item was a grid, it was already aggregated
+            // into this single output buffer in avifDecoderDecodeTiles().
+            inputImages[i] = decoder->image;
+        } else {
+            AVIF_ASSERT_OR_RETURN(category >= AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR &&
+                                  category < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR +
+                                                 AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS);
+            if (planes == AVIF_PLANES_A) {
+                category += AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS;
+            }
+            const avifTileInfo * info = &decoder->data->tileInfos[category];
+            AVIF_ASSERT_OR_RETURN(info != NULL);
+            const avifTile * firstTile = &decoder->data->tiles.tile[info->firstTileIndex];
+            AVIF_ASSERT_OR_RETURN(firstTile != NULL && firstTile->image != NULL);
+            if (info->tileCount == 1) {
+                inputImages[i] = firstTile->image;
+            } else {
+                // Combine the tiles into a single buffer used as one of the input images in avifImageApplyExpression().
+                reconstructedInputImages[i] = avifImageCreateEmpty();
+                AVIF_CHECKERR(reconstructedInputImages[i] != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                avifImageCopyNoAlloc(reconstructedInputImages[i], firstTile->image);
+                reconstructedInputImages[i]->width = decoder->image->width;
+                reconstructedInputImages[i]->height = decoder->image->height;
+                avifBool cicpSet = AVIF_TRUE;
+                AVIF_CHECKRES(avifDecoderDataAllocateImagePlanes(decoder->data, info, reconstructedInputImages[i], &cicpSet));
+                for (unsigned int tileIndex = 0; tileIndex < info->tileCount; ++tileIndex) {
+                    const avifTile * tile = firstTile + tileIndex;
+                    AVIF_CHECKRES(avifDecoderDataCopyTileToImage(decoder->data, info, reconstructedInputImages[i], tile, tileIndex));
+                }
+                inputImages[i] = reconstructedInputImages[i];
+            }
+        }
+    }
+    AVIF_CHECKRES(avifImageApplyExpression(dstImage,
+                                           AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                                           &decoder->data->meta->sampleTransformExpression,
+                                           decoder->data->sampleTransformNumInputImageItems,
+                                           inputImages,
+                                           planes));
+    return AVIF_RESULT_OK;
+}
+
+// Intermediate function used to safely destroy temporary buffers even in case of error.
+static avifResult avifDecoderApplySampleTransformForPlanes(const avifDecoder * decoder, avifPlanesFlag planes, avifImage * dstImage)
+{
+    avifImage * toDestroy[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS] = { NULL };
+    const avifResult result = avifDecoderApplySampleTransformForPlanesImpl(decoder, planes, dstImage, toDestroy);
+    for (uint32_t i = 0; i < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS; ++i) {
+        if (toDestroy[i] != NULL) {
+            avifImageDestroy(toDestroy[i]);
+        }
+    }
+    return result;
+}
+
 static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, avifImage * dstImage)
 {
     if (dstImage->depth != decoder->data->meta->sampleTransformDepth) {
@@ -6770,33 +6854,9 @@ static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, a
         return result;
     }
 
-    for (int pass = 0; pass < (decoder->alphaPresent ? 2 : 1); ++pass) {
-        avifBool alpha = (pass == 0) ? AVIF_FALSE : AVIF_TRUE;
-        AVIF_ASSERT_OR_RETURN(decoder->data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
-        const avifImage * inputImages[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
-        for (uint32_t i = 0; i < decoder->data->sampleTransformNumInputImageItems; ++i) {
-            avifItemCategory category = decoder->data->sampleTransformInputImageItems[i];
-            if (category == AVIF_ITEM_COLOR) {
-                inputImages[i] = decoder->image;
-            } else {
-                AVIF_ASSERT_OR_RETURN(category >= AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR &&
-                                      category < AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR +
-                                                     AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS);
-                if (alpha) {
-                    category += AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS;
-                }
-                const avifTileInfo * tileInfo = &decoder->data->tileInfos[category];
-                AVIF_CHECKERR(tileInfo->tileCount == 1, AVIF_RESULT_NOT_IMPLEMENTED); // TODO(yguyon): Implement Sample Transform grids
-                inputImages[i] = decoder->data->tiles.tile[tileInfo->firstTileIndex].image;
-                AVIF_ASSERT_OR_RETURN(inputImages[i] != NULL);
-            }
-        }
-        AVIF_CHECKRES(avifImageApplyExpression(dstImage,
-                                               AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
-                                               &decoder->data->meta->sampleTransformExpression,
-                                               decoder->data->sampleTransformNumInputImageItems,
-                                               inputImages,
-                                               alpha ? AVIF_PLANES_A : AVIF_PLANES_YUV));
+    AVIF_CHECKRES(avifDecoderApplySampleTransformForPlanes(decoder, AVIF_PLANES_YUV, dstImage));
+    if (decoder->alphaPresent) {
+        AVIF_CHECKRES(avifDecoderApplySampleTransformForPlanes(decoder, AVIF_PLANES_A, dstImage));
     }
     return AVIF_RESULT_OK;
 }

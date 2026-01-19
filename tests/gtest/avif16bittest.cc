@@ -20,7 +20,7 @@ const char* data_path = nullptr;
 class SampleTransformTest
     : public testing::TestWithParam<std::tuple<
           avifSampleTransformRecipe, avifPixelFormat, /*create_alpha=*/bool,
-          /*quality=*/int, /*add_xmp=*/bool>> {};
+          /*use_grid=*/bool, /*quality=*/int, /*add_xmp=*/bool>> {};
 
 //------------------------------------------------------------------------------
 
@@ -28,8 +28,9 @@ TEST_P(SampleTransformTest, Avif16bit) {
   const avifSampleTransformRecipe recipe = std::get<0>(GetParam());
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
   const bool create_alpha = std::get<2>(GetParam());
-  const int quality = std::get<3>(GetParam());
-  const bool add_xmp = std::get<4>(GetParam());
+  const bool use_grid = std::get<3>(GetParam());
+  const int quality = std::get<4>(GetParam());
+  const bool add_xmp = std::get<5>(GetParam());
 
   const ImagePtr image = testutil::ReadImage(
       data_path, "weld_16bit.png", yuv_format, /*requested_depth=*/16);
@@ -53,8 +54,35 @@ TEST_P(SampleTransformTest, Avif16bit) {
   encoder->qualityAlpha = quality;
   encoder->sampleTransformRecipe = recipe;
   testutil::AvifRwData encoded;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
-            AVIF_RESULT_OK);
+  const uint64_t kDurationInTimescales = 1;
+  const avifAddImageFlags kAddImageFlags = AVIF_ADD_IMAGE_FLAG_SINGLE;
+  if (use_grid) {
+    const uint32_t kGridCols = 2, kGridRows = 1;
+    const ImagePtr cell0{avifImageCreateEmpty()};
+    const ImagePtr cell1{avifImageCreateEmpty()};
+    ASSERT_NE(cell0, nullptr);
+    ASSERT_NE(cell1, nullptr);
+    const avifCropRect rect0{0, 0, image->width / kGridCols, image->height};
+    const avifCropRect rect1{rect0.width, 0, image->width - rect0.width,
+                             image->height};
+    ASSERT_EQ(avifImageSetViewRect(cell0.get(), image.get(), &rect0),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifImageSetViewRect(cell1.get(), image.get(), &rect1),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(
+        avifImageSetMetadataXMP(cell0.get(), image->xmp.data, image->xmp.size),
+        AVIF_RESULT_OK);
+    const avifImage* cells[] = {cell0.get(), cell1.get()};
+    ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
+                                      cells, kAddImageFlags),
+              AVIF_RESULT_OK);
+  } else {
+    ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(),
+                                  kDurationInTimescales, kAddImageFlags),
+              AVIF_RESULT_OK);
+  }
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+
   const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
   ASSERT_NE(decoded, nullptr);
 
@@ -99,6 +127,9 @@ TEST_P(SampleTransformTest, Avif16bit) {
                   /*numTokens=*/3, tokens, /*numInputImageItems=*/1,
                   &inputImage, AVIF_PLANES_ALL),
               AVIF_RESULT_OK);
+    ASSERT_EQ(avifImageSetMetadataXMP(image_no_sato.get(), image->xmp.data,
+                                      image->xmp.size),
+              AVIF_RESULT_OK);
     EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato));
   }
 }
@@ -112,6 +143,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV420,
                         AVIF_PIXEL_FORMAT_YUV400),
         /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_DEFAULT),
         /*add_xmp=*/testing::Values(false)));
 
@@ -122,6 +154,7 @@ INSTANTIATE_TEST_SUITE_P(
                         AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
         /*add_xmp=*/testing::Values(false)));
 
@@ -132,6 +165,7 @@ INSTANTIATE_TEST_SUITE_P(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_DEFAULT),
         /*add_xmp=*/testing::Values(false)));
 
@@ -141,6 +175,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(true),
+        /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
         /*add_xmp=*/testing::Values(false)));
 
@@ -151,10 +186,30 @@ INSTANTIATE_TEST_SUITE_P(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
         /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
         /*add_xmp=*/testing::Values(true)));
 
-// TODO(yguyon): Test grids with bit depth extensions.
+INSTANTIATE_TEST_SUITE_P(
+    WithGrid, SampleTransformTest,
+    testing::Combine(
+        testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
+        testing::Values(AVIF_QUALITY_DEFAULT),
+        /*add_xmp=*/testing::Values(true)));
+
+INSTANTIATE_TEST_SUITE_P(
+    WithGridAndEverything, SampleTransformTest,
+    testing::Combine(
+        testing::Values(
+            AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV420),
+        /*create_alpha=*/testing::Values(true),
+        /*use_grid=*/testing::Values(true),
+        testing::Values(AVIF_QUALITY_LOSSLESS),
+        /*add_xmp=*/testing::Values(true)));
 
 }  // namespace
 }  // namespace avif
