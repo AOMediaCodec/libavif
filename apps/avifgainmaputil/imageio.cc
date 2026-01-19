@@ -101,12 +101,20 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
   std::cout << "Preparing to encode a " << grid_cols << "x" << grid_rows
             << " grid (" << grid_cell_count << " cells)...\n";
 
-  std::vector<avifImage*> grid_cells(grid_cell_count);
-  for (uint32_t i = 0; i < grid_cell_count; ++i) {
-    grid_cells[i] = avifImageCreateEmpty();
-  }
-  if (!avifImageSplitGrid(image, grid_cols, grid_rows, grid_cells.data())) {
+  std::vector<avifImage*> grid_cells_ptrs(grid_cell_count);
+  if (!avifImageSplitGrid(image, grid_cols, grid_rows,
+                          grid_cells_ptrs.data())) {
+    for (avifImage* image : grid_cells_ptrs) {
+      if (image) {
+        avifImageDestroy(image);
+      }
+    }
     return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+  // Take ownership of the pointers returned by avifImageSplitGrid.
+  std::vector<ImagePtr> grid_cells(grid_cell_count);
+  for (uint32_t i = 0; i < grid_cell_count; i++) {
+    grid_cells[i].reset(grid_cells_ptrs[i]);
   }
 
   avifRWData encoded = AVIF_DATA_EMPTY;
@@ -117,7 +125,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
             << encoder->speed << ", please wait...\n";
   avifResult result = avifEncoderAddImageGrid(
       encoder, grid_cols, grid_rows,
-      const_cast<const avifImage* const*>(grid_cells.data()),
+      const_cast<const avifImage* const*>(grid_cells_ptrs.data()),
       AVIF_ADD_IMAGE_FLAG_SINGLE);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to encode image grid: " << avifResultToString(result)

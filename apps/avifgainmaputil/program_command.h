@@ -85,7 +85,7 @@ struct GridOptions {
   int grid_rows = 0;
 };
 
-// GridOptions converter for use with argpase. Parses the format 'MxN'.
+// GridOptions converter for use with argparse. Parses the format 'MxN'.
 struct GridOptionsConverter {
   // Methods expected by argparse.
   argparse::ConvertedValue<GridOptions> from_str(const std::string& str);

@@ -547,24 +547,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
         !avifGetBestCellSize("vertically", gridSplitImage->height, gridRows, isSubsampledY, &cellHeight)) {
         return AVIF_FALSE;
     }
-
-    avifImage ** gainMapGridCells = NULL;
-    if (gridSplitImage->gainMap && gridSplitImage->gainMap->image) {
-        gainMapGridCells = (avifImage **)calloc(gridCols * gridRows, sizeof(avifImage *));
-        if (!gainMapGridCells) {
-            fprintf(stderr, "ERROR: Memory allocation failed for gain map grid cells\n");
-            return AVIF_FALSE;
-        }
-        if (!avifImageSplitGrid(gridSplitImage->gainMap->image, gridCols, gridRows, gainMapGridCells)) {
-            for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
-                if (gainMapGridCells[i]) {
-                    avifImageDestroy(gainMapGridCells[i]);
-                }
-            }
-            free(gainMapGridCells);
-            return AVIF_FALSE;
-        }
-    }
+    const avifBool hasGainMap = gridSplitImage->gainMap && gridSplitImage->gainMap->image;
 
     for (uint32_t gridY = 0; gridY < gridRows; ++gridY) {
         for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
@@ -572,7 +555,6 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             avifImage * cellImage = avifImageCreateEmpty();
             if (!cellImage) {
                 fprintf(stderr, "ERROR: Cell creation failed: out of memory\n");
-                free(gainMapGridCells);
                 return AVIF_FALSE;
             }
             gridCells[gridIndex] = cellImage;
@@ -587,26 +569,47 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             const avifResult copyResult = avifImageSetViewRect(cellImage, gridSplitImage, &cellRect);
             if (copyResult != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Cell creation failed: %s\n", avifResultToString(copyResult));
-                free(gainMapGridCells);
                 return AVIF_FALSE;
             }
 
-            if (gainMapGridCells) {
+            if (hasGainMap) {
                 cellImage->gainMap = avifGainMapCreate();
                 if (!cellImage->gainMap) {
                     fprintf(stderr, "ERROR: Gain map creation failed: out of memory\n");
-                    free(gainMapGridCells);
                     return AVIF_FALSE;
                 }
+                // Copy gain map metadata.
                 memcpy(cellImage->gainMap, gridSplitImage->gainMap, sizeof(avifGainMap));
-                cellImage->gainMap->altICC.data = NULL; // Copied later.
+                cellImage->gainMap->altICC.data = NULL; // Copied later in this function.
                 cellImage->gainMap->altICC.size = 0;
-                cellImage->gainMap->image = gainMapGridCells[gridIndex];
+                cellImage->gainMap->image = NULL; // Set later in this function.
             }
         }
     }
 
-    free(gainMapGridCells);
+    if (hasGainMap) {
+        avifImage ** gainMapGridCells = NULL;
+        gainMapGridCells = (avifImage **)calloc(gridCols * gridRows, sizeof(avifImage *));
+        if (!gainMapGridCells) {
+            fprintf(stderr, "ERROR: Memory allocation failed for gain map grid cells\n");
+            return AVIF_FALSE;
+        }
+        if (!avifImageSplitGrid(gridSplitImage->gainMap->image, gridCols, gridRows, gainMapGridCells)) {
+            for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
+                if (gainMapGridCells[i]) {
+                    avifImageDestroy(gainMapGridCells[i]);
+                }
+            }
+            free(gainMapGridCells);
+            return AVIF_FALSE;
+        }
+
+        for (uint32_t gridIndex = 0; gridIndex < gridCols * gridRows; ++gridIndex) {
+            // Ownership of the gain map cell is transferred.
+            gridCells[gridIndex]->gainMap->image = gainMapGridCells[gridIndex];
+        }
+        free(gainMapGridCells);
+    }
 
     // Copy over metadata blobs to the first cell since avifImageSetViewRect() does not copy any
     // properties that require an allocation.
@@ -632,7 +635,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             return AVIF_FALSE;
         }
     }
-    if (gridSplitImage->gainMap && gridSplitImage->gainMap->altICC.size > 0) {
+    if (gridSplitImage->gainMap && gridSplitImage->gainMap->image && gridSplitImage->gainMap->altICC.size > 0) {
         for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
             avifImage * cellImage = gridCells[i];
             const avifResult result =
