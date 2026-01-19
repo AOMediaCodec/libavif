@@ -143,6 +143,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
   std::ofstream f(filename, std::ios::binary);
   f.write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  avifRWDataFree(&encoded);
   if (f.fail()) {
     std::cerr << "Failed to write image " << filename << ": "
               << std::strerror(errno) << "\n";
