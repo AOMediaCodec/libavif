@@ -25,6 +25,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   a cICP chunk and other color information chunks, such as iCCP (ICC profile),
   the other chunks are ignored as per the PNG Specification Third Edition
   Section 4.3.
+* Support Sample Transform derived image items with grid input image items.
 
 ### Changed since 1.3.0
 
