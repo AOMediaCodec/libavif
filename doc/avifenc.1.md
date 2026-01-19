@@ -53,8 +53,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **-l**, **\--lossless**
 :   Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it.
 
-**-d**, **\--depth** _D_
-:   Output depth, one of 8, 10 or 12. (JPEG/PNG only; For y4m or stdin, depth is retained).
+**-d**, **\--depth** _D_[,_EXTENSION_]
+:   D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m or stdin: bit depth is retained).
+    If specified, EXTENSION adds a hidden encoded image of EXTENSION bit depth in the same file as the primary image to reach 16-bit depth at decoding.
+    See avifSampleTransformRecipe for the supported combinations (8,8 and 12,4 and 12,8).
 
 **-y**, **\--yuv** _FORMAT_
 :   Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained).
