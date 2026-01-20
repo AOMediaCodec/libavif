@@ -471,8 +471,8 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     header->av1C.seqLevelIdx0 = (uint8_t)avifBitsRead(bits, 5);
     if (header->av1C.seqLevelIdx0 > 7 && !header->reduced_still_picture_header) {
         avifBitsRead(bits, 1); // single_tier_0
-        header->av1C.seqTier0 = 0;
     }
+    header->av1C.seqTier0 = 0;
 
     uint32_t frame_width_bits = avifBitsRead(bits, 4) + 1;
     uint32_t frame_height_bits = avifBitsRead(bits, 4) + 1;
@@ -503,7 +503,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
 // See av2_read_content_interpretation_obu() in av2/decoder/obu_ci.c.
 static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeader * header)
 {
-    const uint32_t scanTypeIdc = avifBitsRead(bits, 2);                 // ci_scan_type_idc
+    avifBitsRead(bits, 2);                                              // ci_scan_type_idc
     const uint32_t colorDescriptionPresent = avifBitsRead(bits, 1);     // ci_color_description_present_flag
     const uint32_t chromaSamplePositionPresent = avifBitsRead(bits, 1); // ci_chroma_sample_position_present_flag
     avifBitsRead(bits, 1);                                              // ci_aspect_ratio_info_present_flag
