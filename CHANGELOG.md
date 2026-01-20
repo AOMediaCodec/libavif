@@ -27,6 +27,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   the other chunks are ignored as per the PNG Specification Third Edition
   Section 4.3.
 * Support Sample Transform derived image items with grid input image items.
+* Add --grid option to avifgainmaputil.
 
 ### Changed since 1.3.0
 
@@ -53,6 +54,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Set tuning before applying the user-provided specific aom codec options.
 * Use AOM_TUNE_PSNR by default when encoding alpha with libaom because
   AOM_TUNE_SSIM causes ringing for alpha.
+* Converting an image containing a gain map using avifenc with the --grid flag
+  now also splits the gain map into a grid.
 
 ### Removed since 1.3.0
 

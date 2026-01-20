@@ -205,8 +205,10 @@ avifResult TonemapCommand::Run() {
   tone_mapped->colorPrimaries = cicp.color_primaries;
   tone_mapped->matrixCoefficients = cicp.matrix_coefficients;
 
-  return WriteImage(tone_mapped.get(), arg_output_filename_,
-                    arg_image_encode_.quality, arg_image_encode_.speed);
+  return WriteImage(tone_mapped.get(), arg_image_encode_.grid.value().grid_cols,
+                    arg_image_encode_.grid.value().grid_rows,
+                    arg_output_filename_, arg_image_encode_.quality,
+                    arg_image_encode_.speed);
 }
 
 }  // namespace avif

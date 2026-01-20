@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include "avif/avif_cxx.h"
 #include "avifjpeg.h"
@@ -21,7 +22,7 @@ inline T Clamp(T x, T low, T high) {  // Only exists in C++17.
   return (x < low) ? low : (high < x) ? high : x;
 }
 
-avifResult WriteImage(const avifImage* image,
+avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
                       const std::string& output_filename, int quality,
                       int speed) {
   quality = Clamp(quality, 0, 100);
@@ -54,7 +55,8 @@ avifResult WriteImage(const avifImage* image,
     }
     encoder->quality = quality;
     encoder->speed = speed;
-    return WriteAvif(image, encoder.get(), output_filename);
+    return WriteAvifGrid(image, grid_cols, grid_rows, encoder.get(),
+                         output_filename);
   } else {
     std::cerr << "Unsupported output file extension: " << output_filename
               << "\n";
@@ -80,12 +82,74 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
   }
   std::ofstream f(output_filename, std::ios::binary);
   f.write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  avifRWDataFree(&encoded);
   if (f.fail()) {
     std::cerr << "Failed to write image " << output_filename << ": "
               << std::strerror(errno) << "\n";
     return AVIF_RESULT_IO_ERROR;
   }
   std::cout << "Wrote AVIF: " << output_filename << "\n";
+  return AVIF_RESULT_OK;
+}
+
+avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
+                         avifEncoder* encoder, const std::string& filename) {
+  if (grid_cols == 1 && grid_rows == 1) {
+    return WriteAvif(image, encoder, filename);
+  }
+
+  const uint32_t grid_cell_count = grid_cols * grid_rows;
+  std::cout << "Preparing to encode a " << grid_cols << "x" << grid_rows
+            << " grid (" << grid_cell_count << " cells)...\n";
+
+  std::vector<avifImage*> grid_cells_ptrs(grid_cell_count);
+  if (!avifImageSplitGrid(image, grid_cols, grid_rows,
+                          grid_cells_ptrs.data())) {
+    for (avifImage* img : grid_cells_ptrs) {
+      if (img) {
+        avifImageDestroy(img);
+      }
+    }
+    return AVIF_RESULT_UNKNOWN_ERROR;
+  }
+  // Take ownership of the pointers returned by avifImageSplitGrid.
+  std::vector<ImagePtr> grid_cells(grid_cell_count);
+  for (uint32_t i = 0; i < grid_cell_count; i++) {
+    grid_cells[i].reset(grid_cells_ptrs[i]);
+  }
+
+  avifRWData encoded = AVIF_DATA_EMPTY;
+  std::cout << "AVIF to be written:\n";
+  avifImageDump(image, grid_cols, grid_rows,
+                AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+  std::cout << "Encoding AVIF at quality " << encoder->quality << " speed "
+            << encoder->speed << ", please wait...\n";
+  avifResult result = avifEncoderAddImageGrid(
+      encoder, grid_cols, grid_rows,
+      const_cast<const avifImage* const*>(grid_cells_ptrs.data()),
+      AVIF_ADD_IMAGE_FLAG_SINGLE);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to encode image grid: " << avifResultToString(result)
+              << " (" << encoder->diag.error << ")\n";
+    return result;
+  }
+  result = avifEncoderFinish(encoder, &encoded);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to finish encoding image grid: "
+              << avifResultToString(result) << " (" << encoder->diag.error
+              << ")\n";
+    return result;
+  }
+
+  std::ofstream f(filename, std::ios::binary);
+  f.write(reinterpret_cast<char*>(encoded.data), encoded.size);
+  avifRWDataFree(&encoded);
+  if (f.fail()) {
+    std::cerr << "Failed to write image " << filename << ": "
+              << std::strerror(errno) << "\n";
+    return AVIF_RESULT_IO_ERROR;
+  }
+  std::cout << "Wrote AVIF: " << filename << "\n";
   return AVIF_RESULT_OK;
 }
 

@@ -184,7 +184,10 @@ avifResult CombineCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
-  result = WriteAvif(base_image.get(), encoder.get(), arg_output_filename_);
+  result =
+      WriteAvifGrid(base_image.get(), arg_image_encode_.grid.value().grid_cols,
+                    arg_image_encode_.grid.value().grid_rows, encoder.get(),
+                    arg_output_filename_);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";
