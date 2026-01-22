@@ -1631,7 +1631,11 @@ typedef enum avifAddImageFlag
     // Use this flag when encoding a single frame, single layer image.
     // Signals "still_picture" to AV1 encoders, which tweaks various compression rules.
     // This is enabled automatically when using the avifEncoderWrite() single-image encode path.
-    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1)
+    AVIF_ADD_IMAGE_FLAG_SINGLE = (1 << 1),
+
+    // Use this flag when encoding a progressive frame.
+    // Configures encoders with settings optimized for progressive encoding.
+    AVIF_ADD_IMAGE_FLAG_PROGRESSIVE = (1 << 2),
 } avifAddImageFlag;
 typedef uint32_t avifAddImageFlags;
 
