@@ -49,6 +49,8 @@
 #endif
 #endif
 
+#define TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD 10
+
 struct avifCodecInternal
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -65,6 +67,7 @@ struct avifCodecInternal
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
     uint32_t currentLayer;
+    int qualityFirstLayer;
 #endif
 };
 
@@ -656,6 +659,21 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    // Save the quality of the first layer because it's useful for further decision making
+    if (encoder->extraLayerCount > 0 && codec->internal->currentLayer == 0) {
+        codec->internal->qualityFirstLayer = quality;
+    }
+
+    // All-intra encoding is beneficial when encoding a two-layer image item and the quality of the first layer is very low.
+    // Switching to all-intra encoding comes with the following benefits:
+    // - The first layer will be smaller than the second layer (which is often not the case with inter encoding)
+    // - Outputs have predictable file sizes: the sum of the first layer (quality <= 10) plus the second layer (quality set by the caller)
+    // - Because the first layer is very small, layered encoding overhead is also smaller and more stable (about 5-8% for quality 40 and 2-4% for quality 60)
+    // - Option of choosing tune IQ (which requires AOM_USAGE_ALL_INTRA)
+    avifBool useAllIntraForLayered = encoder->extraLayerCount == 1 &&
+                                     codec->internal->qualityFirstLayer <= TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD;
+    avifBool useAllIntra = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || useAllIntraForLayered;
+
     // Map encoder speed to AOM usage + CpuUsed:
     // Speed  0: GoodQuality CpuUsed 0
     // Speed  1: GoodQuality CpuUsed 1
@@ -671,7 +689,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
     // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still image encoding if available.
 #if defined(AOM_USAGE_ALL_INTRA)
-    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+    if (useAllIntra) {
         aomUsage = AOM_USAGE_ALL_INTRA;
     }
 #endif
@@ -680,7 +698,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
         if (aomCpuUsed >= 7) {
 #if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-            if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
+            if (!useAllIntra) {
                 aomUsage = AOM_USAGE_REALTIME;
             }
 #else
@@ -826,7 +844,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg->g_limit = 1;
-
+        }
+        if (useAllIntra) {
+#if !defined(AOM_USAGE_ALL_INTRA)
             // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
             // https://crbug.com/aomedia/2959).
             //
@@ -838,6 +858,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->kf_mode = AOM_KF_DISABLED;
             // Tell libaom that all frames will be key frames.
             cfg->kf_max_dist = 0;
+#endif
         } else {
             if (encoder->keyframeInterval > 0) {
                 cfg->kf_max_dist = encoder->keyframeInterval;
