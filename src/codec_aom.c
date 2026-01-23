@@ -722,8 +722,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             libavifDefaultTuneMetric = AOM_TUNE_PSNR;
         } else {
             libavifDefaultTuneMetric = AOM_TUNE_SSIM;
-#if defined(AOM_HAVE_TUNE_IQ) && defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-            // AOM_TUNE_IQ is favored for its low perceptual distortion on luma and chroma samples.
+#if defined(AOM_HAVE_TUNE_IQ)
+#if !defined(AOM_USAGE_ALL_INTRA) || !defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
+#error "AOM_HAVE_TUNE_IQ was introduced after AOM_USAGE_ALL_INTRA and ALL_INTRA_HAS_SPEEDS_7_TO_9"
+#endif
+            // AOM_TUNE_IQ has been tuned for the YCbCr family of color spaces, and is favored for its low perceptual distortion.
+            // AOM_TUNE_IQ partially generalizes to, and benefits from other "YUV-like" spaces (e.g. YCgCo and ICtCp) including monochrome (luma only).
             // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
             if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
                 libavifDefaultTuneMetric = AOM_TUNE_IQ;
