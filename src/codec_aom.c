@@ -657,6 +657,39 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    // Map encoder speed to AOM usage + CpuUsed:
+    // Speed  0: GoodQuality CpuUsed 0
+    // Speed  1: GoodQuality CpuUsed 1
+    // Speed  2: GoodQuality CpuUsed 2
+    // Speed  3: GoodQuality CpuUsed 3
+    // Speed  4: GoodQuality CpuUsed 4
+    // Speed  5: GoodQuality CpuUsed 5
+    // Speed  6: GoodQuality CpuUsed 6
+    // Speed  7: RealTime    CpuUsed 7
+    // Speed  8: RealTime    CpuUsed 8
+    // Speed  9: RealTime    CpuUsed 9
+    // Speed 10: RealTime    CpuUsed 9
+    unsigned int libavifDefaultAomUsage = AOM_USAGE_GOOD_QUALITY;
+    // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still image encoding if available.
+#if defined(AOM_USAGE_ALL_INTRA)
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+        libavifDefaultAomUsage = AOM_USAGE_ALL_INTRA;
+    }
+#endif
+    int aomCpuUsed = -1;
+    if (encoder->speed != AVIF_SPEED_DEFAULT) {
+        aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
+        if (aomCpuUsed >= 7) {
+#if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
+            if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
+                libavifDefaultAomUsage = AOM_USAGE_REALTIME;
+            }
+#else
+            libavifDefaultAomUsage = AOM_USAGE_REALTIME;
+#endif
+        }
+    }
+
     avifBool useLibavifDefaultTuneMetric = AVIF_FALSE;        // If true, override libaom's default tune option.
     aom_tune_metric libavifDefaultTuneMetric = AOM_TUNE_PSNR; // Meaningless unless useLibavifDefaultTuneMetric.
     if (quality != AVIF_QUALITY_LOSSLESS && !avifAOMOptionsContainExplicitTuning(codec, alpha)) {
@@ -684,40 +717,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
 
     if (!codec->internal->encoderInitialized) {
-        // Map encoder speed to AOM usage + CpuUsed:
-        // Speed  0: GoodQuality CpuUsed 0
-        // Speed  1: GoodQuality CpuUsed 1
-        // Speed  2: GoodQuality CpuUsed 2
-        // Speed  3: GoodQuality CpuUsed 3
-        // Speed  4: GoodQuality CpuUsed 4
-        // Speed  5: GoodQuality CpuUsed 5
-        // Speed  6: GoodQuality CpuUsed 6
-        // Speed  7: RealTime    CpuUsed 7
-        // Speed  8: RealTime    CpuUsed 8
-        // Speed  9: RealTime    CpuUsed 9
-        // Speed 10: RealTime    CpuUsed 9
-        unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
-        // Use the new AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still
-        // image encoding if it is available.
-#if defined(AOM_USAGE_ALL_INTRA)
-        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
-            aomUsage = AOM_USAGE_ALL_INTRA;
-        }
-#endif
-        int aomCpuUsed = -1;
-        if (encoder->speed != AVIF_SPEED_DEFAULT) {
-            aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
-            if (aomCpuUsed >= 7) {
-#if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-                if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
-                    aomUsage = AOM_USAGE_REALTIME;
-                }
-#else
-                aomUsage = AOM_USAGE_REALTIME;
-#endif
-            }
-        }
-
         // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
         static const int aomVersion_2_0_0 = (2 << 16);
         const int aomVersion = aom_codec_version();
@@ -749,14 +748,14 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
 
         aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
-        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, aomUsage);
+        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, libavifDefaultAomUsage);
         if (err != AOM_CODEC_OK) {
             avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
         // Set our own default cfg->rc_end_usage value, which may differ from libaom's default.
-        switch (aomUsage) {
+        switch (libavifDefaultAomUsage) {
             case AOM_USAGE_GOOD_QUALITY:
                 // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
                 // hit a certain target bit rate. It's easier to control the worst quality in Q
