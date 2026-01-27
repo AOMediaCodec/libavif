@@ -547,7 +547,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // libavm to set still_picture and reduced_still_picture_header to
             // 1 in AV2 sequence headers.
             cfg->g_limit = 1;
-
+        }
+        if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE || addImageFlags & AVIF_ADD_IMAGE_FLAG_PROGRESSIVE) {
             // Use the default settings of the new AVM_USAGE_ALL_INTRA (added in
             // https://crbug.com/aomedia/2959).
             //
