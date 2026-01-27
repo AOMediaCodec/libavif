@@ -1,4 +1,4 @@
-set(AVIF_SVT_GIT_TAG "v3.1.2")
+set(AVIF_SVT_GIT_TAG "v4.0.0")
 
 set(LIB_FILENAME "${AVIF_SOURCE_DIR}/ext/SVT-AV1/Bin/Release/${AVIF_LIBRARY_PREFIX}SvtAv1Enc${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
@@ -91,7 +91,7 @@ else()
     add_dependencies(SvtAv1Enc _svt_install_headers)
     set_target_properties(SvtAv1Enc PROPERTIES AVIF_LOCAL ON)
 
-    target_include_directories(SvtAv1Enc INTERFACE ${SVT_INCLUDE_DIR})
+    target_include_directories(SvtAv1Enc INTERFACE $<BUILD_INTERFACE:${SVT_INCLUDE_DIR}>)
 
     message(CHECK_PASS "complete")
 endif()
