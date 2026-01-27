@@ -669,11 +669,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // Speed  8: RealTime    CpuUsed 8
     // Speed  9: RealTime    CpuUsed 9
     // Speed 10: RealTime    CpuUsed 9
-    unsigned int libavifDefaultAomUsage = AOM_USAGE_GOOD_QUALITY;
+    unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
     // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still image encoding if available.
 #if defined(AOM_USAGE_ALL_INTRA)
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
-        libavifDefaultAomUsage = AOM_USAGE_ALL_INTRA;
+        aomUsage = AOM_USAGE_ALL_INTRA;
     }
 #endif
     int aomCpuUsed = -1;
@@ -682,11 +682,34 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (aomCpuUsed >= 7) {
 #if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
             if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
-                libavifDefaultAomUsage = AOM_USAGE_REALTIME;
+                aomUsage = AOM_USAGE_REALTIME;
             }
 #else
-            libavifDefaultAomUsage = AOM_USAGE_REALTIME;
+            aomUsage = AOM_USAGE_REALTIME;
 #endif
+        }
+    }
+
+    // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
+    static const int aomVersion_2_0_0 = (2 << 16);
+    const int aomVersion = aom_codec_version();
+    if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
+        // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
+        // 12bpc image encodes will call the wrong variant of
+        // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
+        // a new tagged release from libaom with the fix and can verify we're
+        // running with that version of libaom, we must avoid using
+        // cpu-used=7/8 on any >8bpc image encodes.
+        //
+        // Context:
+        //   * https://github.com/AOMediaCodec/libavif/issues/49
+        //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
+        //
+        // Continued bug tracking here:
+        //   * https://github.com/AOMediaCodec/libavif/issues/56
+
+        if (aomCpuUsed > 6) {
+            aomCpuUsed = 6;
         }
     }
 
@@ -717,29 +740,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
 
     if (!codec->internal->encoderInitialized) {
-        // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
-        static const int aomVersion_2_0_0 = (2 << 16);
-        const int aomVersion = aom_codec_version();
-        if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
-            // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
-            // 12bpc image encodes will call the wrong variant of
-            // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
-            // a new tagged release from libaom with the fix and can verify we're
-            // running with that version of libaom, we must avoid using
-            // cpu-used=7/8 on any >8bpc image encodes.
-            //
-            // Context:
-            //   * https://github.com/AOMediaCodec/libavif/issues/49
-            //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
-            //
-            // Continued bug tracking here:
-            //   * https://github.com/AOMediaCodec/libavif/issues/56
-
-            if (aomCpuUsed > 6) {
-                aomCpuUsed = 6;
-            }
-        }
-
         codec->internal->aomFormat = avifImageCalcAOMFmt(image, alpha);
         if (codec->internal->aomFormat == AOM_IMG_FMT_NONE) {
             return AVIF_RESULT_UNKNOWN_ERROR;
@@ -748,14 +748,14 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         avifGetPixelFormatInfo(image->yuvFormat, &codec->internal->formatInfo);
 
         aom_codec_iface_t * encoderInterface = aom_codec_av1_cx();
-        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, libavifDefaultAomUsage);
+        aom_codec_err_t err = aom_codec_enc_config_default(encoderInterface, cfg, aomUsage);
         if (err != AOM_CODEC_OK) {
             avifDiagnosticsPrintf(codec->diag, "aom_codec_enc_config_default() failed: %s", aom_codec_err_to_string(err));
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
 
         // Set our own default cfg->rc_end_usage value, which may differ from libaom's default.
-        switch (libavifDefaultAomUsage) {
+        switch (aomUsage) {
             case AOM_USAGE_GOOD_QUALITY:
                 // libaom's default is AOM_VBR. Change the default to AOM_Q since we don't need to
                 // hit a certain target bit rate. It's easier to control the worst quality in Q
