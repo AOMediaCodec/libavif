@@ -42,7 +42,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update LocalAvm.cmake: research-v13.0.0
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
   rav1e v0.8.1
-* Update svt.cmd/svt.sh/LocalSvt.cmake: v3.1.2
+* Update svt.cmd/svt.sh/LocalSvt.cmake: v4.0.0
 * Update zlibpng.cmd: libpng 1.6.50
 * Fix grayscale conversion when changing the bit depth.
 * Bump cmake_minimum_required from 3.13 to 3.22
