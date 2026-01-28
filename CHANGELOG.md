@@ -16,12 +16,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add an optional argument to the --depth flag of avifenc used to enable a bit
   depth extension scheme in the encoded file.
 * Add support for converting jpeg files with Apple style gain maps.
-* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
-* Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
-* Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
-* Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
-* Update LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
-* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
 * Add support for PNG cICP chunk when decoding PNG files. If a PNG file contains
   a cICP chunk and other color information chunks, such as iCCP (ICC profile),
   the other chunks are ignored as per the PNG Specification Third Edition
@@ -36,14 +30,16 @@ The changes are relative to the previous release, unless the baseline is specifi
   enabled and when the file to decode contains a 'sato' derived image item.
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.3
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
-* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.1
-* Update libxml2.cmd/LocalLibXml2.cmake: v2.14.4
+* Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
+* Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
+* Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
 * Update aom.cmd/LocalAom.cmake: v3.13.1
 * Update LocalAvm.cmake: research-v13.0.0
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
   rav1e v0.8.1
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.0.0
-* Update zlibpng.cmd: libpng 1.6.50
+* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
 * Fix grayscale conversion when changing the bit depth.
 * Bump cmake_minimum_required from 3.13 to 3.22
 * Associate transformative properties with alpha auxiliary image items.
