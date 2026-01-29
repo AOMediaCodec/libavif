@@ -64,7 +64,6 @@ struct avifCodecInternal
     struct aom_codec_enc_cfg cfg;
     avifPixelFormatInfo formatInfo;
     aom_img_fmt_t aomFormat;
-    avifBool monochromeEnabled;
     uint32_t currentLayer;
 #endif
 };
@@ -693,24 +692,12 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
     static const int aomVersion_2_0_0 = (2 << 16);
     const int aomVersion = aom_codec_version();
-    if ((aomVersion < aomVersion_2_0_0) && (image->depth > 8)) {
-        // Due to a known issue with libaom v1.0.0-errata1-avif, 10bpc and
-        // 12bpc image encodes will call the wrong variant of
-        // aom_subtract_block when cpu-used is 7 or 8, and crash. Until we get
-        // a new tagged release from libaom with the fix and can verify we're
-        // running with that version of libaom, we must avoid using
-        // cpu-used=7/8 on any >8bpc image encodes.
-        //
-        // Context:
-        //   * https://github.com/AOMediaCodec/libavif/issues/49
-        //   * https://bugs.chromium.org/p/aomedia/issues/detail?id=2587
-        //
-        // Continued bug tracking here:
-        //   * https://github.com/AOMediaCodec/libavif/issues/56
-
-        if (aomCpuUsed > 6) {
-            aomCpuUsed = 6;
-        }
+    if (aomVersion <= aomVersion_2_0_0) {
+        // Issue with v1.0.0-errata1-avif: https://github.com/AOMediaCodec/libavif/issues/56
+        // Issue with v2.0.0: https://aomedia-review.googlesource.com/q/I26a39791f820b4d4e1d63ff7141f594c3c7181f5
+        // v2.0.1 was released on 2020-11-25.
+        avifDiagnosticsPrintf(codec->diag, "a libaom version strictly greater than 2.0.0 is required");
+        return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
     avifBool useLibavifDefaultTuneMetric = AVIF_FALSE;        // If true, override libaom's default tune option.
@@ -871,20 +858,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
         }
 
-        codec->internal->monochromeEnabled = AVIF_FALSE;
-        if (aomVersion > aomVersion_2_0_0) {
-            // There exists a bug in libaom's chroma_check() function where it will attempt to
-            // access nonexistent UV planes when encoding monochrome at faster libavif "speeds". It
-            // was fixed shortly after the 2.0.0 libaom release, and the fix exists in both the
-            // master and applejack branches. This ensures that the next version *after* 2.0.0 will
-            // have the fix, and we must avoid cfg->monochrome until then.
-            //
-            // Bugfix Change-Id: https://aomedia-review.googlesource.com/q/I26a39791f820b4d4e1d63ff7141f594c3c7181f5
-
-            if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
-                codec->internal->monochromeEnabled = AVIF_TRUE;
-                cfg->monochrome = 1;
-            }
+        if (alpha || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400)) {
+            cfg->monochrome = 1;
         }
 
         if (!avifProcessAOMOptionsPreInit(codec, alpha, cfg)) {
@@ -1176,8 +1151,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomImage.y_chroma_shift = (alpha || codec->internal->formatInfo.monochrome) ? 1 : codec->internal->formatInfo.chromaShiftY;
     }
 
-    avifBool monochromeRequested = AVIF_FALSE;
-
     if (alpha) {
         // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The color_range field in the Sequence Header OBU shall be set to 1.
@@ -1186,7 +1159,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
         //   The mono_chrome field in the Sequence Header OBU shall be set to 1.
         // Some encoders do not support 4:0:0 and encode alpha as 4:2:0 so it is not always respected.
-        monochromeRequested = AVIF_TRUE;
+        aomImage.monochrome = 1;
         if (aomImageAllocated) {
             const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
             for (uint32_t j = 0; j < image->height; ++j) {
@@ -1204,7 +1177,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         int yuvPlaneCount = 3;
         if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) {
             yuvPlaneCount = 1; // Ignore UV planes when monochrome
-            monochromeRequested = AVIF_TRUE;
+            aomImage.monochrome = 1;
         }
         if (aomImageAllocated) {
             uint32_t bytesPerPixel = (image->depth > 8) ? 2 : 1;
@@ -1240,49 +1213,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomImage.range = (aom_color_range_t)image->yuvRange;
     }
 
-    unsigned char * monoUVPlane = NULL;
-    if (monochromeRequested) {
-        if (codec->internal->monochromeEnabled) {
-            aomImage.monochrome = 1;
-        } else {
-            // The user requested monochrome (via alpha or YUV400) but libaom cannot currently support
-            // monochrome (see chroma_check comment above). Manually set UV planes to 0.5.
-
-            // aomImage is always 420 when we're monochrome
-            uint32_t monoUVWidth = (image->width + 1) >> 1;
-            uint32_t monoUVHeight = (image->height + 1) >> 1;
-
-            // Allocate the U plane if necessary.
-            if (!aomImageAllocated) {
-                uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
-                uint32_t monoUVRowBytes = channelSize * monoUVWidth;
-                size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
-
-                monoUVPlane = avifAlloc(monoUVSize);
-                AVIF_CHECKERR(monoUVPlane != NULL, AVIF_RESULT_OUT_OF_MEMORY); // No need for aom_img_free() because !aomImageAllocated
-                aomImage.planes[1] = monoUVPlane;
-                aomImage.stride[1] = monoUVRowBytes;
-            }
-            // Set the U plane to 0.5.
-            if (image->depth > 8) {
-                const uint16_t half = (uint16_t)(1 << (image->depth - 1));
-                for (uint32_t j = 0; j < monoUVHeight; ++j) {
-                    uint16_t * dstRow = (uint16_t *)&aomImage.planes[1][(size_t)j * aomImage.stride[1]];
-                    for (uint32_t i = 0; i < monoUVWidth; ++i) {
-                        dstRow[i] = half;
-                    }
-                }
-            } else {
-                const uint8_t half = 128;
-                size_t planeSize = (size_t)monoUVHeight * aomImage.stride[1];
-                memset(aomImage.planes[1], half, planeSize);
-            }
-            // Make the V plane the same as the U plane.
-            aomImage.planes[2] = aomImage.planes[1];
-            aomImage.stride[2] = aomImage.stride[1];
-        }
-    }
-
     aom_enc_frame_flags_t encodeFlags = 0;
     if (addImageFlags & AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME) {
         encodeFlags |= AOM_EFLAG_FORCE_KF;
@@ -1292,7 +1222,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                        AOM_EFLAG_NO_UPD_GF | AOM_EFLAG_NO_UPD_ARF;
     }
     aom_codec_err_t encodeErr = aom_codec_encode(&codec->internal->encoder, &aomImage, 0, 1, encodeFlags);
-    avifFree(monoUVPlane);
     if (aomImageAllocated) {
         aom_img_free(&aomImage);
     }

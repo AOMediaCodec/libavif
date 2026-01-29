@@ -57,6 +57,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 * Remove ext/avm.cmd.
 * Remove the AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag.
+* Remove support for libaom versions up to 2.0.0 inclusive.
 
 ## [1.3.0] - 2025-05-09
 
