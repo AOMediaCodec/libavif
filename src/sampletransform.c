@@ -314,7 +314,9 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                         stack[stackSize++] = token->constant;
                     } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
                         const avifImage * image = inputImageItems[token->inputImageItemIndex - 1]; // 1-based
-                        const uint8_t * row = avifImagePlane(image, c) + avifImagePlaneRowBytes(image, c) * y;
+                        const uint8_t * row = avifImagePlane(image, c);
+                        AVIF_ASSERT_OR_RETURN(row != NULL);
+                        row += avifImagePlaneRowBytes(image, c) * y;
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = avifImageUsesU16(image) ? ((const uint16_t *)row)[x] : row[x];
                     } else if (token->type == AVIF_SAMPLE_TRANSFORM_NEGATION || token->type == AVIF_SAMPLE_TRANSFORM_ABSOLUTE ||
@@ -333,7 +335,9 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                 // Fit to 'pixi'-defined range. TODO(yguyon): Take avifRange into account.
                 stack[0] = AVIF_CLAMP(stack[0], minValue, maxValue);
 
-                uint8_t * row = avifImagePlane(dstImage, c) + avifImagePlaneRowBytes(dstImage, c) * y;
+                uint8_t * row = avifImagePlane(dstImage, c);
+                AVIF_ASSERT_OR_RETURN(row != NULL);
+                row += avifImagePlaneRowBytes(dstImage, c) * y;
                 if (avifImageUsesU16(dstImage)) {
                     ((uint16_t *)row)[x] = (uint16_t)stack[0];
                 } else {
