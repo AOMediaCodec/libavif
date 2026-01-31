@@ -6367,8 +6367,17 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             AVIF_CHECKRES(avifDecoderAdoptGridTileCodecTypeIfNeeded(decoder, mainItems[c], &data->tileInfos[c]));
 
-            if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) && (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA)) {
-                continue;
+            if (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR ||
+                c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_COLOR || c == AVIF_ITEM_ALPHA ||
+                c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_ALPHA) {
+                if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA)) {
+                    continue;
+                }
+            } else {
+                AVIF_ASSERT_OR_RETURN(c == AVIF_ITEM_GAIN_MAP);
+                if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP)) {
+                    continue;
+                }
             }
 
             AVIF_CHECKRES(avifDecoderGenerateImageTiles(decoder, &data->tileInfos[c], mainItems[c], (avifItemCategory)c));
@@ -6929,7 +6938,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         AVIF_ASSERT_OR_RETURN(prepareTileResult[c] == AVIF_RESULT_OK);
     }
 
-    if (decoder->data->meta->sampleTransformExpression.count > 0) {
+    if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA && decoder->data->meta->sampleTransformExpression.count > 0) {
         // TODO(yguyon): Add a field in avifDecoder and only perform sample transformations upon request.
         AVIF_CHECKRES(avifDecoderApplySampleTransform(decoder, decoder->image));
     }
