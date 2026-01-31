@@ -1187,6 +1187,9 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         if (!avifInputHasRemainingData(input, imageIndex) && (settings->layers == 1)) {
             addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE;
         }
+        if (settings->progressive) {
+            addImageFlags |= AVIF_ADD_IMAGE_FLAG_PROGRESSIVE;
+        }
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
         if ((firstFile->filename == AVIF_FILENAME_STDIN && settings->inputFormat == AVIF_APP_FILE_FORMAT_Y4M) ||

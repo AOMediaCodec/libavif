@@ -671,7 +671,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
     // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still image encoding if available.
 #if defined(AOM_USAGE_ALL_INTRA)
-    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
+    if (addImageFlags & (AVIF_ADD_IMAGE_FLAG_SINGLE | AVIF_ADD_IMAGE_FLAG_PROGRESSIVE)) {
         aomUsage = AOM_USAGE_ALL_INTRA;
     }
 #endif
@@ -680,7 +680,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
         if (aomCpuUsed >= 7) {
 #if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-            if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
+            if (!(addImageFlags & (AVIF_ADD_IMAGE_FLAG_SINGLE | AVIF_ADD_IMAGE_FLAG_PROGRESSIVE))) {
                 aomUsage = AOM_USAGE_REALTIME;
             }
 #else
@@ -826,7 +826,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg->g_limit = 1;
-
+        }
+        if (addImageFlags & (AVIF_ADD_IMAGE_FLAG_SINGLE | AVIF_ADD_IMAGE_FLAG_PROGRESSIVE)) {
             // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
             // https://crbug.com/aomedia/2959).
             //
