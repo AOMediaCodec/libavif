@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
+using ::fuzztest::ElementOf;
 
 namespace avif {
 namespace testutil {
@@ -20,7 +21,7 @@ namespace {
 //------------------------------------------------------------------------------
 
 void Decode(const std::string& arbitrary_bytes, bool is_persistent,
-            DecoderPtr decoder) {
+            DecoderPtr decoder, avifImageContentTypeFlags content_to_decode) {
   ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   ImagePtr decoded(avifImageCreateEmpty());
@@ -33,6 +34,8 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
   // The Chrome's avifIO object is not persistent.
   io->persistent = is_persistent;
   avifDecoderSetIO(decoder.get(), io);
+  // This can lead to AVIF_RESULT_NO_CONTENT.
+  decoder->imageContentToDecode = content_to_decode;
 
   if (avifDecoderParse(decoder.get()) != AVIF_RESULT_OK) return;
 
@@ -56,8 +59,11 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
 }
 
 FUZZ_TEST(DecodeAvifTest, Decode)
-    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-                 Arbitrary<bool>(), ArbitraryAvifDecoder());
+    .WithDomains(
+        ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+        /*is_persistent=*/Arbitrary<bool>(), ArbitraryAvifDecoder(),
+        ElementOf({AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
+                   AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL}));
 
 //------------------------------------------------------------------------------
 

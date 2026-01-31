@@ -14,6 +14,7 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
+using ::fuzztest::ElementOf;
 
 namespace avif {
 namespace testutil {
@@ -46,7 +47,9 @@ avifResult AvifIoRead(struct avifIO* io, uint32_t read_flags, uint64_t offset,
 //------------------------------------------------------------------------------
 
 void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
-                bool give_size_hint, bool use_nth_image_api) {
+                bool give_size_hint,
+                avifImageContentTypeFlags content_to_decode,
+                bool use_nth_image_api) {
   ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   ImagePtr reference(avifImageCreateEmpty());
@@ -77,6 +80,8 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
                 "Too big an image size limit");
   decoder->imageSizeLimit = kImageSizeLimit;
+  // This can lead to AVIF_RESULT_NO_CONTENT.
+  decoder->imageContentToDecode = content_to_decode;
 
   if (avifDecoderRead(decoder.get(), reference.get()) == AVIF_RESULT_OK) {
     // Avoid timeouts by discarding big images decoded many times.
@@ -109,8 +114,13 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
 }
 
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
-    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-                 Arbitrary<bool>(), Arbitrary<bool>(), Arbitrary<bool>());
+    .WithDomains(
+        ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+        /*is_persistent=*/Arbitrary<bool>(),
+        /*give_size_hint=*/Arbitrary<bool>(),
+        ElementOf({AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
+                   AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL}),
+        /*use_nth_image_api=*/Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
 
