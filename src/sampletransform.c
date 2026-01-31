@@ -283,6 +283,7 @@ AVIF_ARRAY_DECLARE(avifSampleTransformStack32b, int32_t, elements);
 
 static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                                               const avifSampleTransformExpression * expression,
+                                              uint8_t numInputImageItems,
                                               const avifImage * inputImageItems[],
                                               avifPlanesFlags planes,
                                               int32_t * stack,
@@ -313,7 +314,10 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                         AVIF_ASSERT_OR_RETURN(stackSize < stackCapacity);
                         stack[stackSize++] = token->constant;
                     } else if (token->type == AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX) {
-                        const avifImage * image = inputImageItems[token->inputImageItemIndex - 1]; // 1-based
+                        // inputImageItemIndex is 1-based.
+                        const uint8_t zeroBasedIndex = token->inputImageItemIndex - 1;
+                        AVIF_ASSERT_OR_RETURN(zeroBasedIndex < numInputImageItems);
+                        const avifImage * image = inputImageItems[zeroBasedIndex];
                         const uint8_t * row = avifImagePlane(image, c);
                         AVIF_ASSERT_OR_RETURN(row != NULL);
                         row += (size_t)avifImagePlaneRowBytes(image, c) * y;
@@ -379,7 +383,8 @@ avifResult avifImageApplyExpression(avifImage * dstImage,
         uint32_t stackCapacity = expression->count / 2 + 1;
         int32_t * stack = avifAlloc(stackCapacity * sizeof(int32_t));
         AVIF_CHECKERR(stack != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-        const avifResult result = avifImageApplyExpression32b(dstImage, expression, inputImageItems, planes, stack, stackCapacity);
+        const avifResult result =
+            avifImageApplyExpression32b(dstImage, expression, numInputImageItems, inputImageItems, planes, stack, stackCapacity);
         avifFree(stack);
         return result;
     }
