@@ -13,8 +13,8 @@ jobs:
   clang-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - uses: RafikFarhad/clang-format-github-action@bf3713d4b192d5d8f0297bfed74fb3e7de41cf29 # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: RafikFarhad/clang-format-github-action@40f11200e893c5e48dee28fbfe3da60d6862418d # v6
         with:
           style: file
           sources: "apps/*.c,apps/**/*.h,apps/**/*.c,apps/**/*.cc,examples/*.c,include/avif/*.h,src/*.c,tests/*.c,tests/**/*.h,tests/**/*.cc"
@@ -23,7 +23,7 @@ jobs:
   cmake-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: neg-c/cmake-format-action@v0.1.3
         with:
           exclude: libavif.pc.cmake
