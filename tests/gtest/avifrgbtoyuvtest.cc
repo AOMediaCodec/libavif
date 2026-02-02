@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <memory>
 #include <tuple>
 
@@ -497,6 +498,26 @@ TEST(RGBToYUVTest, 8BitGrayRoundTripWithLift) {
     EXPECT_EQ(gray_plane[3], gray[3]);
     avifRGBImageFreePixels(&rgb_final);
   }
+}
+
+TEST(RGBToYUVTest, ZeroWidthOrHeight) {
+  avifRGBImage rgb;
+  memset(&rgb, 0, sizeof(rgb));
+  rgb.depth = 8;
+  rgb.format = AVIF_RGB_FORMAT_RGB;
+
+  rgb.width = 0;
+  rgb.height = 1;
+  EXPECT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_INVALID_ARGUMENT);
+
+  rgb.width = 1;
+  rgb.height = 0;
+  EXPECT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_INVALID_ARGUMENT);
+
+  rgb.width = 1;
+  rgb.height = 1;
+  EXPECT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+  avifRGBImageFreePixels(&rgb);
 }
 
 //------------------------------------------------------------------------------
