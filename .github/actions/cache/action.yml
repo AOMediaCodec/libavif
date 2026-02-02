@@ -53,7 +53,10 @@ runs:
       uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       continue-on-error: true
       with:
-        path: ~/.cargo
+        path: |
+          ~/.cargo
+          build/cargo
+          build/_deps/cargoc-src/
         key: ${{ env.CARGO_CACHE_KEY }}-${{ github.run_id }}
         restore-keys: ${{ env.CARGO_CACHE_KEY }}
       env:
