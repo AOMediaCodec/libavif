@@ -81,7 +81,7 @@ TEST(AltrTest, ZeroImageContentToDecode) {
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   ASSERT_EQ(avifDecoderReadFile(decoder.get(), image.get(), file_path.c_str()),
-            AVIF_RESULT_INTERNAL_ERROR);
+            AVIF_RESULT_NO_CONTENT);
 }
 
 //------------------------------------------------------------------------------
