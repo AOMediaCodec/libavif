@@ -70,6 +70,20 @@ TEST(AltrTest, SampleTransformDepthParseNextEqual) {
   EXPECT_EQ(decoder->image->depth, depth);
 }
 
+// Verifies the fix for https://github.com/AOMediaCodec/libavif/issues/2979.
+TEST(AltrTest, ZeroImageContentToDecode) {
+  const std::string file_path =
+      std::string(data_path) + "weld_sato_12B_8B_q0.avif";
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_NONE;
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), image.get(), file_path.c_str()),
+            AVIF_RESULT_INTERNAL_ERROR);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
