@@ -64,6 +64,16 @@ TEST(AvifDecodeTest, ParseEmptyData) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_INVALID_FTYP);
 }
 
+TEST(AvifDecodeTest, ImageContentToDecodeColorXorAlpha) {
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), nullptr, 0), AVIF_RESULT_OK);
+  decoder->imageContentToDecode = static_cast<avifImageContentTypeFlag>(1 << 0);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_NOT_IMPLEMENTED);
+  decoder->imageContentToDecode = static_cast<avifImageContentTypeFlag>(1 << 1);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_NOT_IMPLEMENTED);
+}
+
 TEST(AvifDecodeTest, Idat) {
   if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
