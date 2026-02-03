@@ -56,7 +56,6 @@ runs:
         path: |
           ~/.cargo
           build/cargo
-          build/_deps/cargoc-src/
         key: ${{ env.CARGO_CACHE_KEY }}-${{ github.run_id }}
         restore-keys: ${{ env.CARGO_CACHE_KEY }}
       env:

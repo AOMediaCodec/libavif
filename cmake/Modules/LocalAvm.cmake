@@ -37,7 +37,7 @@ FetchContent_Declare(
     BINARY_DIR "${AVM_BINARY_DIR}"
     GIT_TAG ${AVIF_AVM_GIT_TAG}
     GIT_PROGRESS ON
-    GIT_SHALLOW OFF
+    GIT_SHALLOW ON
     UPDATE_COMMAND ""
     # Avoid the following error when both aom and avm are built:
     #   CMake Error at build/_deps/libavm-src/CMakeLists.txt:1103 (add_custom_target):
