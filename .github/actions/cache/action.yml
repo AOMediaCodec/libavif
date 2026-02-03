@@ -59,7 +59,7 @@ runs:
         key: ${{ env.CARGO_CACHE_KEY }}-${{ github.run_id }}
         restore-keys: ${{ env.CARGO_CACHE_KEY }}
       env:
-        CARGO_CACHE_KEY: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}
+        CARGO_CACHE_KEY: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.extra-key }}
     - name: Cache external dependencies in ext
       id: cache-ext
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
