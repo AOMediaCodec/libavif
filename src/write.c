@@ -1955,7 +1955,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
             // For now, only 16-bit depth is supported.
-            AVIF_ASSERT_OR_RETURN(firstCell->depth == 16);
+            AVIF_CHECKERR(firstCell->depth == 16, AVIF_RESULT_NOT_IMPLEMENTED);
             // TODO: b/480081865 - Support gain maps in same file as Sample Transforms
             AVIF_CHECKERR(!firstCell->gainMap, AVIF_RESULT_NOT_IMPLEMENTED);
             AVIF_CHECKRES(avifEncoderCreateBitDepthExtensionItems(encoder, gridCols, gridRows, gridWidth, gridHeight, colorItemID));

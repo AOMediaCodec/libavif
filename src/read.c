@@ -6357,6 +6357,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (!mainItems[c]) {
                 continue;
             }
+            AVIF_ASSERT_OR_RETURN(c != AVIF_ITEM_SAMPLE_TRANSFORM); // See sampleTransformItem.
 
             if (avifIsAlpha((avifItemCategory)c) && !mainItems[c]->width && !mainItems[c]->height) {
                 // NON-STANDARD: Alpha subimage does not have an ispe property; adopt width/height from color item
@@ -6938,7 +6939,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         AVIF_ASSERT_OR_RETURN(prepareTileResult[c] == AVIF_RESULT_OK);
     }
 
-    if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA && decoder->data->meta->sampleTransformExpression.count > 0) {
+    if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) && decoder->data->meta->sampleTransformExpression.count > 0) {
         // TODO(yguyon): Add a field in avifDecoder and only perform sample transformations upon request.
         AVIF_CHECKRES(avifDecoderApplySampleTransform(decoder, decoder->image));
     }
