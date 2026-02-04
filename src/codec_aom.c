@@ -672,6 +672,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // - Option of choosing tune IQ (which requires AOM_USAGE_ALL_INTRA)
     avifBool useAllIntraForLayered = encoder->extraLayerCount == 1 &&
                                      codec->internal->qualityFirstLayer <= TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD;
+    // Also use all-intra encoding when encoding still images.
     avifBool useAllIntra = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || useAllIntraForLayered;
 
     // Map encoder speed to AOM usage + CpuUsed:
@@ -687,7 +688,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // Speed  9: RealTime    CpuUsed 9
     // Speed 10: RealTime    CpuUsed 9
     unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
-    // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) for still image encoding if available.
+    // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) if available.
 #if defined(AOM_USAGE_ALL_INTRA)
     if (useAllIntra) {
         aomUsage = AOM_USAGE_ALL_INTRA;
