@@ -4001,7 +4001,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
 static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * propertyType)
 {
     avifProperty * metaProperty = avifArrayPush(&meta->properties);
-    AVIF_CHECK(metaProperty);
+    AVIF_CHECKERR(metaProperty, NULL);
     memcpy(metaProperty->type, propertyType, 4);
     return metaProperty;
 }
@@ -4009,7 +4009,7 @@ static avifProperty * avifMetaCreateProperty(avifMeta * meta, const char * prope
 static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const avifProperty * metaProperty)
 {
     avifProperty * itemProperty = avifArrayPush(&item->properties);
-    AVIF_CHECK(itemProperty);
+    AVIF_CHECKERR(itemProperty, NULL);
     *itemProperty = *metaProperty;
     return itemProperty;
 }
@@ -5536,7 +5536,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
         if (dimgIdxToAlphaItemIdx[dimgIdx] >= meta->items.count) {
             avifFree(dimgIdxToAlphaItemIdx);
-            AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
+            AVIF_ASSERT_NOT_REACHED_OR_RETURN;
         }
         avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
         alphaTileItem->dimgForID = (*alphaItem)->id;

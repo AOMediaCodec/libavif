@@ -2642,7 +2642,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     if (floatFlag) {
         // bit(2) bit_depth_log2_minus4;
-        AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
+        AVIF_ASSERT_NOT_REACHED_OR_RETURN;
     } else {
         AVIF_CHECKRES(avifRWStreamWriteBits(s, image->depth > 8, 1)); // bit(1) high_bit_depth_flag;
         if (image->depth > 8) {
@@ -2710,7 +2710,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
             AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmapFloatFlag, 1)); // bit(1) gainmap_float_flag;
             if (gainmapFloatFlag) {
                 // bit(2) gainmap_bit_depth_log2_minus4;
-                AVIF_ASSERT_OR_RETURN(AVIF_FALSE);
+                AVIF_ASSERT_NOT_REACHED_OR_RETURN;
             } else {
                 AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->depth > 8, 1)); // bit(1) gainmap_high_bit_depth_flag;
                 if (gainmap->depth > 8) {

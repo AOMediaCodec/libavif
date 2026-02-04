@@ -62,8 +62,14 @@ static inline void avifBreakOnError()
 // AVIF_ASSERT_OR_RETURN() can be used instead of assert() for extra security in release builds.
 #ifdef NDEBUG
 #define AVIF_ASSERT_OR_RETURN(A) AVIF_CHECKERR((A), AVIF_RESULT_INTERNAL_ERROR)
+#define AVIF_ASSERT_NOT_REACHED_OR_RETURN  \
+    do {                                   \
+        avifBreakOnError();                \
+        return AVIF_RESULT_INTERNAL_ERROR; \
+    } while (0)
 #else
 #define AVIF_ASSERT_OR_RETURN(A) assert(A)
+#define AVIF_ASSERT_NOT_REACHED_OR_RETURN assert(0);
 #endif
 
 // ---------------------------------------------------------------------------
