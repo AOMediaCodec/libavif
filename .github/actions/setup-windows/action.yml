@@ -109,3 +109,4 @@ runs:
         extra-key: ${{ inputs.extra-cache-key }}
         use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
         use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}
+        vcpkg-libraries: ${{ env.AVIF_WIN_LIBRARIES }}
