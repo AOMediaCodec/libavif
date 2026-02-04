@@ -10,9 +10,6 @@ inputs:
   use-rust:
     description: "Whether rust is used"
     default: false
-  vcpkg-libraries:
-    description: "List of libraries installed by vcpkg"
-    default: ''
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache-ext.outputs.cache-hit }}
@@ -74,9 +71,3 @@ runs:
       with:
         path: build/_deps
         key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/*') }}
-    - name: Cache installed vcpkg packages
-      if: ${{ inputs.vcpkg-libraries != '' }}
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-      with:
-        path: ${{ github.workspace }}\vcpkg
-        key: vcpkg-${{ runner.arch }}-${{ inputs.vcpkg-libraries }}-${{ hashFiles('.github/actions/setup-windows/*', '.github/workflows/ci-windows*') }}
