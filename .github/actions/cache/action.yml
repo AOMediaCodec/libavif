@@ -41,7 +41,7 @@ runs:
     - name: Generate cargo cache key
       if: ${{ inputs.use-rust == 'true' }}
       run: |
-        echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> $GITHUB_ENV
+        echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path, 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> $GITHUB_ENV
       shell: bash
     - name: Generate empty cargo cache key
       if: ${{ inputs.use-rust != 'true' }}
