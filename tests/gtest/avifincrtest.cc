@@ -126,6 +126,34 @@ INSTANTIATE_TEST_SUITE_P(SinglePixel, IncrementalTest,
 
 //------------------------------------------------------------------------------
 
+// Check that avifDecoderDecodedRowCount() returns 0 unless
+// decoder->imageContentToDecode is set to at least
+// AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA.
+// Regression test for b/481550106.
+TEST(IncrementalTest, DecodeGainMapOnly) {
+  const testutil::AvifRwData encoded_avif = testutil::ReadFile(
+      std::string(data_path) + "seine_sdr_gainmap_srgb.avif");
+  ASSERT_NE(encoded_avif.size, 0u);
+  ImagePtr reference(avifImageCreateEmpty());
+  ASSERT_NE(reference, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(),
+                                  encoded_avif.data, encoded_avif.size),
+            AVIF_RESULT_OK);
+  ASSERT_NE(reference->gainMap, nullptr);
+
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
+  ASSERT_EQ(
+      testutil::DecodeIncrementally(
+          encoded_avif, decoder.get(), /*is_persistent=*/true,
+          /*give_size_hint=*/true, /*use_nth_image_api=*/false, *reference,
+          /*cell_height=*/154, /*enable_fine_incremental_check=*/true),
+      AVIF_RESULT_OK);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace avif
 

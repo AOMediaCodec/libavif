@@ -7125,6 +7125,14 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifTi
 
 uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
+    if (decoder->data->tileInfos[AVIF_ITEM_COLOR].tileCount == 0) {
+        // decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA
+        // was likely 0 when avifDecoderNextImage() was called.
+        // avifDecoderDecodedRowCount() only describes decoder->image->yuvPlanes[0].
+        // There is no available luma plane, so return 0 decoded rows.
+        return 0;
+    }
+
     uint32_t minRowCount = decoder->image->height;
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
         if (c == AVIF_ITEM_GAIN_MAP) {
