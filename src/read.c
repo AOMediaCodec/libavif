@@ -1737,12 +1737,29 @@ static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * dat
         //
         // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
         //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
+        
+        // Check for integer overflow before performing multiplications
+        if ((tile->image->width > 0 && grid->columns > UINT32_MAX / tile->image->width) ||
+            (tile->image->height > 0 && grid->rows > UINT32_MAX / tile->image->height)) {
+            avifDiagnosticsPrintf(data->diag,
+                                  "Grid image dimensions would cause integer overflow");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+        
         if (((tile->image->width * grid->columns) < grid->outputWidth) || ((tile->image->height * grid->rows) < grid->outputHeight)) {
             avifDiagnosticsPrintf(data->diag,
                                   "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
+        // Check for overflow in (columns - 1) and (rows - 1) multiplications
+        if ((tile->image->width > 0 && grid->columns > 1 && (grid->columns - 1) > UINT32_MAX / tile->image->width) ||
+            (tile->image->height > 0 && grid->rows > 1 && (grid->rows - 1) > UINT32_MAX / tile->image->height)) {
+            avifDiagnosticsPrintf(data->diag,
+                                  "Grid image dimensions would cause integer overflow");
+            return AVIF_RESULT_INVALID_IMAGE_GRID;
+        }
+        
         if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
             ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
             avifDiagnosticsPrintf(data->diag,
