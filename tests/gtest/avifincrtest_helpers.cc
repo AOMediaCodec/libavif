@@ -333,7 +333,8 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     data.available.size = std::min(data.available.size + step, data.full_size);
     parse_result = avifDecoderParse(decoder);
   }
-  if (data.available.size == data.full_size &&
+  if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) &&
+      data.available.size == data.full_size &&
       expect_parse_success_from_partial_file) {
     // Can happen if the data is in 'idat', or if some metadata is at the end of
     // the file. But ideally this should be avoided.
@@ -362,15 +363,23 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
              previously_decoded_row_count, decoded_row_count);
       AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
-    const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
-        reference.height, cell_height, reference.alphaPlane != nullptr,
-        reference.gainMap != nullptr, data.available.size, data.full_size,
-        enable_fine_incremental_check);
-    if (decoded_row_count < min_decoded_row_count) {
+    if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) {
+      const uint32_t min_decoded_row_count = GetMinDecodedRowCount(
+          reference.height, cell_height, reference.alphaPlane != nullptr,
+          reference.gainMap != nullptr, data.available.size, data.full_size,
+          enable_fine_incremental_check);
+      if (decoded_row_count < min_decoded_row_count) {
+        printf(
+            "ERROR: expected to have decoded at least %d rows with %zu "
+            "available bytes, but only %d were decoded\n",
+            min_decoded_row_count, data.available.size, decoded_row_count);
+        AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
+      }
+    } else if (decoded_row_count != 0) {
+      // avifDecoderDecodedRowCount() is only for decoder->image->yuvPlanes[0].
       printf(
-          "ERROR: expected to have decoded at least %d rows with %zu available "
-          "bytes, but only %d were decoded\n",
-          min_decoded_row_count, data.available.size, decoded_row_count);
+          "ERROR: decoded row count shall be 0 unless "
+          "decoder->imageContentToDecode&AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA\n");
       AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
     }
     ComparePartialYuva(reference, *decoder->image, decoded_row_count);
@@ -385,10 +394,18 @@ avifResult DecodeIncrementally(const avifRWData& encoded_avif,
     AVIF_CHECKERR(data.available.size == data.full_size,
                   AVIF_RESULT_INVALID_ARGUMENT);
   }
-  AVIF_CHECKERR(avifDecoderDecodedRowCount(decoder) == decoder->image->height,
-                AVIF_RESULT_INVALID_ARGUMENT);
-
-  ComparePartialYuva(reference, *decoder->image, reference.height);
+  const uint32_t decoded_row_count = avifDecoderDecodedRowCount(decoder);
+  if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) {
+    AVIF_CHECKERR(decoded_row_count == decoder->image->height,
+                  AVIF_RESULT_INVALID_ARGUMENT);
+    ComparePartialYuva(reference, *decoder->image, reference.height);
+  } else if (decoded_row_count != 0) {
+    // avifDecoderDecodedRowCount() is only for decoder->image->yuvPlanes[0].
+    printf(
+        "ERROR: decoded row count shall be 0 unless "
+        "decoder->imageContentToDecode&AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA\n");
+    AVIF_CHECKERR(false, AVIF_RESULT_INVALID_ARGUMENT);
+  }
   return AVIF_RESULT_OK;
 }
 
