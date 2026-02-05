@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 
 float avifRoundf(float v)
@@ -89,6 +90,11 @@ avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t init
     arr->elementSize = elementSize ? elementSize : 1;
     arr->count = 0;
     arr->capacity = initialCapacity;
+    if (arr->capacity > SIZE_MAX / arr->elementSize) {
+        arr->ptr = NULL;
+        arr->capacity = 0;
+        return AVIF_FALSE;
+    }
     size_t byteCount = (size_t)arr->elementSize * arr->capacity;
     arr->ptr = (uint8_t *)avifAlloc(byteCount);
     if (!arr->ptr) {
