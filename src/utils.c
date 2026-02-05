@@ -111,7 +111,23 @@ void * avifArrayPush(void * arrayStruct)
     if (arr->count == arr->capacity) {
         uint8_t * oldPtr = arr->ptr;
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
-        arr->ptr = (uint8_t *)avifAlloc(oldByteCount * 2);
+        
+        // Check for overflow before doubling the allocation size
+        // If oldByteCount > SIZE_MAX/2, then oldByteCount * 2 would overflow
+        if (oldByteCount > SIZE_MAX / 2) {
+            // Cannot safely double the allocation size
+            return NULL;
+        }
+        
+        size_t newByteCount = oldByteCount * 2;
+        
+        // Additional safety check: verify the multiplication didn't overflow
+        if (newByteCount < oldByteCount) {
+            // Overflow occurred despite the check (shouldn't happen, but defense in depth)
+            return NULL;
+        }
+        
+        arr->ptr = (uint8_t *)avifAlloc(newByteCount);
         if (arr->ptr == NULL) {
             arr->ptr = oldPtr;
             return NULL;
