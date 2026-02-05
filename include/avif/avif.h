@@ -1373,6 +1373,8 @@ typedef struct avifDecoder
     // --------------------------------------------------------------------------------------------
 
     // Image content to decode (if present). Defaults to AVIF_IMAGE_CONTENT_DECODE_DEFAULT.
+    // The value is only taken into account when calling avifDecoderRead*(), avifDecoderSetSource(),
+    // avifDecoderParse(), or avifDecoderReset().
     avifImageContentTypeFlags imageContentToDecode; // Changeable decoder setting.
 
     // Version 1.2.0 ends here. Add any new members after this line.
