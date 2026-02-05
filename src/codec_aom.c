@@ -733,9 +733,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
     // True if libavif knows that tune=iq is used, either by default by libavif, or explicitly set by the user.
-    // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v1.13.1 and earlier versions).
-    // This is only accurate for the first frame but tune=iq is only supported for still images in libavif and
-    // for all-intra coding in libaom (at least up to v1.13.1) anyway.
+    // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v3.13.1 and earlier versions).
     const avifBool useTuneIq = useLibavifDefaultTuneMetric ? libavifDefaultTuneMetric == AOM_TUNE_IQ : avifImageUsesTuneIq(codec, alpha);
     const int quantizer = aomQualityToQuantizer(quality, useTuneIq);
 
