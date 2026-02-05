@@ -113,6 +113,7 @@ void * avifArrayPush(void * arrayStruct)
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
         arr->ptr = (uint8_t *)avifAlloc(oldByteCount * 2);
         if (arr->ptr == NULL) {
+            arr->ptr = oldPtr;
             return NULL;
         }
         memset(arr->ptr + oldByteCount, 0, oldByteCount);
