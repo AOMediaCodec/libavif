@@ -551,6 +551,9 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             cfg->g_limit = 1;
         }
 
+        // Determine whether the encoder should be configured to use intra frames only, by manually configuring the encoder so all
+        // frames will be key frames.
+
         // All-intra encoding is beneficial when encoding a two-layer image item and the quality of the first layer is very low.
         // Switching to all-intra encoding comes with the following benefits:
         // - The first layer will be smaller than the second layer (which is often not the case with inter encoding)
@@ -560,8 +563,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         avifBool useAllIntra = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || useAllIntraForLayered;
 
         if (useAllIntra) {
-            // Use the default settings of the new AVM_USAGE_ALL_INTRA (added in
-            // https://crbug.com/aomedia/2959).
+            // Use the default settings of libaom's AOM_USAGE_ALL_INTRA (added
+            // in https://crbug.com/aomedia/2959).
             //
             // Set g_lag_in_frames to 0 to reduce the number of frame buffers
             // (from 20 to 2) in libavm's lookahead structure. This reduces
