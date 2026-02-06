@@ -1739,8 +1739,9 @@ static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * dat
         //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
         
         // Check for integer overflow before performing multiplications
-        if ((tile->image->width > 0 && grid->columns > UINT32_MAX / tile->image->width) ||
-            (tile->image->height > 0 && grid->rows > UINT32_MAX / tile->image->height)) {
+        if (((uint64_t)tile->image->width * grid->columns < grid->outputWidth) ||
+            ((uint64_t)tile->image->height * grid->rows < grid->outputHeight)) {
+
             avifDiagnosticsPrintf(data->diag,
                                   "Grid image dimensions would cause integer overflow");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
@@ -1760,8 +1761,8 @@ static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * dat
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         
-        if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
-            ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
+        if (((uint64_t)tile->image->width * (grid->columns - 1) >= grid->outputWidth) ||
+            ((uint64_t)tile->image->height * (grid->rows - 1) >= grid->outputHeight)) {
             avifDiagnosticsPrintf(data->diag,
                                   "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
