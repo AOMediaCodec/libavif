@@ -98,6 +98,7 @@ set_codec_option(AOM "AOM" "encoding/decoding" " (see AVIF_CODEC_AOM_DECODE/AVIF
 set_codec_option(DAV1D "dav1d" "decoding" "")
 set_codec_option(LIBGAV1 "libgav1" "decoding" "")
 set_codec_option(RAV1E "rav1e" "encoding" "")
+option(AVIF_OPTIMIZE_RAV1E_FOR_SIZE "Overrides rav1e's release setting to optimize for size" OFF)
 set_codec_option(SVT "SVT-AV1" "encoding" "")
 set_codec_option(AVM "AVM (AV2)" "encoding/decoding" " (EXPERIMENTAL)")
 
