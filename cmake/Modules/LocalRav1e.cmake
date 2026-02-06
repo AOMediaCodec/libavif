@@ -74,6 +74,11 @@ else()
         ${CMAKE_CURRENT_BINARY_DIR}/ext/rav1e/usr/lib/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}
     )
     set(RAV1E_ENVVARS)
+    if(AVIF_OPTIMIZE_RAV1E_FOR_SIZE)
+        set(RAV1E_ENVVARS "CARGO_PROFILE_RELEASE_DEBUG=0" "CARGO_PROFILE_RELEASE_STRIP=true"
+                          "CARGO_PROFILE_PROFILE_RELEASE_OPT_LEVEL=\"s\"" "CARGO_PROFILE_RELEASE_INCREMENTAL=false"
+        )
+    endif()
     if(CMAKE_C_IMPLICIT_LINK_DIRECTORIES MATCHES "alpine-linux-musl")
         list(APPEND RAV1E_ENVVARS "RUSTFLAGS=-C link-args=-Wl,-z,stack-size=2097152 -C target-feature=-crt-static")
     endif()
