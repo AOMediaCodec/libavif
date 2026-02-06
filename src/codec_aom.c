@@ -44,6 +44,7 @@
 #endif
 
 // Speeds 7-9 were added to all intra mode in https://aomedia-review.googlesource.com/c/aom/+/140624.
+// They first appeared in the libaom v3.2.0 release.
 #if AOM_ENCODER_ABI_VERSION >= (10 + AOM_CODEC_ABI_VERSION + /*AOM_EXT_PART_ABI_VERSION=*/1)
 #define ALL_INTRA_HAS_SPEEDS_7_TO_9 1
 #endif
@@ -663,6 +664,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if (encoder->extraLayerCount > 0 && codec->internal->currentLayer == 0) {
         codec->internal->qualityFirstLayer = quality;
     }
+
+    // Determine whether the encoder should be configured to use intra frames only, either by setting aomUsage to AOM_USAGE_ALL_INTRA,
+    // or by manually configuring the encoder so all frames will be key frames (if AOM_USAGE_ALL_INTRA isn't available).
 
     // All-intra encoding is beneficial when encoding a two-layer image item and the quality of the first layer is very low.
     // Switching to all-intra encoding comes with the following benefits:
