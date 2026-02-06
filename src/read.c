@@ -6952,7 +6952,10 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
         AVIF_ASSERT_OR_RETURN(prepareTileResult[c] == AVIF_RESULT_OK);
     }
 
-    if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) && decoder->data->meta->sampleTransformExpression.count > 0) {
+    // If decoder->data->tileInfos[AVIF_ITEM_COLOR].tileCount == 0, it means
+    // decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA was equal to 0.
+    // Only apply Sample Transforms if there is a color item to apply it onto.
+    if (decoder->data->tileInfos[AVIF_ITEM_COLOR].tileCount != 0 && decoder->data->meta->sampleTransformExpression.count > 0) {
         // TODO(yguyon): Add a field in avifDecoder and only perform sample transformations upon request.
         AVIF_CHECKRES(avifDecoderApplySampleTransform(decoder, decoder->image));
     }
