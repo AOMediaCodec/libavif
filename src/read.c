@@ -1738,7 +1738,6 @@ static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * dat
         // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
         //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
         
-        // Check for integer overflow before performing multiplications
         if (((uint64_t)tile->image->width * grid->columns < grid->outputWidth) ||
             ((uint64_t)tile->image->height * grid->rows < grid->outputHeight)) {
 
