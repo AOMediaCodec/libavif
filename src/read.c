@@ -1534,24 +1534,15 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
             item->mergedExtents.size = bytesToRead;
         } else {
             AVIF_ASSERT_OR_RETURN(item->ownsMergedExtents);
-            AVIF_ASSERT_OR_RETURN(front);
+
             size_t writeOffset = (size_t)(front - item->mergedExtents.data);
-            // Validate that the write will not exceed the allocated buffer
-            if (writeOffset > item->mergedExtents.size ||
-                bytesToRead > item->mergedExtents.size - writeOffset) {
 
-                avifDiagnosticsPrintf(
-                    diag,
-                    "Item ID %u extent would overflow merge buffer (buffer size: %zu, current offset: %zu, bytes to write: %zu)",
-                    item->id,
-                    item->mergedExtents.size,
-                    writeOffset,
-                    bytesToRead);
+            AVIF_ASSERT_OR_RETURN(writeOffset < item->mergedExtents.size);
+            AVIF_ASSERT_OR_RETURN(bytesToRead <= item->mergedExtents.size - writeOffset);
 
-                return AVIF_RESULT_INTERNAL_ERROR;
-            }
-            memcpy(front, offsetBuffer.data, bytesToRead);
-            front += bytesToRead;
+            uint8_t *dst = item->mergedExtents.data + writeOffset;
+            memcpy(dst, offsetBuffer.data, bytesToRead);
+            writeOffset += bytesToRead;
         }
 
         remainingBytes -= bytesToRead;
