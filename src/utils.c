@@ -106,8 +106,6 @@ void * avifArrayPush(void * arrayStruct)
         uint8_t * oldPtr = arr->ptr;
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
 
-        // Check for overflow before doubling the allocation size
-        // If oldByteCount > SIZE_MAX/2, then oldByteCount * 2 would overflow
         if (oldByteCount > SIZE_MAX / 2) {
             return NULL;
         }
