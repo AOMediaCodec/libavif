@@ -1483,7 +1483,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
     // Set this until we manage to fill the entire mergedExtents buffer
     item->partialMergedExtents = AVIF_TRUE;
 
-    uint8_t * front = item->mergedExtents.data;
+    size_t writeOffset = 0; // Write offset for item->mergedExtents.data
     size_t remainingBytes = totalBytesToRead;
     for (uint32_t extentIter = 0; extentIter < item->extents.count; ++extentIter) {
         avifExtent * extent = &item->extents.extent[extentIter];
@@ -1534,9 +1534,10 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
             item->mergedExtents.size = bytesToRead;
         } else {
             AVIF_ASSERT_OR_RETURN(item->ownsMergedExtents);
-            AVIF_ASSERT_OR_RETURN(front);
-            memcpy(front, offsetBuffer.data, bytesToRead);
-            front += bytesToRead;
+            AVIF_ASSERT_OR_RETURN(writeOffset < item->mergedExtents.size);
+            AVIF_ASSERT_OR_RETURN(bytesToRead <= item->mergedExtents.size - writeOffset);
+            memcpy(item->mergedExtents.data + writeOffset, offsetBuffer.data, bytesToRead);
+            writeOffset += bytesToRead;
         }
 
         remainingBytes -= bytesToRead;
