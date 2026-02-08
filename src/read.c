@@ -1737,14 +1737,15 @@ static avifResult avifDecoderDataAllocateImagePlanes(const avifDecoderData * dat
         //
         // HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1:
         //   The tiled input images shall completely "cover" the reconstructed image grid canvas, ...
-        if (((tile->image->width * grid->columns) < grid->outputWidth) || ((tile->image->height * grid->rows) < grid->outputHeight)) {
+        if ((((uint64_t)tile->image->width * grid->columns) < grid->outputWidth) ||
+            (((uint64_t)tile->image->height * grid->rows) < grid->outputHeight)) {
             avifDiagnosticsPrintf(data->diag,
                                   "Grid image tiles do not completely cover the image (HEIF (ISO/IEC 23008-12:2017), Section 6.6.2.3.1)");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
         }
         // Tiles in the rightmost column and bottommost row must overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2.
-        if (((tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
-            ((tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
+        if ((((uint64_t)tile->image->width * (grid->columns - 1)) >= grid->outputWidth) ||
+            (((uint64_t)tile->image->height * (grid->rows - 1)) >= grid->outputHeight)) {
             avifDiagnosticsPrintf(data->diag,
                                   "Grid image tiles in the rightmost column and bottommost row do not overlap the reconstructed image grid canvas. See MIAF (ISO/IEC 23000-22:2019), Section 7.3.11.4.2, Figure 2");
             return AVIF_RESULT_INVALID_IMAGE_GRID;
