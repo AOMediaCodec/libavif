@@ -111,17 +111,14 @@ void * avifArrayPush(void * arrayStruct)
     if (arr->count == arr->capacity) {
         uint8_t * oldPtr = arr->ptr;
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
-
-        if (oldByteCount > SIZE_MAX / 2) {
+        if (oldByteCount > SIZE_MAX / 2 || arr->capacity > UINT32_MAX / 2) {
             return NULL;
         }
-
         size_t newByteCount = oldByteCount * 2;
         uint8_t * newPtr = (uint8_t *)avifAlloc(newByteCount);
         if (newPtr == NULL) {
             return NULL;
         }
-
         arr->ptr = newPtr;
         memset(arr->ptr + oldByteCount, 0, oldByteCount);
         memcpy(arr->ptr, oldPtr, oldByteCount);
