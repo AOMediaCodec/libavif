@@ -6242,7 +6242,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids are not coded items either but it's different)).
         avifDecoderItem * const sampleTransformItem = avifDecoderDataFindSampleTransformImageItem(data);
-        if (sampleTransformItem != NULL) {
+        if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) &&
+            (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS) && sampleTransformItem != NULL) {
             AVIF_ASSERT_OR_RETURN(data->sampleTransformNumInputImageItems == 0);
 
             for (uint32_t i = 0; i < data->meta->items.count; ++i) {
@@ -6367,12 +6368,14 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
             AVIF_CHECKRES(avifDecoderAdoptGridTileCodecTypeIfNeeded(decoder, mainItems[c], &data->tileInfos[c]));
 
-            if (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR ||
-                c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_COLOR || c == AVIF_ITEM_ALPHA ||
-                c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_ALPHA) {
+            if (c == AVIF_ITEM_COLOR || c == AVIF_ITEM_ALPHA) {
                 if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA)) {
                     continue;
                 }
+            } else if (c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_COLOR ||
+                       c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA || c == AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_1_ALPHA) {
+                AVIF_ASSERT_OR_RETURN((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) &&
+                                      (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS));
             } else {
                 AVIF_ASSERT_OR_RETURN(c == AVIF_ITEM_GAIN_MAP);
                 if (!(decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP)) {
@@ -6942,7 +6945,6 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     // decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA was equal to 0.
     // Only apply Sample Transforms if there is a color item to apply it onto.
     if (decoder->data->tileInfos[AVIF_ITEM_COLOR].tileCount != 0 && decoder->data->meta->sampleTransformExpression.count > 0) {
-        // TODO(yguyon): Add a field in avifDecoder and only perform sample transformations upon request.
         AVIF_CHECKRES(avifDecoderApplySampleTransform(decoder, decoder->image));
     }
 

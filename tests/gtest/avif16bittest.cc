@@ -83,8 +83,15 @@ TEST_P(SampleTransformTest, Avif16bit) {
   }
   ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
 
-  const ImagePtr decoded = testutil::Decode(encoded.data, encoded.size);
+  ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode =
+      AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
 
   ASSERT_EQ(image->depth, decoded->depth);
   ASSERT_EQ(image->width, decoded->width);
@@ -100,8 +107,14 @@ TEST_P(SampleTransformTest, Avif16bit) {
       std::memcpy(&encoded.data[i], "zzzz", 4);
     }
   }
-  const ImagePtr decoded_no_sato = testutil::Decode(encoded.data, encoded.size);
+  ImagePtr decoded_no_sato(avifImageCreateEmpty());
   ASSERT_NE(decoded_no_sato, nullptr);
+  DecoderPtr decoder_no_sato(avifDecoderCreate());
+  ASSERT_NE(decoder_no_sato, nullptr);
+  decoder_no_sato->imageContentToDecode = decoder->imageContentToDecode;
+  ASSERT_EQ(avifDecoderReadMemory(decoder_no_sato.get(), decoded_no_sato.get(),
+                                  encoded.data, encoded.size),
+            AVIF_RESULT_OK);
   // Only the most significant bits of each sample can be retrieved.
   // They should be encoded losslessly no matter the quantizer settings.
   ImagePtr image_no_sato = testutil::CreateImage(
@@ -297,12 +310,13 @@ TEST_P(GainmapSampleTransformTest, ImageContentToDecode) {
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  decoder->imageContentToDecode = content_to_decode;
+  decoder->imageContentToDecode =
+      content_to_decode | AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
                                   encoded.size),
-            content_to_decode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA ||
+            (content_to_decode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) ||
                     (create_gainmap &&
-                     content_to_decode & AVIF_IMAGE_CONTENT_GAIN_MAP)
+                     (content_to_decode & AVIF_IMAGE_CONTENT_GAIN_MAP))
                 ? AVIF_RESULT_OK
                 : AVIF_RESULT_NO_CONTENT);
 
@@ -331,6 +345,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Gain maps are not supported in the same file as 'sato' items.
         /*create_gainmap=*/testing::Values(false),
         /*use_grid=*/testing::Values(true),
+        // AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS is always set in this test.
         testing::Values(AVIF_IMAGE_CONTENT_NONE,
                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
                         AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL)));

@@ -39,6 +39,7 @@ TEST(AltrTest, SampleTransformDepthEqualToInput) {
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
@@ -59,6 +60,7 @@ TEST(AltrTest, SampleTransformDepthParseNextEqual) {
 
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
             AVIF_RESULT_OK);
 
@@ -78,6 +80,20 @@ TEST(AltrTest, ZeroImageContentToDecode) {
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_NONE;
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  ASSERT_EQ(avifDecoderReadFile(decoder.get(), image.get(), file_path.c_str()),
+            AVIF_RESULT_NO_CONTENT);
+}
+
+TEST(AltrTest, OnlySampleTranformContentToDecode) {
+  const std::string file_path =
+      std::string(data_path) + "weld_sato_12B_8B_q0.avif";
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  // Has no effect without AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA.
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
   ImagePtr image(avifImageCreateEmpty());
   ASSERT_NE(image, nullptr);
   ASSERT_EQ(avifDecoderReadFile(decoder.get(), image.get(), file_path.c_str()),

@@ -34,6 +34,7 @@ static void syntax(void)
     printf("    -j,--jobs J       : Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all)\n");
     printf("    -c,--codec C      : Codec to use (choose from versions list below)\n");
     printf("    -d,--depth D      : Output depth, either 8 or 16. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
+    printf("                        Output depth set to 16 enables Sample Transform decoding no matter the output format.\n");
     printf("    -q,--quality Q    : Output quality in 0..100. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
     printf("    --png-compress L  : PNG compression level in 0..9 (PNG only; 0=none, 9=max). Defaults to libpng's builtin default\n");
     printf("    -u,--upsampling U : Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'\n");
@@ -312,7 +313,9 @@ int main(int argc, char * argv[])
     decoder->strictFlags = strictFlags;
     decoder->allowProgressive = allowProgressive;
     if (infoOnly) {
-        decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_ALL;
+        decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP | AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+    } else if (requestedDepth == 16) {
+        decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
     }
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);

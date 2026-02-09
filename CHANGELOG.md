@@ -20,14 +20,18 @@ The changes are relative to the previous release, unless the baseline is specifi
   a cICP chunk and other color information chunks, such as iCCP (ICC profile),
   the other chunks are ignored as per the PNG Specification Third Edition
   Section 4.3.
+* Support reading Sample-Transform-based 16-bit AVIF files when
+  avifDecoder::imageContentToDecode & AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS is
+  not zero.
 * Support Sample Transform derived image items with grid input image items.
 * Add --grid option to avifgainmaputil.
 
 ### Changed since 1.3.0
 
 * Set avifDecoder::image->depth to the same value after avifDecoderParse() as
-  after avifDecoderNextImage() when AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is
-  enabled and when the file to decode contains a 'sato' derived image item.
+  after avifDecoderNextImage() when the file to decode contains a 'sato' derived
+  image item.
+* avifdec only enables Sample Transform decoding when --depth is set to 16.
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.3
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3

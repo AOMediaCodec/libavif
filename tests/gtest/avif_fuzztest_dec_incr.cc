@@ -117,7 +117,8 @@ FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
                  /*give_size_hint=*/Arbitrary<bool>(),
                  fuzztest::BitFlagCombinationOf<avifImageContentTypeFlags>(
                      {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                      AVIF_IMAGE_CONTENT_GAIN_MAP}),
+                      AVIF_IMAGE_CONTENT_GAIN_MAP,
+                      AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS}),
                  /*use_nth_image_api=*/Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
