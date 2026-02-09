@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 
 #include "avif/avif.h"
 #include "avif_fuzztest_helpers.h"
@@ -12,6 +13,7 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
+using ::fuzztest::BitFlagCombinationOf;
 using ::fuzztest::ElementOf;
 
 namespace avif {
@@ -20,12 +22,40 @@ namespace {
 
 //------------------------------------------------------------------------------
 
+void Parse(const std::string& arbitrary_bytes, bool is_persistent,
+           DecoderPtr decoder, avifImageContentTypeFlags content_to_decode) {
+  ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
+
+  const uint8_t* data =
+      reinterpret_cast<const uint8_t*>(arbitrary_bytes.data());
+  avifIO* const io = avifIOCreateMemoryReader(data, arbitrary_bytes.size());
+  if (io == nullptr) return;
+  io->persistent = is_persistent;
+  avifDecoderSetIO(decoder.get(), io);
+  // This can lead to AVIF_RESULT_NO_CONTENT or AVIF_RESULT_NOT_IMPLEMENTED.
+  decoder->imageContentToDecode = content_to_decode;
+  // No need to worry about decoding taking too much time or memory because
+  // this test only exercizes parsing.
+  decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+  decoder->imageDimensionLimit = std::numeric_limits<uint32_t>::max();
+  decoder->imageCountLimit = 0;
+
+  // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
+  EXPECT_NE(avifDecoderParse(decoder.get()), AVIF_RESULT_INTERNAL_ERROR);
+}
+
+FUZZ_TEST(ParseAvifTest, Parse)
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+                 /*is_persistent=*/Arbitrary<bool>(), ArbitraryAvifDecoder(),
+                 BitFlagCombinationOf<avifImageContentTypeFlags>(
+                     {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
+                      AVIF_IMAGE_CONTENT_GAIN_MAP}));
+
+//------------------------------------------------------------------------------
+
 void Decode(const std::string& arbitrary_bytes, bool is_persistent,
             DecoderPtr decoder, avifImageContentTypeFlags content_to_decode) {
   ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
-
-  ImagePtr decoded(avifImageCreateEmpty());
-  ASSERT_NE(decoded, nullptr);
 
   const uint8_t* data =
       reinterpret_cast<const uint8_t*>(arbitrary_bytes.data());
