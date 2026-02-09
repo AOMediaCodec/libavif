@@ -7140,7 +7140,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
     for (int c = 0; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
         if (c == AVIF_ITEM_GAIN_MAP) {
             const avifImage * const gainMap = decoder->image->gainMap ? decoder->image->gainMap->image : NULL;
-            if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) && gainMap != NULL && gainMap->height != 0) {
+            if (gainMap != NULL && gainMap->height != 0 && decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP].tileCount != 0) {
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =
