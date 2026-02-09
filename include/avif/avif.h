@@ -1441,17 +1441,16 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // function can be called next to retrieve the number of top rows that can be immediately accessed
 // from the luma plane of decoder->image, and alpha if any. The corresponding rows from the chroma planes,
 // if any, can also be accessed (half rounded up if subsampled, same number of rows otherwise).
-// If a gain map is present and  (imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) is nonzero,
-// the gain map's planes can also be accessed in the same way.
-// If the gain map's height is different from the main image, then the number of available gain map
-// rows is at least:
-// roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)
+// If a gain map is present and (imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) was nonzero when
+// avifDecoderNextImage() or avifDecoderNthImage() was called, the gain map's planes can also be accessed
+// in the same way. If the gain map's height is different from the main image, then the number of
+// available gain map rows is at least:
+//   roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)
 // When gain map scaling is needed, callers might choose to use a few less rows depending on how many rows
 // are needed by the scaling algorithm, to avoid the last row(s) changing when more data becomes available.
 // decoder->allowIncremental must be set to true before calling avifDecoderNextImage() or
 // avifDecoderNthImage(). Returns decoder->image->height when the last call to avifDecoderNextImage() or
 // avifDecoderNthImage() returned AVIF_RESULT_OK. Returns 0 in all other cases.
-// WARNING: Experimental feature.
 AVIF_API uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder);
 
 // ---------------------------------------------------------------------------
