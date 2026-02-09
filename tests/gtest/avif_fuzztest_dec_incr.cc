@@ -83,10 +83,11 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   // This can lead to AVIF_RESULT_NO_CONTENT.
   decoder->imageContentToDecode = content_to_decode;
 
-  if (avifDecoderRead(decoder.get(), reference.get()) == AVIF_RESULT_OK) {
+  avifResult result = avifDecoderRead(decoder.get(), reference.get());
+  // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result == AVIF_RESULT_OK) {
     // Avoid timeouts by discarding big images decoded many times.
-    // TODO(yguyon): Increase this arbitrary threshold but decode incrementally
-    //               fewer times than as many bytes.
     if (reference->width * reference->height * data.read_size >
         8 * 1024 * 1024) {
       return;
@@ -108,8 +109,7 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
         /*enable_fine_incremental_check=*/false,
         /*expect_whole_file_read=*/true,
         /*expect_parse_success_from_partial_file=*/false);
-    // The result does not matter, as long as we do not crash.
-    (void)result;
+    EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
   }
 }
 

@@ -67,7 +67,10 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
   // This can lead to AVIF_RESULT_NO_CONTENT.
   decoder->imageContentToDecode = content_to_decode;
 
-  if (avifDecoderParse(decoder.get()) != AVIF_RESULT_OK) return;
+  avifResult result = avifDecoderParse(decoder.get());
+  // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result != AVIF_RESULT_OK) return;
 
   for (size_t i = 0; i < decoder->image->numProperties; ++i) {
     const avifRWData& box_payload = decoder->image->properties[i].boxPayload;
@@ -77,15 +80,19 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
               data + arbitrary_bytes.size());
   }
 
-  while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
+  while ((result = avifDecoderNextImage(decoder.get())) == AVIF_RESULT_OK) {
     EXPECT_GT(decoder->image->width, 0u);
     EXPECT_GT(decoder->image->height, 0u);
   }
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 
   // Loop once.
-  if (avifDecoderReset(decoder.get()) != AVIF_RESULT_OK) return;
-  while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
+  result = avifDecoderReset(decoder.get());
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result != AVIF_RESULT_OK) return;
+  while ((result = avifDecoderNextImage(decoder.get())) == AVIF_RESULT_OK) {
   }
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(DecodeAvifTest, Decode)
