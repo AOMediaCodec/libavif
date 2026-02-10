@@ -332,7 +332,8 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
                     }
                 }
                 AVIF_ASSERT_OR_RETURN(stackSize == 1);
-                // Fit to 'pixi'-defined range. TODO(yguyon): Take avifRange into account.
+                // Fit to the range defined by the PixelInformationProperty.
+                // The limited/full range is ignored, like in other libavif encoding and decoding paths.
                 stack[0] = AVIF_CLAMP(stack[0], minValue, maxValue);
 
                 uint8_t * row = avifImagePlane(dstImage, c);

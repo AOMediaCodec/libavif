@@ -6864,6 +6864,7 @@ static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, a
         avifImage * dstImageWithCorrectDepth =
             avifImageCreate(dstImage->width, dstImage->height, decoder->data->meta->sampleTransformDepth, dstImage->yuvFormat);
         AVIF_CHECKERR(dstImageWithCorrectDepth != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        dstImageWithCorrectDepth->yuvRange = dstImage->yuvRange;
         avifResult result =
             avifImageAllocatePlanes(dstImageWithCorrectDepth, dstImage->alphaPlane != NULL ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
         if (result == AVIF_RESULT_OK) {
