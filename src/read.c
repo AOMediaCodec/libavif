@@ -179,7 +179,7 @@ typedef struct avifProperty
         avifImageSpatialExtents ispe;
         avifAuxiliaryType auxC; // Contents of 'auxC' for items, or 'auxi' for tracks
         avifColourInformationBox colr;
-        avifCodecConfigurationBox av1C; // TODO(yguyon): Rename or add av2C
+        avifCodecConfigurationBox codecConfig;
         avifPixelAspectRatioBox pasp;
         avifCleanApertureBox clap;
         avifImageRotation irot;
@@ -376,29 +376,29 @@ static avifCodecType avifSampleTableGetCodecType(const avifSampleTable * sampleT
     return AVIF_CODEC_TYPE_UNKNOWN;
 }
 
-static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBox * av1C)
+static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBox * codecConfig)
 {
-    if (av1C->twelveBit) {
+    if (codecConfig->twelveBit) {
         return 12;
-    } else if (av1C->highBitdepth) {
+    } else if (codecConfig->highBitdepth) {
         return 10;
     }
     return 8;
 }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
-uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex)
+uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * codecConfig, uint8_t channelIndex)
 {
     if (channelIndex == 0) {
         return AVIF_PIXI_444;
     }
-    if (av1C->chromaSubsamplingX == 0) {
-        if (av1C->chromaSubsamplingY == 0) {
+    if (codecConfig->chromaSubsamplingX == 0) {
+        if (codecConfig->chromaSubsamplingY == 0) {
             return AVIF_PIXI_444;
         }
         return AVIF_PIXI_440;
     }
-    if (av1C->chromaSubsamplingY == 0) {
+    if (codecConfig->chromaSubsamplingY == 0) {
         return AVIF_PIXI_422;
     }
     return AVIF_PIXI_420;
@@ -1270,15 +1270,15 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             }
             // configProp was copied from a tile item to the grid item. Comparing tileConfigProp with it
             // is equivalent to comparing tileConfigProp with the configPropName from the first tile.
-            if ((tileConfigProp->u.av1C.seqProfile != configProp->u.av1C.seqProfile) ||
-                (tileConfigProp->u.av1C.seqLevelIdx0 != configProp->u.av1C.seqLevelIdx0) ||
-                (tileConfigProp->u.av1C.seqTier0 != configProp->u.av1C.seqTier0) ||
-                (tileConfigProp->u.av1C.highBitdepth != configProp->u.av1C.highBitdepth) ||
-                (tileConfigProp->u.av1C.twelveBit != configProp->u.av1C.twelveBit) ||
-                (tileConfigProp->u.av1C.monochrome != configProp->u.av1C.monochrome) ||
-                (tileConfigProp->u.av1C.chromaSubsamplingX != configProp->u.av1C.chromaSubsamplingX) ||
-                (tileConfigProp->u.av1C.chromaSubsamplingY != configProp->u.av1C.chromaSubsamplingY) ||
-                (tileConfigProp->u.av1C.chromaSamplePosition != configProp->u.av1C.chromaSamplePosition)) {
+            if ((tileConfigProp->u.codecConfig.seqProfile != configProp->u.codecConfig.seqProfile) ||
+                (tileConfigProp->u.codecConfig.seqLevelIdx0 != configProp->u.codecConfig.seqLevelIdx0) ||
+                (tileConfigProp->u.codecConfig.seqTier0 != configProp->u.codecConfig.seqTier0) ||
+                (tileConfigProp->u.codecConfig.highBitdepth != configProp->u.codecConfig.highBitdepth) ||
+                (tileConfigProp->u.codecConfig.twelveBit != configProp->u.codecConfig.twelveBit) ||
+                (tileConfigProp->u.codecConfig.monochrome != configProp->u.codecConfig.monochrome) ||
+                (tileConfigProp->u.codecConfig.chromaSubsamplingX != configProp->u.codecConfig.chromaSubsamplingX) ||
+                (tileConfigProp->u.codecConfig.chromaSubsamplingY != configProp->u.codecConfig.chromaSubsamplingY) ||
+                (tileConfigProp->u.codecConfig.chromaSamplePosition != configProp->u.codecConfig.chromaSamplePosition)) {
                 avifDiagnosticsPrintf(diag,
                                       "The fields of the %s property of tile item ID %u of type '%.4s' differs from other tiles",
                                       configPropName,
@@ -1300,7 +1300,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
     }
 
     if (pixiProp) {
-        const uint32_t configDepth = avifCodecConfigurationBoxGetDepth(&configProp->u.av1C);
+        const uint32_t configDepth = avifCodecConfigurationBoxGetDepth(&configProp->u.codecConfig);
         for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
             if (pixiProp->u.pixi.planeDepths[i] != configDepth) {
                 // pixi depth must match configuration property depth
@@ -1314,20 +1314,20 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
             if (pixiProp->u.pixi.subsamplingFlag[i]) {
-                if (pixiProp->u.pixi.subsamplingType[i] != avifCodecConfigurationBoxGetSubsamplingType(&configProp->u.av1C, i)) {
+                if (pixiProp->u.pixi.subsamplingType[i] != avifCodecConfigurationBoxGetSubsamplingType(&configProp->u.codecConfig, i)) {
                     avifDiagnosticsPrintf(diag,
                                           "Item ID %u subsampling type specified by pixi property [%u] for channel %u does not match %s property [%u,%u]",
                                           item->id,
                                           pixiProp->u.pixi.subsamplingType[i],
                                           i,
                                           configPropName,
-                                          configProp->u.av1C.chromaSubsamplingX,
-                                          configProp->u.av1C.chromaSubsamplingY);
+                                          configProp->u.codecConfig.chromaSubsamplingX,
+                                          configProp->u.codecConfig.chromaSubsamplingY);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
                 }
-                if (configProp->u.av1C.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
+                if (configProp->u.codecConfig.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
                     const avifChromaSamplePosition expectedChromaSamplePosition =
-                        i == AVIF_CHAN_Y ? AVIF_CHROMA_SAMPLE_POSITION_COLOCATED : configProp->u.av1C.chromaSamplePosition;
+                        i == AVIF_CHAN_Y ? AVIF_CHROMA_SAMPLE_POSITION_COLOCATED : configProp->u.codecConfig.chromaSamplePosition;
                     if (avifSubsamplingLocationToChromaSamplePosition(pixiProp->u.pixi.subsamplingType[i],
                                                                       pixiProp->u.pixi.subsamplingLocation[i]) !=
                         expectedChromaSamplePosition) {
@@ -1338,7 +1338,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
                                               pixiProp->u.pixi.subsamplingLocation[i],
                                               i,
                                               configPropName,
-                                              configProp->u.av1C.chromaSamplePosition);
+                                              configProp->u.codecConfig.chromaSamplePosition);
                         return AVIF_RESULT_BMFF_PARSE_FAILED;
                     }
                 }
@@ -1351,39 +1351,39 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
     if (item->miniBoxPixelFormat != AVIF_PIXEL_FORMAT_NONE) {
         // This is a MinimizedImageBox ('mini').
 
-        avifPixelFormat av1CPixelFormat;
-        if (configProp->u.av1C.monochrome) {
-            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV400;
-        } else if (configProp->u.av1C.chromaSubsamplingY == 1) {
-            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV420;
-        } else if (configProp->u.av1C.chromaSubsamplingX == 1) {
-            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV422;
+        avifPixelFormat codecConfigFormat;
+        if (configProp->u.codecConfig.monochrome) {
+            codecConfigFormat = AVIF_PIXEL_FORMAT_YUV400;
+        } else if (configProp->u.codecConfig.chromaSubsamplingY == 1) {
+            codecConfigFormat = AVIF_PIXEL_FORMAT_YUV420;
+        } else if (configProp->u.codecConfig.chromaSubsamplingX == 1) {
+            codecConfigFormat = AVIF_PIXEL_FORMAT_YUV422;
         } else {
-            av1CPixelFormat = AVIF_PIXEL_FORMAT_YUV444;
+            codecConfigFormat = AVIF_PIXEL_FORMAT_YUV444;
         }
-        if (item->miniBoxPixelFormat != av1CPixelFormat) {
+        if (item->miniBoxPixelFormat != codecConfigFormat) {
             avifDiagnosticsPrintf(diag,
                                   "Item ID %u format [%s] specified by MinimizedImageBox does not match %s property format [%s]",
                                   item->id,
                                   avifPixelFormatToString(item->miniBoxPixelFormat),
                                   configPropName,
-                                  avifPixelFormatToString(av1CPixelFormat));
+                                  avifPixelFormatToString(codecConfigFormat));
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
-        if (configProp->u.av1C.chromaSamplePosition == /*CSP_UNKNOWN=*/0) {
+        if (configProp->u.codecConfig.chromaSamplePosition == /*CSP_UNKNOWN=*/0) {
             // Section 6.4.2. Color config semantics of AV1 specification says:
             //   CSP_UNKNOWN - the source video transfer function must be signaled outside the AV1 bitstream
             // See https://aomediacodec.github.io/av1-spec/#color-config-semantics
 
             // So item->miniBoxChromaSamplePosition can differ and will override the AV1 value.
-        } else if ((uint8_t)item->miniBoxChromaSamplePosition != configProp->u.av1C.chromaSamplePosition) {
+        } else if ((uint8_t)item->miniBoxChromaSamplePosition != configProp->u.codecConfig.chromaSamplePosition) {
             avifDiagnosticsPrintf(diag,
                                   "Item ID %u chroma sample position [%u] specified by MinimizedImageBox does not match %s property chroma sample position [%u]",
                                   item->id,
                                   (uint32_t)item->miniBoxChromaSamplePosition,
                                   configPropName,
-                                  configProp->u.av1C.chromaSamplePosition);
+                                  configProp->u.codecConfig.chromaSamplePosition);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
     }
@@ -2582,7 +2582,7 @@ static avifResult avifParseMiniHDRProperties(avifROStream * s, uint32_t * hasCll
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
-    const size_t av1COffset = s->offset;
+    const size_t codecConfigOffset = s->offset;
 
     uint32_t marker, version;
     AVIF_CHECK(avifROStreamReadBitsU32(s, &marker, /*bitCount=*/1)); // unsigned int (1) marker = 1;
@@ -2626,7 +2626,7 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // The following is skipped by avifParseItemPropertyContainerBox().
     // unsigned int (8) configOBUs[];
 
-    AVIF_CHECK(s->offset - av1COffset == 4); // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
+    AVIF_CHECK(s->offset - codecConfigOffset == 4); // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
     return AVIF_TRUE;
 }
 
@@ -2639,7 +2639,7 @@ static avifBool avifParseCodecConfigurationBoxProperty(avifProperty * prop,
     char diagContext[10];
     snprintf(diagContext, sizeof(diagContext), "Box[%.4s]", configPropName); // "Box[av1C]" or "Box[av2C]"
     BEGIN_STREAM(s, raw, rawLen, diag, diagContext);
-    return avifParseCodecConfiguration(&s, &prop->u.av1C, configPropName, diag);
+    return avifParseCodecConfiguration(&s, &prop->u.codecConfig, configPropName, diag);
 }
 
 static avifBool avifParsePixelAspectRatioBoxProperty(avifProperty * prop, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
@@ -4407,7 +4407,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     // Property with fixed index 1.
     avifProperty * colorCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
     AVIF_CHECKERR(colorCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
-    colorCodecConfigProp->u.av1C = mainItemCodecConfig;
+    colorCodecConfigProp->u.codecConfig = mainItemCodecConfig;
     AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, colorCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
 
     // Property with fixed index 2.
@@ -4453,7 +4453,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         // Property with fixed index 6.
         avifProperty * alphaCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
         AVIF_CHECKERR(alphaCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
-        alphaCodecConfigProp->u.av1C = alphaItemCodecConfig;
+        alphaCodecConfigProp->u.codecConfig = alphaItemCodecConfig;
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
@@ -4526,7 +4526,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         // Property with fixed index 17.
         avifProperty * gainmapCodecConfigProp = avifMetaCreateProperty(meta, (const char *)codecConfigType);
         AVIF_CHECKERR(gainmapCodecConfigProp, AVIF_RESULT_OUT_OF_MEMORY);
-        gainmapCodecConfigProp->u.av1C = gainmapItemCodecConfig;
+        gainmapCodecConfigProp->u.codecConfig = gainmapItemCodecConfig;
         AVIF_CHECKERR(avifDecoderItemAddProperty(gainmapItem, gainmapCodecConfigProp), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
@@ -5974,19 +5974,19 @@ static avifResult avifReadCodecConfigProperty(avifImage * image, const avifPrope
 {
     const avifProperty * configProp = avifPropertyArrayFind(properties, avifGetConfigurationPropertyName(codecType));
     if (configProp) {
-        image->depth = avifCodecConfigurationBoxGetDepth(&configProp->u.av1C);
-        if (configProp->u.av1C.monochrome) {
+        image->depth = avifCodecConfigurationBoxGetDepth(&configProp->u.codecConfig);
+        if (configProp->u.codecConfig.monochrome) {
             image->yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         } else {
-            if (configProp->u.av1C.chromaSubsamplingX && configProp->u.av1C.chromaSubsamplingY) {
+            if (configProp->u.codecConfig.chromaSubsamplingX && configProp->u.codecConfig.chromaSubsamplingY) {
                 image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-            } else if (configProp->u.av1C.chromaSubsamplingX) {
+            } else if (configProp->u.codecConfig.chromaSubsamplingX) {
                 image->yuvFormat = AVIF_PIXEL_FORMAT_YUV422;
             } else {
                 image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
             }
         }
-        image->yuvChromaSamplePosition = (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition;
+        image->yuvChromaSamplePosition = (avifChromaSamplePosition)configProp->u.codecConfig.chromaSamplePosition;
     } else {
         // A configuration property box is mandatory in all valid AVIF configurations. Bail out.
         return AVIF_RESULT_BMFF_PARSE_FAILED;
