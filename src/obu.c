@@ -41,6 +41,7 @@
 
 #if defined(AVIF_CODEC_AVM)
 // TODO: b/398931194 - Remove specific codec includes once AV2 is released.
+#include "av2/common/enums.h"
 #include "avm/avm_codec.h"
 #include "config/avm_config.h"
 #endif
@@ -151,9 +152,9 @@ static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
 //
 // Originally dav1d's parse_seq_hdr() function (heavily modified and split)
 
-static avifBool parseSequenceHeaderProfile(avifBits * bits, avifSequenceHeader * header)
+static avifBool parseSequenceHeaderProfile(avifBits * bits, uint32_t numBits, avifSequenceHeader * header)
 {
-    uint32_t seq_profile = avifBitsRead(bits, 3);
+    uint32_t seq_profile = avifBitsRead(bits, numBits);
     if (seq_profile > 2) {
         return AVIF_FALSE;
     }
@@ -434,7 +435,7 @@ static avifBool parseAV2ChromaFormatBitdepth(avifBits * bits, avifSequenceHeader
 
 static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
-    AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
+    AVIF_CHECK(parseSequenceHeaderProfile(bits, 3, header));
     AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
 
     AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
@@ -461,7 +462,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
         return AVIF_FALSE;
     }
 
-    AVIF_CHECK(parseSequenceHeaderProfile(bits, header));
+    AVIF_CHECK(parseSequenceHeaderProfile(bits, PROFILE_BITS, header));
     header->reduced_still_picture_header = (uint8_t)avifBitsRead(bits, 1); // single_picture_header_flag
     if (!header->reduced_still_picture_header) {
         avifBitsRead(bits, 3); // seq_lcr_id
