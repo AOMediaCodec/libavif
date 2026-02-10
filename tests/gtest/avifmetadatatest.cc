@@ -282,7 +282,8 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(
       temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
-  // TODO(yguyon): Fix orientation not being applied to PNG samples.
+  // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Fix orientation
+  // not being applied to PNG samples.
   EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 
@@ -355,7 +356,8 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   EXPECT_EQ(
       temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
-  // TODO(yguyon): Fix orientation not being applied to JPEG samples.
+  // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Fix orientation
+  // not being applied to JPEG samples.
   EXPECT_EQ(image->width, temp_image->width /* should be height here */);
 }
 

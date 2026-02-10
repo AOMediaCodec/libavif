@@ -2,7 +2,6 @@
 #
 #   * vcpkg is used to install dependencies that are packaged.
 #   * rav1e is installed from a binary upstream.
-#   * TODO: use proper installations of libgav1, libsharpyuv and SVT once released.
 
 name: CI Windows Installed
 on: [push, pull_request]

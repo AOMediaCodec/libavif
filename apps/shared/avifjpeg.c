@@ -1381,7 +1381,6 @@ static avifBool avifJPEGReadInternal(FILE * f,
             if ((marker->marker == (JPEG_APP0 + 1)) && (marker->data_length > AVIF_JPEG_EXIF_HEADER_LENGTH) &&
                 !memcmp(marker->data, AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_LENGTH)) {
                 if (found) {
-                    // TODO(yguyon): Implement instead of outputting an error.
                     fprintf(stderr, "Exif extraction failed: unsupported Exif split into multiple segments or invalid multiple Exif segments\n");
                     goto cleanup;
                 }
@@ -1696,7 +1695,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     jpeg_start_compress(&cinfo, TRUE);
 
     if (avif->icc.data && (avif->icc.size > 0)) {
-        // TODO(yguyon): Use jpeg_write_icc_profile() instead?
+        // Note: jpeg_write_icc_profile() could be used instead.
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 

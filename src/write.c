@@ -1754,7 +1754,6 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (hasGainMap) {
         // AVIF supports 16-bit images through sample transforms used as bit depth extensions,
         // but this is not implemented for gain maps for now. Stick to at most 12 bits.
-        // TODO(yguyon): Implement 16-bit gain maps.
         AVIF_CHECKERR(firstCell->gainMap->image->depth == 8 || firstCell->gainMap->image->depth == 10 ||
                           firstCell->gainMap->image->depth == 12,
                       AVIF_RESULT_UNSUPPORTED_DEPTH);
@@ -1956,7 +1955,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B) {
             // For now, only 16-bit depth is supported.
             AVIF_CHECKERR(firstCell->depth == 16, AVIF_RESULT_NOT_IMPLEMENTED);
-            // TODO: b/480081865 - Support gain maps in same file as Sample Transforms
+            // For now, gain maps are not supported in the same file as Sample Transforms ('altr' group conflict).
             AVIF_CHECKERR(!firstCell->gainMap, AVIF_RESULT_NOT_IMPLEMENTED);
             AVIF_CHECKRES(avifEncoderCreateBitDepthExtensionItems(encoder, gridCols, gridRows, gridWidth, gridHeight, colorItemID));
         } else {
@@ -2286,7 +2285,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                         continue;
                     }
 
-                    // TODO: Offer the ability for a user to specify which grid cell should be written first.
+                    // There is no way to select which grid cell should be written first for now.
                     avifEncoderItem * item = currentItems->ref[itemIndex];
                     if (item->encodeOutput->samples.count <= layerIndex) {
                         // We've already written all samples of this item
@@ -3362,9 +3361,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             // * This is an image sequence, but this file should still be a valid single-image avif,
             //   so there must still be a primary item pointing at a sync sample. Since the first
             //   frame of the image sequence is guaranteed to be a sync sample, it is chosen here.
-            //
-            // TODO: Offer the ability for a user to specify which frame in the sequence should
-            //       become the primary item's image, and force that frame to be a keyframe.
             contentSize = (uint32_t)item->encodeOutput->samples.sample[0].data.size;
         }
 

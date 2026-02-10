@@ -15,14 +15,11 @@ namespace {
 TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
   for (bool premultiplied_input : {false, true}) {
     if (!premultiplied_input) {
-      // TODO(yguyon): Fix the issue and remove this condition.
-      //               The issue is that avifPrepareReformatState() will result
-      //               in different YUV(A)-to-RGB conversion algorithm choices
-      //               (built-in or libyuv) depending on the presence of an
-      //               alpha channel, no matter if it is opaque or not, because
-      //               it considers that unpremultiplied YUVA samples should be
-      //               premultiplied before discarding alpha and converting to
-      //               RGB.
+      // avifPrepareReformatState() will result in different YUV(A)-to-RGB
+      // conversion algorithm choices (built-in or libyuv) depending on the
+      // presence of an alpha channel, no matter if it is opaque or not, because
+      // it considers that unpremultiplied YUVA samples should be premultiplied
+      // before discarding alpha and converting to RGB. Skip the test.
       continue;
     }
 

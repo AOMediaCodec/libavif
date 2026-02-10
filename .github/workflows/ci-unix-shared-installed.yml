@@ -51,7 +51,7 @@ jobs:
           codec-dav1d: "SYSTEM"
           gtest: "SYSTEM"
       - name: Disable libyuv on macOS
-        # TODO(yguyon): Install libyuv (not available with brew).
+        # libyuv is not available with brew.
         if: runner.os == 'macOS'
         run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_LIBYUV=OFF\""  >> $GITHUB_ENV
 
