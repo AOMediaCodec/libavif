@@ -98,14 +98,14 @@ runs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
       shell: pwsh
 
-    - uses: ./.github/actions/setup-common
-      with:
-        codec-aom: ${{ inputs.codec-aom }}
-        codec-dav1d: ${{ inputs.codec-dav1d }}
-        codec-rav1e: ${{ inputs.codec-rav1e }}
     - uses: ./.github/actions/cache
       id: cache
       with:
         extra-key: ${{ inputs.extra-cache-key }}
         use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
         use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}
+    - uses: ./.github/actions/setup-common
+      with:
+        codec-aom: ${{ inputs.codec-aom }}
+        codec-dav1d: ${{ inputs.codec-dav1d }}
+        codec-rav1e: ${{ inputs.codec-rav1e }}
