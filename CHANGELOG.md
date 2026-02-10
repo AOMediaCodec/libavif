@@ -36,7 +36,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.1
 * Update aom.cmd/LocalAom.cmake: v3.13.1
 * Update LocalAvm.cmake: research-v13.0.0
-* Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.14, corrosion v0.5.2,
+* Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.20, corrosion v0.6.1,
   rav1e v0.8.1
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.0.1
 * Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.1.2
