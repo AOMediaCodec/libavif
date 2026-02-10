@@ -56,6 +56,7 @@ runs:
         path: |
           ~/.cargo
           build/cargo
+          cargo*
           corrosion
         key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
     - name: Cache external dependencies in ext

@@ -1,6 +1,6 @@
 set(AVIF_RAV1E_GIT_TAG v0.8.1)
-set(AVIF_CORROSION_GIT_TAG v0.6.0)
-set(AVIF_CARGOC_GIT_TAG v0.10.18)
+set(AVIF_CORROSION_GIT_TAG v0.6.1)
+set(AVIF_CARGOC_GIT_TAG v0.10.20)
 
 set(RAV1E_LIB_FILENAME
     "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
@@ -38,7 +38,7 @@ else()
 
     FetchContent_MakeAvailable(Corrosion)
 
-    find_program(CARGO_CINSTALL cargo-cinstall HINTS "$ENV{HOME}/.cargo/bin")
+    find_program(CARGO_CINSTALL cargo-cinstall HINTS "$ENV{HOME}/.cargo/bin" HINTS ${CMAKE_BINARY_DIR})
 
     if(CARGO_CINSTALL)
         add_executable(cargo-cinstall IMPORTED GLOBAL)
