@@ -1628,7 +1628,6 @@ static avifBool avifCreateYUVToRGBThread(YUVToRGBThreadData * tdata)
                                            /*thrdaddr=*/NULL);
     return tdata->thread != NULL;
 #else
-    // TODO: Set the thread name for ease of debugging.
     return pthread_create(&tdata->thread, NULL, &avifImageYUVToRGBThreadWorker, tdata) == 0;
 #endif
 }
