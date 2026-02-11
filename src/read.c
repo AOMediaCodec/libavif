@@ -3189,17 +3189,9 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
         avifDiagnosticsPrintf(s.diag, "%s: Expecting box version 2 or 3, got version %u", s.diagContext, version);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    // TODO: check flags. ISO/IEC 23008-12:2017, Section 9.2 says:
-    //   The flags field of ItemInfoEntry with version greater than or equal to 2 is specified as
-    //   follows:
-    //
-    //   (flags & 1) equal to 1 indicates that the item is not intended to be a part of the
-    //   presentation. For example, when (flags & 1) is equal to 1 for an image item, the image
-    //   item should not be displayed.
-    //   (flags & 1) equal to 0 indicates that the item is intended to be a part of the
-    //   presentation.
-    //
-    // See also Section 6.4.2.
+    // Ignore flags&1. A value of 1 corresponds to a hidden image item (not intended to be displayed).
+    // There could be files wrongly setting that flag to 1 for items output as "to be displayed"
+    // by libavif so far, so keep that lenient behavior for simplicity and backward compatibility.
 
     uint32_t itemID;
     if (version == 2) {
