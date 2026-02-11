@@ -2121,10 +2121,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
     }
 
-    avifCodecSpecificOptionsClear(encoder->csOptions);
     avifEncoderFrame * frame = (avifEncoderFrame *)avifArrayPush(&encoder->data->frames);
     AVIF_CHECKERR(frame != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     frame->durationInTimescales = durationInTimescales;
+    avifCodecSpecificOptionsClear(encoder->csOptions);
     return AVIF_RESULT_OK;
 }
 
