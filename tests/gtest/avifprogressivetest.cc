@@ -87,6 +87,37 @@ TEST_F(ProgressiveTest, QualityChange) {
   TestDecode(kImageSize, kImageSize);
 }
 
+// NOTE: This test requires libaom v3.12.0 or later, as this was the first
+// version where tune IQ was available
+TEST_F(ProgressiveTest, TuneIq) {
+  encoder_->extraLayerCount = 1;
+  // Tune IQ requires all-intra mode, which libavif determines when the first
+  // layer is encoded at a very low quality (e.g. quality 10)
+  encoder_->quality = 10;
+  encoder_->codecChoice = AVIF_CODEC_CHOICE_AOM;
+
+  ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder_.get(), "tune", "iq"),
+            AVIF_RESULT_OK);
+  avifResult result = avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                          AVIF_ADD_IMAGE_FLAG_NONE);
+
+  if (result == AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION) {
+    // The aom version that libavif was built with likely does not support
+    // AOM_TUNE_IQ.
+    return;
+  }
+
+  ASSERT_EQ(result, AVIF_RESULT_OK);
+  encoder_->quality = 50;
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(kImageSize, kImageSize);
+}
+
 // NOTE: This test requires libaom v3.6.0 or later, otherwise the following
 // assertion in libaom fails:
 //   av1/encoder/mcomp.c:1717: av1_full_pixel_search: Assertion
