@@ -43,8 +43,7 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
 FUZZ_TEST(ParseAvifTest, Parse)
     .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
                  /*is_persistent=*/Arbitrary<bool>(),
-                 ArbitraryAvifDecoderPossiblyNoContent(),
-                 /*image_content_color_and_alpha=*/Arbitrary<bool>());
+                 ArbitraryAvifDecoderPossiblyNoContent());
 
 //------------------------------------------------------------------------------
 
