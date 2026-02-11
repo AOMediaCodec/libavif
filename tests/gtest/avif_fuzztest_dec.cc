@@ -31,7 +31,7 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
   io->persistent = is_persistent;
   avifDecoderSetIO(decoder.get(), io);
   // No need to worry about decoding taking too much time or memory because
-  // this test only exercizes parsing.
+  // this test only exercises parsing.
   decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
   decoder->imageDimensionLimit = std::numeric_limits<uint32_t>::max();
   decoder->imageCountLimit = 0;
