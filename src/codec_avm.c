@@ -341,7 +341,7 @@ static avifBool avifKeyEqualsName(const char * key, const char * name, avifBool 
 static avifBool avifProcessAVMOptionsPreInit(avifCodec * codec, avifBool alpha, struct avm_codec_enc_cfg * cfg)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
-        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
         int val;
         if (avifKeyEqualsName(entry->key, "end-usage", alpha)) { // Rate control mode
             if (!avmOptionParseEnum(entry->value, endUsageEnum, &val)) {
@@ -357,7 +357,7 @@ static avifBool avifProcessAVMOptionsPreInit(avifCodec * codec, avifBool alpha, 
 static avifBool avifProcessAVMOptionsPostInit(avifCodec * codec, avifBool alpha)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
-        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
         // Skip options for the other kind of plane.
         const char * otherPrefix = alpha ? "color:" : "alpha:";
         size_t otherPrefixLen = 6;
