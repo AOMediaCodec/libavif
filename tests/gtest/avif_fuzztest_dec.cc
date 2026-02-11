@@ -35,7 +35,7 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
   // This can lead to AVIF_RESULT_NO_CONTENT or AVIF_RESULT_NOT_IMPLEMENTED.
   decoder->imageContentToDecode = content_to_decode;
   // No need to worry about decoding taking too much time or memory because
-  // this test only exercizes parsing.
+  // this test only exercises parsing.
   decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
   decoder->imageDimensionLimit = std::numeric_limits<uint32_t>::max();
   decoder->imageCountLimit = 0;
