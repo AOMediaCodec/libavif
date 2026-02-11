@@ -14,7 +14,7 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
-using ::fuzztest::ElementOf;
+using ::fuzztest::BitFlagCombinationOf;
 
 namespace avif {
 namespace testutil {
@@ -112,13 +112,13 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
 }
 
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
-    .WithDomains(
-        ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-        /*is_persistent=*/Arbitrary<bool>(),
-        /*give_size_hint=*/Arbitrary<bool>(),
-        ElementOf({AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                   AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL}),
-        /*use_nth_image_api=*/Arbitrary<bool>());
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+                 /*is_persistent=*/Arbitrary<bool>(),
+                 /*give_size_hint=*/Arbitrary<bool>(),
+                 fuzztest::BitFlagCombinationOf<avifImageContentTypeFlags>(
+                     {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
+                      AVIF_IMAGE_CONTENT_GAIN_MAP}),
+                 /*use_nth_image_api=*/Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
 

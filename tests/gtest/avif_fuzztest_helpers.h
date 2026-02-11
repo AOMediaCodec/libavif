@@ -305,6 +305,15 @@ inline auto ArbitraryAvifDecoder() {
   return ArbitraryAvifDecoderWithGainMapOptions();
 }
 
+// Same as ArbitraryAvifDecoder() but imageContentToDecode can be set to
+// AVIF_IMAGE_CONTENT_NONE.
+inline auto ArbitraryAvifDecoderPossiblyNoContent() {
+  return fuzztest::Map(
+      AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
+      fuzztest::BitFlagCombinationOf<avifImageContentTypeFlags>(
+          {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA, AVIF_IMAGE_CONTENT_GAIN_MAP}));
+}
+
 //------------------------------------------------------------------------------
 
 // Returns the paths contained in the 'TEST_DATA_DIRS' environment variable.
