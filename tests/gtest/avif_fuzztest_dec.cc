@@ -41,7 +41,7 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
   decoder->imageCountLimit = 0;
 
   // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
-  EXPECT_NE(avifDecoderParse(decoder.get()), AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(avifDecoderParse(decoder.get()), AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(ParseAvifTest, Parse)
@@ -69,7 +69,7 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
 
   avifResult result = avifDecoderParse(decoder.get());
   // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
-  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
   if (result != AVIF_RESULT_OK) return;
 
   for (size_t i = 0; i < decoder->image->numProperties; ++i) {
