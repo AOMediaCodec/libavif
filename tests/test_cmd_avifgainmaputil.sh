@@ -70,8 +70,8 @@ pushd ${TMP_DIR}
       --cicp 2/3/4
 
    # also test the are_images_equal binary itself with some gain maps
-  "${ARE_IMAGES_EQUAL}" "${AVIF_OUTPUT}" "${AVIF_OUTPUT}" 0 40 0
-  "${ARE_IMAGES_EQUAL}" "${AVIF_OUTPUT}" "${AVIF_OUTPUT}" 0 40 1
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" 0 40 0
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" "${INPUT_JPEG_AVIF_GAINMAP_SDR}" 0 40 1
 popd
 
 exit 0
