@@ -5905,27 +5905,19 @@ static avifResult avifDecoderCheckGainMapProperties(avifDecoder * decoder, const
     return AVIF_RESULT_OK;
 }
 
-// Finds a 'sato' Sample Transform derived image item box.
-// If found, fills 'sampleTransformItem'. Otherwise, sets 'sampleTransformItem' to NULL.
-// Returns AVIF_RESULT_OK on success (whether or not a 'sato' box was found).
-// Assumes that there is a single 'sato' item.
-// Assumes that the 'sato' item is not the primary item and that both the primary item and 'sato'
-// are in the same 'altr' group.
-// TODO(yguyon): Check instead of assuming.
-static avifResult avifDecoderDataFindSampleTransformImageItem(avifDecoderData * data, avifDecoderItem ** sampleTransformItem)
+// Finds any 'sato' Sample Transform derived image item, distinct from the primary image item,
+// and in the same 'altr' group as the primary image item. Returns NULL otherwise.
+static avifDecoderItem * avifDecoderDataFindSampleTransformImageItem(avifDecoderData * data)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
-        if (!item->size || item->hasUnsupportedEssentialProperty || item->thumbnailForID != 0) {
-            continue;
-        }
-        if (!memcmp(item->type, "sato", 4)) {
-            *sampleTransformItem = item;
-            return AVIF_RESULT_OK;
+        if (!memcmp(item->type, "sato", 4) && item->id != data->meta->primaryItemID && item->size != 0 &&
+            !item->hasUnsupportedEssentialProperty && item->thumbnailForID == 0 &&
+            avifIsPreferredAlternativeTo(data, item->id, data->meta->primaryItemID)) {
+            return item;
         }
     }
-    *sampleTransformItem = NULL;
-    return AVIF_RESULT_OK;
+    return NULL;
 }
 
 static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileInfo * info, avifDecoderItem * item, avifItemCategory itemCategory)
@@ -6249,8 +6241,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         }
 
         // AVIF_ITEM_SAMPLE_TRANSFORM (not used through mainItems because not a coded item (well grids are not coded items either but it's different)).
-        avifDecoderItem * sampleTransformItem = NULL;
-        AVIF_CHECKRES(avifDecoderDataFindSampleTransformImageItem(data, &sampleTransformItem));
+        avifDecoderItem * const sampleTransformItem = avifDecoderDataFindSampleTransformImageItem(data);
         if (sampleTransformItem != NULL) {
             AVIF_ASSERT_OR_RETURN(data->sampleTransformNumInputImageItems == 0);
 
