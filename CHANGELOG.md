@@ -24,6 +24,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   avifDecoder::imageContentToDecode & AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS is
   not zero.
 * Support Sample Transform derived image items with grid input image items.
+* Add --sato flag to avifdec to enable Sample Transforms support at decoding.
 * Add --grid option to avifgainmaputil.
 
 ### Changed since 1.3.0
