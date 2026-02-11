@@ -390,7 +390,7 @@ static avifBool avifAOMOptionsContainExplicitTuning(const avifCodec * codec, avi
 static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, struct aom_codec_enc_cfg * cfg)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
-        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
         int val;
         if (avifKeyEqualsName(entry->key, "end-usage", alpha)) { // Rate control mode
             if (!aomOptionParseEnum(entry->value, endUsageEnum, &val)) {
@@ -484,7 +484,7 @@ static const struct aomOptionDef aomOptionDefs[] = {
 static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
 {
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
-        avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
+        const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
         // Skip options for the other kind of plane.
         const char * otherPrefix = alpha ? "color:" : "alpha:";
         size_t otherPrefixLen = 6;

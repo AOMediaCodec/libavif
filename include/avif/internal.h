@@ -597,10 +597,10 @@ typedef void (*avifCodecDestroyInternalFunc)(struct avifCodec * codec);
 
 typedef struct avifCodec
 {
-    avifCodecSpecificOptions * csOptions; // Contains codec-specific key/value pairs for advanced tuning.
-                                          // This array is NOT owned by avifCodec.
-    struct avifCodecInternal * internal;  // up to each codec to use how it wants
-    avifDiagnostics * diag;               // Shallow copy; owned by avifEncoder or avifDecoder
+    const avifCodecSpecificOptions * csOptions; // Contains codec-specific key/value pairs for advanced tuning.
+                                                // This array is NOT owned by avifCodec.
+    struct avifCodecInternal * internal;        // up to each codec to use how it wants
+    avifDiagnostics * diag;                     // Shallow copy; owned by avifEncoder or avifDecoder
 
     // Decoder options (for getNextImage):
     int maxThreads;               // See avifDecoder::maxThreads.
