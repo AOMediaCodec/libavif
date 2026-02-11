@@ -5854,7 +5854,12 @@ static avifResult avifDecoderCheckAlphaProperties(avifDecoder * decoder, const a
         return AVIF_RESULT_OK;
     }
 
-    // TODO(yguyon): Check for 'ispe' values too.
+    // HEIF (ISO/IEC 23008-12), Section 6.9.1:
+    //   When the width or the height of the alpha plane differs from the width or the height of the
+    //   master image, respectively, the alpha plane is resized to have the same width and height as
+    //   those of the master image.
+    // There is no need to enforce specific 'ispe' values describing the alpha item because
+    // the alpha item must be resized to the dimensions of the associated color item.
 
     if (!clapProp != !(image->transformFlags & AVIF_TRANSFORM_CLAP) ||
         (clapProp && (clapProp->u.clap.widthN != image->clap.widthN || clapProp->u.clap.widthD != image->clap.widthD ||
