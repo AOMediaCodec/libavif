@@ -108,7 +108,7 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
       use_nth_image_api, *reference, max_cell_height,
       /*enable_fine_incremental_check=*/false, /*expect_whole_file_read=*/true,
       /*expect_parse_success_from_partial_file=*/false);
-  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)

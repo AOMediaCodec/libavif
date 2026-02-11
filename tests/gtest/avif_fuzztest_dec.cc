@@ -77,15 +77,15 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
     EXPECT_GT(decoder->image->width, 0u);
     EXPECT_GT(decoder->image->height, 0u);
   }
-  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 
   // Loop once.
   result = avifDecoderReset(decoder.get());
-  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
   if (result != AVIF_RESULT_OK) return;
   while ((result = avifDecoderNextImage(decoder.get())) == AVIF_RESULT_OK) {
   }
-  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(DecodeAvifTest, Decode)
