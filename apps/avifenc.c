@@ -2590,7 +2590,6 @@ int main(int argc, char * argv[])
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
             goto cleanup;
         }
-        // Frames from a single input file could be used as grid cells. This is allowed for simplicity.
     }
 
     const char * lossyHint = " (Lossy)";
