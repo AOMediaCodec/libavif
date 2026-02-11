@@ -2396,10 +2396,6 @@ static avifResult avifDecoderItemReadAndParse(const avifDecoder * decoder,
         *codecType = avifGetCodecType(item->type);
         AVIF_ASSERT_OR_RETURN(*codecType != AVIF_CODEC_TYPE_UNKNOWN);
     }
-    // TODO(yguyon): Backward-incompatible files with a primary 'sato' Sample Transform derived image item
-    //               could be handled here (compared to backward-compatible files with a 'sato' item in the
-    //               same 'altr' group as the primary regular color item which are handled in
-    //               avifDecoderDataFindSampleTransformImageItem() below).
     return AVIF_RESULT_OK;
 }
 
