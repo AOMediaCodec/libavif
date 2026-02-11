@@ -527,7 +527,7 @@ static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeade
             // BT.709 SDR
             header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                   // 1
             header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT709; // 1
-            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;         // 5
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;           // 1
         } else if (colorDescriptionIdc == 2) {
             // BT.2100 PQ
             header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2100;               // 9
@@ -535,9 +535,9 @@ static avifBool parseAV2ContentInterpretation(avifBits * bits, avifSequenceHeade
             header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;   // 9
         } else if (colorDescriptionIdc == 3) {
             // BT.2100 HLG
-            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2100;                         // 9
-            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT; // 14
-            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;             // 9
+            header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT2100;                // 9
+            header->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_HLG; // 18
+            header->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;    // 9
         } else if (colorDescriptionIdc == 4) {
             // sRGB
             header->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;                  // 1
