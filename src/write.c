@@ -1546,7 +1546,7 @@ static avifResult avifEncoderCreateBitDepthExtensionImage(avifEncoder * encoder,
 
 static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
 {
-    // TODO(yguyon): Rework when AVIF_CODEC_CHOICE_AUTO can be AVM
+    // This asserts that images cannot be encoded with AVM unless AVIF_CODEC_CHOICE_AVM is explicitly selected.
     assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
            (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
     return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
