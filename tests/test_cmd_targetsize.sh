@@ -75,7 +75,6 @@ pushd ${TMP_DIR}
 
   # The remaining tests in this file use animations that may trigger segmentation faults
   # with libaom versions older than 3.6.0. Skip the tests if that is the case.
-  # TODO(yguyon): Investigate.
   # The grep and cut commands are not pretty but seem to work on most platforms.
   if "${AVIFENC}" -V | grep -o "aom" --quiet; then
     AOM_VERSION=$("${AVIFENC}" -V | grep -o "aom[^,]*[0-9]*\.")     # "aom [enc/dec]:X.Y."

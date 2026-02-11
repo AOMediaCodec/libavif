@@ -328,7 +328,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         /*create_alpha=*/testing::Values(true),
-        // TODO: b/480081865 - Support gain maps in same file as 'sato' items
+        // Gain maps are not supported in the same file as 'sato' items.
         /*create_gainmap=*/testing::Values(false),
         /*use_grid=*/testing::Values(true),
         testing::Values(AVIF_IMAGE_CONTENT_NONE,
