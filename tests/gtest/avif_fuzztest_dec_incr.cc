@@ -14,7 +14,7 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
-using ::fuzztest::ElementOf;
+using ::fuzztest::BitFlagCombinationOf;
 
 namespace avif {
 namespace testutil {
@@ -83,44 +83,42 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   // This can lead to AVIF_RESULT_NO_CONTENT.
   decoder->imageContentToDecode = content_to_decode;
 
-  if (avifDecoderRead(decoder.get(), reference.get()) == AVIF_RESULT_OK) {
-    // Avoid timeouts by discarding big images decoded many times.
-    // TODO(yguyon): Increase this arbitrary threshold but decode incrementally
-    //               fewer times than as many bytes.
-    if (reference->width * reference->height * data.read_size >
-        8 * 1024 * 1024) {
-      return;
-    }
-    // decodeIncrementally() will fail if there are leftover bytes.
-    const avifRWData encoded_data = {const_cast<uint8_t*>(data.available_bytes),
-                                     data.read_size};
-    // No clue on whether encoded_data is tiled so use a lower bound of a single
-    // tile for the whole image.
-    // Note that an AVIF tile is at most as high as an AV1 frame
-    // (aomediacodec.github.io/av1-spec says max_frame_height_minus_1 < 65536)
-    // but libavif successfully decodes AVIF files with dimensions unrelated to
-    // the underlying AV1 frame (for example a 1x1000000 AVIF for a 1x1 AV1).
-    // Otherwise we could use the minimum of reference->height and 65536u below.
-    const uint32_t max_cell_height = reference->height;
-    const avifResult result = DecodeIncrementally(
-        encoded_data, decoder.get(), is_persistent, give_size_hint,
-        use_nth_image_api, *reference, max_cell_height,
-        /*enable_fine_incremental_check=*/false,
-        /*expect_whole_file_read=*/true,
-        /*expect_parse_success_from_partial_file=*/false);
-    // The result does not matter, as long as we do not crash.
-    (void)result;
+  avifResult result = avifDecoderRead(decoder.get(), reference.get());
+  // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result != AVIF_RESULT_OK) return;
+
+  // Avoid timeouts by discarding big images decoded many times.
+  if (reference->width * reference->height * data.read_size > 8 * 1024 * 1024) {
+    return;
   }
+  // decodeIncrementally() will fail if there are leftover bytes.
+  const avifRWData encoded_data = {const_cast<uint8_t*>(data.available_bytes),
+                                   data.read_size};
+  // No clue on whether encoded_data is tiled so use a lower bound of a single
+  // tile for the whole image.
+  // Note that an AVIF tile is at most as high as an AV1 frame
+  // (aomediacodec.github.io/av1-spec says max_frame_height_minus_1 < 65536)
+  // but libavif successfully decodes AVIF files with dimensions unrelated to
+  // the underlying AV1 frame (for example a 1x1000000 AVIF for a 1x1 AV1).
+  // Otherwise we could use the minimum of reference->height and 65536u below.
+  const uint32_t max_cell_height = reference->height;
+  result = DecodeIncrementally(
+      encoded_data, decoder.get(), is_persistent, give_size_hint,
+      use_nth_image_api, *reference, max_cell_height,
+      /*enable_fine_incremental_check=*/false, /*expect_whole_file_read=*/true,
+      /*expect_parse_success_from_partial_file=*/false);
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
-    .WithDomains(
-        ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-        /*is_persistent=*/Arbitrary<bool>(),
-        /*give_size_hint=*/Arbitrary<bool>(),
-        ElementOf({AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                   AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL}),
-        /*use_nth_image_api=*/Arbitrary<bool>());
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+                 /*is_persistent=*/Arbitrary<bool>(),
+                 /*give_size_hint=*/Arbitrary<bool>(),
+                 fuzztest::BitFlagCombinationOf<avifImageContentTypeFlags>(
+                     {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
+                      AVIF_IMAGE_CONTENT_GAIN_MAP}),
+                 /*use_nth_image_api=*/Arbitrary<bool>());
 
 //------------------------------------------------------------------------------
 

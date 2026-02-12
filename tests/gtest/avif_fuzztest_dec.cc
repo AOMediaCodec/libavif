@@ -13,8 +13,6 @@
 #include "gtest/gtest.h"
 
 using ::fuzztest::Arbitrary;
-using ::fuzztest::BitFlagCombinationOf;
-using ::fuzztest::ElementOf;
 
 namespace avif {
 namespace testutil {
@@ -23,7 +21,7 @@ namespace {
 //------------------------------------------------------------------------------
 
 void Parse(const std::string& arbitrary_bytes, bool is_persistent,
-           DecoderPtr decoder, avifImageContentTypeFlags content_to_decode) {
+           DecoderPtr decoder) {
   ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   const uint8_t* data =
@@ -32,8 +30,6 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
   if (io == nullptr) return;
   io->persistent = is_persistent;
   avifDecoderSetIO(decoder.get(), io);
-  // This can lead to AVIF_RESULT_NO_CONTENT or AVIF_RESULT_NOT_IMPLEMENTED.
-  decoder->imageContentToDecode = content_to_decode;
   // No need to worry about decoding taking too much time or memory because
   // this test only exercizes parsing.
   decoder->imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
@@ -41,20 +37,18 @@ void Parse(const std::string& arbitrary_bytes, bool is_persistent,
   decoder->imageCountLimit = 0;
 
   // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
-  EXPECT_NE(avifDecoderParse(decoder.get()), AVIF_RESULT_INTERNAL_ERROR);
+  ASSERT_NE(avifDecoderParse(decoder.get()), AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(ParseAvifTest, Parse)
     .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-                 /*is_persistent=*/Arbitrary<bool>(), ArbitraryAvifDecoder(),
-                 BitFlagCombinationOf<avifImageContentTypeFlags>(
-                     {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                      AVIF_IMAGE_CONTENT_GAIN_MAP}));
+                 /*is_persistent=*/Arbitrary<bool>(),
+                 ArbitraryAvifDecoderPossiblyNoContent());
 
 //------------------------------------------------------------------------------
 
 void Decode(const std::string& arbitrary_bytes, bool is_persistent,
-            DecoderPtr decoder, avifImageContentTypeFlags content_to_decode) {
+            DecoderPtr decoder) {
   ASSERT_FALSE(GetSeedDataDirs().empty());  // Make sure seeds are available.
 
   const uint8_t* data =
@@ -64,10 +58,11 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
   // The Chrome's avifIO object is not persistent.
   io->persistent = is_persistent;
   avifDecoderSetIO(decoder.get(), io);
-  // This can lead to AVIF_RESULT_NO_CONTENT.
-  decoder->imageContentToDecode = content_to_decode;
 
-  if (avifDecoderParse(decoder.get()) != AVIF_RESULT_OK) return;
+  avifResult result = avifDecoderParse(decoder.get());
+  // AVIF_RESULT_INTERNAL_ERROR means a broken invariant and should not happen.
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result != AVIF_RESULT_OK) return;
 
   for (size_t i = 0; i < decoder->image->numProperties; ++i) {
     const avifRWData& box_payload = decoder->image->properties[i].boxPayload;
@@ -77,23 +72,25 @@ void Decode(const std::string& arbitrary_bytes, bool is_persistent,
               data + arbitrary_bytes.size());
   }
 
-  while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
+  while ((result = avifDecoderNextImage(decoder.get())) == AVIF_RESULT_OK) {
     EXPECT_GT(decoder->image->width, 0u);
     EXPECT_GT(decoder->image->height, 0u);
   }
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 
   // Loop once.
-  if (avifDecoderReset(decoder.get()) != AVIF_RESULT_OK) return;
-  while (avifDecoderNextImage(decoder.get()) == AVIF_RESULT_OK) {
+  result = avifDecoderReset(decoder.get());
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
+  if (result != AVIF_RESULT_OK) return;
+  while ((result = avifDecoderNextImage(decoder.get())) == AVIF_RESULT_OK) {
   }
+  ASSERT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 FUZZ_TEST(DecodeAvifTest, Decode)
-    .WithDomains(
-        ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
-        /*is_persistent=*/Arbitrary<bool>(), ArbitraryAvifDecoder(),
-        ElementOf({AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                   AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL}));
+    .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
+                 /*is_persistent=*/Arbitrary<bool>(),
+                 ArbitraryAvifDecoderPossiblyNoContent());
 
 //------------------------------------------------------------------------------
 
