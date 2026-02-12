@@ -97,9 +97,7 @@ TEST(IoStatsTest, AlphaObuSize) {
   EXPECT_GT(io_stats.alphaOBUSize, 0u);
 }
 
-// Disabled because segfault happens with some libaom versions (such as 3.5.0)
-// but not others (such as 3.6.0). TODO(yguyon): Find the commit that fixed it.
-TEST(DISABLED_IoStatsTest, AnimationObuSize) {
+TEST(IoStatsTest, AnimationObuSize) {
   avifIOStats io_stats;
   ASSERT_TRUE(GetIoStatsFromEncode(io_stats, AVIF_QUALITY_LOSSLESS,
                                    AVIF_QUALITY_LOSSLESS,
