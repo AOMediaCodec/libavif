@@ -86,7 +86,7 @@ TEST(AltrTest, ZeroImageContentToDecode) {
             AVIF_RESULT_NO_CONTENT);
 }
 
-TEST(AltrTest, OnlySampleTranformContentToDecode) {
+TEST(AltrTest, OnlySampleTransformContentToDecode) {
   const std::string file_path =
       std::string(data_path) + "weld_sato_12B_8B_q0.avif";
 
