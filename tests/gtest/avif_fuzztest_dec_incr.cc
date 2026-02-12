@@ -115,7 +115,7 @@ FUZZ_TEST(DecodeAvifFuzzTest, DecodeIncr)
     .WithDomains(ArbitraryImageWithSeeds({AVIF_APP_FILE_FORMAT_AVIF}),
                  /*is_persistent=*/Arbitrary<bool>(),
                  /*give_size_hint=*/Arbitrary<bool>(),
-                 fuzztest::BitFlagCombinationOf<avifImageContentTypeFlags>(
+                 BitFlagCombinationOf<avifImageContentTypeFlags>(
                      {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
                       AVIF_IMAGE_CONTENT_GAIN_MAP,
                       AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS}),
