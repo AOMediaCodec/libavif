@@ -1234,6 +1234,11 @@ typedef enum avifImageContentTypeFlag
     AVIF_IMAGE_CONTENT_GAIN_MAP = (1 << 2),
     AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP,
 
+    // Mostly used for bit depth extensions to go beyond the underlying codec capability
+    // (e.g. 16-bit AVIF). Not part of AVIF_IMAGE_CONTENT_ALL as this is a rare use case.
+    // Has no effect without AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA.
+    AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS = (1 << 3),
+
     AVIF_IMAGE_CONTENT_DECODE_DEFAULT = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
 } avifImageContentTypeFlag;
 typedef uint32_t avifImageContentTypeFlags;

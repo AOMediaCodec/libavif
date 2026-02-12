@@ -40,19 +40,28 @@ TEST(AvifDecodeTest, ImageContentToDecodeNone) {
   for (const std::string file_name :
        {"paris_icc_exif_xmp.avif", "draw_points_idat.avif",
         "sofa_grid1x5_420.avif", "color_grid_alpha_nogrid.avif",
-        "seine_sdr_gainmap_srgb.avif", "draw_points_idat_progressive.avif"}) {
-    SCOPED_TRACE(file_name);
-    DecoderPtr decoder(avifDecoderCreate());
-    ASSERT_NE(decoder, nullptr);
-    // Do not decode anything.
-    decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_NONE;
-    ASSERT_EQ(avifDecoderSetIOFile(
-                  decoder.get(), (std::string(data_path) + file_name).c_str()),
-              AVIF_RESULT_OK);
-    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
-        << decoder->diag.error;
-    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
-    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
+        "seine_sdr_gainmap_srgb.avif", "draw_points_idat_progressive.avif",
+        "weld_sato_12B_8B_q0.avif"}) {
+    for (
+        avifImageContentTypeFlag image_content_to_decode : {
+            AVIF_IMAGE_CONTENT_NONE,
+            AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS  // Equivalent to NONE without
+                                                  // AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA.
+        }) {
+      SCOPED_TRACE(file_name);
+      DecoderPtr decoder(avifDecoderCreate());
+      ASSERT_NE(decoder, nullptr);
+      // Do not decode anything.
+      decoder->imageContentToDecode = image_content_to_decode;
+      ASSERT_EQ(
+          avifDecoderSetIOFile(decoder.get(),
+                               (std::string(data_path) + file_name).c_str()),
+          AVIF_RESULT_OK);
+      ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+          << decoder->diag.error;
+      EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
+      EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
+    }
   }
 }
 

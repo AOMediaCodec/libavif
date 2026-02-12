@@ -297,7 +297,11 @@ inline auto ArbitraryAvifDecoderWithGainMapOptions() {
       AddGainMapOptionsToDecoder, ArbitraryBaseAvifDecoder(),
       fuzztest::ElementOf<avifImageContentTypeFlags>(
           {AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-           AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP}));
+           AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP,
+           AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA |
+               AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS,
+           AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP |
+               AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS}));
 }
 
 // Generator for an arbitrary DecoderPtr.
