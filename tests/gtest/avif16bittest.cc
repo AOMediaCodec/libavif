@@ -18,23 +18,26 @@ namespace {
 const char* data_path = nullptr;
 
 class SampleTransformTest
-    : public testing::TestWithParam<std::tuple<
-          avifSampleTransformRecipe, avifPixelFormat, /*create_alpha=*/bool,
-          /*use_grid=*/bool, /*quality=*/int, /*add_xmp=*/bool>> {};
+    : public testing::TestWithParam<
+          std::tuple<avifSampleTransformRecipe, avifPixelFormat, avifRange,
+                     /*create_alpha=*/bool, /*use_grid=*/bool, /*quality=*/int,
+                     /*add_xmp=*/bool>> {};
 
 //------------------------------------------------------------------------------
 
 TEST_P(SampleTransformTest, Avif16bit) {
   const avifSampleTransformRecipe recipe = std::get<0>(GetParam());
   const avifPixelFormat yuv_format = std::get<1>(GetParam());
-  const bool create_alpha = std::get<2>(GetParam());
-  const bool use_grid = std::get<3>(GetParam());
-  const int quality = std::get<4>(GetParam());
-  const bool add_xmp = std::get<5>(GetParam());
+  const avifRange yuv_range = std::get<2>(GetParam());
+  const bool create_alpha = std::get<3>(GetParam());
+  const bool use_grid = std::get<4>(GetParam());
+  const int quality = std::get<5>(GetParam());
+  const bool add_xmp = std::get<6>(GetParam());
 
   const ImagePtr image = testutil::ReadImage(
       data_path, "weld_16bit.png", yuv_format, /*requested_depth=*/16);
   ASSERT_NE(image, nullptr);
+  image->yuvRange = yuv_range;  // Some pixel values are out-of-range.
   if (create_alpha && !image->alphaPlane) {
     // Simulate alpha plane with a view on luma.
     image->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
@@ -97,8 +100,11 @@ TEST_P(SampleTransformTest, Avif16bit) {
   ASSERT_EQ(image->width, decoded->width);
   ASSERT_EQ(image->height, decoded->height);
 
-  EXPECT_GE(testutil::GetPsnr(*image, *decoded),
-            (quality == AVIF_QUALITY_LOSSLESS) ? 99.0 : 15.0);
+  if (quality == AVIF_QUALITY_LOSSLESS) {
+    EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
+  } else {
+    EXPECT_GE(testutil::GetPsnr(*image, *decoded), 15.0);
+  }
 
   // Replace all 'sato' box types by "zzzz" garbage. This simulates an old
   // decoder that does not recognize the Sample Transform feature.
@@ -116,11 +122,10 @@ TEST_P(SampleTransformTest, Avif16bit) {
                                   encoded.data, encoded.size),
             AVIF_RESULT_OK);
   // Only the most significant bits of each sample can be retrieved.
-  // They should be encoded losslessly no matter the quantizer settings.
   ImagePtr image_no_sato = testutil::CreateImage(
       static_cast<int>(image->width), static_cast<int>(image->height),
       static_cast<int>(decoded_no_sato->depth), image->yuvFormat,
-      image->alphaPlane ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, image->yuvRange);
+      image->alphaPlane ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(image_no_sato, nullptr);
 
   if (recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
@@ -140,6 +145,7 @@ TEST_P(SampleTransformTest, Avif16bit) {
                   /*numTokens=*/3, tokens, /*numInputImageItems=*/1,
                   &inputImage, AVIF_PLANES_ALL),
               AVIF_RESULT_OK);
+    image_no_sato->yuvRange = image->yuvRange;
     ASSERT_EQ(avifImageSetMetadataXMP(image_no_sato.get(), image->xmp.data,
                                       image->xmp.size),
               AVIF_RESULT_OK);
@@ -155,9 +161,21 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV420,
                         AVIF_PIXEL_FORMAT_YUV400),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(false),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_DEFAULT),
+        /*add_xmp=*/testing::Values(false)));
+
+INSTANTIATE_TEST_SUITE_P(
+    LimitedRange, SampleTransformTest,
+    testing::Combine(
+        testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
+        testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_LIMITED),
+        /*create_alpha=*/testing::Values(false),
+        /*use_grid=*/testing::Values(false),
+        testing::Values(AVIF_QUALITY_LOSSLESS),
         /*add_xmp=*/testing::Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -166,6 +184,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B,
                         AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(false),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
@@ -177,6 +196,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(false),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_DEFAULT),
@@ -187,6 +207,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(true),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
@@ -198,6 +219,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(false),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_LOSSLESS),
@@ -208,6 +230,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV444),
+        testing::Values(AVIF_RANGE_FULL),
         /*create_alpha=*/testing::Values(false),
         /*use_grid=*/testing::Values(false),
         testing::Values(AVIF_QUALITY_DEFAULT),
@@ -219,6 +242,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(
             AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B),
         testing::Values(AVIF_PIXEL_FORMAT_YUV420),
+        testing::Values(AVIF_RANGE_LIMITED),
         /*create_alpha=*/testing::Values(true),
         /*use_grid=*/testing::Values(true),
         testing::Values(AVIF_QUALITY_LOSSLESS),
