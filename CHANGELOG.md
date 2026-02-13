@@ -28,6 +28,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   Section 4.3.
 * Support Sample Transform derived image items with grid input image items.
 * Add --grid option to avifgainmaputil.
+* Apply clean aperture crop when decoding to PNG or JPEG.
 
 ### Changed since 1.3.0
 

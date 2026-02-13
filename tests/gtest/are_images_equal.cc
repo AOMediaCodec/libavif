@@ -59,8 +59,10 @@ int main(int argc, char** argv) {
   if (argc == 4) {
     if (!avif::testutil::AreImagesEqual(*decoded[0], *decoded[1],
                                         ignore_alpha)) {
+      auto psnr =
+          avif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
       std::cerr << "Images " << argv[1] << " and " << argv[2]
-                << " are different." << std::endl;
+                << " are different (PSNR: " << psnr << ")." << std::endl;
       return 1;
     }
     std::cout << "Images " << argv[1] << " and " << argv[2] << " are identical."
@@ -69,7 +71,8 @@ int main(int argc, char** argv) {
     auto psnr = avif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
     if (psnr < std::stod(argv[4])) {
       std::cerr << "PSNR: " << psnr << ", images " << argv[1] << " and "
-                << argv[2] << " are not similar." << std::endl;
+                << argv[2] << " are not similar enough (threshold: " << argv[4]
+                << ")." << std::endl;
       return 1;
     }
     std::cout << "PSNR: " << psnr << ", images " << argv[1] << " and "

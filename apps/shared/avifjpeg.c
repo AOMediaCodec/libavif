@@ -1665,18 +1665,28 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
 
-    avifRGBImage rgb;
-    avifRGBImageSetDefaults(&rgb, avif);
-    rgb.format = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_RGB_FORMAT_GRAY : AVIF_RGB_FORMAT_RGB;
-    rgb.chromaUpsampling = chromaUpsampling;
-    rgb.depth = 8;
-    if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+    avifRGBImage rgbData;
+    avifRGBImageSetDefaults(&rgbData, avif);
+    rgbData.format = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 ? AVIF_RGB_FORMAT_GRAY : AVIF_RGB_FORMAT_RGB;
+    rgbData.chromaUpsampling = chromaUpsampling;
+    rgbData.depth = 8;
+    if (avifRGBImageAllocatePixels(&rgbData) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
         goto cleanup;
     }
-    if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
+    if (avifImageYUVToRGB(avif, &rgbData) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
         goto cleanup;
+    }
+
+    avifRGBImage rgbView = rgbData;
+    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
+            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+            avifRGBImageSetViewRect(&rgbView, &rgbData, &cropRect);
+        }
     }
 
     f = fopen(outputFilename, "wb");
@@ -1686,8 +1696,8 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     }
 
     jpeg_stdio_dest(&cinfo, f);
-    cinfo.image_width = avif->width;
-    cinfo.image_height = avif->height;
+    cinfo.image_width = rgbView.width;
+    cinfo.image_height = rgbView.height;
     const avifBool isGray = avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400;
     cinfo.input_components = isGray ? 1 : 3;
     cinfo.in_color_space = isGray ? JCS_GRAYSCALE : JCS_RGB;
@@ -1698,21 +1708,6 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     if (avif->icc.data && (avif->icc.size > 0)) {
         // TODO(yguyon): Use jpeg_write_icc_profile() instead?
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
-    }
-
-    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
-        avifCropRect cropRect;
-        avifDiagnostics diag;
-        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
-            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
-            fprintf(stderr,
-                    "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
-                    cropRect.x,
-                    cropRect.y,
-                    cropRect.width,
-                    cropRect.height);
-        }
     }
 
     if (avif->exif.data && (avif->exif.size > 0)) {
@@ -1788,7 +1783,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
     }
 
     while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &rgb.pixels[cinfo.next_scanline * rgb.rowBytes];
+        row_pointer[0] = &rgbView.pixels[cinfo.next_scanline * rgbView.rowBytes];
         (void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
     }
 
@@ -1800,6 +1795,6 @@ cleanup:
         fclose(f);
     }
     jpeg_destroy_compress(&cinfo);
-    avifRGBImageFreePixels(&rgb);
+    avifRGBImageFreePixels(&rgbData);
     return ret;
 }

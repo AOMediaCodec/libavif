@@ -59,6 +59,11 @@ avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint
 // The returned cells must be destroyed with avifImageDestroy().
 avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells);
 
+// Performs a shallow copy of a rectangular area of an RGB image. 'dstImage' does not own the pixel data.
+// Assumes that cropRect is a valid cropping rectangle for srcImage. This is true if it was obtained
+// using avifCropRectFromCleanApertureBox().
+void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect);
+
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
 // should be ignored. This structure is used to override the timing defaults in avifenc when the
