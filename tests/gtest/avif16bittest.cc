@@ -400,7 +400,7 @@ TEST(Avif16bitTest, SampleTransformWithOtherBitDepths) {
                                   encoded_16bit.data(), encoded_16bit.size()),
             AVIF_RESULT_OK);
 
-  for (uint32_t num_bits = 0; num_bits <= 32; ++num_bits) {
+  for (uint8_t num_bits = 0; num_bits <= 32; ++num_bits) {
     if (num_bits == reference->depth) {
       continue;
     }
