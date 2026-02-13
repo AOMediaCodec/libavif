@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
@@ -373,6 +375,72 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_IMAGE_CONTENT_NONE,
                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
                         AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL)));
+
+//------------------------------------------------------------------------------
+
+TEST(Avif16bitTest, SampleTransformWithOtherBitDepths) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+
+  const std::string file_path =
+      std::string(data_path) + "weld_sato_12B_8B_q0.avif";
+  std::vector<uint8_t> encoded_16bit(std::filesystem::file_size(file_path));
+  std::ifstream(file_path, std::ios::binary)
+      .read(reinterpret_cast<char*>(encoded_16bit.data()),
+            encoded_16bit.size());
+
+  ImagePtr reference(avifImageCreateEmpty());
+  ASSERT_NE(reference, nullptr);
+  DecoderPtr decoder_reference(avifDecoderCreate());
+  ASSERT_NE(decoder_reference, nullptr);
+  decoder_reference->imageContentToDecode |=
+      AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(avifDecoderReadMemory(decoder_reference.get(), reference.get(),
+                                  encoded_16bit.data(), encoded_16bit.size()),
+            AVIF_RESULT_OK);
+
+  for (uint32_t num_bits = 0; num_bits <= 32; ++num_bits) {
+    if (num_bits == reference->depth) {
+      continue;
+    }
+    std::vector<uint8_t> encoded(encoded_16bit);
+    // Replace 'pixi' 3-channel 16-bit by another bit depth.
+    bool found_subsequence_to_replace = false;
+    for (size_t i = 0; i + 4 <= encoded.size(); ++i) {
+      if (!std::memcmp(&encoded[i],
+                       "pixi"       // PixelInformationProperty 4CC
+                       "\0\0\0\0"   // version and flags
+                       "\3"         // num_channels
+                       "\20\20\20"  // bits_per_channels (16 is 20 in octal)
+                       ,
+                       4 + 4 + 1 + 3)) {
+        encoded[i + 9] = encoded[i + 10] = encoded[i + 11] = num_bits;
+        found_subsequence_to_replace = true;
+        break;
+      }
+    }
+    ASSERT_TRUE(found_subsequence_to_replace);
+
+    ImagePtr decoded(avifImageCreateEmpty());
+    ASSERT_NE(decoded, nullptr);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+    const avifResult result = avifDecoderReadMemory(
+        decoder.get(), decoded.get(), encoded.data(), encoded.size());
+    const avifResult expected_result =
+        num_bits == 0   ? AVIF_RESULT_BMFF_PARSE_FAILED
+        : num_bits > 16 ? AVIF_RESULT_NOT_IMPLEMENTED
+                        : AVIF_RESULT_OK;
+    ASSERT_EQ(result, expected_result) << "bits_per_channels " << num_bits;
+    if (result == AVIF_RESULT_OK) {
+      // The output image should be highly distorted because of the pixel value
+      // clamping to (1<<num_bits)-1.
+      EXPECT_LE(testutil::GetPsnr(*reference, *decoded), 10.0);
+    }
+  }
+}
 
 //------------------------------------------------------------------------------
 

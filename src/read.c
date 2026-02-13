@@ -2714,6 +2714,10 @@ static avifResult avifParsePixelInformationProperty(avifProperty * prop, const u
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 #endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
+        if (pixi->planeDepths[i] > 16) {
+            avifDiagnosticsPrintf(diag, "Box[pixi] plane depth %d is not supported", (int)pixi->planeDepths[i]);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
         if (pixi->planeDepths[i] != pixi->planeDepths[0]) {
             avifDiagnosticsPrintf(diag,
                                   "Box[pixi] contains unsupported mismatched plane depths [%u != %u]",
