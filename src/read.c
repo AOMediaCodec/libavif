@@ -2708,12 +2708,10 @@ static avifResult avifParsePixelInformationProperty(avifProperty * prop, const u
     }
     for (uint8_t i = 0; i < pixi->planeCount; ++i) {
         AVIF_CHECKERR(avifROStreamRead(&s, &pixi->planeDepths[i], 1), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int (8) bits_per_channel;
-#if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
         if (pixi->planeDepths[i] == 0) {
             avifDiagnosticsPrintf(diag, "Box[pixi] plane depth shall not be 0 for channel %u", i);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-#endif // AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI
         if (pixi->planeDepths[i] > 16) {
             avifDiagnosticsPrintf(diag, "Box[pixi] plane depth %d is not supported", (int)pixi->planeDepths[i]);
             return AVIF_RESULT_NOT_IMPLEMENTED;
