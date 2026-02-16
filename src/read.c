@@ -2304,16 +2304,9 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
         avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory pixi property", item->id, (const char *)item->type);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    for (uint8_t i = 0; i < pixiProp->u.pixi.planeCount; ++i) {
-        if (pixiProp->u.pixi.planeDepths[i] != pixiProp->u.pixi.planeDepths[0]) {
-            avifDiagnosticsPrintf(diag,
-                                  "Item ID %u of type '%.4s' has different depths specified by pixi property [%u, %u], this is not supported",
-                                  item->id,
-                                  (const char *)item->type,
-                                  pixiProp->u.pixi.planeDepths[0],
-                                  pixiProp->u.pixi.planeDepths[i]);
-            return AVIF_RESULT_NOT_IMPLEMENTED;
-        }
+    for (uint8_t i = 1; i < pixiProp->u.pixi.planeCount; ++i) {
+        // This is enforced in avifParsePixelInformationProperty().
+        AVIF_ASSERT_OR_RETURN(pixiProp->u.pixi.planeDepths[i] == pixiProp->u.pixi.planeDepths[0]);
     }
 
     const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
