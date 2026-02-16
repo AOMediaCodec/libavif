@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -17,6 +18,24 @@
 #include "gtest/gtest.h"
 
 namespace avif {
+
+//------------------------------------------------------------------------------
+// Custom FuzzTest printer for libavif types. Needed to avoid compile-time
+// errors due to structs with C-style array fields.
+//
+// These should reside in the same namespace as the types they print to enable
+// Argument-Dependent Lookup (ADL).
+// See https://github.com/google/fuzztest/blob/main/doc/domains-reference.md.
+template <typename Sink, typename Ptr,
+          typename = std::enable_if_t<std::is_same_v<Ptr, ImagePtr> ||
+                                      std::is_same_v<Ptr, EncoderPtr> ||
+                                      std::is_same_v<Ptr, DecoderPtr>>>
+void FuzzTestPrintSourceCode(Sink& sink, const Ptr& ptr) {
+  // Stub to avoid compile error for structs with C-style array fields.
+  // Consider adding a useful source code representation here:
+  //   `absl::Format(&sink, ...);`
+}
+
 namespace testutil {
 
 //------------------------------------------------------------------------------
