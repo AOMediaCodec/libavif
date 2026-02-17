@@ -376,7 +376,8 @@ if(AVIF_CODEC_AVM_ENABLED)
         if(AVIF_BUILD_APPS)
             # Disable all tests that use avifenc without explicitly setting --codec=avm.
             set_tests_properties(
-                test_cmd test_cmd_animation test_cmd_grid test_cmd_stdin test_cmd_targetsize PROPERTIES DISABLED True
+                test_cmd test_cmd_animation test_cmd_grid test_cmd_stdin test_cmd_targetsize test_cmd_transform
+                PROPERTIES DISABLED True
             )
         endif()
     endif()
