@@ -30,7 +30,8 @@ using DecoderPtr = std::unique_ptr<avifDecoder, UniquePtrDeleter>;
 using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using GainMapPtr = std::unique_ptr<avifGainMap, UniquePtrDeleter>;
 using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
-using RGBImagePtr = std::unique_ptr<avifRGBImage, UniquePtrDeleter>;
+// To use when RGBImage actually owns the pixels. RGBImage can also be used as a view, in which case it does not own the pixels.
+using RGBImageOwnedPixelsPtr = std::unique_ptr<avifRGBImage, UniquePtrDeleter>;
 
 } // namespace avif
 
