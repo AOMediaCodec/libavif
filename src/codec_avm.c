@@ -510,9 +510,10 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         //            12-bit 4:0:0, 4:2:0, 4:2:2 and 4:4:4
         uint8_t seqProfile = 0;
 #if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
-        // Only 8-bit and 10-bit are supported.
-        AVIF_ASSERT_OR_RETURN(image->depth == 8 || image->depth == 10);
-
+        if (image->depth != 8 && image->depth != 10) {
+            avifDiagnosticsPrintf(codec->diag, "%d-bit is not supported in AV2 encoder.", image->depth);
+            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
+        }
         // Based on https://gitlab.com/AOMediaCodec/avm/-/blob/main/av2/common/enums.h?ref_type=fcab0163f471b38fe593672fcbd24a6beb0be82e#L272
         if (alpha) {
             seqProfile = 3; // Main_420_10
