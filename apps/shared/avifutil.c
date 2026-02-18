@@ -649,3 +649,21 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
 
     return AVIF_TRUE;
 }
+
+void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect)
+{
+    memset(dstImage, 0, sizeof(avifRGBImage));
+    dstImage->width = cropRect->width;
+    dstImage->height = cropRect->height;
+    dstImage->depth = srcImage->depth;
+    dstImage->format = srcImage->format;
+    dstImage->alphaPremultiplied = srcImage->alphaPremultiplied;
+    dstImage->isFloat = srcImage->isFloat;
+    const uint32_t channelCount = avifRGBFormatChannelCount(srcImage->format);
+    const uint32_t bytesPerChannel = srcImage->depth <= 8 ? 1 : 2;
+    const uint32_t bytesPerSample = srcImage->format == AVIF_RGB_FORMAT_RGB_565 ? 2 : channelCount * bytesPerChannel;
+    // This should not overflow if cropRect is a valid crop of the image.
+    const size_t offset = (size_t)cropRect->y * srcImage->rowBytes + (size_t)cropRect->x * bytesPerSample;
+    dstImage->pixels = srcImage->pixels + offset;
+    dstImage->rowBytes = srcImage->rowBytes;
+}

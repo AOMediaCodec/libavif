@@ -627,8 +627,8 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     png_bytep * volatile rowPointers = NULL;
     FILE * volatile f = NULL;
 
-    avifRGBImage rgb;
-    memset(&rgb, 0, sizeof(avifRGBImage));
+    avifRGBImage rgbData;
+    memset(&rgbData, 0, sizeof(avifRGBImage));
 
     volatile int rgbDepth = requestedDepth;
     if (rgbDepth == 0) {
@@ -651,36 +651,52 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         rgbDepth = 8;
     }
 
-    volatile avifBool monochrome8bit = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
-                                       (rgbDepth == 8);
+    volatile avifBool hasClap = avif->transformFlags & AVIF_TRANSFORM_CLAP;
+    volatile avifBool copyYPlane = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
+                                   (rgbDepth == 8) && !hasClap;
 
     volatile int colorType;
-    if (monochrome8bit) {
+    if (copyYPlane) {
         colorType = PNG_COLOR_TYPE_GRAY;
     } else {
-        avifRGBImageSetDefaults(&rgb, avif);
-        rgb.depth = rgbDepth;
+        avifRGBImageSetDefaults(&rgbData, avif);
+        rgbData.depth = rgbDepth;
         if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && avif->alphaPlane) {
             colorType = PNG_COLOR_TYPE_GRAY_ALPHA;
-            rgb.format = AVIF_RGB_FORMAT_GRAYA;
+            rgbData.format = AVIF_RGB_FORMAT_GRAYA;
         } else if (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 && !avif->alphaPlane) {
             colorType = PNG_COLOR_TYPE_GRAY;
-            rgb.format = AVIF_RGB_FORMAT_GRAY;
+            rgbData.format = AVIF_RGB_FORMAT_GRAY;
         } else {
-            rgb.chromaUpsampling = chromaUpsampling;
+            rgbData.chromaUpsampling = chromaUpsampling;
             colorType = PNG_COLOR_TYPE_RGBA;
             if (avifImageIsOpaque(avif)) {
                 colorType = PNG_COLOR_TYPE_RGB;
-                rgb.format = AVIF_RGB_FORMAT_RGB;
+                rgbData.format = AVIF_RGB_FORMAT_RGB;
             }
         }
-        if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+        if (avifRGBImageAllocatePixels(&rgbData) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s (out of memory)\n", outputFilename);
             goto cleanup;
         }
-        if (avifImageYUVToRGB(avif, &rgb) != AVIF_RESULT_OK) {
+        if (avifImageYUVToRGB(avif, &rgbData) != AVIF_RESULT_OK) {
             fprintf(stderr, "Conversion to RGB failed: %s\n", outputFilename);
             goto cleanup;
+        }
+    }
+
+    volatile uint32_t width = avif->width;
+    volatile uint32_t height = avif->height;
+
+    avifRGBImage rgbView = rgbData;
+    if (hasClap) {
+        avifCropRect cropRect;
+        avifDiagnostics diag;
+        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
+            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+            avifRGBImageSetViewRect(&rgbView, &rgbData, &cropRect);
+            width = cropRect.width;
+            height = cropRect.height;
         }
     }
 
@@ -721,7 +737,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_set_compression_level(png, compressionLevel);
     }
 
-    png_set_IHDR(png, info, avif->width, avif->height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, width, height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
     const avifBool hasIcc = avif->icc.data && (avif->icc.size > 0);
     if (hasIcc) {
@@ -811,39 +827,25 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_write_chunk(png, cicp, cicpData, 4);
     }
 
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * avif->height);
+    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
     if (rowPointers == NULL) {
         fprintf(stderr, "Error writing PNG: memory allocation failure");
         goto cleanup;
     }
     uint8_t * row;
     uint32_t rowBytes;
-    if (monochrome8bit) {
+    if (copyYPlane) {
         row = avif->yuvPlanes[AVIF_CHAN_Y];
         rowBytes = avif->yuvRowBytes[AVIF_CHAN_Y];
     } else {
-        row = rgb.pixels;
-        rowBytes = rgb.rowBytes;
+        row = rgbView.pixels;
+        rowBytes = rgbView.rowBytes;
     }
-    for (uint32_t y = 0; y < avif->height; ++y) {
+    for (uint32_t y = 0; y < height; ++y) {
         rowPointers[y] = row;
         row += rowBytes;
     }
 
-    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
-        avifCropRect cropRect;
-        avifDiagnostics diag;
-        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
-            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Implement.
-            fprintf(stderr,
-                    "Warning: Clean Aperture values were ignored, the output image was NOT cropped to rectangle {%u,%u,%u,%u}\n",
-                    cropRect.x,
-                    cropRect.y,
-                    cropRect.width,
-                    cropRect.height);
-        }
-    }
     if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
         // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Rotate the samples.
         fprintf(stderr,
@@ -871,6 +873,6 @@ cleanup:
     if (rowPointers) {
         free(rowPointers);
     }
-    avifRGBImageFreePixels(&rgb);
+    avifRGBImageFreePixels(&rgbData);
     return writeResult;
 }

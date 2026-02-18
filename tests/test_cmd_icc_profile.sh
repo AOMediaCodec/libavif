@@ -75,6 +75,7 @@ pushd ${TMP_DIR}
     popd
     exit 0
   fi
+  "${IMAGEMAGICK}" --version
 
   "${AVIFENC}" -s 8 -l "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
   # Old version of ImageMagick may not support reading ICC from AVIF.

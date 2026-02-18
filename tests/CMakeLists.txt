@@ -266,6 +266,7 @@ if(AVIF_BUILD_APPS)
     add_cmd_test(test_cmd_progressive ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_stdin ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_targetsize ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_transform ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
     if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
@@ -375,7 +376,8 @@ if(AVIF_CODEC_AVM_ENABLED)
         if(AVIF_BUILD_APPS)
             # Disable all tests that use avifenc without explicitly setting --codec=avm.
             set_tests_properties(
-                test_cmd test_cmd_animation test_cmd_grid test_cmd_stdin test_cmd_targetsize PROPERTIES DISABLED True
+                test_cmd test_cmd_animation test_cmd_grid test_cmd_stdin test_cmd_targetsize test_cmd_transform
+                PROPERTIES DISABLED True
             )
         endif()
     endif()
