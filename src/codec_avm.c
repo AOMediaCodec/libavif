@@ -510,34 +510,30 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         //            12-bit 4:0:0, 4:2:0, 4:2:2 and 4:4:4
         uint8_t seqProfile = 0;
 #if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
-        if (image->depth == 12) {
-            avifDiagnosticsPrintf(codec->diag, "12-bit is not supported in AV2 encoder.");
-            return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
-        } else {
-            // 8-bit or 10-bit
+        // Only 8-bit and 10-bit are supported.
+        AVIF_ASSERT_OR_RETURN(image->depth == 8 || image->depth == 10)
 
-            // Based on https://av2.aomedia.org/v13-public/index.html#annex_a_profiles
-            if (alpha) {
-                seqProfile = 3; // Main_420_10
-            } else {
-                switch (image->yuvFormat) {
-                    case AVIF_PIXEL_FORMAT_YUV444:
-                        seqProfile = 5; // Main_444_10
-                        break;
-                    case AVIF_PIXEL_FORMAT_YUV422:
-                        seqProfile = 4; // Main_422_10
-                        break;
-                    case AVIF_PIXEL_FORMAT_YUV420:
-                        seqProfile = 3; // Main_420_10
-                        break;
-                    case AVIF_PIXEL_FORMAT_YUV400:
-                        seqProfile = 3; // Main_420_10
-                        break;
-                    case AVIF_PIXEL_FORMAT_NONE:
-                    case AVIF_PIXEL_FORMAT_COUNT:
-                    default:
-                        break;
-                }
+        // Based on https://gitlab.com/AOMediaCodec/avm/-/blob/main/av2/common/enums.h?ref_type=fcab0163f471b38fe593672fcbd24a6beb0be82e#L272
+        if (alpha) {
+            seqProfile = 3; // Main_420_10
+        } else {
+            switch (image->yuvFormat) {
+                case AVIF_PIXEL_FORMAT_YUV444:
+                    seqProfile = 5; // Main_444_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV422:
+                    seqProfile = 4; // Main_422_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV420:
+                    seqProfile = 3; // Main_420_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    seqProfile = 3; // Main_420_10
+                    break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                case AVIF_PIXEL_FORMAT_COUNT:
+                default:
+                    break;
             }
         }
 #else
