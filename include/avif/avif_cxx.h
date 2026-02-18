@@ -18,17 +18,20 @@ namespace avif
 // Struct to call the destroy functions in a unique_ptr.
 struct UniquePtrDeleter
 {
-    void operator()(avifEncoder * encoder) const { avifEncoderDestroy(encoder); }
     void operator()(avifDecoder * decoder) const { avifDecoderDestroy(decoder); }
-    void operator()(avifImage * image) const { avifImageDestroy(image); }
+    void operator()(avifEncoder * encoder) const { avifEncoderDestroy(encoder); }
     void operator()(avifGainMap * gainMap) const { avifGainMapDestroy(gainMap); }
+    void operator()(avifImage * image) const { avifImageDestroy(image); }
+    void operator()(avifRGBImage * image) const { avifRGBImageFreePixels(image); }
 };
 
 // Use these unique_ptr to ensure the structs are automatically destroyed.
-using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using DecoderPtr = std::unique_ptr<avifDecoder, UniquePtrDeleter>;
-using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
+using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using GainMapPtr = std::unique_ptr<avifGainMap, UniquePtrDeleter>;
+using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
+// To use when RGBImage actually owns the pixels. RGBImage can also be used as a view, in which case it does not own the pixels.
+using RGBImagePtr = std::unique_ptr<avifRGBImage, UniquePtrDeleter>;
 
 } // namespace avif
 
