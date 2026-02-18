@@ -509,6 +509,34 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         // Profile 2.  8-bit and 10-bit 4:2:2
         //            12-bit 4:0:0, 4:2:0, 4:2:2 and 4:4:4
         uint8_t seqProfile = 0;
+#if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
+        // Only 8-bit and 10-bit are supported.
+        AVIF_ASSERT_OR_RETURN(image->depth == 8 || image->depth == 10)
+
+        // Based on https://gitlab.com/AOMediaCodec/avm/-/blob/main/av2/common/enums.h?ref_type=fcab0163f471b38fe593672fcbd24a6beb0be82e#L272
+        if (alpha) {
+            seqProfile = 3; // Main_420_10
+        } else {
+            switch (image->yuvFormat) {
+                case AVIF_PIXEL_FORMAT_YUV444:
+                    seqProfile = 5; // Main_444_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV422:
+                    seqProfile = 4; // Main_422_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV420:
+                    seqProfile = 3; // Main_420_10
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV400:
+                    seqProfile = 3; // Main_420_10
+                    break;
+                case AVIF_PIXEL_FORMAT_NONE:
+                case AVIF_PIXEL_FORMAT_COUNT:
+                default:
+                    break;
+            }
+        }
+#else
         if (image->depth == 12) {
             // Only seqProfile 2 can handle 12 bit
             seqProfile = 2;
@@ -538,6 +566,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                 }
             }
         }
+#endif
 
         cfg->g_profile = seqProfile;
         cfg->g_bit_depth = image->depth;
