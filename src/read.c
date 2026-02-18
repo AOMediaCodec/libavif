@@ -2308,6 +2308,12 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
         // This is enforced in avifParsePixelInformationProperty().
         AVIF_ASSERT_OR_RETURN(pixiProp->u.pixi.planeDepths[i] == pixiProp->u.pixi.planeDepths[0]);
     }
+    AVIF_ASSERT_OR_RETURN(pixiProp->u.pixi.planeCount >= 1);
+    const uint8_t depth = pixiProp->u.pixi.planeDepths[0];
+    if (depth != 8 && depth != 10 && depth != 12 && depth != 16) {
+        avifDiagnosticsPrintf(diag, "Item ID %u depth specified by pixi property [%u] is not supported", item->id, depth);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
 
     const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
     if (!ispeProp) {
