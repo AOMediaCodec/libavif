@@ -430,9 +430,10 @@ TEST(Avif16bitTest, SampleTransformWithOtherBitDepths) {
     const avifResult result = avifDecoderReadMemory(
         decoder.get(), decoded.get(), encoded.data(), encoded.size());
     const avifResult expected_result =
-        num_bits == 0   ? AVIF_RESULT_BMFF_PARSE_FAILED
-        : num_bits > 16 ? AVIF_RESULT_NOT_IMPLEMENTED
-                        : AVIF_RESULT_OK;
+        num_bits == 0 ? AVIF_RESULT_BMFF_PARSE_FAILED
+        : (num_bits == 8 || num_bits == 10 || num_bits == 12 || num_bits == 16)
+            ? AVIF_RESULT_OK
+            : AVIF_RESULT_NOT_IMPLEMENTED;
     ASSERT_EQ(result, expected_result) << "bits_per_channels " << num_bits;
     if (result == AVIF_RESULT_OK) {
       // The output image should be highly distorted because of the pixel value
