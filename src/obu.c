@@ -155,7 +155,11 @@ static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
 static avifBool parseSequenceHeaderProfile(avifBits * bits, uint32_t numBits, avifSequenceHeader * header)
 {
     uint32_t seq_profile = avifBitsRead(bits, numBits);
+#if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
+    if (seq_profile > 5) {
+#else
     if (seq_profile > 2) {
+#endif
         return AVIF_FALSE;
     }
     header->av1C.seqProfile = (uint8_t)seq_profile;
