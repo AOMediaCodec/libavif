@@ -511,7 +511,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         uint8_t seqProfile = 0;
 #if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
         // Only 8-bit and 10-bit are supported.
-        AVIF_ASSERT_OR_RETURN(image->depth == 8 || image->depth == 10)
+        AVIF_ASSERT_OR_RETURN(image->depth == 8 || image->depth == 10);
 
         // Based on https://gitlab.com/AOMediaCodec/avm/-/blob/main/av2/common/enums.h?ref_type=fcab0163f471b38fe593672fcbd24a6beb0be82e#L272
         if (alpha) {
