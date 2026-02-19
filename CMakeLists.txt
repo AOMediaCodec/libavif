@@ -282,28 +282,6 @@ if(MSVC)
     # Disable deprecation warnings about POSIX function names such as setmode (replaced by the ISO C and C++ conformant name _setmode).
     # Disable deprecation warnings about unsafe CRT library functions such as fopen (replaced by fopen_s).
     target_compile_definitions(avif_enable_warnings INTERFACE _CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
-
-    # clang-cl documentation says:
-    #   /execution-charset:<value>
-    #                           Runtime encoding, supports only UTF-8
-    #   ...
-    #   /source-charset:<value> Source encoding, supports only UTF-8
-    # So we don't need to pass /source-charset:utf-8 to clang-cl, and we cannot pass /execution-charset:us-ascii to clang-cl.
-    if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-        target_compile_options(
-            avif_obj
-            PUBLIC $<BUILD_INTERFACE:
-                   # This tells MSVC to read source code as UTF-8 and assume console can only use ASCII (minimal safe).
-                   # libavif uses ANSI API to print to console, which is not portable between systems using different
-                   # languages and results in mojibake unless we only use codes shared by every code page: ASCII.
-                   # A C4556 warning will be generated on violation.
-                   # Commonly used /utf-8 flag assumes UTF-8 for both source and console, which is usually not the case.
-                   # Warnings can be suppressed but there will still be random characters printed to the console.
-                   /source-charset:utf-8
-                   /execution-charset:us-ascii
-                   >
-        )
-    endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "libavif: Enabling warnings for Clang")
     target_compile_options(
@@ -321,6 +299,30 @@ if(AVIF_ENABLE_WERROR)
     # Warnings as errors
     if(MSVC)
         target_compile_options(avif_enable_warnings INTERFACE /WX)
+
+        # The MSVC /source-charset:utf-8 /execution-charset:us-ascii options
+        # validate that the source code contains only characters that can be
+        # represented in UTF-8, and in addition the string and character
+        # literals in the source code contain only characters that can be
+        # represented in ASCII. If a character in a string or character literal
+        # cannot be represented in ASCII, MSVC substitutes a question mark (?)
+        # for the character and emits a C4566 warning. To avoid missing the
+        # substitution, only use these options when warnings are treated as
+        # errors. Note that the /execution-charset:us-ascii option does NOT
+        # prevent the executable from receiving UTF-8 input or sending UTF-8
+        # output. It also allows string and character literals to contain UTF-8
+        # characters encoded in octal or hex escape sequences.
+        #
+        # clang-cl documentation says:
+        #   /execution-charset:<value>
+        #                           Runtime encoding, supports only UTF-8
+        #   ...
+        #   /source-charset:<value> Source encoding, supports only UTF-8
+        # So we don't need to pass /source-charset:utf-8 to clang-cl, and we
+        # cannot pass /execution-charset:us-ascii to clang-cl.
+        if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+            target_compile_options(avif_enable_warnings INTERFACE /source-charset:utf-8 /execution-charset:us-ascii)
+        endif()
     elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         target_compile_options(avif_enable_warnings INTERFACE -Werror)
     else()
