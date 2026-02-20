@@ -558,11 +558,24 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
 
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
+    // Overflow protection: 'width * height * sizeof(float)' uses signed int
+    // multiplication which is undefined behavior on overflow in C. Compute the
+    // allocation size in size_t with explicit overflow checks instead.
+    if (baseRgbImage->width > SIZE_MAX / sizeof(float)) {
+        res = AVIF_RESULT_INVALID_ARGUMENT;
+        goto cleanup;
+    }
+    const size_t gainMapPlaneRowBytes = (size_t)baseRgbImage->width * sizeof(float);
+    if (gainMapPlaneRowBytes != 0 && baseRgbImage->height > SIZE_MAX / gainMapPlaneRowBytes) {
+        res = AVIF_RESULT_INVALID_ARGUMENT;
+        goto cleanup;
+    }
+    const size_t gainMapPlaneSize = gainMapPlaneRowBytes * baseRgbImage->height;
 
     const avifBool singleChannel = (gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     const int numGainMapChannels = singleChannel ? 1 : 3;
     for (int c = 0; c < numGainMapChannels; ++c) {
-        gainMapF[c] = avifAlloc(width * height * sizeof(float));
+        gainMapF[c] = avifAlloc(gainMapPlaneSize);
         if (gainMapF[c] == NULL) {
             res = AVIF_RESULT_OUT_OF_MEMORY;
             goto cleanup;
