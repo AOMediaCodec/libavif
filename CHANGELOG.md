@@ -26,7 +26,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Support Sample Transform derived image items with grid input image items.
 * Add --sato flag to avifdec to enable Sample Transforms support at decoding.
 * Add --grid option to avifgainmaputil.
-* Apply clean aperture crop when decoding to PNG or JPEG.
+* Apply clean aperture crop, rotation and mirror when decoding to PNG or JPEG.
 
 ### Changed since 1.3.0
 

@@ -651,9 +651,9 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         rgbDepth = 8;
     }
 
-    volatile avifBool hasClap = avif->transformFlags & AVIF_TRANSFORM_CLAP;
+    volatile avifBool hasTransforms = avif->transformFlags & (AVIF_TRANSFORM_CLAP | AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
     volatile avifBool copyYPlane = (avif->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) && !avif->alphaPlane && (avif->depth == 8) &&
-                                   (rgbDepth == 8) && !hasClap;
+                                   (rgbDepth == 8) && !hasTransforms;
 
     volatile int colorType;
     if (copyYPlane) {
@@ -685,18 +685,14 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         }
     }
 
-    volatile uint32_t width = avif->width;
-    volatile uint32_t height = avif->height;
-
     avifRGBImage rgbView = rgbData;
-    if (hasClap) {
-        avifCropRect cropRect;
-        avifDiagnostics diag;
-        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
-            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            avifRGBImageSetViewRect(&rgbView, &rgbData, &cropRect);
-            width = cropRect.width;
-            height = cropRect.height;
+    avifResult transformResult = avifApplyTransforms(&rgbView, &rgbData, avif);
+    if (transformResult != AVIF_RESULT_OK) {
+        if (transformResult == AVIF_RESULT_INVALID_ARGUMENT) {
+            fprintf(stderr, "Warning, ignoring invalid transforms (clap/irot/imir)\n");
+        } else {
+            fprintf(stderr, "Failed to apply transforms: %s\n", avifResultToString(transformResult));
+            goto cleanup;
         }
     }
 
@@ -736,6 +732,9 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     if (compressionLevel >= 0) {
         png_set_compression_level(png, compressionLevel);
     }
+
+    volatile uint32_t width = copyYPlane ? avif->width : rgbView.width;
+    volatile uint32_t height = copyYPlane ? avif->height : rgbView.height;
 
     png_set_IHDR(png, info, width, height, rgbDepth, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
@@ -844,13 +843,6 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
     for (uint32_t y = 0; y < height; ++y) {
         rowPointers[y] = row;
         row += rowBytes;
-    }
-
-    if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
-        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Rotate the samples.
-        fprintf(stderr,
-                "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
-                avifImageGetExifOrientationFromIrotImir(avif));
     }
 
     if (rgbDepth > 8) {

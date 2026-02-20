@@ -1678,13 +1678,14 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         goto cleanup;
     }
 
-    avifRGBImage rgbView = rgbData;
-    if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
-        avifCropRect cropRect;
-        avifDiagnostics diag;
-        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
-            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            avifRGBImageSetViewRect(&rgbView, &rgbData, &cropRect);
+    avifRGBImage rgbView;
+    avifResult transformResult = avifApplyTransforms(&rgbView, &rgbData, avif);
+    if (transformResult != AVIF_RESULT_OK) {
+        if (transformResult == AVIF_RESULT_INVALID_ARGUMENT) {
+            fprintf(stderr, "Warning, ignoring invalid transforms (clap/irot/imir)\n");
+        } else {
+            fprintf(stderr, "Failed to apply transforms: %s\n", avifResultToString(transformResult));
+            goto cleanup;
         }
     }
 
@@ -1724,19 +1725,10 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         }
         memcpy(exif.data, AVIF_JPEG_EXIF_HEADER, AVIF_JPEG_EXIF_HEADER_LENGTH);
         memcpy(exif.data + AVIF_JPEG_EXIF_HEADER_LENGTH, avif->exif.data + exifTiffHeaderOffset, avif->exif.size - exifTiffHeaderOffset);
-        // Make sure the Exif orientation matches the irot/imir values.
-        // libheif does not have the same behavior. The orientation is applied to samples and orientation data is discarded there,
-        // see https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/encoder_jpeg.cc#L187
-        const uint8_t orientation = avifImageGetExifOrientationFromIrotImir(avif);
-        result = avifSetExifOrientation(&exif, orientation);
+        // We already rotated the pixels if necessary in avifApplyTransforms(), so we set the orientation to 1 (no rotation, no mirror).
+        result = avifSetExifOrientation(&exif, 1);
         if (result != AVIF_RESULT_OK) {
-            // Ignore errors if the orientation is the default one because not being able to set Exif orientation now
-            // means a reader will not be able to parse it later either.
-            if (orientation != 1) {
-                fprintf(stderr, "Error writing JPEG metadata: %s\n", avifResultToString(result));
-                avifRWDataFree(&exif);
-                goto cleanup;
-            }
+            // Ignore errors: if the exif is invalid, we can consider it as equivalent to not having an orientation.
         }
 
         avifROData remainingExif = { exif.data, exif.size };
@@ -1747,12 +1739,6 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         }
         jpeg_write_marker(&cinfo, JPEG_APP0 + 1, remainingExif.data, (unsigned int)remainingExif.size);
         avifRWDataFree(&exif);
-    } else if (avifImageGetExifOrientationFromIrotImir(avif) != 1) {
-        // There is no Exif yet, but we need to store the orientation.
-        // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Add a valid Exif payload or rotate the samples.
-        fprintf(stderr,
-                "Warning: Orientation %u was ignored, the output image was NOT rotated or mirrored\n",
-                avifImageGetExifOrientationFromIrotImir(avif));
     }
 
     if (avif->xmp.data && (avif->xmp.size > 0)) {

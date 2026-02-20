@@ -265,26 +265,26 @@ TEST(MetadataTest, ExifOrientation) {
   EXPECT_EQ(decoded->irot.angle, 1u);
   EXPECT_EQ(decoded->imir.axis, 0u);
 
-  // Exif orientation is kept in JPEG export.
+  // JPEG: Exif orientation should be applied when saving and removed from Exif.
   ImagePtr temp_image =
       WriteAndReadImage(*image, "paris_exif_orientation_5.jpg");
   ASSERT_NE(temp_image, nullptr);
-  EXPECT_TRUE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
-  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
-  EXPECT_EQ(image->irot.angle, temp_image->irot.angle);
-  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
-  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
+  EXPECT_EQ(temp_image->transformFlags, AVIF_TRANSFORM_NONE);
+  // Samples have been rotated.
+  EXPECT_EQ(image->width, temp_image->height);
+  EXPECT_EQ(image->height, temp_image->width);
 
-  // Exif orientation in PNG export should be ignored or discarded.
+  // PNG: Exif orientation should be applied when saving and removed from Exif.
   temp_image = WriteAndReadImage(*image, "paris_exif_orientation_5.png");
   ASSERT_NE(temp_image, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
   EXPECT_EQ(
       temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
-  // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Fix orientation
-  // not being applied to PNG samples.
-  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
+  // Samples have been rotated.
+  EXPECT_EQ(image->width, temp_image->height);
+  EXPECT_EQ(image->height, temp_image->width);
 }
 
 TEST(MetadataTest, AllExifOrientations) {
@@ -325,15 +325,16 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_EQ(decoded->irot.angle, 0u);
   EXPECT_EQ(decoded->imir.axis, image->imir.axis);
 
-  // Exif orientation is set equivalent to irot/imir in JPEG export.
-  // Existing Exif orientation is overwritten.
+  // Exif orientation is discarded (set to 1) and samples are rotated/mirrored
+  // according to irot/imir in JPEG export.
   const ImagePtr temp_image =
       WriteAndReadImage(*image, "paris_exif_orientation_2.jpg");
   ASSERT_NE(temp_image, nullptr);
   EXPECT_FALSE(testutil::AreByteSequencesEqual(image->exif, temp_image->exif));
-  EXPECT_EQ(image->transformFlags, temp_image->transformFlags);
-  EXPECT_EQ(image->imir.axis, temp_image->imir.axis);
-  EXPECT_EQ(image->width, temp_image->width);  // Samples are left untouched.
+  EXPECT_EQ(temp_image->transformFlags, AVIF_TRANSFORM_NONE);
+  // Samples have been mirrored but you can't really tell from the dimensions.
+  EXPECT_EQ(image->width, temp_image->width);
+  EXPECT_EQ(image->height, temp_image->height);
 }
 
 TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
@@ -356,9 +357,9 @@ TEST(MetadataTest, RotatedJpegBecauseOfIrotImir) {
   EXPECT_EQ(
       temp_image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
       avifTransformFlags{0});
-  // TODO: https://github.com/AOMediaCodec/libavif/issues/2427 - Fix orientation
-  // not being applied to JPEG samples.
-  EXPECT_EQ(image->width, temp_image->width /* should be height here */);
+  // Samples have been rotated.
+  EXPECT_EQ(image->width, temp_image->height);
+  EXPECT_EQ(image->height, temp_image->width);
 }
 
 TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
