@@ -404,17 +404,13 @@ static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, 
     return AVIF_TRUE;
 }
 
-static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha, avifBool useLibavifDefaultTuneMetric, aom_tune_metric libavifDefaultTuneMetric)
+static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha)
 {
 #if !defined(AOM_HAVE_TUNE_IQ)
 // Define the tune IQ value here if libaom doesn't define it. The enum value is guaranteed to never change
 // in libaom, so this definition won't ever get out of sync.
 #define AOM_TUNE_IQ 10
 #endif
-
-    if (useLibavifDefaultTuneMetric) {
-        return libavifDefaultTuneMetric == AOM_TUNE_IQ;
-    }
 
     avifBool useTuneIq = AVIF_FALSE;
     avifBool isAnyTuneDefined = AVIF_FALSE;
@@ -433,20 +429,23 @@ static avifBool avifImageUsesTuneIq(const avifCodec * codec, avifBool alpha, avi
             isAnyTuneDefined = AVIF_TRUE;
 
             if (aomOptionParseEnum(entry->value, tuneIqEnum, &val)) {
-                useTuneIq = (val == AOM_TUNE_IQ);
+                assert(val == AOM_TUNE_IQ);
+                useTuneIq = AVIF_TRUE;
+            } else {
+                useTuneIq = AVIF_FALSE;
             }
         }
     }
 
-    if (!isAnyTuneDefined && codec->internal->previousFrameUsedTuneIq) {
-        // Handle the case where the encoder was called with avifEncoderSetCodecSpecificOption("tune", "iq")
-        // for a previous frame and not called (or called with NULL) for this frame, because the tune
-        // option persists across frames in libaom.
-        // In this case, we know libaom will also use tune=iq for this frame.
-        return AVIF_TRUE;
+    if (isAnyTuneDefined) {
+        return useTuneIq;
     }
 
-    return useTuneIq;
+    // Handle the case where the encoder was called with avifEncoderSetCodecSpecificOption("tune", "iq")
+    // for a previous frame and not called (or called with NULL) for this frame, because the tune
+    // option persists across frames in libaom.
+    // In this case, return what the previous frame used.
+    return codec->internal->previousFrameUsedTuneIq;
 }
 
 #if !defined(HAVE_AOM_CODEC_SET_OPTION)
@@ -752,14 +751,13 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 libavifDefaultTuneMetric = AOM_TUNE_SSIM;
             }
         }
-        AVIF_ASSERT_OR_RETURN(!codec->internal->previousFrameUsedTuneIq);
     }
 
     struct aom_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
     // True if libavif knows that tune=iq is used, either by default by libavif, or explicitly set by the user.
     // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v3.13.1 and earlier versions).
-    const avifBool useTuneIq = avifImageUsesTuneIq(codec, alpha, useLibavifDefaultTuneMetric, libavifDefaultTuneMetric);
+    const avifBool useTuneIq = useLibavifDefaultTuneMetric ? libavifDefaultTuneMetric == AOM_TUNE_IQ : avifImageUsesTuneIq(codec, alpha);
     const int quantizer = aomQualityToQuantizer(quality, useTuneIq);
 
     // libavif needs to know whether the current frame uses tune=iq for the next frame, as libaom persists
