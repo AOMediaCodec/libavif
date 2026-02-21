@@ -197,6 +197,9 @@ AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 // Finds the first property of a given type.
 static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * properties, const char * type)
 {
+    if (type == NULL) {
+        return NULL;
+    }
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
         const avifProperty * prop = &properties->prop[propertyIndex];
         if (!memcmp(prop->type, type, 4)) {
@@ -2297,11 +2300,28 @@ static avifResult avifParseSampleTransformImageBox(const uint8_t * raw,
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDecoderItem * item, avifDiagnostics * diag)
+static const avifProperty * avifDecoderItemCodecConfigOrFirstChildCodecConfig(const avifDecoderItem * item)
 {
-    const avifProperty * pixiProp = avifPropertyArrayFind(&item->properties, "pixi");
+    if (!memcmp(item->type, "grid", 4)) {
+        // In case of a grid, return the codec configuration property of the first cell.
+        // avifDecoderAdoptGridTileCodecType() copies that property from the first cell to the grid item anyway.
+        for (uint32_t i = 0; i < item->meta->items.count; ++i) {
+            avifDecoderItem * inputImageItem = item->meta->items.item[i];
+            if (inputImageItem->dimgForID == item->id) {
+                return avifPropertyArrayFind(&inputImageItem->properties,
+                                             avifGetConfigurationPropertyName(avifGetCodecType(inputImageItem->type)));
+            }
+        }
+    }
+    return avifPropertyArrayFind(&item->properties, avifGetConfigurationPropertyName(avifGetCodecType(item->type)));
+}
+
+static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDecoderItem * satoItem, avifDiagnostics * diag)
+{
+    AVIF_ASSERT_OR_RETURN(memcmp(satoItem->type, "sato", 4) == 0);
+    const avifProperty * pixiProp = avifPropertyArrayFind(&satoItem->properties, "pixi");
     if (!pixiProp) {
-        avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory pixi property", item->id, (const char *)item->type);
+        avifDiagnosticsPrintf(diag, "Item ID %u of type 'sato' is missing mandatory pixi property", satoItem->id);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     for (uint8_t i = 1; i < pixiProp->u.pixi.planeCount; ++i) {
@@ -2311,32 +2331,50 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
     AVIF_ASSERT_OR_RETURN(pixiProp->u.pixi.planeCount >= 1);
     const uint8_t depth = pixiProp->u.pixi.planeDepths[0];
     if (depth != 8 && depth != 10 && depth != 12 && depth != 16) {
-        avifDiagnosticsPrintf(diag, "Item ID %u depth specified by pixi property [%u] is not supported", item->id, depth);
+        avifDiagnosticsPrintf(diag, "Item ID %u depth specified by pixi property [%u] is not supported", satoItem->id, depth);
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
-    const avifProperty * ispeProp = avifPropertyArrayFind(&item->properties, "ispe");
+    const avifProperty * ispeProp = avifPropertyArrayFind(&satoItem->properties, "ispe");
     if (!ispeProp) {
-        avifDiagnosticsPrintf(diag, "Item ID %u of type '%.4s' is missing mandatory ispe property", item->id, (const char *)item->type);
+        avifDiagnosticsPrintf(diag, "Item ID %u of type 'sato' is missing mandatory ispe property", satoItem->id);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
-    // If item is a grid, check that its input image items share the same properties.
-    for (uint32_t i = 0; i < item->meta->items.count; ++i) {
-        avifDecoderItem * inputImageItem = item->meta->items.item[i];
-        if (inputImageItem->dimgForID != item->id) {
+    // Check that all input image items of the 'sato' derived image item share the same properties.
+    for (uint32_t i = 0; i < satoItem->meta->items.count; ++i) {
+        avifDecoderItem * inputImageItem = satoItem->meta->items.item[i];
+        if (inputImageItem->dimgForID != satoItem->id) {
             continue;
         }
-        const avifProperty * inputImageItemIspeProp = avifPropertyArrayFind(&inputImageItem->properties, "ispe");
-        AVIF_ASSERT_OR_RETURN(inputImageItemIspeProp != NULL);
 
-        for (uint32_t j = i + 1; j < item->meta->items.count; ++j) {
-            avifDecoderItem * otherInputImageItem = item->meta->items.item[j];
-            if (otherInputImageItem->dimgForID != item->id) {
+        // Require all input image items of the 'sato' derived image item to be associated with a SpatialExtentsProperty.
+        const avifProperty * inputImageItemIspeProp = avifPropertyArrayFind(&inputImageItem->properties, "ispe");
+        if (inputImageItemIspeProp == NULL) {
+            avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory ispe property", inputImageItem->id);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+
+        // The codec configuration property must be present, at least on the first child for a 'grid' item.
+        const avifProperty * inputImageItemCodecConfig = avifDecoderItemCodecConfigOrFirstChildCodecConfig(inputImageItem);
+        if (inputImageItemCodecConfig == NULL) {
+            avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory codec configuration property", inputImageItem->id);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+
+        for (uint32_t j = i + 1; j < satoItem->meta->items.count; ++j) {
+            avifDecoderItem * otherInputImageItem = satoItem->meta->items.item[j];
+            if (otherInputImageItem->dimgForID != satoItem->id) {
                 continue;
             }
+
+            // Require all input image items of the 'sato' derived image item to be associated with a SpatialExtentsProperty.
             const avifProperty * otherInputImageItemIspeProp = avifPropertyArrayFind(&otherInputImageItem->properties, "ispe");
-            AVIF_ASSERT_OR_RETURN(otherInputImageItemIspeProp != NULL);
+            if (otherInputImageItemIspeProp == NULL) {
+                avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory ispe property", otherInputImageItem->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
             if (inputImageItemIspeProp->u.ispe.width != otherInputImageItemIspeProp->u.ispe.width ||
                 inputImageItemIspeProp->u.ispe.height != otherInputImageItemIspeProp->u.ispe.height) {
                 avifDiagnosticsPrintf(diag,
@@ -2347,12 +2385,32 @@ static avifResult avifDecoderSampleTransformItemValidateProperties(const avifDec
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
 
-            // TODO(yguyon): Check that all input image items share the same codec config (except for the bit depth value).
+            // The codec configuration property must be present, at least on the first child for a 'grid' item.
+            const avifProperty * otherInputImageItemCodecConfig = avifDecoderItemCodecConfigOrFirstChildCodecConfig(otherInputImageItem);
+            if (otherInputImageItemCodecConfig == NULL) {
+                avifDiagnosticsPrintf(diag, "Item ID %u is missing mandatory codec configuration property", otherInputImageItem->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            if (inputImageItemCodecConfig->u.av1C.monochrome != otherInputImageItemCodecConfig->u.av1C.monochrome ||
+                inputImageItemCodecConfig->u.av1C.chromaSubsamplingX != otherInputImageItemCodecConfig->u.av1C.chromaSubsamplingX ||
+                inputImageItemCodecConfig->u.av1C.chromaSubsamplingY != otherInputImageItemCodecConfig->u.av1C.chromaSubsamplingY ||
+                inputImageItemCodecConfig->u.av1C.chromaSamplePosition != otherInputImageItemCodecConfig->u.av1C.chromaSamplePosition) {
+                avifDiagnosticsPrintf(diag,
+                                      "The plane count or subsampling in the codec configuration property of item ID %u of type '%.4s' differs from item ID %u",
+                                      inputImageItem->id,
+                                      (const char *)inputImageItem->type,
+                                      otherInputImageItem->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            // If the input image item of the 'sato' derived image item is itself a grid,
+            // its own input image items will be checked in avifDecoderItemValidateProperties().
         }
         break;
     }
 
-    AVIF_CHECKERR(avifPropertyArrayFind(&item->properties, "clap") == NULL, AVIF_RESULT_NOT_IMPLEMENTED);
+    AVIF_CHECKERR(avifPropertyArrayFind(&satoItem->properties, "clap") == NULL, AVIF_RESULT_NOT_IMPLEMENTED);
     return AVIF_RESULT_OK;
 }
 
@@ -6419,7 +6477,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_ASSERT_OR_RETURN(decoder->image->gainMap && decoder->image->gainMap->image);
             decoder->image->gainMap->image->width = mainItems[AVIF_ITEM_GAIN_MAP]->width;
             decoder->image->gainMap->image->height = mainItems[AVIF_ITEM_GAIN_MAP]->height;
-            // Must be called after avifDecoderGenerateImageTiles() which among other things copies the
+            // Must be called after avifDecoderAdoptGridTileCodecType() which among other things copies the
             // codec config property from the first tile of a grid to the grid item (when grids are used).
             AVIF_CHECKRES(avifReadCodecConfigProperty(decoder->image->gainMap->image,
                                                       &mainItems[AVIF_ITEM_GAIN_MAP]->properties,
