@@ -98,8 +98,10 @@ void avifSetTileConfiguration(int threads, uint32_t width, uint32_t height, int 
         // number of threads would result in a compression penalty without much benefit.
         const uint32_t kMinTileArea = 512 * 512;
         const uint32_t kMaxTiles = 32;
-        uint32_t imageArea = width * height;
-        uint32_t tiles = (imageArea + kMinTileArea - 1) / kMinTileArea;
+        // Use uint64_t to avoid overflow when width * height exceeds UINT32_MAX
+        // (e.g. images wider or taller than ~65535 pixels on a side).
+        const uint64_t imageArea = (uint64_t)width * height;
+        uint32_t tiles = (uint32_t)AVIF_MIN((imageArea + kMinTileArea - 1) / kMinTileArea, (uint64_t)kMaxTiles);
         if (tiles > kMaxTiles) {
             tiles = kMaxTiles;
         }
