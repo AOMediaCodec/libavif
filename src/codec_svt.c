@@ -274,13 +274,13 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     if (alpha) {
         input_picture_buffer->y_stride = image->alphaRowBytes / bytesPerPixel;
         input_picture_buffer->luma = image->alphaPlane;
-        input_buffer->n_filled_len = image->alphaRowBytes * image->height;
+        input_buffer->n_filled_len = (size_t)image->alphaRowBytes * image->height;
 
 #if SVT_AV1_CHECK_VERSION(1, 8, 0)
         // Simulate 4:2:0 UV planes. SVT-AV1 does not support 4:0:0 samples.
         const uint32_t uvWidth = (image->width + y_shift) >> y_shift;
         const uint32_t uvRowBytes = uvWidth * bytesPerPixel;
-        const uint32_t uvSize = uvRowBytes * uvHeight;
+        const size_t uvSize = (size_t)uvRowBytes * uvHeight;
         uvPlanes = avifAlloc(uvSize);
         if (uvPlanes == NULL) {
             goto cleanup;
@@ -300,11 +300,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     } else {
         input_picture_buffer->y_stride = image->yuvRowBytes[0] / bytesPerPixel;
         input_picture_buffer->luma = image->yuvPlanes[0];
-        input_buffer->n_filled_len = image->yuvRowBytes[0] * image->height;
+        input_buffer->n_filled_len = (size_t)image->yuvRowBytes[0] * image->height;
         input_picture_buffer->cb = image->yuvPlanes[1];
-        input_buffer->n_filled_len += image->yuvRowBytes[1] * uvHeight;
+        input_buffer->n_filled_len += (size_t)image->yuvRowBytes[1] * uvHeight;
         input_picture_buffer->cr = image->yuvPlanes[2];
-        input_buffer->n_filled_len += image->yuvRowBytes[2] * uvHeight;
+        input_buffer->n_filled_len += (size_t)image->yuvRowBytes[2] * uvHeight;
         input_picture_buffer->cb_stride = image->yuvRowBytes[1] / bytesPerPixel;
         input_picture_buffer->cr_stride = image->yuvRowBytes[2] / bytesPerPixel;
     }
