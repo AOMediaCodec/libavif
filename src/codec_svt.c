@@ -278,9 +278,24 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 
 #if SVT_AV1_CHECK_VERSION(1, 8, 0)
         // Simulate 4:2:0 UV planes. SVT-AV1 does not support 4:0:0 samples.
-        const uint32_t uvWidth = (image->width + y_shift) >> y_shift;
-        const uint32_t uvRowBytes = uvWidth * bytesPerPixel;
-        const size_t uvSize = (size_t)uvRowBytes * uvHeight;
+        const size_t uvWidth = ((size_t)image->width + y_shift) >> y_shift;
+
+        // Use size_t to avoid 32-bit overflow
+        const size_t uvRowBytes = (size_t)uvWidth * (size_t)bytesPerPixel;
+
+        // Verify multiplication overflow
+        if (uvWidth != 0 &&
+            uvRowBytes / (size_t)uvWidth != (size_t)bytesPerPixel) {
+            goto cleanup;
+        }
+
+        const size_t uvSize = uvRowBytes * (size_t)uvHeight;
+
+        // Verify second multiplication overflow
+        if (uvHeight != 0 &&
+            uvSize / (size_t)uvHeight != uvRowBytes) {
+            goto cleanup;
+        }
         uvPlanes = avifAlloc(uvSize);
         if (uvPlanes == NULL) {
             goto cleanup;

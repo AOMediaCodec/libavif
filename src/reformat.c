@@ -1854,7 +1854,8 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
     assert(!src->isFloat || src->depth == 16);
     assert(src->format != AVIF_RGB_FORMAT_RGB_565 || src->depth == 8);
 
-    const uint8_t * const srcPixel = &src->pixels[(size_t)y * src->rowBytes + x * info->pixelBytes];
+    const size_t offset = (size_t)y * (size_t)src->rowBytes + (size_t)x * (size_t)info->pixelBytes;
+    const uint8_t * const srcPixel = &src->pixels[offset];
     if (info->channelBytes > 1) {
         uint16_t r = *((const uint16_t *)(&srcPixel[info->offsetBytesR]));
         uint16_t g = *((const uint16_t *)(&srcPixel[info->offsetBytesG]));
