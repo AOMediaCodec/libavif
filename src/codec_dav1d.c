@@ -15,6 +15,7 @@
 #pragma clang diagnostic pop
 #endif
 
+#include <stdio.h>
 #include <string.h>
 
 // For those building with an older version of dav1d (not recommended).
@@ -35,6 +36,14 @@ static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
     // This data is owned by the decoder; nothing to free here
     (void)buf;
     (void)cookie;
+}
+
+static void avifDav1dLogCallback(void * cookie, const char * format, va_list ap)
+{
+    avifCodec * codec = (avifCodec *)cookie;
+    size_t size = AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE;
+    vsnprintf(codec->diag->error, size - 1, format, ap);
+    codec->diag->error[size - 1] = '\0';
 }
 
 static void dav1dCodecDestroyInternal(avifCodec * codec)
@@ -70,6 +79,8 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         // a message, so we set frame_size_limit to at most 8192 * 8192 to avoid the dav1d_log
         // message.
         dav1dSettings.frame_size_limit = (sizeof(size_t) < 8) ? AVIF_MIN(codec->imageSizeLimit, 8192 * 8192) : codec->imageSizeLimit;
+        dav1dSettings.logger.cookie = codec;
+        dav1dSettings.logger.callback = avifDav1dLogCallback;
         dav1dSettings.operating_point = codec->operatingPoint;
         dav1dSettings.all_layers = codec->allLayers;
 
