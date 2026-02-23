@@ -14,7 +14,7 @@ void avifFillAlpha(const avifAlphaParams * params)
         for (uint32_t j = 0; j < params->height; ++j) {
             uint8_t * dstPixel = dstRow;
             for (uint32_t i = 0; i < params->width; ++i) {
-                *((uint16_t *)dstPixel) = maxChannel;
+                avifStoreU16(dstPixel, maxChannel);
                 dstPixel += params->dstPixelBytes;
             }
             dstRow += params->dstRowBytes;
@@ -53,7 +53,7 @@ void avifReformatAlpha(const avifAlphaParams * params)
                 const uint8_t * srcPixel = srcRow;
                 uint8_t * dstPixel = dstRow;
                 for (uint32_t i = 0; i < params->width; ++i) {
-                    *((uint16_t *)dstPixel) = *((const uint16_t *)srcPixel);
+                    avifStoreU16(dstPixel, avifLoadU16(srcPixel));
                     srcPixel += params->srcPixelBytes;
                     dstPixel += params->dstPixelBytes;
                 }
@@ -90,11 +90,11 @@ void avifReformatAlpha(const avifAlphaParams * params)
                     const uint8_t * srcPixel = srcRow;
                     uint8_t * dstPixel = dstRow;
                     for (uint32_t i = 0; i < params->width; ++i) {
-                        int srcAlpha = *((const uint16_t *)srcPixel);
+                        int srcAlpha = avifLoadU16(srcPixel);
                         float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
-                        *((uint16_t *)dstPixel) = (uint16_t)dstAlpha;
+                        avifStoreU16(dstPixel, (uint16_t)dstAlpha);
                         srcPixel += params->srcPixelBytes;
                         dstPixel += params->dstPixelBytes;
                     }
@@ -110,7 +110,7 @@ void avifReformatAlpha(const avifAlphaParams * params)
                     const uint8_t * srcPixel = srcRow;
                     uint8_t * dstPixel = dstRow;
                     for (uint32_t i = 0; i < params->width; ++i) {
-                        int srcAlpha = *((const uint16_t *)srcPixel);
+                        int srcAlpha = avifLoadU16(srcPixel);
                         float alphaF = (float)srcAlpha / srcMaxChannelF;
                         int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                         dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
@@ -137,7 +137,7 @@ void avifReformatAlpha(const avifAlphaParams * params)
                     float alphaF = (float)srcAlpha / srcMaxChannelF;
                     int dstAlpha = (int)(0.5f + (alphaF * dstMaxChannelF));
                     dstAlpha = AVIF_CLAMP(dstAlpha, 0, dstMaxChannel);
-                    *((uint16_t *)dstPixel) = (uint16_t)dstAlpha;
+                    avifStoreU16(dstPixel, (uint16_t)dstAlpha);
                     srcPixel += params->srcPixelBytes;
                     dstPixel += params->dstPixelBytes;
                 }
@@ -174,78 +174,78 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[3];
+                    uint16_t a = avifLoadU16(&pixel[6]);
                     if (a >= max) {
                         // opaque is no-op
                     } else if (a == 0) {
                         // result must be zero
-                        pixel[0] = 0;
-                        pixel[1] = 0;
-                        pixel[2] = 0;
+                        avifStoreU16(&pixel[0], 0);
+                        avifStoreU16(&pixel[2], 0);
+                        avifStoreU16(&pixel[4], 0);
                     } else {
                         // a < maxF is always true now, so we don't need clamp here
-                        pixel[0] = (uint16_t)avifRoundf((float)pixel[0] * (float)a / maxF);
-                        pixel[1] = (uint16_t)avifRoundf((float)pixel[1] * (float)a / maxF);
-                        pixel[2] = (uint16_t)avifRoundf((float)pixel[2] * (float)a / maxF);
+                        avifStoreU16(&pixel[0], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[0]) * (float)a / maxF));
+                        avifStoreU16(&pixel[2], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[2]) * (float)a / maxF));
+                        avifStoreU16(&pixel[4], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[4]) * (float)a / maxF));
                     }
-                    pixel += 4;
+                    pixel += 8;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[0];
+                    uint16_t a = avifLoadU16(&pixel[0]);
                     if (a >= max) {
                     } else if (a == 0) {
-                        pixel[1] = 0;
-                        pixel[2] = 0;
-                        pixel[3] = 0;
+                        avifStoreU16(&pixel[2], 0);
+                        avifStoreU16(&pixel[4], 0);
+                        avifStoreU16(&pixel[6], 0);
                     } else {
-                        pixel[1] = (uint16_t)avifRoundf((float)pixel[1] * (float)a / maxF);
-                        pixel[2] = (uint16_t)avifRoundf((float)pixel[2] * (float)a / maxF);
-                        pixel[3] = (uint16_t)avifRoundf((float)pixel[3] * (float)a / maxF);
+                        avifStoreU16(&pixel[2], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[2]) * (float)a / maxF));
+                        avifStoreU16(&pixel[4], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[4]) * (float)a / maxF));
+                        avifStoreU16(&pixel[6], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[6]) * (float)a / maxF));
                     }
-                    pixel += 4;
+                    pixel += 8;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[1];
+                    uint16_t a = avifLoadU16(&pixel[2]);
                     if (a >= max) {
                         // opaque is no-op
                     } else if (a == 0) {
                         // result must be zero
-                        pixel[0] = 0;
+                        avifStoreU16(&pixel[0], 0);
                     } else {
                         // a < maxF is always true now, so we don't need clamp here
-                        pixel[0] = (uint16_t)avifRoundf((float)pixel[0] * (float)a / maxF);
+                        avifStoreU16(&pixel[0], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[0]) * (float)a / maxF));
                     }
-                    pixel += 2;
+                    pixel += 4;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[0];
+                    uint16_t a = avifLoadU16(&pixel[0]);
                     if (a >= max) {
                     } else if (a == 0) {
-                        pixel[1] = 0;
+                        avifStoreU16(&pixel[2], 0);
                     } else {
-                        pixel[1] = (uint16_t)avifRoundf((float)pixel[1] * (float)a / maxF);
+                        avifStoreU16(&pixel[2], (uint16_t)avifRoundf((float)avifLoadU16(&pixel[2]) * (float)a / maxF));
                     }
-                    pixel += 2;
+                    pixel += 4;
                 }
                 row += rgb->rowBytes;
             }
@@ -361,84 +361,84 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
         if (rgb->format == AVIF_RGB_FORMAT_RGBA || rgb->format == AVIF_RGB_FORMAT_BGRA) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[3];
+                    uint16_t a = avifLoadU16(&pixel[6]);
                     if (a >= max) {
                         // opaque is no-op
                     } else if (a == 0) {
                         // prevent division by zero
-                        pixel[0] = 0;
-                        pixel[1] = 0;
-                        pixel[2] = 0;
+                        avifStoreU16(&pixel[0], 0);
+                        avifStoreU16(&pixel[2], 0);
+                        avifStoreU16(&pixel[4], 0);
                     } else {
-                        float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
-                        float c2 = avifRoundf((float)pixel[1] * maxF / (float)a);
-                        float c3 = avifRoundf((float)pixel[2] * maxF / (float)a);
-                        pixel[0] = (uint16_t)AVIF_MIN(c1, maxF);
-                        pixel[1] = (uint16_t)AVIF_MIN(c2, maxF);
-                        pixel[2] = (uint16_t)AVIF_MIN(c3, maxF);
+                        float c1 = avifRoundf((float)avifLoadU16(&pixel[0]) * maxF / (float)a);
+                        float c2 = avifRoundf((float)avifLoadU16(&pixel[2]) * maxF / (float)a);
+                        float c3 = avifRoundf((float)avifLoadU16(&pixel[4]) * maxF / (float)a);
+                        avifStoreU16(&pixel[0], (uint16_t)AVIF_MIN(c1, maxF));
+                        avifStoreU16(&pixel[2], (uint16_t)AVIF_MIN(c2, maxF));
+                        avifStoreU16(&pixel[4], (uint16_t)AVIF_MIN(c3, maxF));
                     }
-                    pixel += 4;
+                    pixel += 8;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_ARGB || rgb->format == AVIF_RGB_FORMAT_ABGR) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[0];
+                    uint16_t a = avifLoadU16(&pixel[0]);
                     if (a >= max) {
                     } else if (a == 0) {
-                        pixel[1] = 0;
-                        pixel[2] = 0;
-                        pixel[3] = 0;
+                        avifStoreU16(&pixel[2], 0);
+                        avifStoreU16(&pixel[4], 0);
+                        avifStoreU16(&pixel[6], 0);
                     } else {
-                        float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
-                        float c2 = avifRoundf((float)pixel[2] * maxF / (float)a);
-                        float c3 = avifRoundf((float)pixel[3] * maxF / (float)a);
-                        pixel[1] = (uint16_t)AVIF_MIN(c1, maxF);
-                        pixel[2] = (uint16_t)AVIF_MIN(c2, maxF);
-                        pixel[3] = (uint16_t)AVIF_MIN(c3, maxF);
+                        float c1 = avifRoundf((float)avifLoadU16(&pixel[2]) * maxF / (float)a);
+                        float c2 = avifRoundf((float)avifLoadU16(&pixel[4]) * maxF / (float)a);
+                        float c3 = avifRoundf((float)avifLoadU16(&pixel[6]) * maxF / (float)a);
+                        avifStoreU16(&pixel[2], (uint16_t)AVIF_MIN(c1, maxF));
+                        avifStoreU16(&pixel[4], (uint16_t)AVIF_MIN(c2, maxF));
+                        avifStoreU16(&pixel[6], (uint16_t)AVIF_MIN(c3, maxF));
                     }
-                    pixel += 4;
+                    pixel += 8;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_GRAYA) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[1];
+                    uint16_t a = avifLoadU16(&pixel[2]);
                     if (a >= max) {
                         // opaque is no-op
                     } else if (a == 0) {
                         // prevent division by zero
-                        pixel[0] = 0;
+                        avifStoreU16(&pixel[0], 0);
                     } else {
-                        float c1 = avifRoundf((float)pixel[0] * maxF / (float)a);
-                        pixel[0] = (uint16_t)AVIF_MIN(c1, maxF);
+                        float c1 = avifRoundf((float)avifLoadU16(&pixel[0]) * maxF / (float)a);
+                        avifStoreU16(&pixel[0], (uint16_t)AVIF_MIN(c1, maxF));
                     }
-                    pixel += 2;
+                    pixel += 4;
                 }
                 row += rgb->rowBytes;
             }
         } else if (rgb->format == AVIF_RGB_FORMAT_AGRAY) {
             uint8_t * row = rgb->pixels;
             for (uint32_t j = 0; j < rgb->height; ++j) {
-                uint16_t * pixel = (uint16_t *)row;
+                uint8_t * pixel = row;
                 for (uint32_t i = 0; i < rgb->width; ++i) {
-                    uint16_t a = pixel[0];
+                    uint16_t a = avifLoadU16(&pixel[0]);
                     if (a >= max) {
                     } else if (a == 0) {
-                        pixel[1] = 0;
+                        avifStoreU16(&pixel[2], 0);
                     } else {
-                        float c1 = avifRoundf((float)pixel[1] * maxF / (float)a);
-                        pixel[1] = (uint16_t)AVIF_MIN(c1, maxF);
+                        float c1 = avifRoundf((float)avifLoadU16(&pixel[2]) * maxF / (float)a);
+                        avifStoreU16(&pixel[2], (uint16_t)AVIF_MIN(c1, maxF));
                     }
-                    pixel += 2;
+                    pixel += 4;
                 }
                 row += rgb->rowBytes;
             }

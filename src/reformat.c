@@ -307,11 +307,11 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
                         // Unpack RGB into normalized float
                         if (state.rgb.channelBytes > 1) {
-                            rgbPixel[0] = *((uint16_t *)(&rgb->pixels[offsetBytesR + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[0] = avifLoadU16(&rgb->pixels[offsetBytesR + (i * rgbPixelBytes) + (j * rgbRowBytes)]) /
                                           rgbMaxChannelF;
-                            rgbPixel[1] = *((uint16_t *)(&rgb->pixels[offsetBytesG + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[1] = avifLoadU16(&rgb->pixels[offsetBytesG + (i * rgbPixelBytes) + (j * rgbRowBytes)]) /
                                           rgbMaxChannelF;
-                            rgbPixel[2] = *((uint16_t *)(&rgb->pixels[offsetBytesB + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[2] = avifLoadU16(&rgb->pixels[offsetBytesB + (i * rgbPixelBytes) + (j * rgbRowBytes)]) /
                                           rgbMaxChannelF;
                         } else {
                             rgbPixel[0] = rgb->pixels[offsetBytesR + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
@@ -322,7 +322,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                             float a;
                             if (state.rgb.channelBytes > 1) {
-                                a = *((uint16_t *)(&rgb->pixels[offsetBytesA + (i * rgbPixelBytes) + (j * rgbRowBytes)])) / rgbMaxChannelF;
+                                a = avifLoadU16(&rgb->pixels[offsetBytesA + (i * rgbPixelBytes) + (j * rgbRowBytes)]) / rgbMaxChannelF;
                             } else {
                                 a = rgb->pixels[offsetBytesA + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
                             }
@@ -477,14 +477,14 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             for (uint32_t i = 0; i < image->width; ++i) {
                 float g;
                 if (state.rgb.channelBytes > 1) {
-                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
+                    g = avifLoadU16(&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)]) / grayMaxChannelF;
                 } else {
                     g = rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
                 }
                 if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                     float a;
                     if (state.rgb.channelBytes > 1) {
-                        a = *((uint16_t *)(&rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)])) / grayMaxChannelF;
+                        a = avifLoadU16(&rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)]) / grayMaxChannelF;
                     } else {
                         a = rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)] / grayMaxChannelF;
                     }
@@ -621,7 +621,7 @@ static void avifStoreRGB8Pixel(avifRGBFormat format, uint8_t R, uint8_t G, uint8
         // References for RGB565 color conversion:
         // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
         // * https://chromium.googlesource.com/libyuv/libyuv/+/9892d70c965678381d2a70a1c9002d1cf136ee78/source/row_common.cc#2362
-        *(uint16_t *)ptrR = RGB565(R, G, B);
+        avifStoreU16(ptrR, RGB565(R, G, B));
         return;
     }
     *ptrR = R;
@@ -634,7 +634,7 @@ static void avifGetRGB565(const uint8_t * ptrR, uint8_t * R, uint8_t * G, uint8_
     // References for RGB565 color conversion:
     // * https://docs.microsoft.com/en-us/windows/win32/directshow/working-with-16-bit-rgb
     // * https://chromium.googlesource.com/libyuv/libyuv/+/331c361581896292fb46c8c6905e41262b7ca95f/source/row_common.cc#185
-    const uint16_t rgb656 = ((const uint16_t *)ptrR)[0];
+    const uint16_t rgb656 = avifLoadU16(ptrR);
     const uint16_t r5 = (rgb656 & 0xF800) >> 11;
     const uint16_t g6 = (rgb656 & 0x07E0) >> 5;
     const uint16_t b5 = (rgb656 & 0x001F);
@@ -801,14 +801,14 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
                         unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
                     } else {
-                        unormU[0][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormV[0][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormU[1][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
-                        unormV[1][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
-                        unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
-                        unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
-                        unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
+                        unormU[0][0] = avifLoadU16(&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormV[0][0] = avifLoadU16(&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormU[1][0] = avifLoadU16(&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
+                        unormV[1][0] = avifLoadU16(&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
+                        unormU[0][1] = avifLoadU16(&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
+                        unormV[0][1] = avifLoadU16(&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
+                        unormU[1][1] = avifLoadU16(&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] = avifLoadU16(&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
@@ -951,9 +951,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                                        ptrG,
                                        ptrB);
                 } else {
-                    *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
-                    *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
-                    *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+                    avifStoreU16(ptrR, (uint16_t)(0.5f + (Rc * rgbMaxChannelF)));
+                    avifStoreU16(ptrG, (uint16_t)(0.5f + (Gc * rgbMaxChannelF)));
+                    avifStoreU16(ptrB, (uint16_t)(0.5f + (Bc * rgbMaxChannelF)));
                 }
                 ptrR += rgbPixelBytes;
                 ptrG += rgbPixelBytes;
@@ -962,7 +962,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                 if (rgb->depth == 8) {
                     *ptrGray = (uint8_t)(0.5f + (grayc * rgbMaxChannelF));
                 } else {
-                    *((uint16_t *)ptrGray) = (uint16_t)(0.5f + (grayc * rgbMaxChannelF));
+                    avifStoreU16(ptrGray, (uint16_t)(0.5f + (grayc * rgbMaxChannelF)));
                 }
                 ptrGray += rgbPixelBytes;
             }
@@ -1013,9 +1013,9 @@ static avifResult avifImageYUV16ToRGB16Color(const avifImage * image, avifRGBIma
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreU16(ptrR, (uint16_t)(0.5f + (Rc * rgbMaxChannelF)));
+            avifStoreU16(ptrG, (uint16_t)(0.5f + (Gc * rgbMaxChannelF)));
+            avifStoreU16(ptrB, (uint16_t)(0.5f + (Bc * rgbMaxChannelF)));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1059,9 +1059,9 @@ static avifResult avifImageYUV16ToRGB16Mono(const avifImage * image, avifRGBImag
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * maxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * maxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * maxChannelF));
+            avifStoreU16(ptrR, (uint16_t)(0.5f + (Rc * maxChannelF)));
+            avifStoreU16(ptrG, (uint16_t)(0.5f + (Gc * maxChannelF)));
+            avifStoreU16(ptrB, (uint16_t)(0.5f + (Bc * maxChannelF)));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1215,9 +1215,9 @@ static avifResult avifImageYUV8ToRGB16Color(const avifImage * image, avifRGBImag
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreU16(ptrR, (uint16_t)(0.5f + (Rc * rgbMaxChannelF)));
+            avifStoreU16(ptrG, (uint16_t)(0.5f + (Gc * rgbMaxChannelF)));
+            avifStoreU16(ptrB, (uint16_t)(0.5f + (Bc * rgbMaxChannelF)));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1257,9 +1257,9 @@ static avifResult avifImageYUV8ToRGB16Mono(const avifImage * image, avifRGBImage
             const float Gc = AVIF_CLAMP(G, 0.0f, 1.0f);
             const float Bc = AVIF_CLAMP(B, 0.0f, 1.0f);
 
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (Rc * rgbMaxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (Gc * rgbMaxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (Bc * rgbMaxChannelF));
+            avifStoreU16(ptrR, (uint16_t)(0.5f + (Rc * rgbMaxChannelF)));
+            avifStoreU16(ptrG, (uint16_t)(0.5f + (Gc * rgbMaxChannelF)));
+            avifStoreU16(ptrB, (uint16_t)(0.5f + (Bc * rgbMaxChannelF)));
 
             ptrR += rgbPixelBytes;
             ptrG += rgbPixelBytes;
@@ -1286,7 +1286,7 @@ static avifResult avifImageIdentity8ToRGB8ColorFullRange(const avifImage * image
         // "if" path) much faster than having a per-pixel branch.
         if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
             for (uint32_t i = 0; i < image->width; ++i) {
-                *(uint16_t *)ptrR = RGB565(ptrV[i], ptrY[i], ptrU[i]);
+                avifStoreU16(ptrR, RGB565(ptrV[i], ptrY[i], ptrU[i]));
                 ptrR += rgbPixelBytes;
             }
         } else {
@@ -1856,10 +1856,10 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
 
     const uint8_t * const srcPixel = &src->pixels[y * src->rowBytes + x * info->pixelBytes];
     if (info->channelBytes > 1) {
-        uint16_t r = *((const uint16_t *)(&srcPixel[info->offsetBytesR]));
-        uint16_t g = *((const uint16_t *)(&srcPixel[info->offsetBytesG]));
-        uint16_t b = *((const uint16_t *)(&srcPixel[info->offsetBytesB]));
-        uint16_t a = avifRGBFormatHasAlpha(src->format) ? *((const uint16_t *)(&srcPixel[info->offsetBytesA])) : (uint16_t)info->maxChannel;
+        uint16_t r = avifLoadU16(&srcPixel[info->offsetBytesR]);
+        uint16_t g = avifLoadU16(&srcPixel[info->offsetBytesG]);
+        uint16_t b = avifLoadU16(&srcPixel[info->offsetBytesB]);
+        uint16_t a = avifRGBFormatHasAlpha(src->format) ? avifLoadU16(&srcPixel[info->offsetBytesA]) : (uint16_t)info->maxChannel;
         if (src->isFloat) {
             rgbaPixel[0] = avifF16ToFloat(r);
             rgbaPixel[1] = avifF16ToFloat(g);
@@ -1905,18 +1905,18 @@ void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const av
     uint8_t * const ptrA = avifRGBFormatHasAlpha(dst->format) ? &dstPixel[info->offsetBytesA] : NULL;
     if (dst->depth > 8) {
         if (dst->isFloat) {
-            *((uint16_t *)ptrR) = avifFloatToF16(rgbaPixel[0]);
-            *((uint16_t *)ptrG) = avifFloatToF16(rgbaPixel[1]);
-            *((uint16_t *)ptrB) = avifFloatToF16(rgbaPixel[2]);
+            avifStoreU16(ptrR, avifFloatToF16(rgbaPixel[0]));
+            avifStoreU16(ptrG, avifFloatToF16(rgbaPixel[1]));
+            avifStoreU16(ptrB, avifFloatToF16(rgbaPixel[2]));
             if (ptrA) {
-                *((uint16_t *)ptrA) = avifFloatToF16(rgbaPixel[3]);
+                avifStoreU16(ptrA, avifFloatToF16(rgbaPixel[3]));
             }
         } else {
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (rgbaPixel[0] * info->maxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (rgbaPixel[1] * info->maxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (rgbaPixel[2] * info->maxChannelF));
+            avifStoreU16(ptrR, (uint16_t)(0.5f + (rgbaPixel[0] * info->maxChannelF)));
+            avifStoreU16(ptrG, (uint16_t)(0.5f + (rgbaPixel[1] * info->maxChannelF)));
+            avifStoreU16(ptrB, (uint16_t)(0.5f + (rgbaPixel[2] * info->maxChannelF)));
             if (ptrA) {
-                *((uint16_t *)ptrA) = (uint16_t)(0.5f + (rgbaPixel[3] * info->maxChannelF));
+                avifStoreU16(ptrA, (uint16_t)(0.5f + (rgbaPixel[3] * info->maxChannelF)));
             }
         }
     } else {

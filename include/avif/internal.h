@@ -6,6 +6,8 @@
 
 #include "avif/avif.h" // IWYU pragma: export
 
+#include <string.h> // For memcpy, used by avifLoadU16/avifStoreU16.
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,6 +20,22 @@ extern "C" {
 #define AVIF_CLAMP(x, low, high) (((x) < (low)) ? (low) : (((high) < (x)) ? (high) : (x)))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define AVIF_MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+// Alignment-safe load/store for 16-bit values from potentially unaligned byte pointers.
+// Using memcpy avoids undefined behavior from casting uint8_t* to uint16_t* without
+// alignment guarantees (C standard §6.3.2.3). Modern compilers optimize these to a single
+// load/store instruction on platforms that support unaligned access (e.g., x86/x64).
+static inline uint16_t avifLoadU16(const uint8_t * p)
+{
+    uint16_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static inline void avifStoreU16(uint8_t * p, uint16_t v)
+{
+    memcpy(p, &v, sizeof(v));
+}
 
 // Used for debugging. Define AVIF_BREAK_ON_ERROR to catch the earliest failure during encoding or decoding.
 #if defined(AVIF_BREAK_ON_ERROR)
