@@ -274,7 +274,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     if (alpha) {
         input_picture_buffer->y_stride = image->alphaRowBytes / bytesPerPixel;
         input_picture_buffer->luma = image->alphaPlane;
-        input_buffer->n_filled_len = (size_t)image->alphaRowBytes * image->height;
+        input_buffer->n_filled_len = (uint32_t)((size_t)image->alphaRowBytes * image->height);
 
 #if SVT_AV1_CHECK_VERSION(1, 8, 0)
         // Simulate 4:2:0 UV planes. SVT-AV1 does not support 4:0:0 samples.
@@ -302,11 +302,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         }
         memset(uvPlanes, 0, uvSize);
         input_picture_buffer->cb = uvPlanes;
-        input_buffer->n_filled_len += uvSize;
+        input_buffer->n_filled_len += (uint32_t)uvSize;
         input_picture_buffer->cr = uvPlanes;
-        input_buffer->n_filled_len += uvSize;
-        input_picture_buffer->cb_stride = uvWidth;
-        input_picture_buffer->cr_stride = uvWidth;
+        input_buffer->n_filled_len += (uint32_t)uvSize;
+        input_picture_buffer->cb_stride = (uint32_t)uvWidth;
+        input_picture_buffer->cr_stride = (uint32_t)uvWidth;
 #else
         // This workaround was not needed before SVT-AV1 1.8.0.
         // See https://github.com/AOMediaCodec/libavif/issues/1992.
@@ -315,11 +315,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     } else {
         input_picture_buffer->y_stride = image->yuvRowBytes[0] / bytesPerPixel;
         input_picture_buffer->luma = image->yuvPlanes[0];
-        input_buffer->n_filled_len = (size_t)image->yuvRowBytes[0] * image->height;
+        input_buffer->n_filled_len = (uint32_t)((size_t)image->yuvRowBytes[0] * image->height);
         input_picture_buffer->cb = image->yuvPlanes[1];
-        input_buffer->n_filled_len += (size_t)image->yuvRowBytes[1] * uvHeight;
+        input_buffer->n_filled_len += (uint32_t)((size_t)image->yuvRowBytes[1] * uvHeight);
         input_picture_buffer->cr = image->yuvPlanes[2];
-        input_buffer->n_filled_len += (size_t)image->yuvRowBytes[2] * uvHeight;
+        input_buffer->n_filled_len += (uint32_t)((size_t)image->yuvRowBytes[2] * uvHeight);
         input_picture_buffer->cb_stride = image->yuvRowBytes[1] / bytesPerPixel;
         input_picture_buffer->cr_stride = image->yuvRowBytes[2] / bytesPerPixel;
     }
