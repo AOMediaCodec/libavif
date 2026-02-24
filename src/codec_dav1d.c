@@ -41,9 +41,7 @@ static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
 static void avifDav1dLogCallback(void * cookie, const char * format, va_list ap)
 {
     avifCodec * codec = (avifCodec *)cookie;
-    size_t size = AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE;
-    vsnprintf(codec->diag->error, size - 1, format, ap);
-    codec->diag->error[size - 1] = '\0';
+    vsnprintf(codec->diag->error, AVIF_DIAGNOSTICS_ERROR_BUFFER_SIZE, format, ap);
 }
 
 static void dav1dCodecDestroyInternal(avifCodec * codec)
