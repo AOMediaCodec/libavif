@@ -103,7 +103,9 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
     if (!codec->internal->decoderInitialized) {
         aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
         struct aom_codec_stream_info streamInfo = { 0 };
-        if (aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo) != AOM_CODEC_OK) {
+        aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
+        if (err != AOM_CODEC_OK) {
+            avifDiagnosticsPrintf(codec->diag, "aom_codec_peek_stream_info() failed: %s", aom_codec_err_to_string(err));
             return AVIF_FALSE;
         }
         if (streamInfo.w == 0 || streamInfo.h == 0) {
