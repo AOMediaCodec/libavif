@@ -100,22 +100,27 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
 {
     assert(sample);
 
-    if (!codec->internal->decoderInitialized) {
-        aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
-        struct aom_codec_stream_info streamInfo = { 0 };
-        aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
-        if (err != AOM_CODEC_OK) {
-            avifDiagnosticsPrintf(codec->diag, "aom_codec_peek_stream_info() failed: %s", aom_codec_err_to_string(err));
+    aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
+    struct aom_codec_stream_info streamInfo = { 0 };
+    aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
+    if (err != AOM_CODEC_OK) {
+        avifDiagnosticsPrintf(codec->diag, "aom_codec_peek_stream_info() failed: %s", aom_codec_err_to_string(err));
+        return AVIF_FALSE;
+    }
+    if (streamInfo.w == 0 || streamInfo.h == 0) {
+        // The sequence header was not found.
+        if (!codec->internal->decoderInitialized) {
+            // Treat it as an error if the first frame isn't preceded by a sequence header.
             return AVIF_FALSE;
         }
-        if (streamInfo.w == 0 || streamInfo.h == 0) {
-            // The sequence header was not found: treat it as an error.
-            return AVIF_FALSE;
-        }
+    } else {
         if (avifDimensionsTooLarge(streamInfo.w, streamInfo.h, codec->imageSizeLimit, codec->imageDimensionLimit)) {
+            avifDiagnosticsPrintf(codec->diag, "Image dimensions too large: %dx%d", streamInfo.w, streamInfo.h);
             return AVIF_FALSE;
         }
+    }
 
+    if (!codec->internal->decoderInitialized) {
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
         cfg.threads = codec->maxThreads;
