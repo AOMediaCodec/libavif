@@ -1620,8 +1620,14 @@ static avifResult avifValidateGrid(uint32_t gridCols,
     }
     const uint32_t tileWidth = firstCell->width;
     const uint32_t tileHeight = firstCell->height;
-    const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
-    const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
+    if ((tileWidth > 65536) || (tileHeight > 65536)) {
+        avifDiagnosticsPrintf(diag,
+                              "the first %s cell has invalid dimensions for AV1: %ux%u",
+                              validateGainMap ? "gain map" : "image",
+                              tileWidth,
+                              tileHeight);
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         const avifImage * cellImage = cellImages[cellIndex];
         if (validateGainMap) {
@@ -1682,6 +1688,8 @@ static avifResult avifValidateGrid(uint32_t gridCols,
                               bottomRightCell->height);
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
+    const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
+    const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
     if ((cellCount > 1) && !avifAreGridDimensionsValid(firstCell->yuvFormat, gridWidth, gridHeight, tileWidth, tileHeight, diag)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
