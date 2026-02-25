@@ -664,10 +664,10 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
     const uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
     const uint8_t * aPlane = image->alphaPlane;
-    const size_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
-    const size_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
-    const size_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
-    const size_t aRowBytes = image->alphaRowBytes;
+    const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+    const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+    const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+    const uint32_t aRowBytes = image->alphaRowBytes;
 
     // Various observations and limits
     const avifBool yuvHasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
