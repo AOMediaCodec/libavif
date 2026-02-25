@@ -903,8 +903,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
         if (avmImageAllocated) {
             const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
             for (uint32_t j = 0; j < image->height; ++j) {
-                const uint8_t * srcAlphaRow = &image->alphaPlane[j * image->alphaRowBytes];
-                uint8_t * dstAlphaRow = &avmImage.planes[0][j * avmImage.stride[0]];
+                const uint8_t * srcAlphaRow = &image->alphaPlane[(size_t)j * image->alphaRowBytes];
+                uint8_t * dstAlphaRow = &avmImage.planes[0][(size_t)j * avmImage.stride[0]];
                 memcpy(dstAlphaRow, srcAlphaRow, bytesPerRow);
             }
         } else {
@@ -927,8 +927,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                 uint32_t bytesPerRow = bytesPerPixel * planeWidth;
 
                 for (uint32_t j = 0; j < planeHeight; ++j) {
-                    const uint8_t * srcRow = &image->yuvPlanes[yuvPlane][j * image->yuvRowBytes[yuvPlane]];
-                    uint8_t * dstRow = &avmImage.planes[yuvPlane][j * avmImage.stride[yuvPlane]];
+                    const uint8_t * srcRow = &image->yuvPlanes[yuvPlane][(size_t)j * image->yuvRowBytes[yuvPlane]];
+                    uint8_t * dstRow = &avmImage.planes[yuvPlane][(size_t)j * avmImage.stride[yuvPlane]];
                     memcpy(dstRow, srcRow, bytesPerRow);
                 }
             }
