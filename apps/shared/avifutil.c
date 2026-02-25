@@ -688,15 +688,15 @@ avifResult avifRGBImageRotate(avifRGBImage * dstImage, const avifRGBImage * srcI
         const size_t bytesPerRow = (size_t)bytesPerPixel * srcImage->width;
         // 0 degrees. Just copy the rows as is.
         for (uint32_t j = 0; j < srcImage->height; ++j) {
-            memcpy(dstImage->pixels + (j * dstImage->rowBytes), srcImage->pixels + (j * srcImage->rowBytes), bytesPerRow);
+            memcpy(dstImage->pixels + ((size_t)j * dstImage->rowBytes), srcImage->pixels + ((size_t)j * srcImage->rowBytes), bytesPerRow);
         }
     } else if (rotation->angle == 1) {
         // 90 degrees anti-clockwise.
         for (uint32_t j = 0; j < srcImage->height; ++j) {
             for (uint32_t i = 0; i < srcImage->width; ++i) {
                 // Source pixel at (i, j) goes to destination pixel at (j, srcImage->width - 1 - i).
-                memcpy(dstImage->pixels + ((srcImage->width - 1 - i) * dstImage->rowBytes) + (j * bytesPerPixel),
-                       srcImage->pixels + (j * srcImage->rowBytes) + (i * bytesPerPixel),
+                memcpy(dstImage->pixels + ((size_t)(srcImage->width - 1 - i) * dstImage->rowBytes) + ((size_t)j * bytesPerPixel),
+                       srcImage->pixels + ((size_t)j * srcImage->rowBytes) + ((size_t)i * bytesPerPixel),
                        bytesPerPixel);
             }
         }
@@ -705,8 +705,9 @@ avifResult avifRGBImageRotate(avifRGBImage * dstImage, const avifRGBImage * srcI
         for (uint32_t j = 0; j < srcImage->height; ++j) {
             for (uint32_t i = 0; i < srcImage->width; ++i) {
                 // Source pixel at (i, j) goes to destination pixel at (srcImage->width - 1 - i, srcImage->height - 1 - j).
-                memcpy(dstImage->pixels + ((srcImage->height - 1 - j) * dstImage->rowBytes) + ((srcImage->width - 1 - i) * bytesPerPixel),
-                       srcImage->pixels + (j * srcImage->rowBytes) + (i * bytesPerPixel),
+                memcpy(dstImage->pixels + ((size_t)(srcImage->height - 1 - j) * dstImage->rowBytes) +
+                           ((size_t)(srcImage->width - 1 - i) * bytesPerPixel),
+                       srcImage->pixels + ((size_t)j * srcImage->rowBytes) + ((size_t)i * bytesPerPixel),
                        bytesPerPixel);
             }
         }
@@ -715,8 +716,8 @@ avifResult avifRGBImageRotate(avifRGBImage * dstImage, const avifRGBImage * srcI
         for (uint32_t j = 0; j < srcImage->height; ++j) {
             for (uint32_t i = 0; i < srcImage->width; ++i) {
                 // Source pixel at (i, j) goes to destination pixel at (srcImage->width - 1 - i, j).
-                memcpy(dstImage->pixels + (i * dstImage->rowBytes) + ((srcImage->height - 1 - j) * bytesPerPixel),
-                       srcImage->pixels + (j * srcImage->rowBytes) + (i * bytesPerPixel),
+                memcpy(dstImage->pixels + ((size_t)i * dstImage->rowBytes) + ((size_t)(srcImage->height - 1 - j) * bytesPerPixel),
+                       srcImage->pixels + ((size_t)j * srcImage->rowBytes) + ((size_t)i * bytesPerPixel),
                        bytesPerPixel);
             }
         }
@@ -746,19 +747,19 @@ avifResult avifRGBImageMirror(avifRGBImage * image, const avifImageMirror * mirr
         }
         avifFree(tempRow);
     } else if (mirror->axis == 1) { // Vertical axis.
-        const uint32_t pixelSize = avifRGBImagePixelSize(image);
+        const uint32_t bytesPerPixel = avifRGBImagePixelSize(image);
         uint8_t tempPixel[8]; // Max pixel size should be 8 bytes (RGBA 16-bit).
-        if (pixelSize > sizeof(tempPixel)) {
+        if (bytesPerPixel > sizeof(tempPixel)) {
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
         for (uint32_t y = 0; y < image->height; ++y) {
             uint8_t * row = &image->pixels[(size_t)y * image->rowBytes];
             for (uint32_t x = 0; x < image->width / 2; ++x) {
-                uint8_t * pixel1 = &row[x * pixelSize];
-                uint8_t * pixel2 = &row[(image->width - 1 - x) * pixelSize];
-                memcpy(tempPixel, pixel1, pixelSize);
-                memcpy(pixel1, pixel2, pixelSize);
-                memcpy(pixel2, tempPixel, pixelSize);
+                uint8_t * pixel1 = &row[(size_t)x * bytesPerPixel];
+                uint8_t * pixel2 = &row[(size_t)(image->width - 1 - x) * bytesPerPixel];
+                memcpy(tempPixel, pixel1, bytesPerPixel);
+                memcpy(pixel1, pixel2, bytesPerPixel);
+                memcpy(pixel2, tempPixel, bytesPerPixel);
             }
         }
     } else {
@@ -790,6 +791,7 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
         avifResult result = avifRGBImageRotate(&tmpRgbImage, dstView, &avif->irot);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "Failed to apply rotation\n");
+            avifRGBImageFreePixels(&tmpRgbImage);
             return result;
         }
         // We assume that srcImage owned its pixels and free them before replacing it with tmpRgbImage.

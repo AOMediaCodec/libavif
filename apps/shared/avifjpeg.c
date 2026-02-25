@@ -1678,6 +1678,7 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         goto cleanup;
     }
 
+    // rgbView is a view on rgbData. avifApplyTransforms() may modify rgbData.
     avifRGBImage rgbView;
     avifResult transformResult = avifApplyTransforms(&rgbView, &rgbData, avif);
     if (transformResult != AVIF_RESULT_OK) {
@@ -1728,7 +1729,15 @@ avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int 
         // We already rotated the pixels if necessary in avifApplyTransforms(), so we set the orientation to 1 (no rotation, no mirror).
         result = avifSetExifOrientation(&exif, 1);
         if (result != AVIF_RESULT_OK) {
-            // Ignore errors: if the exif is invalid, we can consider it as equivalent to not having an orientation.
+            if (result == AVIF_RESULT_INVALID_EXIF_PAYLOAD || result == AVIF_RESULT_NOT_IMPLEMENTED) {
+                // Either the Exif is invalid, or it doesn't have an orientation field.
+                // If it's invalid, we can consider it as equivalent to not having an orientation.
+                // In both cases, we can ignore the error.
+            } else {
+                fprintf(stderr, "Error writing JPEG metadata: %s\n", avifResultToString(result));
+                avifRWDataFree(&exif);
+                goto cleanup;
+            }
         }
 
         avifROData remainingExif = { exif.data, exif.size };

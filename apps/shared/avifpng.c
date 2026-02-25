@@ -534,7 +534,7 @@ static avifBool avifPNGReadImpl(FILE * f,
         fprintf(stderr, "avifPNGRead internal error: rowBytes mismatch libavif %u vs libpng %" AVIF_FMT_ZU "\n", rgb.rowBytes, rowBytes);
         goto cleanup;
     }
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rgb.height);
+    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * (size_t)rgb.height);
     if (rowPointers == NULL) {
         fprintf(stderr, "avifPNGRead internal error: memory allocation failure");
         goto cleanup;
@@ -685,6 +685,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         }
     }
 
+    // rgbView is a view on rgbData. avifApplyTransforms() may modify rgbData.
     avifRGBImage rgbView = rgbData;
     avifResult transformResult = avifApplyTransforms(&rgbView, &rgbData, avif);
     if (transformResult != AVIF_RESULT_OK) {
@@ -826,7 +827,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         png_write_chunk(png, cicp, cicpData, 4);
     }
 
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
+    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * (size_t)height);
     if (rowPointers == NULL) {
         fprintf(stderr, "Error writing PNG: memory allocation failure");
         goto cleanup;
