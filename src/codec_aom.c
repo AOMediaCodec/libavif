@@ -1210,7 +1210,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             const uint32_t bytesPerRow = ((image->depth > 8) ? 2 : 1) * image->width;
             for (uint32_t j = 0; j < image->height; ++j) {
                 const uint8_t * srcAlphaRow = &image->alphaPlane[(size_t)j * image->alphaRowBytes];
-                uint8_t * dstAlphaRow = &aomImage.planes[0][j * aomImage.stride[0]];
+                uint8_t * dstAlphaRow = &aomImage.planes[0][(size_t)j * aomImage.stride[0]];
                 memcpy(dstAlphaRow, srcAlphaRow, bytesPerRow);
             }
         } else {
@@ -1234,7 +1234,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
 
                 for (uint32_t j = 0; j < planeHeight; ++j) {
                     const uint8_t * srcRow = &image->yuvPlanes[yuvPlane][(size_t)j * image->yuvRowBytes[yuvPlane]];
-                    uint8_t * dstRow = &aomImage.planes[yuvPlane][j * aomImage.stride[yuvPlane]];
+                    uint8_t * dstRow = &aomImage.planes[yuvPlane][(size_t)j * aomImage.stride[yuvPlane]];
                     memcpy(dstRow, srcRow, bytesPerRow);
                 }
             }

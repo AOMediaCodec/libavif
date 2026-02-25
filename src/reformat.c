@@ -1854,8 +1854,7 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
     assert(!src->isFloat || src->depth == 16);
     assert(src->format != AVIF_RGB_FORMAT_RGB_565 || src->depth == 8);
 
-    const size_t offset = (size_t)y * (size_t)src->rowBytes + (size_t)x * (size_t)info->pixelBytes;
-    const uint8_t * const srcPixel = &src->pixels[offset];
+    const uint8_t * const srcPixel = &src->pixels[(size_t)y * src->rowBytes + (size_t)x * info->pixelBytes];
     if (info->channelBytes > 1) {
         uint16_t r = *((const uint16_t *)(&srcPixel[info->offsetBytesR]));
         uint16_t g = *((const uint16_t *)(&srcPixel[info->offsetBytesG]));
@@ -1898,7 +1897,7 @@ void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const av
     assert(rgbaPixel[1] >= 0.0f && rgbaPixel[1] <= 1.0f);
     assert(rgbaPixel[2] >= 0.0f && rgbaPixel[2] <= 1.0f);
 
-    uint8_t * const dstPixel = &dst->pixels[(size_t)y * dst->rowBytes + x * info->pixelBytes];
+    uint8_t * const dstPixel = &dst->pixels[(size_t)y * dst->rowBytes + (size_t)x * info->pixelBytes];
 
     uint8_t * const ptrR = &dstPixel[info->offsetBytesR];
     uint8_t * const ptrG = &dstPixel[info->offsetBytesG];
