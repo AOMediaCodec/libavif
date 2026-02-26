@@ -101,6 +101,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
     assert(sample);
 
     aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
+#if !defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
     struct aom_codec_stream_info streamInfo = { 0 };
     aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
     if (err != AOM_CODEC_OK) {
@@ -119,6 +120,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             return AVIF_FALSE;
         }
     }
+#endif // !defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
 
     if (!codec->internal->decoderInitialized) {
         aom_codec_dec_cfg_t cfg;
@@ -131,6 +133,11 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         }
         codec->internal->decoderInitialized = AVIF_TRUE;
 
+#if defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
+        if (codec->imageSizeLimit != 0 && aom_codec_control(&codec->internal->decoder, AOMD_SET_FRAME_SIZE_LIMIT, codec->imageSizeLimit)) {
+            return AVIF_FALSE;
+        }
+#endif // defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
             return AVIF_FALSE;
         }
