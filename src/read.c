@@ -198,9 +198,6 @@ AVIF_ARRAY_DECLARE(avifPropertyArray, avifProperty, prop);
 // Finds the first property of a given type.
 static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * properties, const char * type)
 {
-    if (type == NULL) {
-        return NULL;
-    }
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
         const avifProperty * prop = &properties->prop[propertyIndex];
         if (!memcmp(prop->type, type, 4)) {
