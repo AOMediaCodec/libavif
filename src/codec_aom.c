@@ -757,21 +757,21 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 libavifDefaultTuneMetric = AOM_TUNE_PSNR;
             } else {
                 libavifDefaultTuneMetric = AOM_TUNE_SSIM;
-            }
 #if defined(AOM_HAVE_TUNE_IQ)
-            // AOM_TUNE_IQ has been tuned for the YCbCr family of color spaces, and is favored for
-            // its low perceptual distortion. AOM_TUNE_IQ partially generalizes to, and benefits
-            // from other "YUV-like" spaces (e.g. YCgCo and ICtCp) including monochrome (luma only).
-            // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
-            // AOM_TUNE_IQ was introduced in libaom v3.12.0 but it has significantly different bit
-            // allocation characteristics compared to v3.13.0. AOM_TUNE_IQ is used by default
-            // starting with v3.13.0 for fewer behavior changes in libavif.
-            static const int aomVersion_3_13_0 = (3 << 16) | (13 << 8);
-            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && aomUsage == AOM_USAGE_ALL_INTRA &&
-                aomVersion >= aomVersion_3_13_0) {
-                libavifDefaultTuneMetric = AOM_TUNE_IQ;
-            }
+                // AOM_TUNE_IQ has been tuned for the YCbCr family of color spaces, and is favored for
+                // its low perceptual distortion. AOM_TUNE_IQ partially generalizes to, and benefits
+                // from other "YUV-like" spaces (e.g. YCgCo and ICtCp) including monochrome (luma only).
+                // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
+                // AOM_TUNE_IQ was introduced in libaom v3.12.0 but it has significantly different bit
+                // allocation characteristics compared to v3.13.0. AOM_TUNE_IQ is used by default
+                // starting with v3.13.0 for fewer behavior changes in libavif.
+                static const int aomVersion_3_13_0 = (3 << 16) | (13 << 8);
+                if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && aomUsage == AOM_USAGE_ALL_INTRA &&
+                    aomVersion >= aomVersion_3_13_0) {
+                    libavifDefaultTuneMetric = AOM_TUNE_IQ;
+                }
 #endif
+            }
         }
     }
 
