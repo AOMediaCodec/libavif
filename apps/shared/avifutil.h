@@ -64,6 +64,19 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
 // using avifCropRectFromCleanApertureBox().
 void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect);
 
+// Rotates srcImage into dstImage. The two pointers must be different (does not rotate in place).
+// Allocates the pixels of dstImage which must be freed by the caller.
+avifResult avifRGBImageRotate(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifImageRotation * rotation);
+
+// Mirrors the image in place.
+avifResult avifRGBImageMirror(avifRGBImage * image, const avifImageMirror * mirror);
+
+// Applies clap, irot and imir transforms (in this order) specified in the avif image to srcImage.
+// The result is in dstView which does not own its pixels.
+// srcImage may also have its pixel data modified. Assumes that srcImage DOES own its pixels.
+// If an error is returned, only some of the transforms may have been applied.
+avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, const avifImage * avif);
+
 // This structure holds any timing data coming from source (typically non-AVIF) inputs being fed
 // into avifenc. If either or both values are 0, the timing is "invalid" / sentinel and the values
 // should be ignored. This structure is used to override the timing defaults in avifenc when the
