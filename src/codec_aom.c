@@ -102,6 +102,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
 
     aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
 #if !defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
+    // The AOMD_SET_FRAME_SIZE_LIMIT codec control (added in libaom v3.14.0),
+    // is the best way to impose a maximum on AV1 frame size. When
+    // AOMD_SET_FRAME_SIZE_LIMIT is not available, approximate it with
+    // aom_codec_peek_stream_info() and avifDimensionsTooLarge().
     struct aom_codec_stream_info streamInfo = { 0 };
     aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
     if (err != AOM_CODEC_OK) {
