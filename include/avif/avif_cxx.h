@@ -30,7 +30,7 @@ using EncoderPtr = std::unique_ptr<avifEncoder, UniquePtrDeleter>;
 using GainMapPtr = std::unique_ptr<avifGainMap, UniquePtrDeleter>;
 using ImagePtr = std::unique_ptr<avifImage, UniquePtrDeleter>;
 
-// Automatically cleans the ressources of the avifRGBImage if it owns it.
+// Automatically cleans the ressources of the avifRGBImage.
 class RGBImageCleanup
 {
 public:
