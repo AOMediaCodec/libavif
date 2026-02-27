@@ -50,8 +50,6 @@
 #endif
 #endif
 
-#define TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD 10
-
 struct avifCodecInternal
 {
 #if defined(AVIF_CODEC_AOM_DECODE)
@@ -686,20 +684,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         codec->internal->qualityFirstLayer = quality;
     }
 
-    // Determine whether the encoder should be configured to use intra frames only, either by setting aomUsage to AOM_USAGE_ALL_INTRA,
-    // or by manually configuring the encoder so all frames will be key frames (if AOM_USAGE_ALL_INTRA isn't available).
-
-    // All-intra encoding is beneficial when encoding a two-layer image item and the quality of the first layer is very low.
-    // Switching to all-intra encoding comes with the following benefits:
-    // - The first layer will be smaller than the second layer (which is often not the case with inter encoding)
-    // - Outputs have predictable file sizes: the sum of the first layer (quality <= 10) plus the second layer (quality set by the caller)
-    // - Because the first layer is very small, layered encoding overhead is also smaller and more stable (about 5-8% for quality 40 and 2-4% for quality 60)
-    // - Option of choosing tune IQ (which requires AOM_USAGE_ALL_INTRA)
-    avifBool useAllIntraForLayered = encoder->extraLayerCount == 1 &&
-                                     codec->internal->qualityFirstLayer <= TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD;
-    // Also use all-intra encoding when encoding still images.
-    avifBool useAllIntra = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || useAllIntraForLayered;
-
     // Map encoder speed to AOM usage + CpuUsed:
     // Speed  0: GoodQuality CpuUsed 0
     // Speed  1: GoodQuality CpuUsed 1
@@ -715,7 +699,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     unsigned int aomUsage = AOM_USAGE_GOOD_QUALITY;
     // Use AOM_USAGE_ALL_INTRA (added in https://crbug.com/aomedia/2959) if available.
 #if defined(AOM_USAGE_ALL_INTRA)
-    if (useAllIntra) {
+    if (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) {
         aomUsage = AOM_USAGE_ALL_INTRA;
     }
 #endif
@@ -724,7 +708,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aomCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
         if (aomCpuUsed >= 7) {
 #if defined(AOM_USAGE_ALL_INTRA) && defined(ALL_INTRA_HAS_SPEEDS_7_TO_9)
-            if (!useAllIntra) {
+            if (!(addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE)) {
                 aomUsage = AOM_USAGE_REALTIME;
             }
 #else
@@ -891,8 +875,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
             cfg->g_limit = 1;
-        }
-        if (useAllIntra) {
+
 #if !defined(AOM_USAGE_ALL_INTRA)
             // Use the default settings of the new AOM_USAGE_ALL_INTRA (added in
             // https://crbug.com/aomedia/2959).
@@ -911,11 +894,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 cfg->kf_max_dist = encoder->keyframeInterval;
             }
         }
+
         if (encoder->extraLayerCount > 0) {
             cfg->g_limit = encoder->extraLayerCount + 1;
             // For layered image, disable lagged encoding to always get output
             // frame for each input frame.
             cfg->g_lag_in_frames = 0;
+            // Disable QP offsets, so CQ level = frame QP for every frame
+            // juliobbv: implement mechanism to detect whether libaom supports this capability
+            cfg->use_fixed_qp_offsets = 2;
         }
         if (disableLaggedOutput) {
             cfg->g_lag_in_frames = 0;
