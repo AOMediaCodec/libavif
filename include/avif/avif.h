@@ -1602,7 +1602,7 @@ typedef struct avifEncoder
     // Encode quality for the gain map image if present, in [AVIF_QUALITY_WORST - AVIF_QUALITY_BEST].
     int qualityGainMap; // Changeable encoder setting.
 
-    // Version 1.2.0 ends here. Add any new members after this line.
+    // Version 1.2.0 ends here.
     // --------------------------------------------------------------------------------------------
 
     // Only used when encoding an image sequence (animated image). In seconds since midnight,
@@ -1616,6 +1616,9 @@ typedef struct avifEncoder
 
     // Perform extra steps at encoding and decoding to extend AV1 features using bundled additional image items.
     avifSampleTransformRecipe sampleTransformRecipe; // Changeable encoder setting.
+
+    // Version 1.4.0 ends here. Add any new members after this line.
+    // --------------------------------------------------------------------------------------------
 } avifEncoder;
 
 // Creates an encoder initialized with default settings values.
