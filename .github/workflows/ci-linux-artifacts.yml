@@ -2,8 +2,7 @@
 
 name: CI Linux Release Artifacts
 on:
-  release:
-    types: [created]
+  pull_request:
 
 permissions:
   contents: write
@@ -47,20 +46,20 @@ jobs:
             avifenc
             avifdec
             avifgainmaputil
-      - name: Upload artifacts
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/linux-artifacts.zip
-          asset_name: linux-artifacts.zip
-          asset_content_type: application/zip
+      # - name: Upload artifacts
+      #   uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#release.
+      #     upload_url: ${{ github.event.release.upload_url }}
+      #     asset_path: build/linux-artifacts.zip
+      #     asset_name: linux-artifacts.zip
+      #     asset_content_type: application/zip
 
     # Use the following instead of the above to test this workflow outside of a release event.
-    # - name: Upload artifacts
-    #   uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-    #   with:
-    #     name: linux-artifacts.zip
-    #     path: build/linux-artifacts.zip
+      - name: Upload artifacts
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: linux-artifacts.zip
+          path: build/linux-artifacts.zip
