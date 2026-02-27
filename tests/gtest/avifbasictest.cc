@@ -41,5 +41,17 @@ TEST(BasicTest, EncodeDecode) {
   //  testutil::WriteImage(decoded.get(), "/tmp/avifbasictest.png");
 }
 
+TEST(BasicTest, RGBImageCleanup) {
+  // Make sure the following does not create sanitizer bugs.
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_ALL);
+
+  avifRGBImage rgb;
+  avifRGBImageSetDefaults(&rgb, image.get());
+  RGBImageCleanup cleanup(&rgb);
+  ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+}
+
 }  // namespace
 }  // namespace avif
