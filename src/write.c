@@ -164,15 +164,15 @@ void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput)
 typedef struct avifEncoderItem
 {
     uint16_t id;
-    uint8_t type[4];                      // 4-character 'item_type' field in the 'infe' (item info entry) box
-    avifCodec * codec;                    // only present on image items
-    avifCodecEncodeOutput * encodeOutput; // AV1 sample data
-    avifRWData metadataPayload;           // Exif/XMP data
-    avifCodecConfigurationBox av1C;       // Harvested in avifEncoderFinish(), if encodeOutput has samples
-                                          // TODO(yguyon): Rename or add av2C
-    uint32_t cellIndex;                   // Which row-major cell index corresponds to this item. only present on image items
-    avifItemCategory itemCategory;        // Category of item being encoded
-    avifBool hiddenImage;                 // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
+    uint8_t type[4];                       // 4-character 'item_type' field in the 'infe' (item info entry) box
+    avifCodec * codec;                     // only present on image items
+    avifCodecEncodeOutput * encodeOutput;  // AV1 sample data
+    avifRWData metadataPayload;            // Exif/XMP data
+    avifCodecConfigurationBox codecConfig; // "av1C" for AV1 ("av2C" for AV2 if AVIF_CODEC_AVM)
+                                           // Harvested in avifEncoderFinish(), if encodeOutput has samples
+    uint32_t cellIndex;                    // Which row-major cell index corresponds to this item. only present on image items
+    avifItemCategory itemCategory;         // Category of item being encoded
+    avifBool hiddenImage;                  // A hidden image item has (flags & 1) equal to 1 in its ItemInfoEntry.
 
     const char * infeName;
     size_t infeNameSize;
@@ -2770,7 +2770,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)gainmapData->size, largeItemDataFlag ? 28 : 15)); // unsigned int(large_item_data_flag ? 28 : 15) gainmap_item_data_size;
     }
     if (hasHdr && hasGainmap && gainmapData->size != 0) {
-        if (!memcmp(&colorItem->av1C, &gainmapItem->av1C, sizeof(colorItem->av1C))) {
+        if (!memcmp(&colorItem->codecConfig, &gainmapItem->codecConfig, sizeof(colorItem->codecConfig))) {
             // The gainmap codec config is copied from the main codec config.
             // This is signaled by a size of 0.
             gainmapCodecConfigSize = 0;
@@ -2787,7 +2787,7 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         AVIF_CHECKRES(avifRWStreamWriteBits(s, (uint32_t)alphaData->size, largeItemDataFlag ? 28 : 15)); // unsigned int(large_item_data_flag ? 28 : 15) alpha_item_data_size;
     }
     if (hasAlpha && alphaData->size != 0) {
-        if (!memcmp(&colorItem->av1C, &alphaItem->av1C, sizeof(colorItem->av1C))) {
+        if (!memcmp(&colorItem->codecConfig, &alphaItem->codecConfig, sizeof(colorItem->codecConfig))) {
             // The alpha codec config is copied from the main codec config.
             // This is signaled by a size of 0.
             alphaCodecConfigSize = 0;
@@ -2815,13 +2815,13 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
 
     // Chunks
     if (codecConfigSize > 0) {
-        AVIF_CHECKRES(writeCodecConfig(s, &colorItem->av1C)); // unsigned int(8) main_item_codec_config[main_item_codec_config_size];
+        AVIF_CHECKRES(writeCodecConfig(s, &colorItem->codecConfig)); // unsigned int(8) main_item_codec_config[main_item_codec_config_size];
     }
     if (hasAlpha && alphaData->size != 0 && alphaCodecConfigSize != 0) {
-        AVIF_CHECKRES(writeCodecConfig(s, &alphaItem->av1C)); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
+        AVIF_CHECKRES(writeCodecConfig(s, &alphaItem->codecConfig)); // unsigned int(8) alpha_item_codec_config[alpha_item_codec_config_size];
     }
     if (hasHdr && hasGainmap && gainmapCodecConfigSize != 0) {
-        AVIF_CHECKRES(writeCodecConfig(s, &gainmapItem->av1C)); // unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
+        AVIF_CHECKRES(writeCodecConfig(s, &gainmapItem->codecConfig)); // unsigned int(8) gainmap_item_codec_config[gainmap_item_codec_config_size];
     }
 
     if (hasIcc) {
@@ -2990,11 +2990,11 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             }
 #if defined(AVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI)
             if (flags & 1) {
-                AVIF_ASSERT_OR_RETURN(item->av1C.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_RESERVED);
+                AVIF_ASSERT_OR_RETURN(item->codecConfig.chromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_RESERVED);
                 // Do not signal any subsampling information if the sample position is unknown because the 'pixi' box
                 // does not have an enum entry for "unknown subsampling location".
-                const uint8_t subsampling_flag = item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL ||
-                                                 item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+                const uint8_t subsampling_flag = item->codecConfig.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL ||
+                                                 item->codecConfig.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
                 for (uint8_t chan = 0; chan < channelCount; ++chan) {
                     AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/3)); // unsigned int(3) channel_idc;
                     AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/1)); // unsigned int(1) reserved;
@@ -3002,9 +3002,9 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
                     AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, subsampling_flag, /*bitCount=*/1)); // unsigned int(1) subsampling_flag;
                     AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, 0, /*bitCount=*/1)); // unsigned int(1) channel_label_flag;
                     if (subsampling_flag) {
-                        const uint8_t subsamplingType = avifCodecConfigurationBoxGetSubsamplingType(&item->av1C, chan);
+                        const uint8_t subsamplingType = avifCodecConfigurationBoxGetSubsamplingType(&item->codecConfig, chan);
                         const uint8_t subsamplingLocation = subsamplingType == AVIF_PIXI_444 ? 0
-                                                            : item->av1C.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
+                                                            : item->codecConfig.chromaSamplePosition == AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
                                                                 ? 0
                                                                 : 2;
                         AVIF_CHECKRES(avifRWStreamWriteBits(&dedup->s, subsamplingType, /*bitCount=*/4)); // unsigned int(4) subsampling_type;
@@ -3020,7 +3020,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         // Codec configuration box ('av1C' or 'av2C')
         if (item->codec) {
             avifItemPropertyDedupStart(dedup);
-            AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->av1C, encoder->data->configPropName));
+            AVIF_CHECKRES(writeConfigBox(&dedup->s, &item->codecConfig, encoder->data->configPropName));
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, /*essential=*/AVIF_TRUE));
         }
 
@@ -3196,7 +3196,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             avifSequenceHeader sequenceHeader;
             AVIF_CHECKERR(avifSequenceHeaderParse(&sequenceHeader, (const avifROData *)&firstSample->data, codecType),
                           avifGetErrorForItemCategory(item->itemCategory));
-            item->av1C = sequenceHeader.av1C;
+            item->codecConfig = sequenceHeader.codecConfig;
         }
     }
 
@@ -3718,7 +3718,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 32 - 11));              //
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0x0018));                 // template unsigned int(16) depth = 0x0018;
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)0xffff));       // int(16) pre_defined = -1;
-            AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
+            AVIF_CHECKRES(writeConfigBox(&s, &item->codecConfig, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
                 AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
                 AVIF_CHECKRES(avifEncoderWriteHDRProperties(NULL, &s, imageMetadata, NULL, NULL));
@@ -3871,7 +3871,7 @@ avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avif
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfigurationBox * cfg)
 {
-    const size_t av1COffset = s->offset;
+    const size_t codecConfigOffset = s->offset;
 
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 1, /*bitCount=*/1)); // unsigned int (1) marker = 1;
     AVIF_CHECKRES(avifRWStreamWriteBits(s, 1, /*bitCount=*/7)); // unsigned int (7) version = 1;
@@ -3896,7 +3896,7 @@ static avifResult writeCodecConfig(avifRWStream * s, const avifCodecConfiguratio
     // See https://aomediacodec.github.io/av1-avif/v1.1.0.html#av1-configuration-item-property.
     // unsigned int (8) configOBUs[];
 
-    AVIF_ASSERT_OR_RETURN(s->offset - av1COffset == 4); // Make sure writeCodecConfig() writes exactly 4 bytes.
+    AVIF_ASSERT_OR_RETURN(s->offset - codecConfigOffset == 4); // Make sure writeCodecConfig() writes exactly 4 bytes.
     return AVIF_RESULT_OK;
 }
 
