@@ -8,6 +8,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-27
+
 ### Added since 1.3.0
 
 * Allow avifenc to read png or jpeg files through stdin using --stdin-format.
@@ -27,6 +29,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add --sato flag to avifdec to enable Sample Transforms support at decoding.
 * Add --grid option to avifgainmaputil.
 * Apply clean aperture crop, rotation and mirror when decoding to PNG or JPEG.
+* Add avif::RGBImageCleanup to the C++ API.
 
 ### Changed since 1.3.0
 
@@ -60,12 +63,15 @@ The changes are relative to the previous release, unless the baseline is specifi
   libaom v3.13.0 or later.
 * Converting an image containing a gain map using avifenc with the --grid flag
   now also splits the gain map into a grid.
+* Use all-intra encoding for a layered image if the total number of layers is 2
+  and the quality of the first layer is very low (q <= 10).
 
 ### Removed since 1.3.0
 
 * Remove ext/avm.cmd.
 * Remove the AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM CMake flag.
 * Remove support for libaom versions up to 2.0.0 inclusive.
+* Un-export the private function avifImagePushProperty().
 
 ## [1.3.0] - 2025-05-09
 
@@ -1329,7 +1335,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/AOMediaCodec/libavif/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/AOMediaCodec/libavif/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/AOMediaCodec/libavif/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/AOMediaCodec/libavif/compare/v1.1.1...v1.2.0
