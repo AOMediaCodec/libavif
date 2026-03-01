@@ -307,24 +307,24 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 
                         // Unpack RGB into normalized float
                         if (state.rgb.channelBytes > 1) {
-                            rgbPixel[0] = *((uint16_t *)(&rgb->pixels[offsetBytesR + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[0] = *((uint16_t *)(&rgb->pixels[offsetBytesR + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) /
                                           rgbMaxChannelF;
-                            rgbPixel[1] = *((uint16_t *)(&rgb->pixels[offsetBytesG + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[1] = *((uint16_t *)(&rgb->pixels[offsetBytesG + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) /
                                           rgbMaxChannelF;
-                            rgbPixel[2] = *((uint16_t *)(&rgb->pixels[offsetBytesB + (i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                            rgbPixel[2] = *((uint16_t *)(&rgb->pixels[offsetBytesB + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) /
                                           rgbMaxChannelF;
                         } else {
-                            rgbPixel[0] = rgb->pixels[offsetBytesR + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
-                            rgbPixel[1] = rgb->pixels[offsetBytesG + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
-                            rgbPixel[2] = rgb->pixels[offsetBytesB + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
+                            rgbPixel[0] = rgb->pixels[offsetBytesR + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
+                            rgbPixel[1] = rgb->pixels[offsetBytesG + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
+                            rgbPixel[2] = rgb->pixels[offsetBytesB + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
                         }
 
                         if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                             float a;
                             if (state.rgb.channelBytes > 1) {
-                                a = *((uint16_t *)(&rgb->pixels[offsetBytesA + (i * rgbPixelBytes) + (j * rgbRowBytes)])) / rgbMaxChannelF;
+                                a = *((uint16_t *)(&rgb->pixels[offsetBytesA + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) / rgbMaxChannelF;
                             } else {
-                                a = rgb->pixels[offsetBytesA + (i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
+                                a = rgb->pixels[offsetBytesA + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
                             }
 
                             if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
@@ -384,13 +384,13 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         }
 
                         if (state.yuv.channelBytes > 1) {
-                            uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + (j * yRowBytes)];
+                            uint16_t * pY = (uint16_t *)&yPlane[((size_t)i * 2) + (j * yRowBytes)];
                             *pY = (uint16_t)avifYUVColorSpaceInfoYToUNorm(&state.yuv, yuvBlock[bI][bJ].y);
                             if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                                 // YUV444, full chroma
-                                uint16_t * pU = (uint16_t *)&uPlane[(i * 2) + (j * uRowBytes)];
+                                uint16_t * pU = (uint16_t *)&uPlane[((size_t)i * 2) + (j * uRowBytes)];
                                 *pU = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, yuvBlock[bI][bJ].u);
-                                uint16_t * pV = (uint16_t *)&vPlane[(i * 2) + (j * vRowBytes)];
+                                uint16_t * pV = (uint16_t *)&vPlane[((size_t)i * 2) + (j * vRowBytes)];
                                 *pV = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, yuvBlock[bI][bJ].v);
                             }
                         } else {
@@ -427,9 +427,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                     int uvI = outerI >> chromaShiftX;
                     int uvJ = outerJ >> chromaShiftY;
                     if (state.yuv.channelBytes > 1) {
-                        uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + (uvJ * uRowBytes)];
+                        uint16_t * pU = (uint16_t *)&uPlane[((size_t)uvI * 2) + (uvJ * uRowBytes)];
                         *pU = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                        uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + (uvJ * vRowBytes)];
+                        uint16_t * pV = (uint16_t *)&vPlane[((size_t)uvI * 2) + (uvJ * vRowBytes)];
                         *pV = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                     } else {
                         uPlane[uvI + (uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
@@ -453,9 +453,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         int uvI = outerI >> chromaShiftX;
                         int uvJ = outerJ + bJ;
                         if (state.yuv.channelBytes > 1) {
-                            uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + (uvJ * uRowBytes)];
+                            uint16_t * pU = (uint16_t *)&uPlane[((size_t)uvI * 2) + (uvJ * uRowBytes)];
                             *pU = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                            uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + (uvJ * vRowBytes)];
+                            uint16_t * pV = (uint16_t *)&vPlane[((size_t)uvI * 2) + (uvJ * vRowBytes)];
                             *pV = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                         } else {
                             uPlane[uvI + (uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
@@ -477,16 +477,16 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
             for (uint32_t i = 0; i < image->width; ++i) {
                 float g;
                 if (state.rgb.channelBytes > 1) {
-                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
+                    g = *(uint16_t *)&rgb->pixels[offsetBytesGray + (size_t)i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
                 } else {
-                    g = rgb->pixels[offsetBytesGray + i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
+                    g = rgb->pixels[offsetBytesGray + (size_t)i * grayPixelBytes + (j * grayRowBytes)] / grayMaxChannelF;
                 }
                 if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                     float a;
                     if (state.rgb.channelBytes > 1) {
-                        a = *((uint16_t *)(&rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)])) / grayMaxChannelF;
+                        a = *((uint16_t *)(&rgb->pixels[offsetBytesA + ((size_t)i * grayPixelBytes) + (j * grayRowBytes)])) / grayMaxChannelF;
                     } else {
-                        a = rgb->pixels[offsetBytesA + (i * grayPixelBytes) + (j * grayRowBytes)] / grayMaxChannelF;
+                        a = rgb->pixels[offsetBytesA + ((size_t)i * grayPixelBytes) + (j * grayRowBytes)] / grayMaxChannelF;
                     }
 
                     if (alphaMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
@@ -507,7 +507,7 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 }
                 int gInt = avifYUVColorSpaceInfoYToUNorm(&state.yuv, g);
                 if (state.yuv.channelBytes > 1) {
-                    uint16_t * pY = (uint16_t *)&yPlane[(i * 2) + j * yRowBytes];
+                    uint16_t * pY = (uint16_t *)&yPlane[((size_t)i * 2) + j * yRowBytes];
                     *pY = (uint16_t)gInt;
                 } else {
                     yPlane[i + (j * yRowBytes)] = (uint8_t)gInt;
@@ -792,23 +792,23 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     }
 
                     if (image->depth == 8) {
-                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)];
-                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)];
-                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol];
-                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol];
-                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow];
-                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow];
-                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
-                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
+                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes)];
+                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes)];
+                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol];
+                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol];
+                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjRow];
+                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjRow];
+                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
+                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
                     } else {
-                        unormU[0][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormV[0][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormU[1][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
-                        unormV[1][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
-                        unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
-                        unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
-                        unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
+                        unormU[0][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes)]);
+                        unormV[0][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes)]);
+                        unormU[1][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol]);
+                        unormV[1][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol]);
+                        unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjRow]);
+                        unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjRow]);
+                        unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
