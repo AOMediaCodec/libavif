@@ -34,8 +34,6 @@ runs:
     - name: Print CMake version
       run: cmake --version
       shell: bash
-    - name: Set up ninja
-      uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
     - name: Set up nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' }}
       uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
