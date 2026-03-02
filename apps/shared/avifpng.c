@@ -138,6 +138,8 @@ static avifBool avifExtractExifAndXMP(png_structp png, png_infop info, avifBool 
             // It is easier to set it to 1 (the default top-left) than actually removing the tag.
             // libheif has the same behavior, see
             // https://github.com/strukturag/libheif/blob/18291ddebc23c924440a8a3c9a7267fe3beb5901/examples/heif_enc.cc#L703
+            // However note that some software does use Exif orientation, e.g. Chrome, see also
+            // https://github.com/AOMediaCodec/libavif/issues/3070
             // Ignore errors because not being able to set Exif orientation now means it cannot be parsed later either.
             (void)avifSetExifOrientation(&avif->exif, 1);
             *ignoreExif = AVIF_TRUE; // Ignore any other Exif chunk.
@@ -783,7 +785,28 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
             goto cleanup;
         }
-        png_set_eXIf_1(png, info, (png_uint_32)avif->exif.size, avif->exif.data);
+        // Make a copy of the Exif data to avoid modifying the input image when setting rotation.
+        avifRWData exif = { NULL, 0 };
+        if (avifRWDataRealloc(&exif, avif->exif.size) != AVIF_RESULT_OK) {
+            fprintf(stderr, "Error writing PNG metadata: out of memory\n");
+            goto cleanup;
+        }
+        memcpy(exif.data, avif->exif.data, avif->exif.size);
+        // We already rotated the pixels if necessary in avifApplyTransforms(), so we set the orientation to 1 (no rotation, no mirror).
+        avifResult result = avifSetExifOrientation(&exif, 1);
+        if (result != AVIF_RESULT_OK) {
+            if (result == AVIF_RESULT_INVALID_EXIF_PAYLOAD || result == AVIF_RESULT_NOT_IMPLEMENTED) {
+                // Either the Exif is invalid, or it doesn't have an orientation field.
+                // If it's invalid, we can consider it as equivalent to not having an orientation.
+                // In both cases, we can ignore the error.
+            } else {
+                fprintf(stderr, "Error writing PNG metadata: %s\n", avifResultToString(result));
+                avifRWDataFree(&exif);
+                goto cleanup;
+            }
+        }
+        png_set_eXIf_1(png, info, (png_uint_32)exif.size, exif.data);
+        avifRWDataFree(&exif);
     }
     if (avif->xmp.data && (avif->xmp.size > 0)) {
         // The iTXt XMP payload may not contain a zero byte according to section 4.2.3.3 of
