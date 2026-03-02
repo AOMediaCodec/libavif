@@ -785,7 +785,7 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
             fprintf(stderr, "Error writing PNG: Exif metadata is too big\n");
             goto cleanup;
         }
-        // Make a copy of the Exif data to avoid modifying the input image when setting rotation.
+        // Make a copy of the Exif data to avoid modifying the input image when setting orientation.
         avifRWData exif = { NULL, 0 };
         if (avifRWDataRealloc(&exif, avif->exif.size) != AVIF_RESULT_OK) {
             fprintf(stderr, "Error writing PNG metadata: out of memory\n");
