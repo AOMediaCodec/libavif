@@ -43,6 +43,7 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
+          codec-svt: "LOCAL"
           extra-cache-key: ${{ matrix.generator }}
           libjpeg-turbo: "LOCAL"
           libxml2: "LOCAL"

@@ -10,6 +10,9 @@ inputs:
   codec-rav1e:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-svt:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   oldest-cmake:
     description: "Can take the values: true, false. Only useful on Linux to force using the minimum required CMake"
     default: "false"
@@ -35,7 +38,7 @@ runs:
       run: cmake --version
       shell: bash
     - name: Set up nasm
-      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' }}
+      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
       uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
     - name: Set up rust
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}

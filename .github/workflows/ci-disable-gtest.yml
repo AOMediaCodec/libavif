@@ -42,6 +42,7 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
+          codec-svt: "LOCAL"
           gcc-version: ${{ matrix.gcc }}
           libyuv: "LOCAL"
 

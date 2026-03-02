@@ -10,6 +10,9 @@ inputs:
   codec-rav1e:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-svt:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
@@ -51,6 +54,10 @@ runs:
       if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
       run: sudo apt install -y librav1e-dev
       shell: bash
+    - name: Install SVT-AV1 library
+      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
+      run: sudo apt install -y libsvtav1enc-dev
+      shell: bash
     - name: Install libxml2 library
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
       run: sudo apt install -y libxml2
@@ -79,6 +86,7 @@ runs:
         codec-aom: ${{ inputs.codec-aom }}
         codec-dav1d: ${{ inputs.codec-dav1d }}
         codec-rav1e: ${{ inputs.codec-rav1e }}
+        codec-svt: ${{ inputs.codec-svt }}
         oldest-cmake: ${{ inputs.oldest-cmake }}
 
     - name: Set GCC & G++ compiler

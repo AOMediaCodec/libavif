@@ -35,6 +35,7 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: ${{ matrix.also-enable-av1-codecs }}
+          codec-svt: ${{ matrix.also-enable-av1-codecs }}
           extra-cache-key: ${{ matrix.also-enable-av1-codecs }}
           gcc-version: ${{ matrix.gcc }}
           libyuv: "LOCAL"
