@@ -36,6 +36,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * avifdec only enables Sample Transform decoding when --depth is set to 16.
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.3
 * Update googletest.cmd/LocalGTest.cmake: v1.17.0
+* Update libgav1.cmd: v0.20.0
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.3
 * Update libyuv.cmd/LocalLibyuv.cmake: deeb764bb (1922)
 * Update libsharpyuv.cmd/LocalLibsharpyuv.cmake: v1.6.0
