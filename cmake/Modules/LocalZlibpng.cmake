@@ -1,4 +1,4 @@
-set(AVIF_ZLIB_GIT_TAG v1.3.1.2)
+set(AVIF_ZLIB_GIT_TAG v1.3.2)
 # v1.6.51 and v1.6.53 confuse CMake by giving Unix flags with MSVC on ci-windows.yml
 set(AVIF_LIBPNG_GIT_TAG v1.6.51)
 
