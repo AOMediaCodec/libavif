@@ -25,6 +25,12 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
+# Disallow MSVC for ASM.
+# https://cmake.org/cmake/help/latest/policy/CMP0194.html
+if(POLICY CMP0194)
+    cmake_policy(SET CMP0194 NEW)
+endif()
+
 project(libavif LANGUAGES C VERSION 1.3.0)
 
 # The root directory of the avif source
@@ -493,6 +499,16 @@ if(AVIF_CODEC_RAV1E_ENABLED)
     set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} rav1e")
 endif()
 
+if(AVIF_CODEC_AVM)
+    # Avoid the following error:
+    #   CMake Error: Error required internal CMake variable not set, cmake may not be built correctly.
+    #   Missing variable is: CMAKE_ASM_COMPILE_OBJECT
+    # For some reason this must be done before check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom).
+    # See also https://gitlab.kitware.com/cmake/cmake/-/issues/25042.
+    # Enable ASM before NASM in SVT-AV1.
+    enable_language(ASM)
+endif()
+
 check_avif_option(AVIF_CODEC_SVT TARGET SvtAv1Enc PKG_NAME svt)
 if(AVIF_CODEC_SVT_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_SVT=1)
@@ -501,15 +517,6 @@ if(AVIF_CODEC_SVT_ENABLED)
 
     message(STATUS "libavif: Codec enabled: svt (encode)")
     set(AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE "${AVIF_PKG_CONFIG_EXTRA_REQUIRES_PRIVATE} SvtAv1Enc")
-endif()
-
-if(AVIF_CODEC_AVM)
-    # Avoid the following error:
-    #   CMake Error: Error required internal CMake variable not set, cmake may not be built correctly.
-    #   Missing variable is: CMAKE_ASM_COMPILE_OBJECT
-    # For some reason this must be done before check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom).
-    # See also https://gitlab.kitware.com/cmake/cmake/-/issues/25042.
-    enable_language(ASM)
 endif()
 
 check_avif_option(AVIF_CODEC_AOM TARGET aom PKG_NAME aom)
