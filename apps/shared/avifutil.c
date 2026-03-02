@@ -622,7 +622,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
         }
     }
     if (gridSplitImage->exif.size > 0) {
-        const avifResult result = avifImageSetMetadataExif(firstCell, gridSplitImage->exif.data, gridSplitImage->exif.size);
+        const avifResult result = avifRWDataSet(&firstCell->exif, gridSplitImage->exif.data, gridSplitImage->exif.size);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to set Exif metadata on grid cell: %s\n", avifResultToString(result));
             return AVIF_FALSE;

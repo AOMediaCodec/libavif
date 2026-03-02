@@ -246,11 +246,21 @@ TEST(MetadataTest, ExifOrientation) {
       testutil::ReadImage(data_path, "paris_exif_orientation_5.jpg");
   ASSERT_NE(image, nullptr);
   // The Exif metadata contains orientation information: 5.
+  // When reading the JPEG file, the Exif orientation is set to 1.
   EXPECT_GT(image->exif.size, 0u);
   EXPECT_EQ(image->transformFlags & (AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
             avifTransformFlags{AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR});
   EXPECT_EQ(image->irot.angle, 1u);
   EXPECT_EQ(image->imir.axis, 0u);
+  testutil::AvifRwData originalReadExif;
+  ASSERT_EQ(
+      avifRWDataSet(&originalReadExif, image->exif.data, image->exif.size),
+      AVIF_RESULT_OK);
+  // For testing purposes, set back the orientation.
+  ASSERT_EQ(avifSetExifOrientation(&image->exif, 5), AVIF_RESULT_OK);
+  // The two Exifs are different, showing that the Orientation was indeed
+  // modifiedwhen reading.
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(originalReadExif, image->exif));
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
@@ -313,6 +323,15 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   EXPECT_GT(image->exif.size, 0u);
   image->transformFlags = AVIF_TRANSFORM_IMIR;
   image->imir.axis = 1;
+  testutil::AvifRwData originalReadExif;
+  ASSERT_EQ(
+      avifRWDataSet(&originalReadExif, image->exif.data, image->exif.size),
+      AVIF_RESULT_OK);
+  // For testing purposes, set back the orientation.
+  ASSERT_EQ(avifSetExifOrientation(&image->exif, 5), AVIF_RESULT_OK);
+  // The two Exifs are different, showing that the Orientation was indeed
+  // modifiedwhen reading.
+  EXPECT_FALSE(testutil::AreByteSequencesEqual(originalReadExif, image->exif));
 
   const testutil::AvifRwData encoded =
       testutil::Encode(image.get(), AVIF_SPEED_FASTEST);
