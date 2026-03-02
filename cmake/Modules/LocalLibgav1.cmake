@@ -1,4 +1,4 @@
-set(AVIF_LIBGAV1_GIT_TAG "v0.19.0")
+set(AVIF_LIBGAV1_GIT_TAG "v0.20.0")
 
 set(AVIF_LIBGAV1_BUILD_DIR "${AVIF_SOURCE_DIR}/ext/libgav1/build")
 # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
