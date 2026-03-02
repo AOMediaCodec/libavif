@@ -4,7 +4,7 @@
 
 : # The odd choice of comment style in this file is to try to share this script between *nix and win32.
 
-git clone -b v1.3.1.2 --depth 1 https://github.com/madler/zlib.git
+git clone -b v1.3.2 --depth 1 https://github.com/madler/zlib.git
 cd zlib
 git apply --ignore-whitespace ../zlib.patch
 cd ..
