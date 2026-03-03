@@ -1,6 +1,5 @@
 set(AVIF_ZLIB_GIT_TAG v1.3.2)
-# v1.6.51 and v1.6.53 confuse CMake by giving Unix flags with MSVC on ci-windows.yml
-set(AVIF_LIBPNG_GIT_TAG v1.6.51)
+set(AVIF_LIBPNG_GIT_TAG v1.6.55)
 
 if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
     message(STATUS "libavif(AVIF_ZLIBPNG=LOCAL): ext/zlib found; using as FetchContent SOURCE_DIR")

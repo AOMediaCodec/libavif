@@ -46,7 +46,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.20, corrosion v0.6.1,
   rav1e v0.8.1
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.0.1
-* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.51, zlib 1.3.2
+* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.55, zlib 1.3.2
 * Fix grayscale conversion when changing the bit depth.
 * Bump cmake_minimum_required from 3.13 to 3.22
 * Associate transformative properties with alpha auxiliary image items.
