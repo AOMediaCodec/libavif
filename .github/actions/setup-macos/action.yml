@@ -10,6 +10,9 @@ inputs:
   codec-rav1e:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-svt:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   gtest:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -65,3 +68,4 @@ runs:
         codec-aom: ${{ inputs.codec-aom }}
         codec-dav1d: ${{ inputs.codec-dav1d }}
         codec-rav1e: ${{ inputs.codec-rav1e }}
+        codec-svt: ${{ inputs.codec-svt }}

@@ -10,6 +10,9 @@ inputs:
   codec-rav1e:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-svt:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
@@ -47,6 +50,10 @@ runs:
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
       run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} dav1d" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install SVT-AV1 library
+      if: ${{ inputs.codec-svt == 'SYSTEM' }}
+      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} svt-av1" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libjpeg-turbo library
       if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
@@ -109,3 +116,4 @@ runs:
         codec-aom: ${{ inputs.codec-aom }}
         codec-dav1d: ${{ inputs.codec-dav1d }}
         codec-rav1e: ${{ inputs.codec-rav1e }}
+        codec-svt: ${{ inputs.codec-svt }}
