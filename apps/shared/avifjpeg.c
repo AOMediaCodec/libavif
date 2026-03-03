@@ -1395,8 +1395,6 @@ static avifBool avifJPEGReadInternal(FILE * f,
                 }
 
                 // Exif orientation, if any, is imported to avif->irot/imir, and the Exif data is saved to avif->exif.
-                // libheif has the same behavior, see
-                // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
                 if (avifImageSetMetadataExif(avif,
                                              marker->data + AVIF_JPEG_EXIF_HEADER_LENGTH,
                                              marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH) != AVIF_RESULT_OK) {
