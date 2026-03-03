@@ -472,6 +472,8 @@ if(AVIF_CODEC_LIBGAV1_ENABLED)
     message(STATUS "libavif: Codec enabled: libgav1 (decode)")
 endif()
 
+enable_language(ASM)
+
 check_avif_option(AVIF_CODEC_RAV1E TARGET rav1e::rav1e PKG_NAME rav1e)
 if(AVIF_CODEC_RAV1E_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_RAV1E=1)
