@@ -69,6 +69,7 @@ FetchContent_Declare(
     BINARY_DIR "${LIBPNG_BINARY_DIR}"
     GIT_TAG "${AVIF_LIBPNG_GIT_TAG}"
     GIT_SHALLOW ON
+    PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/ext/libpng.patch"
     UPDATE_COMMAND ""
 )
 
