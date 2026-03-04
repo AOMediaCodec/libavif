@@ -27,6 +27,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add --sato flag to avifdec to enable Sample Transforms support at decoding.
 * Add --grid option to avifgainmaputil.
 * Apply clean aperture crop, rotation and mirror when decoding to PNG or JPEG.
+  Remove orientation information from Exif if present.
 
 ### Changed since 1.3.0
 
@@ -62,7 +63,6 @@ The changes are relative to the previous release, unless the baseline is specifi
   now also splits the gain map into a grid.
 * In avifenc, set Exif orientation to 1 (no transformation) when converting
   JPEGs to Avif.
-* In avifedc, set Exif orientation to 1 when writing PNGs.
 
 ### Removed since 1.3.0
 
