@@ -390,29 +390,34 @@ static avifBool avifKeyEqualsName(const char * key, const char * name, avifBool 
 // in libaom, so this definition won't ever get out of sync.
 #define AOM_TUNE_IQ 10
 #endif
-static const struct aomOptionEnumList tuningEnum[] = { { "psnr", AOM_TUNE_PSNR },
-                                                       { "ssim", AOM_TUNE_SSIM },
-                                                       { "iq", AOM_TUNE_IQ },
-                                                       { NULL, 0 } };
+// Tune IQ string -> enum mapping
+static const struct aomOptionEnumList tuneIqEnum[] = { { "iq", AOM_TUNE_IQ }, { NULL, 0 } };
 
 // Returns true if codec-specific options for AOM contain a tune metric setting. Returns false otherwise.
-// Sets tuneMetric if codec-specific options for AOM contain a known tune metric setting. Otherwise sets tuneMetric to -1.
-static avifBool avifAOMOptionsContainExplicitTuning(const avifCodec * codec, avifBool alpha, int * tuneMetric)
+// Sets *useTuneIq to true if codec-specific options for AOM contain AOM_TUNE_IQ. Otherwise sets *useTuneIq to false.
+static avifBool avifAOMOptionsContainExplicitTuning(const avifCodec * codec, avifBool alpha, avifBool * useTuneIq)
 {
-    *tuneMetric = -1;
+    *useTuneIq = AVIF_FALSE;
+    avifBool isAnyTuneDefined = AVIF_FALSE;
+
     // If there are multiple "tune" options specified, honor the last one.
     // For consistent behavior, handle both cases where tune was either specified as a string (e.g. tune=iq),
     // or as an enum value (e.g. tune=10).
     for (uint32_t i = 0; i < codec->csOptions->count; ++i) {
         const avifCodecSpecificOption * entry = &codec->csOptions->entries[i];
         if (avifKeyEqualsName(entry->key, "tune", alpha)) {
-            if (!aomOptionParseEnum(entry->value, tuningEnum, tuneMetric)) {
-                *tuneMetric = -1; // Unknown tune option.
+            isAnyTuneDefined = AVIF_TRUE;
+
+            int val;
+            if (aomOptionParseEnum(entry->value, tuneIqEnum, &val)) {
+                assert(val == AOM_TUNE_IQ);
+                *useTuneIq = AVIF_TRUE;
+            } else {
+                *useTuneIq = AVIF_FALSE;
             }
-            return AVIF_TRUE;
         }
     }
-    return AVIF_FALSE;
+    return isAnyTuneDefined;
 }
 
 static avifBool avifProcessAOMOptionsPreInit(avifCodec * codec, avifBool alpha, struct aom_codec_enc_cfg * cfg)
@@ -448,6 +453,12 @@ struct aomOptionDef
     aomOptionType type;
     // If type is AVIF_AOM_OPTION_ENUM, this must be set. Otherwise should be NULL.
     const struct aomOptionEnumList * enums;
+};
+
+static const struct aomOptionEnumList tuningEnum[] = { //
+    { "psnr", AOM_TUNE_PSNR },                         //
+    { "ssim", AOM_TUNE_SSIM },                         //
+    { NULL, 0 }
 };
 
 static const struct aomOptionDef aomOptionDefs[] = {
@@ -720,9 +731,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // False otherwise (including if libaom uses tune=iq by default, which is not the case as of v3.13.1 and earlier versions).
     avifBool useTuneIq;
 
-    int tuneMetric;
-    if (avifAOMOptionsContainExplicitTuning(codec, alpha, &tuneMetric)) {
-        useTuneIq = (tuneMetric == AOM_TUNE_IQ);
+    if (avifAOMOptionsContainExplicitTuning(codec, alpha, &useTuneIq)) {
+        // avifAOMOptionsContainExplicitTuning() has set useTuneIq.
     } else if (!codec->internal->encoderInitialized) {
         // libavif only needs to set the default tune metric for the first frame,
         // because libaom will persist that setting until explicitly changed.
