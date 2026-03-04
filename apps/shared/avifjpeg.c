@@ -1394,15 +1394,22 @@ static avifBool avifJPEGReadInternal(FILE * f,
                     goto cleanup;
                 }
 
-                // Exif orientation, if any, is imported to avif->irot/imir and kept in avif->exif.
-                // libheif has the same behavior, see
-                // https://github.com/strukturag/libheif/blob/ea78603d8e47096606813d221725621306789ff2/examples/heif_enc.cc#L403
+                // Exif orientation, if any, is imported to avif->irot/imir, and the Exif data is saved to avif->exif.
                 if (avifImageSetMetadataExif(avif,
                                              marker->data + AVIF_JPEG_EXIF_HEADER_LENGTH,
                                              marker->data_length - AVIF_JPEG_EXIF_HEADER_LENGTH) != AVIF_RESULT_OK) {
                     fprintf(stderr, "Setting Exif metadata failed: %s (out of memory)\n", inputFilename);
                     goto cleanup;
                 }
+                // Set the Exif orientation to 1 (no transformation).
+                // ISO/IEC 23000-22:2024 (MIAF), Section 7.3.10.1:
+                //   There should be no image transformations expressed by Exif (rotation,
+                //   mirroring, etc.) indicated in the Exif metadata, in files encoded according
+                //   to this document.
+                // Do not check for errors, it's a "should" so ok to do on a best-effort basis.
+                // Moreover it should only fail if the Exif is marlformed or there is no orientation
+                // tag to begin with.
+                (void)avifSetExifOrientation(&avif->exif, 1);
                 found = AVIF_TRUE;
             }
         }
