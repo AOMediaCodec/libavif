@@ -259,7 +259,7 @@ TEST(MetadataTest, ExifOrientation) {
   // For testing purposes, set back the orientation.
   ASSERT_EQ(avifSetExifOrientation(&image->exif, 5), AVIF_RESULT_OK);
   // The two Exifs are different, showing that the Orientation was indeed
-  // modifiedwhen reading.
+  // modified when reading.
   EXPECT_FALSE(testutil::AreByteSequencesEqual(originalReadExif, image->exif));
 
   const testutil::AvifRwData encoded =
@@ -330,7 +330,7 @@ TEST(MetadataTest, ExifOrientationAndForcedImir) {
   // For testing purposes, set back the orientation.
   ASSERT_EQ(avifSetExifOrientation(&image->exif, 5), AVIF_RESULT_OK);
   // The two Exifs are different, showing that the Orientation was indeed
-  // modifiedwhen reading.
+  // modified when reading.
   EXPECT_FALSE(testutil::AreByteSequencesEqual(originalReadExif, image->exif));
 
   const testutil::AvifRwData encoded =
