@@ -33,8 +33,10 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
           libyuv: ${{ matrix.libyuv }}
+          zlibpng: "SYSTEM"
 
       - name: Prepare libavif (cmake)
         run: >

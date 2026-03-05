@@ -30,6 +30,7 @@ jobs:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
           codec-rav1e: "SYSTEM"
+          codec-svt: "SYSTEM"
           extra-cache-key: ${{ matrix.compiler }}
           libjpeg-turbo: "SYSTEM"
           libxml2: "SYSTEM"
@@ -51,7 +52,7 @@ jobs:
           cmake ${{ steps.setup.outputs.vcpkg-cmake-config }} -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
-          -DAVIF_CODEC_RAV1E=SYSTEM
+          -DAVIF_CODEC_RAV1E=SYSTEM -DAVIF_CODEC_SVT=SYSTEM
           -DAVIF_JPEG=SYSTEM -DAVIF_LIBXML2=SYSTEM
           -DAVIF_LIBYUV=SYSTEM -DAVIF_ZLIBPNG=SYSTEM
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON

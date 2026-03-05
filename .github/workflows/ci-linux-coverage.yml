@@ -26,7 +26,9 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
+          zlibpng: "SYSTEM"
 
       - name: Install LLVM
         run:  sudo apt install -y llvm

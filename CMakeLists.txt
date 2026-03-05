@@ -483,16 +483,6 @@ if(AVIF_CODEC_RAV1E_ENABLED)
     target_compile_definitions(avif_obj PRIVATE -DAVIF_CODEC_RAV1E=1)
     target_sources(avif_obj PRIVATE src/codec_rav1e.c)
 
-    # Unfortunately, rav1e requires a few more libraries
-    # first check that RAV1E_LIBRARIES hasn't been populated by the LocalRav1e module
-    if(NOT RAV1E_LIBRARIES)
-        if(WIN32)
-            target_link_libraries(rav1e::rav1e INTERFACE ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
-        elseif(UNIX AND NOT APPLE)
-            target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS}) # for backtrace
-        endif()
-    endif()
-
     avif_target_link_library(rav1e::rav1e)
 
     message(STATUS "libavif: Codec enabled: rav1e (encode)")

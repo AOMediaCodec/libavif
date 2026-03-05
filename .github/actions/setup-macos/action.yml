@@ -13,48 +13,76 @@ inputs:
   codec-svt:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
-  gtest:
-    description: "Can take the values: OFF, LOCAL, SYSTEM"
-    default: "OFF"
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
+  gtest:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  libjpeg-turbo:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  libxml2:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  zlibpng:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
 runs:
   using: "composite"
   steps:
-    - name: Force update all brew python
-      run: |
-        brew update
-        # GHA messes with links https://github.com/actions/setup-python/issues/577 so we just force replace their installs' with brew's
-        for pkg in $(brew list --formula | grep -E '^python(@[0-9]+\.[0-9]+)?$'); do
-            brew upgrade --force --overwrite "$pkg"
-        done
-        brew cleanup
-      shell: bash
-    - name: Install non-library test dependencies
-      # imagemagick is used in sh tests (not gtest tests) but we assume that no tests are run by the CI
-      # if gtest is off
-      if: ${{ inputs.gtest != 'OFF' }}
-      run: brew install imagemagick
-      shell: bash
     - name: Install AOM library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
-      run: brew install aom
+      run: echo "AVIF_MAC_LIBRARIES=aom" >> "$GITHUB_ENV"
       shell: bash
     - name: Install dav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
-      run: brew install dav1d
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} dav1d" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install rav1e library
+      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} rav1e" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install SVT-AV1 library
+      if: ${{ inputs.codec-svt == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} svt-av1" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: brew install meson
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} meson" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up gtest
+      # imagemagick is used in sh tests (not gtest tests) but we assume that no tests are run by the CI
+      # if gtest is off
+      if: ${{ inputs.gtest != 'OFF' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} imagemagick" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Set up tests
       if: ${{ inputs.gtest == 'SYSTEM' }}
-      run: brew install googletest
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} googletest" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Set up libjpeg-turbo
+      if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libjpeg-turbo" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Set up libxml2
+      if: ${{ inputs.libxml2 == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Set up zlibpng
+      if: ${{ inputs.zlibpng == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libpng" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Install libraries
+      if: env.AVIF_MAC_LIBRARIES != ''
+      run: |
+        brew update
+        brew cleanup
+        brew install ${{ env.AVIF_MAC_LIBRARIES }}
       shell: bash
 
     - uses: ./.github/actions/cache

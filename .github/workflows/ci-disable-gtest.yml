@@ -44,7 +44,9 @@ jobs:
           codec-rav1e: "LOCAL"
           codec-svt: "LOCAL"
           gcc-version: ${{ matrix.gcc }}
+          libjpeg-turbo: "SYSTEM"
           libyuv: "LOCAL"
+          zlibpng: "SYSTEM"
 
       - name: Prepare libavif (cmake)
         run: >

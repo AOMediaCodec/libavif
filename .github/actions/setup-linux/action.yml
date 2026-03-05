@@ -6,7 +6,7 @@ inputs:
     default: "OFF"
   codec-dav1d:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
-    edfault: "OFF"
+    default: "OFF"
   codec-rav1e:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -22,6 +22,9 @@ inputs:
   gtest:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  libjpeg-turbo:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   libxml2:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -31,48 +34,64 @@ inputs:
   oldest-cmake:
     description: "Can take the values: true, false"
     default: "false"
+  zlibpng:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
 runs:
   using: "composite"
   steps:
-    - name: Install non-library dependencies
-      run: |
-        sudo apt update -y
-        sudo apt install -y imagemagick libjpeg-turbo8-dev libpng-dev
-      shell: bash
     - name: Install libaom library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
-      run: sudo apt install -y libaom-dev
-      shell: bash
-    - name: Install libdav1d library
-      if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
-      run: sudo apt install -y libdav1d-dev
-      shell: bash
-    - name: Install rav1e library
-      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
-      run: sudo apt install -y librav1e-dev
-      shell: bash
-    - name: Install SVT-AV1 library
-      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
-      run: sudo apt install -y libsvtav1enc-dev
-      shell: bash
-    - name: Install libxml2 library
-      if: ${{ inputs.libxml2 == 'SYSTEM' }}
-      run: sudo apt install -y libxml2
-      shell: bash
-    - name: Install libyuv library
-      if: ${{ inputs.libyuv == 'SYSTEM' }}
-      run: sudo apt install -y libyuv-dev
+      run: echo "AVIF_UNIX_LIBRARIES=libaom-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: sudo apt install -y meson
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} meson" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install libdav1d library
+      if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libdav1d-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install rav1e library
+      if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} librav1e-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install SVT-AV1 library
+      if: ${{ inputs.codec-svt == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libsvtav1enc-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Set up tests
+      if: ${{ inputs.gtest != 'OFF' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} imagemagick" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up gtest
       if: ${{ inputs.gtest == 'SYSTEM' }}
-      run: sudo apt install -y libgtest-dev
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libgtest-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install libjpeg-turbo library
+      if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libjpeg-turbo8-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install libxml2 library
+      if: ${{ inputs.libxml2 == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install libyuv library
+      if: ${{ inputs.libyuv == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libyuv-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install zlibpng library
+      if: ${{ inputs.zlibpng == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libpng-dev" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Install libraries
+      run: |
+        sudo apt update -y
+        sudo apt install -y ${{ env.AVIF_UNIX_LIBRARIES }}
       shell: bash
 
     - uses: ./.github/actions/cache
