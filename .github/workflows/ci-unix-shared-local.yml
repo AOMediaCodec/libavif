@@ -36,13 +36,17 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           gcc-version: ${{ matrix.gcc }}
+          libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
           libyuv: ${{ matrix.libyuv }}
+          zlibpng: "SYSTEM"
       - uses: ./.github/actions/setup-macos
         if: runner.os == 'macOS'
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          libjpeg-turbo: "SYSTEM"
+          zlibpng: "SYSTEM"
 
       - name: Prepare libavif (cmake)
         run: >

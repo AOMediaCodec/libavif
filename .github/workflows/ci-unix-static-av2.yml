@@ -38,7 +38,9 @@ jobs:
           codec-svt: ${{ matrix.also-enable-av1-codecs }}
           extra-cache-key: ${{ matrix.also-enable-av1-codecs }}
           gcc-version: ${{ matrix.gcc }}
+          libjpeg-turbo: "SYSTEM"
           libyuv: "LOCAL"
+          zlibpng: "SYSTEM"
 
       - name: Prepare libavif (cmake)
         # CMake 4.0.0 removed compatibility with CMake < 3.5. Add

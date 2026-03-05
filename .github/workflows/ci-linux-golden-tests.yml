@@ -33,8 +33,10 @@ jobs:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           gcc-version: ${{ matrix.gcc }}
+          libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
           libyuv: "LOCAL"
+          zlibpng: "SYSTEM"
       - name: Build mp4box
         if: steps.setup.outputs.ext-cache-hit != 'true'
         working-directory: ./ext

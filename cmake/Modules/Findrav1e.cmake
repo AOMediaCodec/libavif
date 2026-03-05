@@ -61,9 +61,8 @@ if(RAV1E_LIBRARY)
             rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIBRARY}" IMPORTED_IMPLIB "${RAV1E_LIBRARY}" IMPORTED_SONAME rav1e
         )
         target_include_directories(rav1e::rav1e INTERFACE ${RAV1E_INCLUDE_DIR})
-        # The following is copied from the main CMakeLists.txt.
         if(WIN32)
-            target_link_libraries(rav1e::rav1e INTERFACE ntdll.lib userenv.lib ws2_32.lib bcrypt.lib)
+            target_link_libraries(rav1e::rav1e INTERFACE ntdll userenv ws2_32 bcrypt)
         elseif(UNIX AND NOT APPLE)
             target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS}) # for backtrace
         endif()

@@ -30,13 +30,16 @@ jobs:
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
+          libjpeg-turbo: "SYSTEM"
           libyuv: "SYSTEM"
+          zlibpng: "SYSTEM"
       - uses: ./.github/actions/setup-windows
         id: windows_setup
         if: runner.os == 'Windows'
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
+          libjpeg-turbo: "SYSTEM"
           libyuv: "SYSTEM"
           zlibpng: "SYSTEM"
 

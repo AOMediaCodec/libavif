@@ -40,8 +40,10 @@ jobs:
           codec-rav1e: "LOCAL"
           codec-svt: "LOCAL"
           gcc-version: ${{ matrix.gcc }}
+          libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
           libyuv: "LOCAL"
+          zlibpng: "SYSTEM"
       - uses: ./.github/actions/setup-macos
         if: runner.os == 'macOS'
         with:
@@ -49,6 +51,8 @@ jobs:
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
           extra-cache-key: ${{ matrix.build-type }}
+          libjpeg-turbo: "SYSTEM"
+          zlibpng: "SYSTEM"
 
       - name: Prepare libavif (cmake)
         run: >

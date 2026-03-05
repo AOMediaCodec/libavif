@@ -45,7 +45,7 @@ runs:
 
     - name: Install libaom library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} aom" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=aom" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
