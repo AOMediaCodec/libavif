@@ -322,7 +322,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         if (alphaMode != AVIF_ALPHA_MULTIPLY_MODE_NO_OP) {
                             float a;
                             if (state.rgb.channelBytes > 1) {
-                                a = *((uint16_t *)(&rgb->pixels[offsetBytesA + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) / rgbMaxChannelF;
+                                a = *((uint16_t *)(&rgb->pixels[offsetBytesA + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)])) /
+                                    rgbMaxChannelF;
                             } else {
                                 a = rgb->pixels[offsetBytesA + ((size_t)i * rgbPixelBytes) + (j * rgbRowBytes)] / rgbMaxChannelF;
                             }
@@ -807,8 +808,10 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         unormV[1][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol]);
                         unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjRow]);
                         unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjRow]);
-                        unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
+                        unormU[1][1] =
+                            *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + ((size_t)uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] =
+                            *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + ((size_t)uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
