@@ -23,7 +23,7 @@ else()
         libargparse
         GIT_REPOSITORY "https://github.com/kmurray/libargparse.git"
         GIT_TAG ${AVIF_LIBARGPARSE_GIT_TAG}
-        UPDATE_COMMAND ""
+        UPDATE_COMMAND "" EXCLUDE_FROM_ALL
     )
     avif_fetchcontent_populate_cmake(libargparse)
 

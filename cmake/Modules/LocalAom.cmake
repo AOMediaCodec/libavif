@@ -67,15 +67,8 @@ else()
         endforeach()
     endfunction()
 
-    set(AOM_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/aom-build")
-
-    if(ANDROID_ABI)
-        set(AOM_BINARY_DIR "${AOM_BINARY_DIR}/${ANDROID_ABI}")
-    endif()
-
     FetchContent_Declare(
-        libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz" BINARY_DIR "${AOM_BINARY_DIR}"
-        UPDATE_COMMAND ""
+        libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz" UPDATE_COMMAND "" EXCLUDE_FROM_ALL
     )
 
     if(NOT AVIF_CODEC_AOM_DECODE)
@@ -139,10 +132,10 @@ else()
     # linked against this project's target. Here we update the value in aom_config.h and add libyuv
     # to AOM's link libraries
     if(libyuv_FOUND)
-        file(READ ${AOM_BINARY_DIR}/config/aom_config.h AOM_CONFIG_H)
+        file(READ ${libaom_BINARY_DIR}/config/aom_config.h AOM_CONFIG_H)
         if("${AOM_CONFIG_H}" MATCHES "CONFIG_LIBYUV 0")
             string(REPLACE "CONFIG_LIBYUV 0" "CONFIG_LIBYUV 1" AOM_CONFIG_H "${AOM_CONFIG_H}")
-            file(WRITE ${AOM_BINARY_DIR}/config/aom_config.h "${AOM_CONFIG_H}")
+            file(WRITE ${libaom_BINARY_DIR}/config/aom_config.h "${AOM_CONFIG_H}")
         endif()
         target_link_libraries(aom PRIVATE $<TARGET_FILE:yuv::yuv>)
     endif()
