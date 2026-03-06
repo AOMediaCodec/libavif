@@ -5,33 +5,23 @@ if(EXISTS "${AVIF_SOURCE_DIR}/ext/zlib")
     message(STATUS "libavif(AVIF_ZLIBPNG=LOCAL): ext/zlib found; using as FetchContent SOURCE_DIR")
     set(FETCHCONTENT_SOURCE_DIR_ZLIB "${AVIF_SOURCE_DIR}/ext/zlib")
     message(CHECK_START "libavif(AVIF_ZLIBPNG=LOCAL): configuring zlib")
-    set(ZLIB_SOURCE_DIR "${FETCHCONTENT_SOURCE_DIR_ZLIB}")
 else()
     message(CHECK_START "libavif(AVIF_ZLIBPNG=LOCAL): fetching and configuring zlib")
-    set(ZLIB_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zlib-src")
-endif()
-
-set(ZLIB_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/zlib")
-if(ANDROID_ABI)
-    set(ZLIB_BINARY_DIR "${ZLIB_BINARY_DIR}/${ANDROID_ABI}")
 endif()
 
 FetchContent_Declare(
     zlib
     GIT_REPOSITORY "https://github.com/madler/zlib.git"
-    SOURCE_DIR "${ZLIB_SOURCE_DIR}" BINARY_DIR "${ZLIB_BINARY_DIR}"
     GIT_TAG "${AVIF_ZLIB_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND ""
+    UPDATE_COMMAND "" EXCLUDE_FROM_ALL
 )
 
 set(ZLIB_BUILD_TESTING OFF CACHE BOOL "")
 set(ZLIB_BUILD_SHARED OFF CACHE BOOL "")
 set(ZLIB_BUILD_STATIC ON CACHE BOOL "")
 
-if(NOT zlib_POPULATED)
-    avif_fetchcontent_populate_cmake(zlib)
-endif()
+avif_fetchcontent_populate_cmake(zlib)
 
 if(NOT TARGET ZLIB::ZLIB)
     add_library(ZLIB::ZLIB ALIAS zlibstatic)
@@ -58,18 +48,12 @@ set(PNG_SHARED OFF CACHE BOOL "")
 set(PNG_TESTS OFF CACHE BOOL "")
 set(PNG_TOOLS OFF CACHE BOOL "")
 
-set(LIBPNG_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libpng")
-if(ANDROID_ABI)
-    set(LIBPNG_BINARY_DIR "${LIBPNG_BINARY_DIR}/${ANDROID_ABI}")
-endif()
-
 FetchContent_Declare(
     libpng
     GIT_REPOSITORY "https://github.com/glennrp/libpng.git"
-    BINARY_DIR "${LIBPNG_BINARY_DIR}"
     GIT_TAG "${AVIF_LIBPNG_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND ""
+    UPDATE_COMMAND "" EXCLUDE_FROM_ALL
 )
 
 avif_fetchcontent_populate_cmake(libpng)

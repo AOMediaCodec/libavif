@@ -17,11 +17,6 @@ else()
         message(CHECK_START "libavif(AVIF_CODEC_SVT=LOCAL): fetching and configuring SVT-AV1")
     endif()
 
-    set(SVT_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/svt-build")
-    if(ANDROID_ABI)
-        set(SVT_BINARY_DIR "${SVT_BINARY_DIR}/${ANDROID_ABI}")
-    endif()
-
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64|amd64)")
         # NASM is only used on x86.
         if(NOT CMAKE_ASM_NASM_COMPILER)
@@ -43,10 +38,10 @@ else()
     FetchContent_Declare(
         svt
         GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
-        BINARY_DIR "${SVT_BINARY_DIR}"
         GIT_TAG "${AVIF_SVT_GIT_TAG}"
         UPDATE_COMMAND ""
         GIT_SHALLOW ON
+        EXCLUDE_FROM_ALL
     )
 
     set(BUILD_DEC OFF CACHE BOOL "")
@@ -57,7 +52,7 @@ else()
     set(CMAKE_BUILD_TYPE Release CACHE INTERNAL "")
 
     set(CMAKE_OUTPUT_DIRECTORY_ORIG "${CMAKE_OUTPUT_DIRECTORY}")
-    set(CMAKE_OUTPUT_DIRECTORY "${SVT_BINARY_DIR}" CACHE INTERNAL "")
+    set(CMAKE_OUTPUT_DIRECTORY "${svt_BINARY_DIR}" CACHE INTERNAL "")
 
     if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
         set(SVT_AV1_LTO ON)
@@ -70,7 +65,7 @@ else()
     set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_ORIG} CACHE STRING "" FORCE)
     set(CMAKE_OUTPUT_DIRECTORY ${CMAKE_OUTPUT_DIRECTORY_ORIG} CACHE STRING "" FORCE)
 
-    set(SVT_INCLUDE_DIR ${SVT_BINARY_DIR}/include)
+    set(SVT_INCLUDE_DIR ${svt_BINARY_DIR}/include)
     file(MAKE_DIRECTORY ${SVT_INCLUDE_DIR}/svt-av1)
 
     file(GLOB _svt_header_files ${svt_SOURCE_DIR}/Source/API/*.h)

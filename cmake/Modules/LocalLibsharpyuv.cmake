@@ -30,18 +30,12 @@ else()
     set(WEBP_BUILD_WEBPMUX OFF CACHE BOOL "")
     set(WEBP_BUILD_EXTRAS OFF CACHE BOOL "")
 
-    set(LIBSHARPYUV_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libwebp")
-    if(ANDROID_ABI)
-        set(LIBSHARPYUV_BINARY_DIR "${LIBSHARPYUV_BINARY_DIR}/${ANDROID_ABI}")
-    endif()
-
     FetchContent_Declare(
         libwebp
         GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
-        BINARY_DIR "${LIBSHARPYUV_BINARY_DIR}"
         GIT_TAG "${AVIF_LIBSHARPYUV_GIT_TAG}"
         GIT_SHALLOW ON
-        UPDATE_COMMAND ""
+        UPDATE_COMMAND "" EXCLUDE_FROM_ALL
     )
 
     avif_fetchcontent_populate_cmake(libwebp)
