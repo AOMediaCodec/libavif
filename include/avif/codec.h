@@ -167,6 +167,43 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
+// ---------------------------------------------------------------------------
+// Codec registry
+
+typedef const char * (*versionFunc)(void);
+
+// The returned avifCodec struct must be allocated with avifAlloc().
+typedef avifCodec * (*avifCodecCreateFunc)(void);
+
+typedef struct avifCodecInformation
+{
+    // Output
+    avifCodecChoice choice; // Codec ID assigned by libavif.
+
+    // Input
+    avifCodecType type;
+    const char * name; // Codec name, must be unique.
+    versionFunc version;
+    avifCodecCreateFunc create;
+    avifCodecFlags flags;
+} avifCodecInformation;
+
+// Registers a custom codec. On success, codec->choice is set to the avifCodecChoice assigned to the
+// codec, which can then be used as avifEncoder::codecChoice or avifDecoder::codecChoice.
+// A custom codec is never picked by AVIF_CODEC_CHOICE_AUTO, and its avifCodecChoice value may
+// differ between runs, so look it up with avifCodecChoiceFromName() instead of storing it.
+//
+// Custom codecs are meant to be registered once, early in the process, and used for the rest of
+// its lifetime:
+//  - codec->name, codec->version and codec->create are stored as is and must stay valid until the
+//    process exits. If they live in a dynamically loaded library, that library must not be unloaded
+//    while libavif may still use them.
+//  - Registration is not thread-safe. Register all custom codecs before any avifEncoder or
+//    avifDecoder may be used concurrently, and do not register from multiple threads at once.
+//  - There's a limit on how many custom codecs can be registered. Prefer register once and dispatch
+//    inside your codec implementation.
+AVIF_API avifResult avifRegisterCustomCodec(avifCodecInformation * codec);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

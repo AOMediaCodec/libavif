@@ -249,7 +249,8 @@ static void syntaxLong(void)
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
-    printf("    -c,--codec C                      : Codec to use (choose from versions list below)\n");
+    printf("    -c,--codec C                      : Codec to use (choose from versions list below, or name of the custom codec loaded)\n");
+    printf("    --custom-codec LIBRARY            : Load a custom codec shared library\n");
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
@@ -1483,6 +1484,9 @@ int main(int argc, char * argv[])
     }
 
     const char * outputFilename = NULL;
+    const char * requestedCodecName = NULL;
+    const char * customCodecLibraryName = NULL;
+    avifCustomCodecLibrary customCodecLibrary = { 0 };
 
     avifInput input;
     memset(&input, 0, sizeof(input));
@@ -1976,19 +1980,16 @@ int main(int argc, char * argv[])
             }
 #endif
             settings.modificationTime = (uint64_t)modificationTime;
+        } else if (!strcmp(arg, "--custom-codec")) {
+            NEXTARG();
+            if (customCodecLibraryName) {
+                fprintf(stderr, "ERROR: --custom-codec may only be specified once\n");
+                goto cleanup;
+            }
+            customCodecLibraryName = arg;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
-            settings.codecChoice = avifCodecChoiceFromName(arg);
-            if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
-                fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
-                goto cleanup;
-            } else {
-                const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
-                if (codecName == NULL) {
-                    fprintf(stderr, "ERROR: Codec cannot encode: %s\n", arg);
-                    goto cleanup;
-                }
-            }
+            requestedCodecName = arg;
         } else if (!strcmp(arg, "-a") || !strcmp(arg, "--advanced") || strpre(arg, "-a:") || strpre(arg, "--advanced:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
@@ -2107,6 +2108,31 @@ int main(int argc, char * argv[])
 
     if (settings.jobs == -1) {
         settings.jobs = avifQueryCPUCount();
+    }
+
+    if (customCodecLibraryName) {
+        avifDiagnostics diag;
+        avifDiagnosticsClearError(&diag);
+        if (!avifCustomCodecLibrarySetup(&customCodecLibrary, customCodecLibraryName, &diag)) {
+            fprintf(stderr,
+                    "ERROR: Failed to load custom codec shared library %s: %s\n",
+                    customCodecLibraryName,
+                    diag.error[0] ? diag.error : "unknown error");
+            goto cleanup;
+        }
+    }
+
+    if (requestedCodecName) {
+        settings.codecChoice = avifCodecChoiceFromName(requestedCodecName);
+        if (settings.codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+            fprintf(stderr, "ERROR: Unrecognized codec: %s\n", requestedCodecName);
+            goto cleanup;
+        }
+        const char * codecName = avifCodecName(settings.codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+        if (codecName == NULL) {
+            fprintf(stderr, "ERROR: Codec cannot encode: %s\n", requestedCodecName);
+            goto cleanup;
+        }
     }
 
     // Check global lossless parameters and set to default if needed.
@@ -2817,6 +2843,25 @@ cleanup:
         avifCodecSpecificOptionsFree(&file->settings.codecSpecificOptions);
     }
     free(input.files);
+    if (customCodecLibrary.handle) {
+        avifBool unloadCustomCodecLibrary = AVIF_TRUE;
+        if (customCodecLibrary.initialized) {
+            avifDiagnostics diag;
+            avifDiagnosticsClearError(&diag);
+            const avifResult shutdownResult = avifCustomCodecLibraryShutdown(&customCodecLibrary, &diag);
+            if (shutdownResult != AVIF_RESULT_OK) {
+                fprintf(stderr,
+                        "ERROR: Failed to shut down custom codec shared library %s: %s\n",
+                        customCodecLibrary.name ? customCodecLibrary.name : "(unknown)",
+                        diag.error[0] ? diag.error : avifResultToString(shutdownResult));
+                returnCode = 1;
+                unloadCustomCodecLibrary = AVIF_FALSE;
+            }
+        }
+        if (unloadCustomCodecLibrary) {
+            avifCustomCodecLibraryUnload(&customCodecLibrary);
+        }
+    }
 
     return returnCode;
 }
