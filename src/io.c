@@ -148,8 +148,8 @@ avifIO * avifIOCreateFileReader(const char * filename)
         fclose(f);
         return NULL;
     }
-    __int64 fileSizeSigned = _ftelli64(f);
-    if (fileSizeSigned < 0) {
+    __int64 fileSize = _ftelli64(f);
+    if (fileSize < 0) {
         fclose(f);
         return NULL;
     }
@@ -157,15 +157,15 @@ avifIO * avifIOCreateFileReader(const char * filename)
         fclose(f);
         return NULL;
     }
-    uint64_t fileSize = (uint64_t)fileSizeSigned;
+
 #else
     // POSIX large file support
     if (fseeko(f, 0, SEEK_END) != 0) {
         fclose(f);
         return NULL;
     }
-    off_t fileSizeSigned = ftello(f);
-    if (fileSizeSigned < 0) {
+    off_t fileSize = ftello(f);
+    if (fileSize < 0) {
         fclose(f);
         return NULL;
     }
@@ -173,7 +173,6 @@ avifIO * avifIOCreateFileReader(const char * filename)
         fclose(f);
         return NULL;
     }
-    uint64_t fileSize = (uint64_t)fileSizeSigned;
 #endif
 
     avifIOFileReader * reader = (avifIOFileReader *)avifAlloc(sizeof(avifIOFileReader));
@@ -185,7 +184,7 @@ avifIO * avifIOCreateFileReader(const char * filename)
     reader->f = f;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;
-    reader->io.sizeHint = fileSize;
+    reader->io.sizeHint = (uint64_t)fileSize;
     reader->io.persistent = AVIF_FALSE;
     if (avifRWDataRealloc(&reader->buffer, 1024) != AVIF_RESULT_OK) {
         avifFree(reader);
