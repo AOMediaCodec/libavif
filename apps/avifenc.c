@@ -188,15 +188,17 @@ typedef struct avifEncodedByteSizes
 
 static void syntaxShort(void)
 {
-    printf("Syntax: avifenc [options] -q quality input.[jpg|jpeg|png|y4m] output.avif\n");
+    printf("Syntax: avifenc [options] -q quality input.[jpg|jpeg|png|y4m] [output.avif]\n");
     printf("where quality is between %d (worst quality) and %d (lossless).\n", AVIF_QUALITY_WORST, AVIF_QUALITY_LOSSLESS);
-    printf("Typical value is 60-80.\n\n");
+    printf("Typical value is 60-80.\n");
+    printf("If output.avif is not specified, it is derived from the input filename with a .avif extension.\n\n");
     printf("Try -h for an exhaustive list of options.\n");
 }
 
 static void syntaxLong(void)
 {
-    printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
+    printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] [output.avif]\n");
+    printf("If output.avif is not specified, it is derived from the input filename with a .avif extension.\n");
     printf("Standard options:\n");
     printf("    -h,--help                         : Show syntax help (this page)\n");
     printf("    -V,--version                      : Show the version number\n");
@@ -1381,6 +1383,7 @@ int main(int argc, char * argv[])
     }
 
     const char * outputFilename = NULL;
+    char * generatedOutputFilename = NULL;
 
     avifInput input;
     memset(&input, 0, sizeof(input));
@@ -2079,6 +2082,34 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    if (!outputFilename && input.filesCount == 1 && input.files[0].filename != AVIF_FILENAME_STDIN) {
+        // Auto-derive output filename by replacing the input file extension with .avif.
+        const char * inputFilename = input.files[0].filename;
+        const char * lastSlash = strrchr(inputFilename, '/');
+#if defined(_WIN32)
+        const char * lastBackslash = strrchr(inputFilename, '\\');
+        if (lastBackslash && (!lastSlash || lastBackslash > lastSlash)) {
+            lastSlash = lastBackslash;
+        }
+#endif
+        const char * filenamePart = lastSlash ? lastSlash + 1 : inputFilename;
+        const char * lastDot = strrchr(filenamePart, '.');
+        size_t prefixLen = lastDot ? (size_t)(lastDot - inputFilename) : strlen(inputFilename);
+        generatedOutputFilename = malloc(prefixLen + 6); // ".avif" + null terminator
+        if (!generatedOutputFilename) {
+            fprintf(stderr, "ERROR: memory allocation failure\n");
+            goto cleanup;
+        }
+        memcpy(generatedOutputFilename, inputFilename, prefixLen);
+        memcpy(generatedOutputFilename + prefixLen, ".avif", 6);
+        if (!strcmp(generatedOutputFilename, inputFilename)) {
+            fprintf(stderr, "ERROR: auto-generated output filename is the same as the input filename: %s\n", inputFilename);
+            fprintf(stderr, "Please specify a different output filename with -o.\n");
+            goto cleanup;
+        }
+        outputFilename = generatedOutputFilename;
+    }
+
     if (!outputFilename) {
         fprintf(stderr, "ERROR: no output specified\n");
         goto cleanup;
@@ -2658,6 +2689,7 @@ cleanup:
     avifRWDataFree(&exifOverride);
     avifRWDataFree(&xmpOverride);
     avifRWDataFree(&iccOverride);
+    free(generatedOutputFilename);
     avifCodecSpecificOptionsFree(&pendingSettings.codecSpecificOptions);
     while (input.cacheCount) {
         --input.cacheCount;
