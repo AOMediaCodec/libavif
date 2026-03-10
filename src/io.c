@@ -142,13 +142,37 @@ avifIO * avifIOCreateFileReader(const char * filename)
         return NULL;
     }
 
-    fseek(f, 0, SEEK_END);
-    long fileSize = ftell(f);
+#if defined(_WIN32)
+    // Windows uses _fseeki64 / _ftelli64 for large file support
+    if (_fseeki64(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    __int64 fileSize = _ftelli64(f);
     if (fileSize < 0) {
         fclose(f);
         return NULL;
     }
-    fseek(f, 0, SEEK_SET);
+    if (_fseeki64(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+#else
+    // POSIX large file support
+    if (fseeko(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    off_t fileSize = ftello(f);
+    if (fileSize < 0) {
+        fclose(f);
+        return NULL;
+    }
+    if (fseeko(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+#endif
 
     avifIOFileReader * reader = (avifIOFileReader *)avifAlloc(sizeof(avifIOFileReader));
     if (!reader) {
