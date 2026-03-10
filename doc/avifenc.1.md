@@ -92,10 +92,10 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set target file size in bytes (up to 7 times slower)
 
 **\--progressive**
-:   EXPERIMENTAL: Automatically set parameters to encode a simple layered image supporting progressive rendering from a single input frame.
+:   Automatically set parameters to encode a simple layered image supporting progressive rendering from a single input frame.
 
 **\--layered**
-:   EXPERIMENTAL: Encode a layered AVIF. Each input is encoded as one layer and at most 4 layers can be encoded.
+:   Encode a layered AVIF. Each input is encoded as one layer and at most 4 layers can be encoded.
 
 **-g**, **\--grid** _MxN_
 :   Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single
@@ -197,7 +197,7 @@ The following options can optionally have a **:u** (or **:update**) suffix like 
     avifenc starts in automatic tiling mode.
 
 **\--scaling-mode** _N_[/_D_]
-:   EXPERIMENTAL: Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1).
+:   Set frame (layer) scaling mode as given fraction. If omitted, the denominator defaults to 1. (Default: 1/1).
 
 **\--duration** _D_
 :   Frame durations (in timescales) (default: 1). This option always applies to following inputs with or without the `:u` suffix.
