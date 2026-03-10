@@ -157,7 +157,6 @@ avifIO * avifIOCreateFileReader(const char * filename)
         fclose(f);
         return NULL;
     }
-
 #else
     // POSIX large file support
     if (fseeko(f, 0, SEEK_END) != 0) {
