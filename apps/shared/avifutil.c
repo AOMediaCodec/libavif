@@ -539,6 +539,8 @@ avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint
 avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
     uint32_t cellWidth, cellHeight;
+    uint32_t createdCells = 0;
+    avifBool success = AVIF_FALSE;
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &formatInfo);
     const avifBool isSubsampledX = !formatInfo.monochrome && formatInfo.chromaShiftX;
@@ -555,9 +557,10 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             avifImage * cellImage = avifImageCreateEmpty();
             if (!cellImage) {
                 fprintf(stderr, "ERROR: Cell creation failed: out of memory\n");
-                return AVIF_FALSE;
+                goto cleanup;
             }
             gridCells[gridIndex] = cellImage;
+            createdCells++;
 
             avifCropRect cellRect = { gridX * cellWidth, gridY * cellHeight, cellWidth, cellHeight };
             if (cellRect.x + cellRect.width > gridSplitImage->width) {
@@ -569,14 +572,14 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             const avifResult copyResult = avifImageSetViewRect(cellImage, gridSplitImage, &cellRect);
             if (copyResult != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Cell creation failed: %s\n", avifResultToString(copyResult));
-                return AVIF_FALSE;
+                goto cleanup;
             }
 
             if (hasGainMap) {
                 cellImage->gainMap = avifGainMapCreate();
                 if (!cellImage->gainMap) {
                     fprintf(stderr, "ERROR: Gain map creation failed: out of memory\n");
-                    return AVIF_FALSE;
+                    goto cleanup;
                 }
                 // Copy gain map metadata.
                 memcpy(cellImage->gainMap, gridSplitImage->gainMap, sizeof(avifGainMap));
@@ -592,7 +595,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
         gainMapGridCells = (avifImage **)calloc(gridCols * gridRows, sizeof(avifImage *));
         if (!gainMapGridCells) {
             fprintf(stderr, "ERROR: Memory allocation failed for gain map grid cells\n");
-            return AVIF_FALSE;
+            goto cleanup;
         }
         if (!avifImageSplitGrid(gridSplitImage->gainMap->image, gridCols, gridRows, gainMapGridCells)) {
             for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
@@ -601,7 +604,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
                 }
             }
             free(gainMapGridCells);
-            return AVIF_FALSE;
+            goto cleanup;
         }
 
         for (uint32_t gridIndex = 0; gridIndex < gridCols * gridRows; ++gridIndex) {
@@ -618,21 +621,21 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
         const avifResult result = avifImageSetProfileICC(firstCell, gridSplitImage->icc.data, gridSplitImage->icc.size);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to set ICC profile on grid cell: %s\n", avifResultToString(result));
-            return AVIF_FALSE;
+            goto cleanup;
         }
     }
     if (gridSplitImage->exif.size > 0) {
         const avifResult result = avifRWDataSet(&firstCell->exif, gridSplitImage->exif.data, gridSplitImage->exif.size);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to set Exif metadata on grid cell: %s\n", avifResultToString(result));
-            return AVIF_FALSE;
+            goto cleanup;
         }
     }
     if (gridSplitImage->xmp.size > 0) {
         const avifResult result = avifImageSetMetadataXMP(firstCell, gridSplitImage->xmp.data, gridSplitImage->xmp.size);
         if (result != AVIF_RESULT_OK) {
             fprintf(stderr, "ERROR: Failed to set XMP metadata on grid cell: %s\n", avifResultToString(result));
-            return AVIF_FALSE;
+            goto cleanup;
         }
     }
     if (gridSplitImage->gainMap && gridSplitImage->gainMap->image && gridSplitImage->gainMap->altICC.size > 0) {
@@ -642,12 +645,23 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
                 avifRWDataSet(&cellImage->gainMap->altICC, gridSplitImage->gainMap->altICC.data, gridSplitImage->gainMap->altICC.size);
             if (result != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to set ICC profile on gain map grid cell: %s\n", avifResultToString(result));
-                return AVIF_FALSE;
+                goto cleanup;
             }
         }
     }
 
-    return AVIF_TRUE;
+    success = AVIF_TRUE;
+
+cleanup:
+    if (!success) {
+        for (uint32_t i = 0; i < createdCells; ++i) {
+            if (gridCells && gridCells[i]) {
+                avifImageDestroy(gridCells[i]);
+                gridCells[i] = NULL;
+            }
+        }
+    }
+    return success;
 }
 
 void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect)
