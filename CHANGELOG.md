@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.4.0
+
+* Fix build with CMake 3.22
+
 ### Removed since 1.4.0
 
 * Remove experimental status for the following options of avifenc: --progressive,

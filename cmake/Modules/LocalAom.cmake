@@ -144,7 +144,7 @@ else()
     endif()
 
     set_property(TARGET aom PROPERTY AVIF_LOCAL ON)
-    target_include_directories(aom INTERFACE $<BUILD_INTERFACE:$<PATH:ABSOLUTE_PATH,${libaom_SOURCE_DIR},/>>)
+    target_include_directories(aom INTERFACE $<BUILD_INTERFACE:${libaom_SOURCE_DIR}>)
 
     message(CHECK_PASS "complete")
 endif()
