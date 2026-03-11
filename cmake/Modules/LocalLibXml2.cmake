@@ -42,21 +42,16 @@ set(LIBXML2_WITH_PYTHON OFF CACHE INTERNAL "-")
 set(LIBXML2_WITH_TESTS OFF CACHE INTERNAL "-")
 set(LIBXML2_WITH_ZLIB OFF CACHE INTERNAL "-")
 
-set(LIBXML2_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libxml2-build")
-if(ANDROID_ABI)
-    set(LIBXML2_BINARY_DIR "${LIBXML2_BINARY_DIR}/${ANDROID_ABI}")
-endif()
-
 FetchContent_Declare(
     libxml2
+    EXCLUDE_FROM_ALL
     GIT_REPOSITORY "https://github.com/GNOME/libxml2.git"
-    BINARY_DIR "${LIBXML2_BINARY_DIR}"
     GIT_TAG "${AVIF_LIBXML_GIT_TAG}"
     GIT_SHALLOW ON
     UPDATE_COMMAND ""
 )
 
-avif_fetchcontent_populate_cmake(libxml2)
+avif_fetchcontent_makeavailable_cmake(libxml2)
 
 set_property(TARGET LibXml2 PROPERTY AVIF_LOCAL ON)
 get_target_property(VAR1 LibXml2 LINKER_LANGUAGE)

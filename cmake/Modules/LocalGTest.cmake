@@ -34,6 +34,7 @@ else()
 
     FetchContent_Declare(
         googletest
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG ${AVIF_GTEST_GIT_TAG}
         GIT_SHALLOW ON
@@ -41,7 +42,7 @@ else()
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 
-    avif_fetchcontent_populate_cmake(googletest)
+    avif_fetchcontent_makeavailable_cmake(googletest)
 
     set_target_properties(gtest gtest_main PROPERTIES AVIF_LOCAL ON)
 

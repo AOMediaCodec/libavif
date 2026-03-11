@@ -11,12 +11,10 @@ else()
 
     message(CHECK_START "libavif(AVIF_FUZZTEST=LOCAL): configuring fuzztest")
 
-    set(FUZZTEST_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/fuzztest-src")
-    set(FUZZTEST_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/fuzztest-build")
     FetchContent_Declare(
         fuzztest
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://github.com/google/fuzztest.git"
-        BINARY_DIR "${FUZZTEST_BINARY_DIR}"
         GIT_TAG "${AVIF_FUZZTEST_TAG}"
         # Fixes for https://github.com/google/fuzztest/issues/1124
         PATCH_COMMAND
@@ -27,7 +25,7 @@ else()
             && sed -i.bak -e "s/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/" cmake/BuildDependencies.cmake
     )
 
-    avif_fetchcontent_populate_cmake(fuzztest)
+    avif_fetchcontent_makeavailable_cmake(fuzztest)
 
     message(CHECK_PASS "complete")
 endif()

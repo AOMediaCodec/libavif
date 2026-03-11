@@ -1,16 +1,20 @@
-macro(avif_fetchcontent_populate_cmake name)
+function(avif_fetchcontent_makeavailable_cmake name)
+    FetchContent_GetProperties(${name})
     if(NOT ${name}_POPULATED)
-        FetchContent_Populate(${name})
-
         # Force static build
-        set(BUILD_SHARED_LIBS_ORIG ${BUILD_SHARED_LIBS})
-        set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
-        set(BUILD_TESTING_ORIG ${BUILD_TESTING})
-        set(BUILD_TESTING OFF CACHE INTERNAL "")
+        set(BUILD_SHARED_LIBS OFF)
+        set(BUILD_TESTING OFF)
 
-        add_subdirectory(${${name}_SOURCE_DIR} ${${name}_BINARY_DIR} EXCLUDE_FROM_ALL)
+        FetchContent_MakeAvailable(${name})
 
-        set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_ORIG} CACHE BOOL "" FORCE)
-        set(BUILD_TESTING ${BUILD_TESTING_ORIG} CACHE BOOL "" FORCE)
+        if(ANDROID_ABI)
+            set(${name}_BINARY_DIR "${${name}_BINARY_DIR}/${ANDROID_ABI}")
+        endif()
+
+        # We must explicitly move the path variables to the parent scope
+        FetchContent_GetProperties(${name})
+        set(${name}_SOURCE_DIR ${${name}_SOURCE_DIR} PARENT_SCOPE)
+        set(${name}_BINARY_DIR ${${name}_BINARY_DIR} PARENT_SCOPE)
+        set(${name}_POPULATED ${${name}_POPULATED} PARENT_SCOPE)
     endif()
-endmacro()
+endfunction()

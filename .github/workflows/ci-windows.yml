@@ -85,15 +85,15 @@ jobs:
           -I.\apps\shared -I.\include -I.\third_party\iccjpeg
           -external:W0
           -external:I.\build\_deps\libpng-src
+          -external:I.\build\_deps\libpng-build
           -external:I.\build\libjpeg\src\libjpeg\src
           -external:I.\build\libjpeg\src\libjpeg-build
           -external:I.\build\_deps\zlib-src
-          -external:I.\build\_deps\libpng
-          -external:I.\build\_deps\zlib
+          -external:I.\build\_deps\zlib-build
           /link
           build\libjpeg\src\libjpeg-build\${env:CONFIG_DIR}jpeg-static.lib
-          build\_deps\libpng\${env:CONFIG_DIR}libpng16_static.lib
-          build\_deps\zlib\${env:CONFIG_DIR}zs.lib
+          build\_deps\libpng-build\${env:CONFIG_DIR}libpng16_static.lib
+          build\_deps\zlib-build\${env:CONFIG_DIR}zs.lib
           build\${env:CONFIG_DIR}avif.lib
           ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
           /out:avifenc.exe

@@ -25,11 +25,6 @@ else()
         message(CHECK_START "libavif(AVIF_LIBYUV=LOCAL): fetching and configuring libyuv")
     endif()
 
-    set(LIBYUV_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libyuv-build")
-    if(ANDROID_ABI)
-        set(LIBYUV_BINARY_DIR "${LIBYUV_BINARY_DIR}/${ANDROID_ABI}")
-    endif()
-
     # unset JPEG_FOUND so that libyuv does not find it
     set(JPEG_FOUND_ORIG ${JPEG_FOUND})
     unset(JPEG_FOUND CACHE)
@@ -37,13 +32,13 @@ else()
 
     FetchContent_Declare(
         libyuv
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
-        BINARY_DIR "${LIBYUV_BINARY_DIR}"
         GIT_TAG "${AVIF_LIBYUV_TAG}"
         UPDATE_COMMAND ""
     )
 
-    avif_fetchcontent_populate_cmake(libyuv)
+    avif_fetchcontent_makeavailable_cmake(libyuv)
 
     set(JPEG_FOUND ${JPEG_FOUND_ORIG})
     unset(JPEG_FOUND_ORIG CACHE)

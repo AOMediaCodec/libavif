@@ -21,11 +21,12 @@ else()
 
     FetchContent_Declare(
         libargparse
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://github.com/kmurray/libargparse.git"
         GIT_TAG ${AVIF_LIBARGPARSE_GIT_TAG}
         UPDATE_COMMAND ""
     )
-    avif_fetchcontent_populate_cmake(libargparse)
+    avif_fetchcontent_makeavailable_cmake(libargparse)
 
     message(CHECK_PASS "complete")
 endif()

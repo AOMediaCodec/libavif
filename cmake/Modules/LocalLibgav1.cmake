@@ -23,11 +23,6 @@ else()
         message(CHECK_START "libavif(AVIF_CODEC_LIBGAV1=LOCAL): fetching and configuring libgav1")
     endif()
 
-    set(LIBGAV1_BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libgav1-build")
-    if(ANDROID_ABI)
-        set(LIBGAV1_BINARY_DIR "${LIBGAV1_BINARY_DIR}/${ANDROID_ABI}")
-    endif()
-
     set(LIBGAV1_THREADPOOL_USE_STD_MUTEX 1 CACHE INTERNAL "")
     set(LIBGAV1_ENABLE_EXAMPLES OFF CACHE INTERNAL "")
     set(LIBGAV1_ENABLE_TESTS OFF CACHE INTERNAL "")
@@ -35,14 +30,14 @@ else()
 
     FetchContent_Declare(
         libgav1
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://chromium.googlesource.com/codecs/libgav1"
-        BINARY_DIR "${LIBGAV1_BINARY_DIR}"
         GIT_TAG "${AVIF_LIBGAV1_GIT_TAG}"
         GIT_SHALLOW ON
         UPDATE_COMMAND ""
     )
 
-    avif_fetchcontent_populate_cmake(libgav1)
+    avif_fetchcontent_makeavailable_cmake(libgav1)
     message(CHECK_PASS "complete")
 endif()
 

@@ -22,7 +22,7 @@ endif()
 # New in CMake version 3.30. FetchContent_Populate(<name>) is deprecated, call
 # FetchContent_MakeAvailable(<name>) instead.
 if(POLICY CMP0169)
-    cmake_policy(SET CMP0169 OLD)
+    cmake_policy(SET CMP0169 NEW)
 endif()
 
 # Disallow MSVC for ASM.
