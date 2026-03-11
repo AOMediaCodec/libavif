@@ -1533,7 +1533,7 @@ typedef struct avifEncoder
     // played back `n + 1` times. Defaults to AVIF_REPETITION_COUNT_INFINITE.
     int repetitionCount;
 
-    // EXPERIMENTAL: A non-zero value indicates a layered (progressive) image.
+    // A non-zero value indicates a layered (progressive) image.
     // Range: [0 - (AVIF_MAX_AV1_LAYER_COUNT-1)].
     // To encode a progressive image, set `extraLayerCount` to the number of extra images, then call
     // `avifEncoderAddImage()` or `avifEncoderAddImageGrid()` exactly `encoder->extraLayerCount+1` times.

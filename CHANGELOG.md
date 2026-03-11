@@ -8,6 +8,11 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Removed since 1.4.0
+
+* Remove experimental status for the following options of avifenc: --progressive,
+  --layered and --scaling-mode, and the extraLayerCount option of avifEncoder.
+
 ## [1.4.0] - 2026-03-04
 
 ### Added since 1.3.0
