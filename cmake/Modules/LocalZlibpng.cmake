@@ -11,17 +11,18 @@ endif()
 
 FetchContent_Declare(
     zlib
+    EXCLUDE_FROM_ALL
     GIT_REPOSITORY "https://github.com/madler/zlib.git"
     GIT_TAG "${AVIF_ZLIB_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+    UPDATE_COMMAND ""
 )
 
 set(ZLIB_BUILD_TESTING OFF CACHE BOOL "")
 set(ZLIB_BUILD_SHARED OFF CACHE BOOL "")
 set(ZLIB_BUILD_STATIC ON CACHE BOOL "")
 
-avif_fetchcontent_populate_cmake(zlib)
+avif_fetchcontent_makeavailable_cmake(zlib)
 
 if(NOT TARGET ZLIB::ZLIB)
     add_library(ZLIB::ZLIB ALIAS zlibstatic)
@@ -50,13 +51,14 @@ set(PNG_TOOLS OFF CACHE BOOL "")
 
 FetchContent_Declare(
     libpng
+    EXCLUDE_FROM_ALL
     GIT_REPOSITORY "https://github.com/glennrp/libpng.git"
     GIT_TAG "${AVIF_LIBPNG_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+    UPDATE_COMMAND ""
 )
 
-avif_fetchcontent_populate_cmake(libpng)
+avif_fetchcontent_makeavailable_cmake(libpng)
 
 set(PNG_PNG_INCLUDE_DIR "${libpng_SOURCE_DIR}")
 include_directories("${libpng_BINARY_DIR}")

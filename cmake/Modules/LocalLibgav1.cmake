@@ -30,13 +30,14 @@ else()
 
     FetchContent_Declare(
         libgav1
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://chromium.googlesource.com/codecs/libgav1"
         GIT_TAG "${AVIF_LIBGAV1_GIT_TAG}"
         GIT_SHALLOW ON
-        UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+        UPDATE_COMMAND ""
     )
 
-    avif_fetchcontent_populate_cmake(libgav1)
+    avif_fetchcontent_makeavailable_cmake(libgav1)
     message(CHECK_PASS "complete")
 endif()
 

@@ -27,6 +27,7 @@ endfunction()
 
 FetchContent_Declare(
     libavm
+    EXCLUDE_FROM_ALL
     GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/avm.git"
     GIT_TAG ${AVIF_AVM_GIT_TAG}
     GIT_PROGRESS ON
@@ -44,7 +45,7 @@ FetchContent_Declare(
     #   git diff > LocalAvm.diff
     # TODO: b/398931194 - Remove the patch when using a libavm version past
     #                     https://gitlab.com/AOMediaCodec/avm/-/merge_requests/2985
-    PATCH_COMMAND git apply ${AVIF_SOURCE_DIR}/cmake/Modules/LocalAvm.diff EXCLUDE_FROM_ALL
+    PATCH_COMMAND git apply ${AVIF_SOURCE_DIR}/cmake/Modules/LocalAvm.diff
 )
 # There can be a duplicate cpuinfo in SVT so find_package has to be used.
 set(RUY_FIND_CPUINFO ON CACHE INTERNAL "")
@@ -76,7 +77,7 @@ if(NOT libavm_POPULATED)
         endforeach()
     endforeach()
 
-    avif_fetchcontent_populate_cmake(libavm)
+    avif_fetchcontent_makeavailable_cmake(libavm)
 
     set(_avm_config RELEASE)
     if(CMAKE_BUILD_TYPE)

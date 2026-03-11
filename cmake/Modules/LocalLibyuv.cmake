@@ -32,12 +32,13 @@ else()
 
     FetchContent_Declare(
         libyuv
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://chromium.googlesource.com/libyuv/libyuv"
         GIT_TAG "${AVIF_LIBYUV_TAG}"
-        UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+        UPDATE_COMMAND ""
     )
 
-    avif_fetchcontent_populate_cmake(libyuv)
+    avif_fetchcontent_makeavailable_cmake(libyuv)
 
     set(JPEG_FOUND ${JPEG_FOUND_ORIG})
     unset(JPEG_FOUND_ORIG CACHE)

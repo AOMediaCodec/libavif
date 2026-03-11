@@ -37,11 +37,11 @@ else()
 
     FetchContent_Declare(
         svt
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
         GIT_TAG "${AVIF_SVT_GIT_TAG}"
         UPDATE_COMMAND ""
         GIT_SHALLOW ON
-        EXCLUDE_FROM_ALL
     )
 
     set(BUILD_DEC OFF CACHE BOOL "")
@@ -60,7 +60,7 @@ else()
         set(SVT_AV1_LTO OFF)
     endif()
 
-    avif_fetchcontent_populate_cmake(svt)
+    avif_fetchcontent_makeavailable_cmake(svt)
 
     set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_ORIG} CACHE STRING "" FORCE)
     set(CMAKE_OUTPUT_DIRECTORY ${CMAKE_OUTPUT_DIRECTORY_ORIG} CACHE STRING "" FORCE)

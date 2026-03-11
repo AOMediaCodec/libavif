@@ -44,13 +44,14 @@ set(LIBXML2_WITH_ZLIB OFF CACHE INTERNAL "-")
 
 FetchContent_Declare(
     libxml2
+    EXCLUDE_FROM_ALL
     GIT_REPOSITORY "https://github.com/GNOME/libxml2.git"
     GIT_TAG "${AVIF_LIBXML_GIT_TAG}"
     GIT_SHALLOW ON
-    UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+    UPDATE_COMMAND ""
 )
 
-avif_fetchcontent_populate_cmake(libxml2)
+avif_fetchcontent_makeavailable_cmake(libxml2)
 
 set_property(TARGET LibXml2 PROPERTY AVIF_LOCAL ON)
 get_target_property(VAR1 LibXml2 LINKER_LANGUAGE)

@@ -32,13 +32,14 @@ else()
 
     FetchContent_Declare(
         libwebp
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
         GIT_TAG "${AVIF_LIBSHARPYUV_GIT_TAG}"
         GIT_SHALLOW ON
-        UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+        UPDATE_COMMAND ""
     )
 
-    avif_fetchcontent_populate_cmake(libwebp)
+    avif_fetchcontent_makeavailable_cmake(libwebp)
 
     set_property(TARGET sharpyuv PROPERTY POSITION_INDEPENDENT_CODE ON)
     set_property(TARGET sharpyuv PROPERTY AVIF_LOCAL ON)

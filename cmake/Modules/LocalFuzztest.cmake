@@ -13,6 +13,7 @@ else()
 
     FetchContent_Declare(
         fuzztest
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY "https://github.com/google/fuzztest.git"
         GIT_TAG "${AVIF_FUZZTEST_TAG}"
         # Fixes for https://github.com/google/fuzztest/issues/1124
@@ -21,10 +22,10 @@ else()
             cmake/FuzzTestFlagSetup.cmake &&
             # Fixes for https://github.com/google/fuzztest/issues/1125
             sed -i.bak -e "s/if (IsEnginePlaceholderInput(data))/if (data.size() == 0)/" fuzztest/internal/compatibility_mode.cc
-            && sed -i.bak -e "s/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/" cmake/BuildDependencies.cmake EXCLUDE_FROM_ALL
+            && sed -i.bak -e "s/set(GTEST_HAS_ABSL ON)/set(GTEST_HAS_ABSL OFF)/" cmake/BuildDependencies.cmake
     )
 
-    avif_fetchcontent_populate_cmake(fuzztest)
+    avif_fetchcontent_makeavailable_cmake(fuzztest)
 
     message(CHECK_PASS "complete")
 endif()

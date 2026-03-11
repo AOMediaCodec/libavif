@@ -25,10 +25,10 @@ else()
 
     FetchContent_Declare(
         Corrosion
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
         GIT_TAG ${AVIF_CORROSION_GIT_TAG}
         GIT_SHALLOW ON
-        EXCLUDE_FROM_ALL
     )
 
     if(APPLE)
@@ -49,10 +49,10 @@ else()
     if(NOT TARGET cargo-cinstall)
         FetchContent_Declare(
             cargoc
+            EXCLUDE_FROM_ALL
             GIT_REPOSITORY https://github.com/lu-zero/cargo-c.git
             GIT_TAG "${AVIF_CARGOC_GIT_TAG}"
             GIT_SHALLOW ON
-            EXCLUDE_FROM_ALL
         )
         FetchContent_MakeAvailable(cargoc)
 
@@ -66,10 +66,10 @@ else()
 
     FetchContent_Declare(
         rav1e
+        EXCLUDE_FROM_ALL
         GIT_REPOSITORY https://github.com/xiph/rav1e.git
         GIT_TAG "${AVIF_RAV1E_GIT_TAG}"
         GIT_SHALLOW ON
-        EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(rav1e)
 

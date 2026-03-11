@@ -1,4 +1,4 @@
-function(avif_fetchcontent_populate_cmake name)
+function(avif_fetchcontent_makeavailable_cmake name)
     FetchContent_GetProperties(${name})
     if(NOT ${name}_POPULATED)
         # Force static build

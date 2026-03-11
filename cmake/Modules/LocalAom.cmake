@@ -68,7 +68,10 @@ else()
     endfunction()
 
     FetchContent_Declare(
-        libaom URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz" UPDATE_COMMAND "" EXCLUDE_FROM_ALL
+        libaom
+        EXCLUDE_FROM_ALL
+        URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz"
+        UPDATE_COMMAND ""
     )
 
     if(NOT AVIF_CODEC_AOM_DECODE)
@@ -102,7 +105,7 @@ else()
             endforeach()
         endforeach()
 
-        avif_fetchcontent_populate_cmake(libaom)
+        avif_fetchcontent_makeavailable_cmake(libaom)
 
         set(_aom_config RELEASE)
         if(CMAKE_BUILD_TYPE)
