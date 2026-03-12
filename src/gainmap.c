@@ -285,7 +285,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
         clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
-        const float rgbAverageLinear = rgbSumLinear / ((size_t)width * height);
+        const float rgbAverageLinear = rgbSumLinear / ((uint64_t)width * height);
         clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
     }
 
@@ -559,15 +559,12 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
-    if (width != 0 && height > SIZE_MAX / width) {
+    const uint64_t numPixels64 = (uint64_t)width * (uint64_t)height;
+    if (numPixels64 > SIZE_MAX / sizeof(float)) {
         res = AVIF_RESULT_INVALID_ARGUMENT;
         goto cleanup;
     }
-    const size_t numPixels = (size_t)width * height;
-    if (numPixels > SIZE_MAX / sizeof(float)) {
-        res = AVIF_RESULT_INVALID_ARGUMENT;
-        goto cleanup;
-    }
+    const size_t numPixels = (size_t)numPixels64;
     const size_t gainMapChannelSize = numPixels * sizeof(float);
     const avifBool singleChannel = (gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     const int numGainMapChannels = singleChannel ? 1 : 3;
