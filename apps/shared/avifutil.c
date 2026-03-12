@@ -598,11 +598,6 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
             goto cleanup;
         }
         if (!avifImageSplitGrid(gridSplitImage->gainMap->image, gridCols, gridRows, gainMapGridCells)) {
-            for (uint32_t i = 0; i < gridCols * gridRows; ++i) {
-                if (gainMapGridCells[i]) {
-                    avifImageDestroy(gainMapGridCells[i]);
-                }
-            }
             free(gainMapGridCells);
             goto cleanup;
         }
@@ -655,10 +650,8 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
 cleanup:
     if (!success) {
         for (uint32_t i = 0; i < createdCells; ++i) {
-            if (gridCells && gridCells[i]) {
-                avifImageDestroy(gridCells[i]);
-                gridCells[i] = NULL;
-            }
+            avifImageDestroy(gridCells[i]);
+            gridCells[i] = NULL;
         }
     }
     return success;
