@@ -559,6 +559,10 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
+    if (width != 0 && height > SIZE_MAX / width) {
+        res = AVIF_RESULT_INVALID_ARGUMENT;
+        goto cleanup;
+    }
     const size_t numPixels = (size_t)width * height;
     if (numPixels > SIZE_MAX / sizeof(float)) {
         res = AVIF_RESULT_INVALID_ARGUMENT;
