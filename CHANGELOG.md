@@ -11,6 +11,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Changed since 1.4.0
 
 * Fix build with CMake 3.22
+* Update libxml2.cmd/LocalLibXml2.cmake: v2.15.2
 
 ### Removed since 1.4.0
 
