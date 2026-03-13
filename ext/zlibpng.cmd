@@ -8,4 +8,4 @@ git clone -b v1.3.2 --depth 1 https://github.com/madler/zlib.git
 cd zlib
 git apply --ignore-whitespace ../zlib.patch
 cd ..
-git clone -b v1.6.55 --depth 1 https://github.com/glennrp/libpng.git
+git clone -b v1.6.55 --depth 1 https://github.com/pnggroup/libpng.git

@@ -52,7 +52,7 @@ set(PNG_TOOLS OFF CACHE BOOL "")
 FetchContent_Declare(
     libpng
     EXCLUDE_FROM_ALL
-    GIT_REPOSITORY "https://github.com/glennrp/libpng.git"
+    GIT_REPOSITORY "https://github.com/pnggroup/libpng.git"
     GIT_TAG "${AVIF_LIBPNG_GIT_TAG}"
     GIT_SHALLOW ON
     UPDATE_COMMAND ""
