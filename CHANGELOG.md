@@ -12,6 +12,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 * Fix build with CMake 3.22
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.2
+* Update libyuv.cmd/LocalLibyuv.cmake: 6067afde5 (1922)
 
 ### Removed since 1.4.0
 
