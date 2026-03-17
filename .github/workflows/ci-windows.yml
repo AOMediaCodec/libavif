@@ -97,7 +97,6 @@ jobs:
           build\${env:CONFIG_DIR}avif.lib
           ws2_32.lib ntdll.lib userenv.lib bcrypt.lib advapi32.lib
           /out:avifenc.exe
-          /out:avifenc.exe
 
           mt.exe -manifest apps\utf8.manifest -outputresource:avifenc.exe;1
 
