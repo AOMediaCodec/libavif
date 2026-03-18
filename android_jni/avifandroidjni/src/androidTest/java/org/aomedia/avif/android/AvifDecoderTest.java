@@ -5,6 +5,8 @@ import static com.google.common.truth.Truth.assertThat;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
+import android.hardware.HardwareBuffer;
+import android.os.Build;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.IOException;
 import java.io.InputStream;
@@ -253,6 +255,76 @@ public class AvifDecoderTest {
         }
       }
     }
+    decoder.release();
+  }
+
+  // Tests hardware-bitmap decode for still images. Runs only once per image (skips when
+  // config != ARGB_8888 to avoid redundant iterations over the same image).
+  @Test
+  public void testDecodeHardwareBitmap() throws IOException {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      return;
+    }
+    if (image.isAnimated || config != Config.ARGB_8888) {
+      return;
+    }
+    ByteBuffer buffer = image.getBuffer();
+    assertThat(buffer).isNotNull();
+    // Test SDR path (R8G8B8A8).
+    Bitmap bitmap = AvifDecoder.decodeHardwareBitmap(buffer, buffer.remaining());
+    assertThat(bitmap).isNotNull();
+    assertThat(bitmap.getConfig()).isEqualTo(Config.HARDWARE);
+    assertThat(bitmap.getWidth()).isEqualTo(image.width);
+    assertThat(bitmap.getHeight()).isEqualTo(image.height);
+    // For >8-bit images, also test the HDR path (FP16).
+    if (image.depth > 8) {
+      buffer.rewind();
+      Bitmap hdrBitmap = AvifDecoder.decodeHardwareBitmap(buffer, buffer.remaining(), 1,
+          /* allowHdr= */ true);
+      assertThat(hdrBitmap).isNotNull();
+      assertThat(hdrBitmap.getConfig()).isEqualTo(Config.HARDWARE);
+    }
+  }
+
+  // Tests hardware-bitmap decode for animated images.
+  @Test
+  public void testDecodeAnimatedHardwareBitmap() throws IOException {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      return;
+    }
+    if (!image.isAnimated || config != Config.ARGB_8888) {
+      return;
+    }
+    ByteBuffer buffer = image.getBuffer();
+    AvifDecoder decoder = AvifDecoder.create(buffer, image.threads);
+    assertThat(decoder).isNotNull();
+    // Test with allowHdr=true to exercise the FP16 path for >8-bit animated images.
+    boolean allowHdr = image.depth > 8;
+    for (int i = 0; i < image.frameCount; i++) {
+      Bitmap bitmap = decoder.nextFrameHardwareBitmap(allowHdr);
+      assertThat(bitmap).isNotNull();
+      assertThat(bitmap.getConfig()).isEqualTo(Config.HARDWARE);
+      assertThat(bitmap.getWidth()).isEqualTo(image.width);
+      assertThat(bitmap.getHeight()).isEqualTo(image.height);
+    }
+    // Test nthFrameHardwareBitmap.
+    Bitmap bitmap = decoder.nthFrameHardwareBitmap(0, allowHdr);
+    assertThat(bitmap).isNotNull();
+    assertThat(bitmap.getConfig()).isEqualTo(Config.HARDWARE);
+
+    // Test buffer-reuse path: allocate once, decode all frames into the same buffer.
+    HardwareBuffer hwb = decoder.createHardwareBuffer(allowHdr);
+    assertThat(hwb).isNotNull();
+    Bitmap reuseBitmap = Bitmap.wrapHardwareBuffer(hwb, null);
+    assertThat(reuseBitmap).isNotNull();
+    assertThat(reuseBitmap.getConfig()).isEqualTo(Config.HARDWARE);
+    for (int i = 0; i < image.frameCount; i++) {
+      Bitmap result = decoder.nextFrameHardwareBitmap(allowHdr, hwb);
+      assertThat(result).isNotNull();
+      assertThat(result.getConfig()).isEqualTo(Config.HARDWARE);
+    }
+    assertThat(decoder.nthFrameHardwareBitmap(0, allowHdr, hwb)).isNotNull();
+    hwb.close();
     decoder.release();
   }
 
