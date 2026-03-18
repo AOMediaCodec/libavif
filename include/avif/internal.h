@@ -781,7 +781,7 @@ typedef struct avifSequenceHeader
     avifTransferCharacteristics transferCharacteristics;
     avifMatrixCoefficients matrixCoefficients;
     avifRange range;
-    avifCodecConfigurationBox av1C; // TODO(yguyon): Rename or add av2C
+    avifCodecConfigurationBox codecConfig; // "av1C" for AV1 ("av2C" for AV2 if AVIF_CODEC_AVM)
 } avifSequenceHeader;
 
 AVIF_NODISCARD avifBool avifSequenceHeaderParse(avifSequenceHeader * header, const avifROData * sample, avifCodecType codecType);
@@ -800,7 +800,7 @@ typedef enum avifPixiSubsamplingType
 
 // Mapping from subsampling_x, subsampling_y as defined in AV1 specification Section 6.4.2
 // to PixelInformationBox subsampling_type as defined in ISO/IEC 23008-12:2024/CDAM 2:2025 section 6.5.6.3.
-uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * av1C, uint8_t channelIndex);
+uint8_t avifCodecConfigurationBoxGetSubsamplingType(const avifCodecConfigurationBox * codecConfig, uint8_t channelIndex);
 #endif
 
 // ---------------------------------------------------------------------------
