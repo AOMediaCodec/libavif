@@ -187,6 +187,65 @@ TEST_F(ProgressiveTest, DimensionChangeWithAlpha) {
   TestDecode(kImageSize, kImageSize, /*expect_alpha=*/true);
 }
 
+TEST_F(ProgressiveTest, DimensionChangeExternal) {
+  encoder_->extraLayerCount = 1;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+
+  const auto smallImage = testutil::CreateImage(
+      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(smallImage, nullptr);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(256, 256);
+}
+
+TEST_F(ProgressiveTest, DimensionChangeExternalWithAlpha) {
+  const auto image =
+      testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
+                            AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  encoder_->speed = 3;
+  encoder_->maxThreads = 1;
+  encoder_->extraLayerCount = 2;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+
+  auto smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
+                                          AVIF_PIXEL_FORMAT_YUV444,
+                                          AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(kImageSize, kImageSize, /*expect_alpha=*/true);
+}
+
 TEST_F(ProgressiveTest, LayeredGrid) {
   encoder_->extraLayerCount = 1;
   encoder_->quality = 21;
