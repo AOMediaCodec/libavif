@@ -83,6 +83,10 @@ runs:
       if: ${{ inputs.libyuv == 'SYSTEM' }}
       run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libyuv-dev" >> "$GITHUB_ENV"
       shell: bash
+    - name: Install nasm
+      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} nasm" >> "$GITHUB_ENV"
+      shell: bash
     - name: Install zlibpng library
       if: ${{ inputs.zlibpng == 'SYSTEM' }}
       run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libpng-dev" >> "$GITHUB_ENV"

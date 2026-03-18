@@ -50,29 +50,33 @@ runs:
       if: ${{ inputs.codec-svt == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} svt-av1" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up meson
+    - name: Install meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} meson" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up gtest
+    - name: Install imagemagick
       # imagemagick is used in sh tests (not gtest tests) but we assume that no tests are run by the CI
       # if gtest is off
       if: ${{ inputs.gtest != 'OFF' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} imagemagick" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up tests
+    - name: Install gtest
       if: ${{ inputs.gtest == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} googletest" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up libjpeg-turbo
+    - name: Install libjpeg-turbo
       if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libjpeg-turbo" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up libxml2
+    - name: Install libxml2
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
       shell: bash
-    - name: Set up zlibpng
+    - name: Install nasm
+      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} nasm" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install zlibpng
       if: ${{ inputs.zlibpng == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} libpng" >> "$GITHUB_ENV"
       shell: bash
