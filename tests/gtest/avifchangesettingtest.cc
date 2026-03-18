@@ -241,6 +241,36 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
             AVIF_RESULT_INCOMPATIBLE_IMAGE);
 }
 
+TEST(ChangeSettingTest, UnchangeableRenderedSizeOverride) {
+  if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
+      nullptr) {
+    GTEST_SKIP() << "Codec unavailable, skip test.";
+  }
+
+  ImagePtr image = testutil::CreateImage(/*width=*/64, /*height=*/64,
+                                         /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->extraLayerCount = 1;
+  encoder->width = 128;
+  encoder->height = 128;
+
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  encoder->width = 256;
+  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_CANNOT_CHANGE_SETTING);
+}
+
 void EncodeAnimation(const char* key, const char* value_before_first_frame,
                      const char* value_after_first_frame,
                      const char* value_before_second_frame,
