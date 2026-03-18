@@ -52,32 +52,19 @@ avifResult ConvertCommand::Run() {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
 
-  const avifAppFileFormat file_format = avifReadImage(
-      arg_input_filename_.value().c_str(),
-      AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */, pixel_format,
-      arg_image_read_.depth, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
-      arg_image_read_.ignore_profile,
-      /*ignoreExif=*/false,
-      /*ignoreXMP=*/false,
-      /*ignoreGainMap=*/false, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
-      /*outDepth=*/nullptr,
-      /*sourceTiming=*/nullptr,
-      /*frameIter=*/nullptr);
-  if (file_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
-    std::cout << "Failed to decode image: " << arg_input_filename_;
-    return AVIF_RESULT_INVALID_ARGUMENT;
-  }
   if (arg_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
     image->colorPrimaries = arg_cicp_.value().color_primaries;
     image->transferCharacteristics = arg_cicp_.value().transfer_characteristics;
     image->matrixCoefficients = arg_cicp_.value().matrix_coefficients;
-  } else if (image->icc.size == 0 &&
-             image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED &&
-             image->transferCharacteristics ==
-                 AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-    // If there is no ICC and no CICP, assume sRGB by default.
-    image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
-    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+  }
+
+  avifResult result =
+      ReadImage(image.get(), arg_input_filename_.value(), pixel_format,
+                arg_image_read_.depth, arg_image_read_.ignore_profile,
+                /*ignore_gain_map*/ false);
+  if (result != AVIF_RESULT_OK) {
+    std::cout << "Failed to decode image: " << arg_input_filename_;
+    return result;
   }
 
   if (image->gainMap && image->gainMap->altICC.size == 0) {
@@ -110,8 +97,7 @@ avifResult ConvertCommand::Run() {
     if (new_base == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    const avifResult result =
-        ChangeBase(*image, depth, image->yuvFormat, new_base.get());
+    result = ChangeBase(*image, depth, image->yuvFormat, new_base.get());
     if (result != AVIF_RESULT_OK) {
       return result;
     }
@@ -126,10 +112,9 @@ avifResult ConvertCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
-  const avifResult result =
-      WriteAvifGrid(image.get(), arg_image_encode_.grid.value().grid_cols,
-                    arg_image_encode_.grid.value().grid_rows, encoder.get(),
-                    arg_output_filename_);
+  result = WriteAvifGrid(image.get(), arg_image_encode_.grid.value().grid_cols,
+                         arg_image_encode_.grid.value().grid_rows,
+                         encoder.get(), arg_output_filename_);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";

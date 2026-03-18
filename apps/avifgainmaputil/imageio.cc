@@ -155,7 +155,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile) {
+                     bool ignore_profile, bool ignore_gain_map) {
   avifAppFileFormat input_format = avifGuessFileFormat(input_filename.c_str());
   if (input_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     std::cerr << "Cannot determine input format: " << input_filename;
@@ -165,10 +165,21 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (decoder == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    if (!ignore_gain_map) {
+      decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+    }
     avifResult result = ReadAvif(decoder.get(), input_filename, ignore_profile);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
+    if (ignore_gain_map && decoder->image->gainMap) {
+      avifGainMapDestroy(decoder->image->gainMap);
+      decoder->image->gainMap = nullptr;
+    }
+    const avifColorPrimaries in_primaries = image->colorPrimaries;
+    const avifTransferCharacteristics in_transfer =
+        image->transferCharacteristics;
+    const avifMatrixCoefficients in_matrix = image->matrixCoefficients;
     if (decoder->image->imageOwnsYUVPlanes &&
         (decoder->image->alphaPlane == nullptr ||
          decoder->image->imageOwnsAlphaPlane)) {
@@ -179,26 +190,37 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
         return result;
       }
     }
+    if (in_primaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
+        in_transfer != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
+        in_matrix != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+      image->colorPrimaries = in_primaries;
+      image->transferCharacteristics = in_transfer;
+      image->matrixCoefficients = in_matrix;
+    }
   } else {
     const avifAppFileFormat file_format = avifReadImage(
         input_filename.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
         requested_format, static_cast<int>(requested_depth),
         AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile,
-        /*ignoreExif=*/false, /*ignoreXMP=*/false,
-        /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
+        /*ignoreExif=*/false, /*ignoreXMP=*/false, ignore_gain_map,
+        AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
         /*outDepth=*/nullptr,
         /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
     if (file_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
       std::cout << "Failed to decode image: " << input_filename;
       return AVIF_RESULT_INVALID_ARGUMENT;
     }
-    if (image->icc.size == 0) {
-      // Assume sRGB by default.
-      if (image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED &&
-          image->transferCharacteristics == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-        image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
-        image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
-      }
+    // Assume sRGB by default.
+    if (image->icc.size == 0 &&
+        image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED &&
+        image->transferCharacteristics == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+      image->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+      image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    }
+    if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+      // Explicitly set the default matrix coefficient, see
+      // avifCalcYUVCoefficients().
+      image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     }
   }
   return AVIF_RESULT_OK;

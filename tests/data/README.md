@@ -823,6 +823,19 @@ after changing `kUpdateTestImages` to true in the `avifgainmaptest.cc`.
 
 SDR image with a gain map to allow tone mapping to HDR. The gain map's width and height are halved compared to the base image.
 
+### File [seine_sdr_gainmap_srgb_icc.jpg](seine_sdr_gainmap_srgb_icc.jpg)
+
+![](seine_sdr_gainmap_srgb_icc.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source : created by running the following command with avifenc with compiled with libxml enabled:
+
+```bash
+# from libavif/mybuilddir/
+./avifenc ../tests/data/seine_sdr_gainmap_srgb.jpg ../tests/data/seine_sdr_gainmap_srgb_icc.jpg --qcolor 90 --qgain-map 90
+```
+
 ## Files colors*_hdr_*.avif and colors*_sdr_srgb.avif
 
 ![](colors_wcg_hdr_rec2020.avif)

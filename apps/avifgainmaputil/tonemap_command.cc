@@ -69,6 +69,13 @@ avifResult TonemapCommand::Run() {
   if (result != AVIF_RESULT_OK) {
     return result;
   }
+  if (arg_input_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
+    decoder->image->colorPrimaries = arg_input_cicp_.value().color_primaries;
+    decoder->image->transferCharacteristics =
+        arg_input_cicp_.value().transfer_characteristics;
+    decoder->image->matrixCoefficients =
+        arg_input_cicp_.value().matrix_coefficients;
+  }
 
   avifImage* image = decoder->image;
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
@@ -115,10 +122,9 @@ avifResult TonemapCommand::Run() {
             image->gainMap->altMatrixCoefficients};
   }
   if (cicp.color_primaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-    // TODO(maryla): for now avifImageApplyGainMap always uses the primaries of
-    // the base image, but it should take into account the metadata's
-    // useBaseColorSpace property.
-    cicp.color_primaries = image->colorPrimaries;
+    cicp.color_primaries = image->gainMap->useBaseColorSpace
+                               ? image->colorPrimaries
+                               : image->gainMap->altColorPrimaries;
   }
   if (cicp.transfer_characteristics ==
       AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
@@ -181,7 +187,13 @@ avifResult TonemapCommand::Run() {
   if (tone_mapped == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  tone_mapped->colorPrimaries = cicp.color_primaries;
+  tone_mapped->transferCharacteristics = cicp.transfer_characteristics;
+  tone_mapped->matrixCoefficients = cicp.matrix_coefficients;
+  tone_mapped->clli = clli_box;
+
   avifRGBImage tone_mapped_rgb;
+  RGBImageCleanup rgb_cleanup(&tone_mapped_rgb);
   avifRGBImageSetDefaults(&tone_mapped_rgb, tone_mapped.get());
   avifDiagnostics diag;
   result = avifImageApplyGainMap(
@@ -199,11 +211,6 @@ avifResult TonemapCommand::Run() {
               << "\n";
     return result;
   }
-
-  tone_mapped->clli = clli_box;
-  tone_mapped->transferCharacteristics = cicp.transfer_characteristics;
-  tone_mapped->colorPrimaries = cicp.color_primaries;
-  tone_mapped->matrixCoefficients = cicp.matrix_coefficients;
 
   return WriteImage(tone_mapped.get(), arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows,
