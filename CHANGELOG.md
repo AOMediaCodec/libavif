@@ -14,7 +14,6 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update aom.cmd/LocalAom.cmake: v3.13.2
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.2
 * Update libyuv.cmd/LocalLibyuv.cmake: 6067afde5 (1922)
-* Fix libaom build with nasm
 * Support long path names in Windows
 
 ### Removed since 1.4.0
