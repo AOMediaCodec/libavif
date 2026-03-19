@@ -4,6 +4,9 @@ inputs:
   codec-aom:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-avm:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-dav1d:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -81,6 +84,10 @@ runs:
         triplet: x64-windows-release
         token: ${{ github.token }}
         cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+
+    - name: Install nasm
+      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-avm == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
+      uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
     - name: Create folders
       if: env.AVIF_WIN_LIBRARIES == ''

@@ -37,9 +37,6 @@ runs:
     - name: Print CMake version
       run: cmake --version
       shell: bash
-    - name: Set up nasm
-      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
-      uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
     - name: Set up rust
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
       uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
