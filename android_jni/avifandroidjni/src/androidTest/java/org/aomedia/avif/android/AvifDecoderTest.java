@@ -319,11 +319,13 @@ public class AvifDecoderTest {
     assertThat(reuseBitmap).isNotNull();
     assertThat(reuseBitmap.getConfig()).isEqualTo(Config.HARDWARE);
     for (int i = 0; i < image.frameCount; i++) {
-      Bitmap result = decoder.nextFrameHardwareBitmap(allowHdr, hwb);
+      Bitmap result = decoder.nthFrameHardwareBitmap(i, allowHdr, hwb);
       assertThat(result).isNotNull();
       assertThat(result.getConfig()).isEqualTo(Config.HARDWARE);
     }
-    assertThat(decoder.nthFrameHardwareBitmap(0, allowHdr, hwb)).isNotNull();
+    // Also verify nextFrameHardwareBitmap with dest: seek to frame 0, advance to frame 1.
+    decoder.nthFrameHardwareBitmap(0, allowHdr, hwb);
+    assertThat(decoder.nextFrameHardwareBitmap(allowHdr, hwb)).isNotNull();
     hwb.close();
     decoder.release();
   }
