@@ -34,6 +34,7 @@ PrintMetadataCommand::PrintMetadataCommand()
     : ProgramCommand("printmetadata",
                      "Print the metadata of the gain map of an AVIF file") {
   argparse_.add_argument(arg_input_filename_, "input_filename");
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult PrintMetadataCommand::Run() {
@@ -41,6 +42,7 @@ avifResult PrintMetadataCommand::Run() {
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  decoder->maxThreads = arg_jobs_.jobs.value();
 
   avifResult result =
       avifDecoderSetIOFile(decoder.get(), arg_input_filename_.value().c_str());

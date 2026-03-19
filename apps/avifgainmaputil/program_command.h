@@ -92,6 +92,13 @@ struct GridOptionsConverter {
   std::vector<std::string> default_choices();
 };
 
+// Jobs converter for use with argparse. Parses an integer or "all".
+struct JobsConverter {
+  // Methods expected by argparse.
+  argparse::ConvertedValue<int> from_str(const std::string& str);
+  std::vector<std::string> default_choices();
+};
+
 // Basic flags for image writing.
 struct BasicImageEncodeArgs {
   argparse::ArgValue<int> speed;
@@ -140,6 +147,19 @@ struct ImageReadArgs {
             "(no-op if absent)")
         .action(argparse::Action::STORE_TRUE)
         .default_value("false");
+  }
+};
+
+// Flags for setting the number of worker threads.
+struct JobsArgs {
+  argparse::ArgValue<int> jobs;
+
+  void Init(argparse::ArgumentParser& argparse) {
+    argparse.add_argument<int, JobsConverter>(jobs, "--jobs", "-j")
+        .help(
+            "Number of jobs (worker threads), or 'all' to potentially use as "
+            "many cores as possible.")
+        .default_value("all");
   }
 };
 

@@ -151,6 +151,7 @@ SwapBaseCommand::SwapBaseCommand()
       .help(
           "Override content light level information for the alternate image "
           "in the input image, expressed as:  MaxCLL,MaxPALL.");
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult SwapBaseCommand::Run() {
@@ -158,6 +159,7 @@ avifResult SwapBaseCommand::Run() {
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
                                arg_image_read_.ignore_profile);
@@ -226,6 +228,8 @@ avifResult SwapBaseCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
+  encoder->maxThreads = arg_jobs_.jobs.value();
+  encoder->autoTiling = true;  // Match avifenc default.
   result =
       WriteAvifGrid(new_base.get(), arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows, encoder.get(),

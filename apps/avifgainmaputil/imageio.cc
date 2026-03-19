@@ -24,7 +24,7 @@ inline T Clamp(T x, T low, T high) {  // Only exists in C++17.
 
 avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
                       const std::string& output_filename, int quality,
-                      int speed) {
+                      int speed, int jobs) {
   quality = Clamp(quality, 0, 100);
   speed = Clamp(speed, 0, 10);
   const avifAppFileFormat output_format =
@@ -55,6 +55,7 @@ avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
     }
     encoder->quality = quality;
     encoder->speed = speed;
+    encoder->maxThreads = jobs;
     return WriteAvifGrid(image, grid_cols, grid_rows, encoder.get(),
                          output_filename);
   } else {
@@ -65,6 +66,47 @@ avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
   return AVIF_RESULT_OK;
 }
 
+namespace {
+std::string QualityString(int quality) {
+  if (quality == AVIF_QUALITY_LOSSLESS) {
+    return "Lossless";
+  }
+  if (quality >= 80) {
+    return "High";
+  }
+  if (quality >= 50) {
+    return "Medium";
+  }
+  if (quality == AVIF_QUALITY_WORST) {
+    return "Worst";
+  }
+  return "Low";
+}
+
+// Based on the same logic in avifenc.c
+void PrintEncodingSettings(avifEncoder* encoder, bool has_gain_map) {
+  std::string gain_map_str;
+  if (has_gain_map) {
+    gain_map_str = ", gain map quality [" +
+                   std::to_string(encoder->qualityGainMap) + " (" +
+                   QualityString(encoder->qualityGainMap) + ")]";
+  }
+  std::string manual_tiling_str =
+      "tileRowsLog2 [" + std::to_string(encoder->tileRowsLog2) +
+      "], tileColsLog2 [" + std::to_string(encoder->tileColsLog2) + "]";
+  std::cout << "Encoding AVIF with settings: codec '"
+            << avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE)
+            << "' speed ['" << encoder->speed << "'], color quality ['"
+            << encoder->quality << "' (" << QualityString(encoder->quality)
+            << ")], alpha quality ['" << encoder->qualityAlpha << "' ("
+            << QualityString(encoder->qualityAlpha) << ")]" << gain_map_str
+            << ", "
+            << (encoder->autoTiling ? "automatic tiling" : manual_tiling_str)
+            << ", " << encoder->maxThreads
+            << " worker thread(s), please wait...\n";
+}
+}  // namespace
+
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename) {
   avifRWData encoded = AVIF_DATA_EMPTY;
@@ -72,8 +114,7 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
   avifImageDump(image,
                 /*gridCols=*/1,
                 /*gridRows=*/1, AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
-  std::cout << "Encoding AVIF at quality " << encoder->quality << " speed "
-            << encoder->speed << ", please wait...\n";
+  PrintEncodingSettings(encoder, image->gainMap != nullptr);
   avifResult result = avifEncoderWrite(encoder, image, &encoded);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to encode image: " << avifResultToString(result)
@@ -122,8 +163,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
   std::cout << "AVIF to be written:\n";
   avifImageDump(image, grid_cols, grid_rows,
                 AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
-  std::cout << "Encoding AVIF at quality " << encoder->quality << " speed "
-            << encoder->speed << ", please wait...\n";
+  PrintEncodingSettings(encoder, image->gainMap != nullptr);
   avifResult result = avifEncoderAddImageGrid(
       encoder, grid_cols, grid_rows,
       const_cast<const avifImage* const*>(grid_cells_ptrs.data()),
@@ -155,7 +195,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile, bool ignore_gain_map) {
+                     bool ignore_profile, bool ignore_gain_map, int jobs) {
   avifAppFileFormat input_format = avifGuessFileFormat(input_filename.c_str());
   if (input_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     std::cerr << "Cannot determine input format: " << input_filename;
@@ -168,6 +208,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (!ignore_gain_map) {
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
+    decoder->maxThreads = jobs;
     avifResult result = ReadAvif(decoder.get(), input_filename, ignore_profile);
     if (result != AVIF_RESULT_OK) {
       return result;

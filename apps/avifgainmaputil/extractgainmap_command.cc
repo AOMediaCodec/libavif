@@ -14,6 +14,7 @@ ExtractGainMapCommand::ExtractGainMapCommand()
   argparse_.add_argument(arg_input_filename_, "input_filename");
   argparse_.add_argument(arg_output_filename_, "output_filename");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult ExtractGainMapCommand::Run() {
@@ -21,6 +22,7 @@ avifResult ExtractGainMapCommand::Run() {
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
 
   avifResult result =
@@ -36,10 +38,11 @@ avifResult ExtractGainMapCommand::Run() {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
-  return WriteImage(
-      decoder->image->gainMap->image, arg_image_encode_.grid.value().grid_cols,
-      arg_image_encode_.grid.value().grid_rows, arg_output_filename_,
-      arg_image_encode_.quality, arg_image_encode_.speed);
+  return WriteImage(decoder->image->gainMap->image,
+                    arg_image_encode_.grid.value().grid_cols,
+                    arg_image_encode_.grid.value().grid_rows,
+                    arg_output_filename_, arg_image_encode_.quality,
+                    arg_image_encode_.speed, arg_jobs_.jobs.value());
 }
 
 }  // namespace avif

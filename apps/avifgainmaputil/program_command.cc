@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "avifutil.h"
+
 namespace avif {
 
 ProgramCommand::ProgramCommand(const std::string& name,
@@ -108,5 +110,29 @@ argparse::ConvertedValue<GridOptions> GridOptionsConverter::from_str(
 }
 
 std::vector<std::string> GridOptionsConverter::default_choices() { return {}; }
+
+argparse::ConvertedValue<int> JobsConverter::from_str(const std::string& str) {
+  argparse::ConvertedValue<int> converted_value;
+
+  if (str == "all") {
+    converted_value.set_value(avifQueryCPUCount());
+  } else {
+    int jobs;
+    try {
+      jobs = std::stoi(str);
+    } catch (...) {
+      converted_value.set_error("Invalid jobs value: " + str);
+      return converted_value;
+    }
+    if (jobs < 1) {
+      jobs = 1;
+    }
+    converted_value.set_value(jobs);
+  }
+
+  return converted_value;
+}
+
+std::vector<std::string> JobsConverter::default_choices() { return {}; }
 
 }  // namespace avif

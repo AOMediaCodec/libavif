@@ -16,6 +16,7 @@ class PrintMetadataCommand : public ProgramCommand {
 
  private:
   argparse::ArgValue<std::string> arg_input_filename_;
+  JobsArgs arg_jobs_;
 };
 
 }  // namespace avif
