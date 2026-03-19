@@ -95,6 +95,14 @@ pushd ${TMP_DIR}
   fi
   "${IMAGEMAGICK}" --version
 
+  # Avoid ImageMagick 7.1.2-17 errors in MinGW. See
+  # https://github.com/AOMediaCodec/libavif/issues/3111.
+  if [[ -n "${MSYSTEM}" ]]; then
+      echo "Skipping ImageMagick test in MinGW"
+      popd
+      exit 0
+  fi
+
   JPEG_PSNR_THRESHOLD=48
 
   # Crop
