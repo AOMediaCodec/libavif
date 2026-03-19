@@ -4,6 +4,9 @@ inputs:
   codec-aom:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  codec-avm:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-dav1d:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -84,7 +87,7 @@ runs:
       run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libyuv-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install nasm
-      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
+      if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-avm == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
       run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} nasm" >> "$GITHUB_ENV"
       shell: bash
     - name: Install zlibpng library

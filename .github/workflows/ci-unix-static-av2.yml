@@ -34,6 +34,7 @@ jobs:
       - uses: ./.github/actions/setup-linux
         with:
           codec-aom: "LOCAL"
+          codec-avm: "LOCAL"
           codec-dav1d: ${{ matrix.also-enable-av1-codecs }}
           codec-svt: ${{ matrix.also-enable-av1-codecs }}
           extra-cache-key: ${{ matrix.also-enable-av1-codecs }}
