@@ -79,7 +79,7 @@ pushd ${TMP_DIR}
 
   # Avoid ImageMagick 7.1.2-17 errors in MinGW. See
   # https://github.com/AOMediaCodec/libavif/issues/3111.
-  if [[ -n "${MSYSTEM}" ]]; then
+  if [[ -n "${MSYSTEM:-}" ]]; then
     echo "Skipping ImageMagick test in MinGW"
     touch "${ENCODED_FILE}"
     touch "${DECODED_FILE}"
