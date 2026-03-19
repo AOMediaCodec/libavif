@@ -70,8 +70,23 @@ else()
     FetchContent_Declare(
         libaom
         EXCLUDE_FROM_ALL
-        URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz"
+        GIT_REPOSITORY "https://aomedia.googlesource.com/aom.git"
+        GIT_TAG ${AVIF_AOM_GIT_TAG}
+        GIT_PROGRESS ON
+        GIT_SHALLOW ON
         UPDATE_COMMAND ""
+        # Avoid the following error:
+        #   CMake Error at build/_deps/libaom-src/build/cmake/aom_optimization.cmake:219 (message):
+        #     Unsupported nasm: multipass optimization not supported.
+        #   Call Stack (most recent call first):
+        #     build/_deps/libaom-src/build/cmake/aom_configure.cmake:172 (test_nasm)
+        #     build/_deps/libaom-src/CMakeLists.txt:73 (include)
+        # TODO: Remove the patch when using a libaom version past
+        #       https://aomedia.googlesource.com/aom/+/6d2b7f71b98bfa28e372b1f2d85f137280bdb3de%5E%21/
+        # TODO: Switch back to URL "https://aomedia.googlesource.com/aom/+archive/${AVIF_AOM_GIT_TAG}.tar.gz"
+        #       instead of GIT_* above when using a libaom version past
+        #       https://aomedia.googlesource.com/aom/+/6d2b7f71b98bfa28e372b1f2d85f137280bdb3de%5E%21/
+        PATCH_COMMAND git apply ${AVIF_SOURCE_DIR}/cmake/Modules/LocalAom.diff
     )
 
     if(NOT AVIF_CODEC_AOM_DECODE)
