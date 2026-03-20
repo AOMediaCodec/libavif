@@ -15,6 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libyuv.cmd/LocalLibyuv.cmake: 6067afde5 (1922)
 * Fix libaom v3.13.1 build with nasm
 * Support long path names in Windows
+* Fix cicp management and memory leaks in avifgainmaputil
+  https://github.com/AOMediaCodec/libavif/issues/3102.
 
 ### Removed since 1.4.0
 

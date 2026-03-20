@@ -3,6 +3,7 @@
 
 #include "combine_command.h"
 
+#include <cassert>
 #include <cmath>
 
 #include "avif/avif_cxx.h"
@@ -132,6 +133,7 @@ avifResult CombineCommand::Run() {
   // Because base_image is read with ignore_gain_map=true, there is no
   // preexisting gain map. Otherwise, overwriting the pointer would cause a
   // memory leak.
+  assert(base_image->gainMap == nullptr);
   base_image->gainMap = avifGainMapCreate();
   base_image->gainMap->image =
       avifImageCreate(gain_map_width, gain_map_height, arg_gain_map_depth_,
