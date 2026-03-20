@@ -3,6 +3,7 @@
 
 #include "combine_command.h"
 
+#include <cassert>
 #include <cmath>
 
 #include "avif/avif_cxx.h"
@@ -88,29 +89,21 @@ avifResult CombineCommand::Run() {
   if (base_image == nullptr || alternate_image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  avifResult result =
-      ReadImage(base_image.get(), arg_base_filename_, pixel_format,
-                arg_image_read_.depth, arg_image_read_.ignore_profile);
-  if (result != AVIF_RESULT_OK) {
-    std::cout << "Failed to read base image: " << avifResultToString(result)
-              << "\n";
-    return result;
-  }
   if (arg_base_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
     base_image->colorPrimaries = arg_base_cicp_.value().color_primaries;
     base_image->transferCharacteristics =
         arg_base_cicp_.value().transfer_characteristics;
     base_image->matrixCoefficients = arg_base_cicp_.value().matrix_coefficients;
   }
-
-  result =
-      ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
-                arg_image_read_.depth, arg_image_read_.ignore_profile);
+  avifResult result = ReadImage(
+      base_image.get(), arg_base_filename_, pixel_format, arg_image_read_.depth,
+      arg_image_read_.ignore_profile, /*ignore_gain_map=*/true);
   if (result != AVIF_RESULT_OK) {
-    std::cout << "Failed to read alternate image: "
-              << avifResultToString(result) << "\n";
+    std::cout << "Failed to read base image: " << avifResultToString(result)
+              << "\n";
     return result;
   }
+
   if (arg_alternate_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
     alternate_image->colorPrimaries =
         arg_alternate_cicp_.value().color_primaries;
@@ -118,6 +111,14 @@ avifResult CombineCommand::Run() {
         arg_alternate_cicp_.value().transfer_characteristics;
     alternate_image->matrixCoefficients =
         arg_alternate_cicp_.value().matrix_coefficients;
+  }
+  result =
+      ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
+                arg_image_read_.depth, arg_image_read_.ignore_profile);
+  if (result != AVIF_RESULT_OK) {
+    std::cout << "Failed to read alternate image: "
+              << avifResultToString(result) << "\n";
+    return result;
   }
 
   const uint32_t downscaling = std::max<int>(1, arg_downscaling_);
@@ -129,6 +130,10 @@ avifResult CombineCommand::Run() {
   std::cout << "Creating a gain map of size " << gain_map_width << " x "
             << gain_map_height << "\n";
 
+  // Because base_image is read with ignore_gain_map=true, there is no
+  // preexisting gain map. Otherwise, overwriting the pointer would cause a
+  // memory leak.
+  assert(base_image->gainMap == nullptr);
   base_image->gainMap = avifGainMapCreate();
   base_image->gainMap->image =
       avifImageCreate(gain_map_width, gain_map_height, arg_gain_map_depth_,

@@ -15,6 +15,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.2
 * Update libyuv.cmd/LocalLibyuv.cmake: 6067afde5 (1922)
 * Support long path names in Windows
+* Fix cicp management and memory leaks in avifgainmaputil
+  https://github.com/AOMediaCodec/libavif/issues/3102.
 
 ### Removed since 1.4.0
 

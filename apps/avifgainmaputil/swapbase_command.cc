@@ -54,6 +54,7 @@ avifResult ChangeBase(const avifImage& image, int depth,
   }
 
   avifRGBImage swapped_rgb;
+  RGBImageCleanup rgb_cleanup(&swapped_rgb);
   avifRGBImageSetDefaults(&swapped_rgb, swapped);
 
   avifContentLightLevelInformationBox clli = image.gainMap->altCLLI;

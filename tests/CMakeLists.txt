@@ -267,10 +267,9 @@ if(AVIF_BUILD_APPS)
     add_cmd_test(test_cmd_stdin ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_targetsize ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_transform ${CMAKE_CURRENT_SOURCE_DIR}/data)
+    add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
-    if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
-        add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
-    else()
+    if(NOT AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         set_tests_properties(test_cmd_stdin PROPERTIES DISABLED True)
     endif()
 
@@ -361,6 +360,7 @@ if(AVIF_CODEC_AVM_ENABLED)
                 avifrangetest
                 aviftunetest
                 avify4mtest
+                test_cmd_avifgainmaputil
                 PROPERTIES DISABLED True
             )
 
