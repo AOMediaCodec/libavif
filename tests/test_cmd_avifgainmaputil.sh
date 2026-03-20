@@ -53,7 +53,7 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" tonemap "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}" --headroom 0 --clli 400,500
   "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40
 
-  # Test combine with overriden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
+  # Test combine with overridden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \
       -q 100 --qgain-map 100 --cicp-base 1/13/0 --ignore-profile
   # Tone map to SDR and compare with original SDR.
