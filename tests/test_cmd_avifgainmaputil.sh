@@ -17,8 +17,10 @@ INPUT_AVIF_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.avif"
 INPUT_AVIF_GAINMAP_HDR="${TESTDATA_DIR}/seine_hdr_gainmap_srgb.avif"
 INPUT_AVIF_HDR2020="${TESTDATA_DIR}/seine_hdr_rec2020.avif"
 INPUT_JPEG_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_gainmap_srgb.jpg"
+INPUT_JPEG_DIFFERENT_GAINMAP_SDR="${TESTDATA_DIR}/seine_sdr_different_gainmap_srgb.jpg"
 INPUT_AVIF_GAINMAP_SDR_WITH_ICC="${TESTDATA_DIR}/seine_sdr_gainmap_srgb_icc.avif"
 # Output file names.
+INPUT_JPEG_GAINMAP_SDR_MODIFIED="seine_sdr_gainmap_srgb_modified.jpg"
 AVIF_OUTPUT="avif_test_cmd_avifgainmaputil_output.avif"
 JPEG_OUTPUT="avif_test_cmd_avifgainmaputil_output.jpg"
 PNG_OUTPUT="avif_test_cmd_avifgainmaputil_output.png"
@@ -51,14 +53,14 @@ pushd ${TMP_DIR}
       -q 90 --qgain-map 90
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${PNG_OUTPUT}" --headroom 0
   "${AVIFGAINMAPUTIL}" tonemap "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}" --headroom 0 --clli 400,500
-  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40
+  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40 1
 
   # Test combine with overridden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \
       -q 100 --qgain-map 100 --cicp-base 1/13/0 --ignore-profile
   # Tone map to SDR and compare with original SDR.
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${PNG_OUTPUT}" --headroom 0
-  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 99
+  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 99 1
   # Tone map to HDR and compare with original HDR.
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.tonemapped.png" --headroom 2
   # are_images_equal doesn't support AVIF so we convert to PNG.
@@ -69,7 +71,7 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_HDR2020}"  "${INPUT_JPEG_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
       -q 100 --qgain-map 100 --cicp-alternate 1/13/0 --ignore-profile
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${PNG_OUTPUT}" --headroom 0
-  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 50 # A bit of loss from going through gainmap
+  "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 50 1 # A bit of loss from going through gainmap
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.tonemapped.png" --headroom 2
   # are_images_equal doesn't support AVIF so we convert to PNG.
   "${AVIFDEC}" "${INPUT_AVIF_HDR2020}" "input_avif_hdr2020.png"
@@ -81,10 +83,11 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" swapbase "${INPUT_AVIF_GAINMAP_SDR_WITH_ICC}" "${AVIF_OUTPUT}" --qcolor 90 --qgain-map 90 --ignore-profile
 
    # Also test the are_images_equal binary itself with some gain maps
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR}" 0 0 0
   "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40 0
   "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40 1
 
-  # Check if avifgainmaputil was built with libxml2.
+  # Check if avifgainmaputil was built with libxml2, allowing loading of jpeg gain maps.
   # If it was not, the 'convert' command will fail with an error message
   # containing "libxml2".
   if "${AVIFGAINMAPUTIL}" convert "${INPUT_JPEG_GAINMAP_SDR}" "${AVIF_OUTPUT}" 2>&1 | grep -q "libxml2"; then
@@ -92,11 +95,20 @@ pushd ${TMP_DIR}
     popd
     exit 0
   fi
+
   "${AVIFGAINMAPUTIL}" convert "${INPUT_JPEG_GAINMAP_SDR}" "${AVIF_OUTPUT}"
    # should fail because icc profiles are not supported
   "${AVIFGAINMAPUTIL}" convert "${INPUT_JPEG_GAINMAP_SDR}" "${AVIF_OUTPUT}" --swap-base && exit 1
   "${AVIFGAINMAPUTIL}" convert "${INPUT_JPEG_GAINMAP_SDR}" "${AVIF_OUTPUT}" --swap-base --ignore-profile \
       --cicp 2/3/4
+
+  # Negative tests for are_images_equal: different images should not be equal.
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_DIFFERENT_GAINMAP_SDR}" 0 0 0 && exit 1
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_DIFFERENT_GAINMAP_SDR}" 0 40 0 && exit 1
+  # Change just the gain map metadata in the XMP.
+  LC_ALL=C sed 's/<rdf:li>1/<rdf:li>2/' "${INPUT_JPEG_GAINMAP_SDR}" > "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}"
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}" 0 0 0 && exit 1
+  "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}" 0 30 0 && exit 1
 popd
 
 exit 0
