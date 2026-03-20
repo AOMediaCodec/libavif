@@ -20,7 +20,7 @@ inputs:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
   gcc-version:
-    description: "Can be empty, in which case CC and CXX are not overriden"
+    description: "Can be empty, in which case CC and CXX are not overridden"
     default: ""
   gtest:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
