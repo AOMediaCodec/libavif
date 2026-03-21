@@ -191,7 +191,6 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
         switch (codec->internal->image->fmt) {
             case AOM_IMG_FMT_I420:
-            case AOM_IMG_FMT_AOMI420:
             case AOM_IMG_FMT_I42016:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
                 break;
@@ -210,7 +209,6 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             case AOM_IMG_FMT_NV12:
 #endif
             case AOM_IMG_FMT_YV12:
-            case AOM_IMG_FMT_AOMYV12:
             case AOM_IMG_FMT_YV1216:
             default:
                 return AVIF_FALSE;
