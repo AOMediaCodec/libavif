@@ -77,18 +77,6 @@ pushd ${TMP_DIR}
   fi
   "${IMAGEMAGICK}" --version
 
-  # Avoid ImageMagick 7.1.2-17 errors in MinGW. See
-  # https://github.com/AOMediaCodec/libavif/issues/3111.
-  if [[ -n "${MSYSTEM:-}" ]]
-  then
-    echo "Skipping ImageMagick test in MinGW"
-    touch "${ENCODED_FILE}"
-    touch "${DECODED_FILE}"
-    touch "${CORRECTED_FILE}"
-    popd
-    exit 0
-  fi
-
   "${AVIFENC}" -s 8 -l "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
   # Old version of ImageMagick may not support reading ICC from AVIF.
   # Decode to PNG using avifdec first.
