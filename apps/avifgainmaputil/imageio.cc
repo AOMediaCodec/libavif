@@ -83,7 +83,7 @@ std::string QualityString(int quality) {
   return "Low";
 }
 
-// Based on the same logic in avifenc.c
+// Based on avifenc.c, changes here may be mirrored there if relevant.
 void PrintEncodingSettings(avifEncoder* encoder, bool has_gain_map) {
   std::string gain_map_str;
   if (has_gain_map) {
