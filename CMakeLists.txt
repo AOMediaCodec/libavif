@@ -45,14 +45,11 @@ include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 include(GNUInstallDirs)
 
-option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions. CMake must be at least 3.21 to force C23." OFF)
+option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions." OFF)
 
 # Set C99 as the default
 if(AVIF_ENABLE_NODISCARD)
     # [[nodiscard]] requires C23.
-    if(CMAKE_VERSION VERSION_LESS 3.21.0)
-        message(FATAL_ERROR "CMake must be at least 3.21 to force C23, bailing out")
-    endif()
     set(CMAKE_C_STANDARD 23)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 else()
