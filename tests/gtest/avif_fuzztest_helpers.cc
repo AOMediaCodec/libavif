@@ -4,6 +4,7 @@
 #include "avif_fuzztest_helpers.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -21,6 +22,27 @@ namespace testutil {
 namespace {
 
 //------------------------------------------------------------------------------
+
+constexpr size_t kNumLayeredRandDimSeeds = 2 * (kMaxNumLayers - 1);
+
+template <typename Sample>
+std::array<std::pair<size_t, size_t>, kMaxNumLayers> GetAvifLayeredRandDims(
+    size_t render_width, size_t render_height, const Sample* seeds) {
+  assert(render_width > 1);
+  assert(render_height > 1);
+  std::array<std::pair<size_t, size_t>, kMaxNumLayers> sizes = {};
+  for (size_t i = 0; i + 1 < kMaxNumLayers; ++i) {
+    const size_t width =
+        1 + (static_cast<size_t>(seeds[2 * i]) % (render_width - 1));
+    const size_t height =
+        1 + (static_cast<size_t>(seeds[2 * i + 1]) % (render_height - 1));
+    assert(width < render_width);
+    assert(height < render_height);
+    sizes[i] = {width, height};
+  }
+  sizes.back() = {render_width, render_height};
+  return sizes;
+}
 
 ImagePtr CreateAvifImage(size_t width, size_t height, int depth,
                          avifPixelFormat pixel_format, bool has_alpha,
@@ -102,6 +124,76 @@ std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
         GetNumSamples(/*num_frames=*/1, width, height, pixel_format, has_alpha);
   }
   return frames;
+}
+
+std::vector<ImagePtr> CreateAvifLayered8b(size_t width, size_t height,
+                                          avifPixelFormat pixel_format,
+                                          bool has_alpha,
+                                          const std::vector<uint8_t>& samples) {
+  std::vector<ImagePtr> layers = CreateAvifAnim8b(
+      kMaxNumLayers, width, height, pixel_format, has_alpha, samples);
+  return layers;
+}
+
+std::vector<ImagePtr> CreateAvifLayered16b(
+    size_t width, size_t height, int depth, avifPixelFormat pixel_format,
+    bool has_alpha, const std::vector<uint16_t>& samples) {
+  std::vector<ImagePtr> layers = CreateAvifAnim16b(
+      kMaxNumLayers, width, height, depth, pixel_format, has_alpha, samples);
+  return layers;
+}
+
+size_t GetNumSamplesLayeredRandDim(size_t render_width, size_t render_height,
+                                   avifPixelFormat pixel_format,
+                                   bool has_alpha) {
+  return kNumLayeredRandDimSeeds + GetNumSamples(kMaxNumLayers, render_width,
+                                                 render_height, pixel_format,
+                                                 has_alpha);
+}
+
+std::vector<ImagePtr> CreateAvifLayeredRandDim8b(
+    size_t render_width, size_t render_height, avifPixelFormat pixel_format,
+    bool has_alpha, const std::vector<uint8_t>& samples) {
+  assert(samples.size() >= kNumLayeredRandDimSeeds);
+  const auto dims =
+      GetAvifLayeredRandDims(render_width, render_height, samples.data());
+  std::vector<ImagePtr> layers;
+  layers.reserve(kMaxNumLayers);
+
+  size_t offset = kNumLayeredRandDimSeeds;
+  for (const auto& [width, height] : dims) {
+    const size_t num_samples = GetNumSamples(
+        /*num_frames=*/1, width, height, pixel_format, has_alpha);
+    layers.push_back(CreateAvifImage8b(
+        width, height, pixel_format, has_alpha,
+        std::vector<uint8_t>(samples.begin() + offset,
+                             samples.begin() + offset + num_samples)));
+    offset += num_samples;
+  }
+  return layers;
+}
+
+std::vector<ImagePtr> CreateAvifLayeredRandDim16b(
+    size_t render_width, size_t render_height, int depth,
+    avifPixelFormat pixel_format, bool has_alpha,
+    const std::vector<uint16_t>& samples) {
+  assert(samples.size() >= kNumLayeredRandDimSeeds);
+  const auto dims =
+      GetAvifLayeredRandDims(render_width, render_height, samples.data());
+  std::vector<ImagePtr> layers;
+  layers.reserve(kMaxNumLayers);
+
+  size_t offset = kNumLayeredRandDimSeeds;
+  for (const auto& [width, height] : dims) {
+    const size_t num_samples = GetNumSamples(
+        /*num_frames=*/1, width, height, pixel_format, has_alpha);
+    layers.push_back(CreateAvifImage16b(
+        width, height, depth, pixel_format, has_alpha,
+        std::vector<uint16_t>(samples.begin() + offset,
+                              samples.begin() + offset + num_samples)));
+    offset += num_samples;
+  }
+  return layers;
 }
 
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
