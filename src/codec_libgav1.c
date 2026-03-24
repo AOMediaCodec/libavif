@@ -96,14 +96,9 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
                 break;
         }
 
-        if (image->width && image->height) {
-            if ((image->width != (uint32_t)gav1Image->displayed_width[0]) ||
-                (image->height != (uint32_t)gav1Image->displayed_height[0]) || (image->depth != (uint32_t)gav1Image->bitdepth) ||
-                (image->yuvFormat != yuvFormat)) {
-                // Throw it all out
-                avifImageFreePlanes(image, AVIF_PLANES_ALL);
-            }
-        }
+        // Throw away the old color planes if there are
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
+
         image->width = gav1Image->displayed_width[0];
         image->height = gav1Image->displayed_height[0];
         image->depth = gav1Image->bitdepth;
@@ -117,7 +112,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
         // Steal the pointers from the decoder's image directly
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = gav1Image->plane[yuvPlane];
@@ -125,15 +119,11 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
-        // Alpha plane - ensure image is correct size, fill color
+        // Alpha plane - set image to correct size, fill alpha
 
-        if (image->width && image->height) {
-            if ((image->width != (uint32_t)gav1Image->displayed_width[0]) ||
-                (image->height != (uint32_t)gav1Image->displayed_height[0]) || (image->depth != (uint32_t)gav1Image->bitdepth)) {
-                // Alpha plane doesn't match previous alpha plane decode, bail out
-                return AVIF_FALSE;
-            }
-        }
+        // Throw away the old alpha plane if there are
+        avifImageFreePlanes(image, AVIF_PLANES_A);
+
         image->width = gav1Image->displayed_width[0];
         image->height = gav1Image->displayed_height[0];
         image->depth = gav1Image->bitdepth;

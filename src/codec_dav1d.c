@@ -189,13 +189,9 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
                 break;
         }
 
-        if (image->width && image->height) {
-            if ((image->width != (uint32_t)dav1dImage->p.w) || (image->height != (uint32_t)dav1dImage->p.h) ||
-                (image->depth != (uint32_t)dav1dImage->p.bpc) || (image->yuvFormat != yuvFormat)) {
-                // Throw it all out
-                avifImageFreePlanes(image, AVIF_PLANES_ALL);
-            }
-        }
+        // Throw away the old color planes if there are
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
+
         image->width = dav1dImage->p.w;
         image->height = dav1dImage->p.h;
         image->depth = dav1dImage->p.bpc;
@@ -209,7 +205,6 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         image->matrixCoefficients = (avifMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
 
         // Steal the pointers from the decoder's image directly
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
@@ -217,20 +212,15 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         }
         image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
-        // Alpha plane - ensure image is correct size, fill color
+        // Alpha plane - set image to correct size, fill alpha
 
-        if (image->width && image->height) {
-            if ((image->width != (uint32_t)dav1dImage->p.w) || (image->height != (uint32_t)dav1dImage->p.h) ||
-                (image->depth != (uint32_t)dav1dImage->p.bpc)) {
-                // Alpha plane doesn't match previous alpha plane decode, bail out
-                return AVIF_FALSE;
-            }
-        }
+        // Throw away the old alpha plane if there are
+        avifImageFreePlanes(image, AVIF_PLANES_A);
+
         image->width = dav1dImage->p.w;
         image->height = dav1dImage->p.h;
         image->depth = dav1dImage->p.bpc;
 
-        avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);

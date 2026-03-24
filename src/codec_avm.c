@@ -142,13 +142,9 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
             yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         }
 
-        if (image->width && image->height) {
-            if ((image->width != codec->internal->image->d_w) || (image->height != codec->internal->image->d_h) ||
-                (image->depth != codec->internal->image->bit_depth) || (image->yuvFormat != yuvFormat)) {
-                // Throw it all out
-                avifImageFreePlanes(image, AVIF_PLANES_ALL);
-            }
-        }
+        // Throw away the old color planes if there are
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
+
         image->width = codec->internal->image->d_w;
         image->height = codec->internal->image->d_h;
         image->depth = codec->internal->image->bit_depth;
@@ -172,7 +168,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
         image->matrixCoefficients = (avifMatrixCoefficients)codec->internal->image->mc;
 
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
 
         // avifImage assumes that a depth of 8 bits means an 8-bit buffer.
@@ -203,20 +198,14 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
             image->imageOwnsYUVPlanes = AVIF_FALSE;
         }
     } else {
-        // Alpha plane - ensure image is correct size, fill color
+        // Alpha plane - set image to correct size, fill alpha
 
-        if (image->width && image->height) {
-            if ((image->width != codec->internal->image->d_w) || (image->height != codec->internal->image->d_h) ||
-                (image->depth != codec->internal->image->bit_depth)) {
-                // Alpha plane doesn't match previous alpha plane decode, bail out
-                return AVIF_FALSE;
-            }
-        }
+        // Throw away the old alpha plane if there are
+        avifImageFreePlanes(image, AVIF_PLANES_A);
+
         image->width = codec->internal->image->d_w;
         image->height = codec->internal->image->d_h;
         image->depth = codec->internal->image->bit_depth;
-
-        avifImageFreePlanes(image, AVIF_PLANES_A);
 
         if (!avifImageUsesU16(image) && (codec->internal->image->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
             AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_A) == AVIF_RESULT_OK);

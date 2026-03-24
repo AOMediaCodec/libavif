@@ -34,26 +34,31 @@ class ProgressiveTest : public testing::Test {
   }
 
   void TestDecode(uint8_t* data, size_t size, uint32_t expect_width,
-                  uint32_t expect_height) {
+                  uint32_t expect_height, bool expect_alpha = false) {
     ASSERT_EQ(avifDecoderSetIOMemory(decoder_.get(), data, size),
               AVIF_RESULT_OK);
     ASSERT_EQ(avifDecoderParse(decoder_.get()), AVIF_RESULT_OK);
     ASSERT_EQ(decoder_->progressiveState, AVIF_PROGRESSIVE_STATE_ACTIVE);
     ASSERT_EQ(static_cast<uint32_t>(decoder_->imageCount),
               encoder_->extraLayerCount + 1);
+    EXPECT_EQ(decoder_->alphaPresent, expect_alpha);
 
     for (uint32_t layer = 0; layer < encoder_->extraLayerCount + 1; ++layer) {
       ASSERT_EQ(avifDecoderNextImage(decoder_.get()), AVIF_RESULT_OK);
       // libavif scales frame automatically.
       ASSERT_EQ(decoder_->image->width, expect_width);
       ASSERT_EQ(decoder_->image->height, expect_height);
+      if (expect_alpha) {
+        ASSERT_NE(decoder_->image->alphaPlane, nullptr);
+      }
       // TODO(wtc): Check avifDecoderNthImageMaxExtent().
     }
   }
 
-  void TestDecode(uint32_t expect_width, uint32_t expect_height) {
+  void TestDecode(uint32_t expect_width, uint32_t expect_height,
+                  bool expect_alpha = false) {
     TestDecode(encoded_avif_.data, encoded_avif_.size, expect_width,
-               expect_height);
+               expect_height, expect_alpha);
 
     // TODO(wtc): Check decoder_->image and image_ are similar, and better
     // quality layer is more similar.
@@ -145,6 +150,41 @@ TEST_F(ProgressiveTest, DimensionChange) {
   ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
 
   TestDecode(kImageSize, kImageSize);
+}
+
+TEST_F(ProgressiveTest, DimensionChangeWithAlpha) {
+  if (avifLibYUVVersion() == 0) {
+    GTEST_SKIP() << "libyuv not available, skip test.";
+  }
+
+  const auto image =
+      testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
+                            AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  encoder_->extraLayerCount = 2;
+  encoder_->quality = 100;
+  encoder_->scalingMode = {{1, 2}, {1, 2}};
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  // Encode the small image twice to verify frame buffer reallocation
+  // behavior during decode
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  encoder_->scalingMode = {{1, 1}, {1, 1}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(kImageSize, kImageSize, /*expect_alpha=*/true);
 }
 
 TEST_F(ProgressiveTest, LayeredGrid) {
