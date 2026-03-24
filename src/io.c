@@ -1,11 +1,48 @@
 // Copyright 2020 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
+#if !defined(_WIN32)
+// Ensure off_t is 64 bits.
+#undef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+#if defined(_WIN32)
+// Windows uses _fseeki64 / _ftelli64 for large file support
+typedef __int64 avif_off_t;
+
+static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
+{
+    return _fseeki64(stream, offset, whence);
+}
+
+static avif_off_t avif_ftello(FILE * stream)
+{
+    return _ftelli64(stream);
+}
+#else
+// POSIX large file support
+static_assert(sizeof(off_t) == sizeof(int64_t), "");
+typedef off_t avif_off_t;
+
+static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
+{
+    return fseeko(stream, offset, whence);
+}
+
+static avif_off_t avif_ftello(FILE * stream)
+{
+    return ftello(stream);
+}
+#endif
 
 void avifIODestroy(avifIO * io)
 {
@@ -104,13 +141,13 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
     }
 
     if (size > 0) {
-        if (offset > LONG_MAX) {
+        if (offset > INT64_MAX) {
             return AVIF_RESULT_IO_ERROR;
         }
         if (reader->buffer.size < size) {
             AVIF_CHECKRES(avifRWDataRealloc(&reader->buffer, size));
         }
-        if (fseek(reader->f, (long)offset, SEEK_SET) != 0) {
+        if (avif_fseeko(reader->f, (avif_off_t)offset, SEEK_SET) != 0) {
             return AVIF_RESULT_IO_ERROR;
         }
         size_t bytesRead = fread(reader->buffer.data, 1, size, reader->f);
@@ -142,37 +179,19 @@ avifIO * avifIOCreateFileReader(const char * filename)
         return NULL;
     }
 
-#if defined(_WIN32)
-    // Windows uses _fseeki64 / _ftelli64 for large file support
-    if (_fseeki64(f, 0, SEEK_END) != 0) {
+    if (avif_fseeko(f, 0, SEEK_END) != 0) {
         fclose(f);
         return NULL;
     }
-    __int64 fileSize = _ftelli64(f);
+    avif_off_t fileSize = avif_ftello(f);
     if (fileSize < 0) {
         fclose(f);
         return NULL;
     }
-    if (_fseeki64(f, 0, SEEK_SET) != 0) {
+    if (avif_fseeko(f, 0, SEEK_SET) != 0) {
         fclose(f);
         return NULL;
     }
-#else
-    // POSIX large file support
-    if (fseeko(f, 0, SEEK_END) != 0) {
-        fclose(f);
-        return NULL;
-    }
-    off_t fileSize = ftello(f);
-    if (fileSize < 0) {
-        fclose(f);
-        return NULL;
-    }
-    if (fseeko(f, 0, SEEK_SET) != 0) {
-        fclose(f);
-        return NULL;
-    }
-#endif
 
     avifIOFileReader * reader = (avifIOFileReader *)avifAlloc(sizeof(avifIOFileReader));
     if (!reader) {
