@@ -1,6 +1,17 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
+//
 // Compares two files and returns whether they are the same once decoded.
+//
+// Usage:
+//   are_images_equal file1 file2 ignore_alpha_flag [psnr_threshold]
+//   [ignore_gain_map_flag]
+// If psnr_threshold is not provided or is 0, the images are compared for strict
+// equality, including all metadata. If psnr_threshold is greater than 0, the
+// images are compared for similarity using PSNR. Most metadata is NOT checked.
+// If a gain map is present and ignore_gain_map_flag is absent or 0, the
+// tone-mapped images are also compared using PSNR. ignore_alpha_flag and
+// ignore_gain_map_flag are booleans (0 or 1).
 
 #include <cstdint>
 #include <cstring>
@@ -56,7 +67,7 @@ ImagePtr ToneMapToAlternate(const ImagePtr& image) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 4 && argc != 5 && argc != 6) {
+  if (argc < 4 || argc > 6) {
     std::cerr << "Wrong argument: " << argv[0]
               << " file1 file2 ignore_alpha_flag [psnr_threshold] "
                  "[ignore_gain_map_flag]"
@@ -114,12 +125,14 @@ int main(int argc, char** argv) {
       auto psnr =
           avif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
       std::cerr << "Images " << argv[1] << " and " << argv[2]
-                << " are different (PSNR: " << psnr << ")." << std::endl;
+                << " are different (base image PSNR: " << psnr << ")."
+                << std::endl;
       return 1;
     }
     std::cout << "Images " << argv[1] << " and " << argv[2] << " are identical."
               << std::endl;
   } else {
+    // If there is a gain map, this is the PSNR of the base images only.
     auto psnr = avif::testutil::GetPsnr(*decoded[0], *decoded[1], ignore_alpha);
     if (psnr < psnr_threshold) {
       std::cerr << "PSNR: " << psnr << ", images " << argv[1] << " and "

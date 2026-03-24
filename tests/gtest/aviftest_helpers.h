@@ -144,6 +144,7 @@ bool AreImagesSimilar(const avifImage& image1, const avifImage& image2,
 // Returns the Peak Signal-to-Noise Ratio of image1 compared to image2.
 // A value of 99dB means all samples are exactly the same.
 // A negative value means that the input images cannot be compared.
+// The gainmap, if any, is ignored.
 double GetPsnr(const avifImage& image1, const avifImage& image2,
                bool ignore_alpha = false);
 
