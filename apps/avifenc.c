@@ -59,6 +59,7 @@ typedef struct
     avifBool ignoreExif;
     avifBool ignoreXMP;
     avifBool ignoreColorProfile;
+    avifBool ignoreAlpha;
 
     // These settings are only relevant when compiled with AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION.
     avifBool qualityGainMapIsConstrained; // true if qualityGainMap explicitly set by the user
@@ -256,6 +257,7 @@ static void syntaxLong(void)
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
+    printf("    --ignore-alpha,--noalpha          : Discard the alpha channel when encoding.\n");
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
     printf("    --qgain-map Q                     : Quality for the gain map in %d..%d where %d is lossless\n",
@@ -1418,6 +1420,7 @@ int main(int argc, char * argv[])
     settings.ignoreExif = AVIF_FALSE;
     settings.ignoreXMP = AVIF_FALSE;
     settings.ignoreColorProfile = AVIF_FALSE;
+    settings.ignoreAlpha = AVIF_FALSE;
     settings.ignoreGainMap = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
     settings.inputFormat = AVIF_APP_FILE_FORMAT_UNKNOWN;
@@ -1824,6 +1827,8 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             settings.ignoreColorProfile = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-alpha") || !strcmp(arg, "--noalpha")) {
+            settings.ignoreAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--duration") || strpre(arg, "--duration:")) {
             // --duration is special, we always treat it as suffixed with :u, so don't print warning for it.
             avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/AVIF_FALSE);
@@ -2443,6 +2448,11 @@ int main(int argc, char * argv[])
     if (settings.clliPresent) {
         image->clli.maxCLL = (uint16_t)settings.clliValues[0];
         image->clli.maxPALL = (uint16_t)settings.clliValues[1];
+    }
+
+    if (settings.ignoreAlpha) {
+        image->alphaPlane    = NULL;
+        image->alphaRowBytes = 0;
     }
 
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
