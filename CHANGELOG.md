@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Changed since 1.4.1
+
+* Require C11 for compilation. Public headers will remain C99.
+
 ## [1.4.1] - 2026-03-20
 
 ### Changed since 1.4.0
