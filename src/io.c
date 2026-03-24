@@ -9,7 +9,9 @@
 
 #include "avif/internal.h"
 
+#include <assert.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,6 +30,7 @@ static avif_off_t avif_ftello(FILE * stream)
 }
 #else
 // POSIX large file support
+static_assert(sizeof(off_t) == sizeof(int64_t), "");
 typedef off_t avif_off_t;
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
