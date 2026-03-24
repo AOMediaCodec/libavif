@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -266,6 +267,9 @@ bool AreImageFeaturesEqual(const avifImage& image1, const avifImage& image2,
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
       image1.yuvRange != image2.yuvRange) {
+    std::cerr
+        << "Image features mismatch: dimensions, depth, yuvFormat or yuvRange"
+        << std::endl;
     return false;
   }
   assert(image1.width * image1.height > 0);
@@ -282,26 +286,35 @@ bool AreImageFeaturesEqual(const avifImage& image1, const avifImage& image2,
           avifImageIsOpaque(&image2)) {
         continue;
       }
+      std::cerr
+          << "Image features mismatch: plane presence differs for channel " << c
+          << std::endl;
       return false;
     }
     if (c == AVIF_CHAN_A && row1 != nullptr &&
         image1.alphaPremultiplied != image2.alphaPremultiplied &&
         !avifImageIsOpaque(&image1)) {
       // Alpha premultiplication is ignored if alpha is opaque.
+      std::cerr << "Image features mismatch: alphaPremultiplied" << std::endl;
       return false;
     }
   }
 
-  if (!AreByteSequencesEqual(image1.icc, image2.icc)) return false;
+  if (!AreByteSequencesEqual(image1.icc, image2.icc)) {
+    std::cerr << "Image features mismatch: icc" << std::endl;
+    return false;
+  }
 
   if (image1.colorPrimaries != image2.colorPrimaries ||
       image1.transferCharacteristics != image2.transferCharacteristics ||
       image1.matrixCoefficients != image2.matrixCoefficients) {
+    std::cerr << "Image features mismatch: CICP" << std::endl;
     return false;
   }
 
   if (image1.clli.maxCLL != image2.clli.maxCLL ||
       image1.clli.maxPALL != image2.clli.maxPALL) {
+    std::cerr << "Image features mismatch: clli" << std::endl;
     return false;
   }
   if (image1.transformFlags != image2.transformFlags ||
@@ -313,25 +326,41 @@ bool AreImageFeaturesEqual(const avifImage& image1, const avifImage& image2,
        std::memcmp(&image1.irot, &image2.irot, sizeof(image1.irot))) ||
       ((image1.transformFlags & AVIF_TRANSFORM_IMIR) &&
        std::memcmp(&image1.imir, &image2.imir, sizeof(image1.imir)))) {
+    std::cerr << "Image features mismatch: transformFlags" << std::endl;
     return false;
   }
 
-  if (!AreByteSequencesEqual(image1.exif, image2.exif)) return false;
-  if (!AreByteSequencesEqual(image1.xmp, image2.xmp)) return false;
+  if (!AreByteSequencesEqual(image1.exif, image2.exif)) {
+    std::cerr << "Image features mismatch: exif" << std::endl;
+    return false;
+  }
+  if (!AreByteSequencesEqual(image1.xmp, image2.xmp)) {
+    std::cerr << "Image features mismatch: xmp" << std::endl;
+    return false;
+  }
 
   if (!MatchEachPropertyOfFirstImageInSecondImage(image1, image2) ||
       !MatchEachPropertyOfFirstImageInSecondImage(image2, image1)) {
+    std::cerr << "Image features mismatch: properties" << std::endl;
     return false;
   }
 
-  if (!image1.gainMap != !image2.gainMap) return false;
+  if (!image1.gainMap != !image2.gainMap) {
+    std::cerr << "Image features mismatch: gainMap presence" << std::endl;
+    return false;
+  }
   if (image1.gainMap != nullptr) {
     if (!avifSameGainMapMetadata(image1.gainMap, image2.gainMap) ||
         !avifSameGainMapAltMetadata(image1.gainMap, image2.gainMap)) {
+      std::cerr << "Image features mismatch: gainMap metadata" << std::endl;
       return false;
     }
 
-    if (!image1.gainMap->image != !image2.gainMap->image) return false;
+    if (!image1.gainMap->image != !image2.gainMap->image) {
+      std::cerr << "Image features mismatch: gainMap image presence"
+                << std::endl;
+      return false;
+    }
   }
   return true;
 }
@@ -341,6 +370,12 @@ bool AreImageFeaturesEqual(const avifImage& image1, const avifImage& image2,
 bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
                     bool ignore_alpha) {
   if (!AreImageFeaturesEqual(image1, image2, ignore_alpha)) {
+    return false;
+  }
+
+  if ((image1.gainMap != nullptr) != (image2.gainMap != nullptr)) {
+    std::cerr << "AreImagesEqual failed: gain map presence differs"
+              << std::endl;
     return false;
   }
 
@@ -362,10 +397,14 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
         if (!std::equal(reinterpret_cast<const uint16_t*>(row1),
                         reinterpret_cast<const uint16_t*>(row1) + plane_width,
                         reinterpret_cast<const uint16_t*>(row2))) {
+          std::cerr << "AreImagesEqual failed: pixels differ in channel " << c
+                    << " at row " << y << std::endl;
           return false;
         }
       } else {
         if (!std::equal(row1, row1 + plane_width, row2)) {
+          std::cerr << "AreImagesEqual failed: pixels differ in channel " << c
+                    << " at row " << y << std::endl;
           return false;
         }
       }
@@ -377,6 +416,7 @@ bool AreImagesEqual(const avifImage& image1, const avifImage& image2,
   if (image1.gainMap != nullptr && image1.gainMap->image != nullptr &&
       image2.gainMap != nullptr && image2.gainMap->image != nullptr &&
       !AreImagesEqual(*image1.gainMap->image, *image2.gainMap->image)) {
+    std::cerr << "AreImagesEqual failed: gain map images differ" << std::endl;
     return false;
   }
   return true;
@@ -420,6 +460,12 @@ double GetPsnr(const avifImage& image1, const avifImage& image2,
   if (image1.width != image2.width || image1.height != image2.height ||
       image1.depth != image2.depth || image1.yuvFormat != image2.yuvFormat ||
       image1.yuvRange != image2.yuvRange) {
+    std::cerr << "Error: cannot compute PSNR because of dimensions or yuv "
+                 "format mismatch ("
+              << image1.width << "x" << image1.height << " format "
+              << image1.yuvFormat << " vs " << image2.width << "x"
+              << image2.height << " format " << image2.yuvFormat << ")"
+              << std::endl;
     return -1;
   }
   assert(image1.width * image1.height > 0);
@@ -514,6 +560,8 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
       image1.depth != image2.depth || image1.format != image2.format ||
       image1.alphaPremultiplied != image2.alphaPremultiplied ||
       image1.isFloat != image2.isFloat) {
+    std::cerr << "AreImagesEqual(avifRGBImage) failed: features do not match"
+              << std::endl;
     return false;
   }
   const uint8_t* row1 = image1.pixels;
@@ -521,6 +569,8 @@ bool AreImagesEqual(const avifRGBImage& image1, const avifRGBImage& image2) {
   const unsigned int row_width = image1.width * avifRGBImagePixelSize(&image1);
   for (unsigned int y = 0; y < image1.height; ++y) {
     if (!std::equal(row1, row1 + row_width, row2)) {
+      std::cerr << "AreImagesEqual(avifRGBImage) failed: pixels differ at row "
+                << y << std::endl;
       return false;
     }
     row1 += image1.rowBytes;
