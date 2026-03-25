@@ -42,6 +42,8 @@ jobs:
         run: sdkmanager "cmake;3.22.1"
       - name: Build the libavif JNI Wrapper
         working-directory: android_jni
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          ./gradlew --no-daemon assembleRelease \
+          -Pandroid.externalNativeBuild.cmake.arguments="-DAVIF_ENABLE_WERROR=ON"
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}

@@ -13,12 +13,6 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        externalNativeBuild {
-            cmake {
-                // Add -Werror to the C and C++ flags
-                arguments "-DCMAKE_C_FLAGS=-Werror", "-DCMAKE_CXX_FLAGS=-Werror"
-            }
-        }
     }
 
     buildTypes {

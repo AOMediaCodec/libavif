@@ -5,7 +5,7 @@
 // Ensure off_t is 64 bits.
 #undef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
-// Ensure we have some POSIC compatible with fseeko/ftello.
+// Ensure we have some POSIX compatible with fseeko/ftello.
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif

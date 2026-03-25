@@ -25,10 +25,6 @@ set(AVIF_LIBYUV "LOCAL" CACHE STRING "" FORCE)
 # To enable libgav1, change the following two variables to ON.
 set(AVIF_CODEC_LIBGAV1 OFF CACHE BOOL "" FORCE)
 
-# Enable -Werror to catch any incompatibilities.
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-
 # The current CMake file lives in:
 # $LIBAVIF_ROOT/android_jni/avifandroidjni/src/main/jni.
 # In order to build libavif, we need to go up 5 directories. If a different
