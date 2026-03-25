@@ -10,7 +10,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Added since 1.4.1
 
-* Add --jobs flag to avifgainmaputil to use use multiple worker threads when
+* Add --jobs flag to avifgainmaputil to use multiple worker threads when
   reading/writing AVIF files.
 
 ### Changed since 1.4.1

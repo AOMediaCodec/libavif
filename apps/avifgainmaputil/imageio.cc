@@ -67,7 +67,7 @@ avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
 }
 
 namespace {
-std::string QualityString(int quality) {
+std::string QualityLevelString(int quality) {
   if (quality == AVIF_QUALITY_LOSSLESS) {
     return "Lossless";
   }
@@ -84,12 +84,12 @@ std::string QualityString(int quality) {
 }
 
 // Based on avifenc.c, changes here may be mirrored there if relevant.
-void PrintEncodingSettings(avifEncoder* encoder, bool has_gain_map) {
+void PrintEncodingSettings(const avifEncoder* encoder, bool has_gain_map) {
   std::string gain_map_str;
   if (has_gain_map) {
     gain_map_str = ", gain map quality [" +
                    std::to_string(encoder->qualityGainMap) + " (" +
-                   QualityString(encoder->qualityGainMap) + ")]";
+                   QualityLevelString(encoder->qualityGainMap) + ")]";
   }
   std::string manual_tiling_str =
       "tileRowsLog2 [" + std::to_string(encoder->tileRowsLog2) +
@@ -97,9 +97,9 @@ void PrintEncodingSettings(avifEncoder* encoder, bool has_gain_map) {
   std::cout << "Encoding AVIF with settings: codec '"
             << avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE)
             << "' speed ['" << encoder->speed << "'], color quality ['"
-            << encoder->quality << "' (" << QualityString(encoder->quality)
+            << encoder->quality << "' (" << QualityLevelString(encoder->quality)
             << ")], alpha quality ['" << encoder->qualityAlpha << "' ("
-            << QualityString(encoder->qualityAlpha) << ")]" << gain_map_str
+            << QualityLevelString(encoder->qualityAlpha) << ")]" << gain_map_str
             << ", "
             << (encoder->autoTiling ? "automatic tiling" : manual_tiling_str)
             << ", " << encoder->maxThreads
