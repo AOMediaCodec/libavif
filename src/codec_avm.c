@@ -80,7 +80,8 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         if (avm_codec_control(&codec->internal->decoder, AV2D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
             return AVIF_FALSE;
         }
-        if (avm_codec_control(&codec->internal->decoder, AV2D_SET_OPERATING_POINT, codec->operatingPoint)) {
+        if (codec->operatingPoint != 0) {
+            // Not implemented.
             return AVIF_FALSE;
         }
 
