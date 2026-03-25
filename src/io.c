@@ -5,7 +5,7 @@
 // Ensure off_t is 64 bits.
 #undef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
-// Ensure we have some POSIX compatible with fseeko/ftello.
+// Ensure we have some POSIX compatibility with fseeko/ftello.
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
@@ -34,19 +34,16 @@ static avif_off_t avif_ftello(FILE * stream)
 }
 #else
 
+#include <unistd.h>
+
 #if defined(__ANDROID__)
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 24
 #define USE_FSEEKO
-#else
-#define USE_FSEEK_FALLBACK
 #endif
 #elif defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L
 /* Standard Modern POSIX */
 #define USE_FSEEKO
-#else
-/* Unknown or very old platform */
-#define USE_FSEEK_FALLBACK
 #endif
 
 #if defined(USE_FSEEKO)
@@ -65,6 +62,7 @@ static avif_off_t avif_ftello(FILE * stream)
     return ftello(stream);
 }
 #else
+// Unknown or very old platform. Fall back on fseek/ftell.
 typedef long avif_off_t;
 #define AVIF_OFF_MAX LONG_MAX
 
