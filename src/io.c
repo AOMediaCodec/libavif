@@ -76,6 +76,8 @@ static avif_off_t avif_ftello(FILE * stream)
 
 #endif // defined(_WIN32)
 
+#define AVIF_OFF_MAX (sizeof(avif_off_t) == 8 ? INT64_MAX : INT32_MAX)
+
 void avifIODestroy(avifIO * io)
 {
     if (io && io->destroy) {
@@ -173,7 +175,7 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
     }
 
     if (size > 0) {
-        if (offset > INT64_MAX) {
+        if (offset > AVIF_OFF_MAX) {
             return AVIF_RESULT_IO_ERROR;
         }
         if (reader->buffer.size < size) {
