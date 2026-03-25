@@ -5893,8 +5893,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     }
 
     if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_GAIN_MAP) {
-        gainMapTmp.image = avifImageCreateEmpty();
-        avifImage * image = gainMapTmp.image;
+        avifImage * image = avifImageCreateEmpty();
         if (!image) {
             avifRWDataFree(&gainMapTmp.altICC);
             return AVIF_RESULT_OUT_OF_MEMORY;
@@ -5905,6 +5904,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
             image->matrixCoefficients = matrixCoefficients;
             image->yuvRange = yuvRange;
         }
+        gainMapTmp.image = image;
     }
 
     // Only set the output pointers after everything has been validated.
