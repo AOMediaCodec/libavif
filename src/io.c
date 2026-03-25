@@ -5,6 +5,8 @@
 // Ensure off_t is 64 bits.
 #undef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+// Ensure we have some POSIC compatible with fseeko/ftello.
+#undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
 
@@ -19,6 +21,7 @@
 #if defined(_WIN32)
 // Windows uses _fseeki64 / _ftelli64 for large file support
 typedef __int64 avif_off_t;
+#define AVIF_OFF_MAX INT64_MAX
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
 {
@@ -50,6 +53,7 @@ static avif_off_t avif_ftello(FILE * stream)
 // POSIX large file support
 static_assert(sizeof(off_t) == sizeof(int64_t), "");
 typedef off_t avif_off_t;
+#define AVIF_OFF_MAX INT64_MAX
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
 {
@@ -62,6 +66,7 @@ static avif_off_t avif_ftello(FILE * stream)
 }
 #else
 typedef long avif_off_t;
+#define AVIF_OFF_MAX LONG_MAX
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
 {
@@ -75,8 +80,6 @@ static avif_off_t avif_ftello(FILE * stream)
 #endif // defined(USE_FSEEKO)
 
 #endif // defined(_WIN32)
-
-#define AVIF_OFF_MAX (sizeof(avif_off_t) == 8 ? INT64_MAX : INT32_MAX)
 
 void avifIODestroy(avifIO * io)
 {
