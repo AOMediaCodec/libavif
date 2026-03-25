@@ -5,6 +5,9 @@
 // Ensure off_t is 64 bits.
 #undef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+// Ensure we have some POSIX compatible with fseeko/ftello.
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
 #endif
 
 #include "avif/internal.h"
@@ -18,6 +21,7 @@
 #if defined(_WIN32)
 // Windows uses _fseeki64 / _ftelli64 for large file support
 typedef __int64 avif_off_t;
+#define AVIF_OFF_MAX INT64_MAX
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
 {
@@ -29,9 +33,27 @@ static avif_off_t avif_ftello(FILE * stream)
     return _ftelli64(stream);
 }
 #else
+
+#if defined(__ANDROID__)
+#include <android/api-level.h>
+#if __ANDROID_API__ >= 24
+#define USE_FSEEKO
+#else
+#define USE_FSEEK_FALLBACK
+#endif
+#elif defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L
+/* Standard Modern POSIX */
+#define USE_FSEEKO
+#else
+/* Unknown or very old platform */
+#define USE_FSEEK_FALLBACK
+#endif
+
+#if defined(USE_FSEEKO)
 // POSIX large file support
 static_assert(sizeof(off_t) == sizeof(int64_t), "");
 typedef off_t avif_off_t;
+#define AVIF_OFF_MAX INT64_MAX
 
 static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
 {
@@ -42,7 +64,22 @@ static avif_off_t avif_ftello(FILE * stream)
 {
     return ftello(stream);
 }
-#endif
+#else
+typedef long avif_off_t;
+#define AVIF_OFF_MAX LONG_MAX
+
+static int avif_fseeko(FILE * stream, avif_off_t offset, int whence)
+{
+    return fseek(stream, offset, whence);
+}
+
+static avif_off_t avif_ftello(FILE * stream)
+{
+    return ftell(stream);
+}
+#endif // defined(USE_FSEEKO)
+
+#endif // defined(_WIN32)
 
 void avifIODestroy(avifIO * io)
 {
@@ -141,7 +178,7 @@ static avifResult avifIOFileReaderRead(struct avifIO * io, uint32_t readFlags, u
     }
 
     if (size > 0) {
-        if (offset > INT64_MAX) {
+        if (offset > AVIF_OFF_MAX) {
             return AVIF_RESULT_IO_ERROR;
         }
         if (reader->buffer.size < size) {
