@@ -5,6 +5,10 @@ cmake_minimum_required(VERSION 3.22)
 
 project(avif_android_jni)
 
+# Setting the same option as libavif here ensures the AVIF_ENABLE_WERROR
+# variable is set in the CACHE for add_subdirectory to consume below.
+option(AVIF_ENABLE_WERROR "Treat all compiler warnings as errors" OFF)
+
 # Perform a static build of libavif and link it with the jni shared library so
 # that we end up with a single libavif_android.so file in the end.
 #
