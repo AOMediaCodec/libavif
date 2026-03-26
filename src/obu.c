@@ -471,13 +471,13 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
     if (!header->reduced_still_picture_header) {
         avifBitsRead(bits, 3); // seq_lcr_id
         avifBitsRead(bits, 1); // still_picture
-        return AVIF_FALSE;
     }
     header->av1C.seqLevelIdx0 = (uint8_t)avifBitsRead(bits, 5);
     if (header->av1C.seqLevelIdx0 > 7 && !header->reduced_still_picture_header) {
-        avifBitsRead(bits, 1); // single_tier_0
+        header->av1C.seqTier0 = avifBitsRead(bits, 1);
+    } else {
+        header->av1C.seqTier0 = 0;
     }
-    header->av1C.seqTier0 = 0;
 
     uint32_t frame_width_bits = avifBitsRead(bits, 4) + 1;
     uint32_t frame_height_bits = avifBitsRead(bits, 4) + 1;
