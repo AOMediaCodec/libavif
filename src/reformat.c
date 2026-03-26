@@ -44,12 +44,17 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
     info->channelBytes = (rgb->depth > 8) ? 2 : 1;
     info->pixelBytes = avifRGBImagePixelSize(rgb);
 
+    info->offsetBytesR = 0;
+    info->offsetBytesG = 0;
+    info->offsetBytesB = 0;
+    info->offsetBytesA = 0;
+    info->offsetBytesGray = 0;
+
     switch (rgb->format) {
         case AVIF_RGB_FORMAT_RGB:
             info->offsetBytesR = info->channelBytes * 0;
             info->offsetBytesG = info->channelBytes * 1;
             info->offsetBytesB = info->channelBytes * 2;
-            info->offsetBytesA = 0;
             break;
         case AVIF_RGB_FORMAT_RGBA:
             info->offsetBytesR = info->channelBytes * 0;
@@ -67,7 +72,6 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
             info->offsetBytesB = info->channelBytes * 0;
             info->offsetBytesG = info->channelBytes * 1;
             info->offsetBytesR = info->channelBytes * 2;
-            info->offsetBytesA = 0;
             break;
         case AVIF_RGB_FORMAT_BGRA:
             info->offsetBytesB = info->channelBytes * 0;
@@ -89,11 +93,9 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
             info->offsetBytesR = 0;
             info->offsetBytesG = 0;
             info->offsetBytesB = 0;
-            info->offsetBytesA = 0;
             break;
         case AVIF_RGB_FORMAT_GRAY:
             info->offsetBytesGray = info->channelBytes * 0;
-            info->offsetBytesA = 0;
             break;
         case AVIF_RGB_FORMAT_GRAYA:
             info->offsetBytesGray = info->channelBytes * 0;
