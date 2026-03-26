@@ -48,14 +48,6 @@ static void avmCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
-static avifResult avifCheckCodecVersionAVM()
-{
-    // The minimum supported version of avm is the anchor 4.0.0.
-    // avm_codec.h says: avm_codec_version() == (major<<16 | minor<<8 | patch)
-    AVIF_CHECKERR((avm_codec_version() >> 16) >= 4, AVIF_RESULT_NO_CODEC_AVAILABLE);
-    return AVIF_RESULT_OK;
-}
-
 static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                                      const avifDecodeSample * sample,
                                      avifBool alpha,
@@ -65,8 +57,6 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
     assert(sample);
 
     if (!codec->internal->decoderInitialized) {
-        AVIF_CHECKRES(avifCheckCodecVersionAVM());
-
         avm_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(avm_codec_dec_cfg_t));
         cfg.threads = codec->maxThreads;
@@ -478,8 +468,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
     encoderChanges &= ~AVIF_ENCODER_CHANGE_SCALING_MODE;
 
     if (!codec->internal->encoderInitialized) {
-        AVIF_CHECKRES(avifCheckCodecVersionAVM());
-
         int avmCpuUsed = -1;
         if (encoder->speed != AVIF_SPEED_DEFAULT) {
             avmCpuUsed = AVIF_CLAMP(encoder->speed, 0, 9);
