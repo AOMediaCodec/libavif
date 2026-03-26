@@ -538,9 +538,8 @@ avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint
 
 avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells)
 {
-    uint32_t cellWidth, cellHeight;
-    uint32_t createdCells = 0;
     avifBool success = AVIF_FALSE;
+    uint32_t cellWidth, cellHeight;
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(gridSplitImage->yuvFormat, &formatInfo);
     const avifBool isSubsampledX = !formatInfo.monochrome && formatInfo.chromaShiftX;
@@ -551,6 +550,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
     }
     const avifBool hasGainMap = gridSplitImage->gainMap && gridSplitImage->gainMap->image;
 
+    uint32_t createdCells = 0;
     for (uint32_t gridY = 0; gridY < gridRows; ++gridY) {
         for (uint32_t gridX = 0; gridX < gridCols; ++gridX) {
             uint32_t gridIndex = gridX + (gridY * gridCols);
@@ -560,6 +560,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
                 goto cleanup;
             }
             gridCells[gridIndex] = cellImage;
+            assert(gridIndex == createdCells);
             createdCells++;
 
             avifCropRect cellRect = { gridX * cellWidth, gridY * cellHeight, cellWidth, cellHeight };
