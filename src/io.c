@@ -39,14 +39,14 @@ static avif_off_t avif_ftello(FILE * stream)
 #if defined(__ANDROID__)
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 24
-#define USE_FSEEKO
+#define AVIF_USE_FSEEKO
 #endif
 #elif defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L
 /* Standard Modern POSIX */
-#define USE_FSEEKO
+#define AVIF_USE_FSEEKO
 #endif
 
-#if defined(USE_FSEEKO)
+#if defined(AVIF_USE_FSEEKO)
 // POSIX large file support
 static_assert(sizeof(off_t) == sizeof(int64_t), "");
 typedef off_t avif_off_t;
@@ -75,7 +75,7 @@ static avif_off_t avif_ftello(FILE * stream)
 {
     return ftell(stream);
 }
-#endif // defined(USE_FSEEKO)
+#endif // defined(AVIF_USE_FSEEKO)
 
 #endif // defined(_WIN32)
 
