@@ -152,9 +152,20 @@ static uint32_t avifBitsReadRG(avifBits * const bits, const uint32_t n)
 //
 // Originally dav1d's parse_seq_hdr() function (heavily modified and split)
 
-static avifBool parseSequenceHeaderProfile(avifBits * bits, uint32_t numBits, avifSequenceHeader * header)
+static avifBool parseAV1SequenceHeaderProfile(avifBits * bits, avifSequenceHeader * header)
 {
-    uint32_t seq_profile = avifBitsRead(bits, numBits);
+    uint32_t seq_profile = avifBitsRead(bits, 3);
+    if (seq_profile > 2) {
+        return AVIF_FALSE;
+    }
+    header->av1C.seqProfile = (uint8_t)seq_profile;
+    return !bits->error;
+}
+
+#if defined(AVIF_CODEC_AVM)
+static avifBool parseAV2SequenceHeaderProfile(avifBits * bits, avifSequenceHeader * header)
+{
+    uint32_t seq_profile = avifBitsRead(bits, PROFILE_BITS);
 #if defined(CONFIG_AV2_PROFILES) && CONFIG_AV2_PROFILES
     if (seq_profile > 5) {
 #else
@@ -165,6 +176,7 @@ static avifBool parseSequenceHeaderProfile(avifBits * bits, uint32_t numBits, av
     header->av1C.seqProfile = (uint8_t)seq_profile;
     return !bits->error;
 }
+#endif // defined(AVIF_CODEC_AVM)
 
 static avifBool parseSequenceHeaderLevelIdxAndTier(avifBits * bits, avifSequenceHeader * header)
 {
@@ -439,7 +451,7 @@ static avifBool parseAV2ChromaFormatBitdepth(avifBits * bits, avifSequenceHeader
 
 static avifBool parseAV1SequenceHeader(avifBits * bits, avifSequenceHeader * header)
 {
-    AVIF_CHECK(parseSequenceHeaderProfile(bits, 3, header));
+    AVIF_CHECK(parseAV1SequenceHeaderProfile(bits, header));
     AVIF_CHECK(parseSequenceHeaderLevelIdxAndTier(bits, header));
 
     AVIF_CHECK(parseSequenceHeaderFrameMaxDimensions(bits, header));
@@ -466,7 +478,7 @@ static avifBool parseAV2SequenceHeader(avifBits * bits, avifSequenceHeader * hea
         return AVIF_FALSE;
     }
 
-    AVIF_CHECK(parseSequenceHeaderProfile(bits, PROFILE_BITS, header));
+    AVIF_CHECK(parseAV2SequenceHeaderProfile(bits, header));
     header->reduced_still_picture_header = (uint8_t)avifBitsRead(bits, 1); // single_picture_header_flag
     if (!header->reduced_still_picture_header) {
         avifBitsRead(bits, 3); // seq_lcr_id
