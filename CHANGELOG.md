@@ -8,9 +8,15 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.4.1
+
+* Add --jobs flag to avifgainmaputil to use multiple worker threads when
+  reading/writing AVIF files.
+
 ### Changed since 1.4.1
 
 * Require C11 for compilation. Public headers will remain C99.
+* Add --jobs flag to avifgainmaputil and enable auto tiling.
 
 ## [1.4.1] - 2026-03-20
 

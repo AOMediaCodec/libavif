@@ -1143,7 +1143,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
     char manualTilingStr[128];
     snprintf(manualTilingStr, sizeof(manualTilingStr), "tileRowsLog2 [%d], tileColsLog2 [%d]", encoder->tileRowsLog2, encoder->tileColsLog2);
-
+    // Note: this is mirrored in apps/avifgainmaputil/imageio.cc, changes here may be mirrored there if relevant.
     printf("Encoding with initial settings: codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
            codecName ? codecName : "none",
            speedStr,

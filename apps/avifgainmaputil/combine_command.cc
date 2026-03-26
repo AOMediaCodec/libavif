@@ -76,6 +76,7 @@ CombineCommand::CombineCommand()
           "expressed as:  MaxCLL,MaxPALL.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult CombineCommand::Run() {
@@ -95,9 +96,10 @@ avifResult CombineCommand::Run() {
         arg_base_cicp_.value().transfer_characteristics;
     base_image->matrixCoefficients = arg_base_cicp_.value().matrix_coefficients;
   }
-  avifResult result = ReadImage(
-      base_image.get(), arg_base_filename_, pixel_format, arg_image_read_.depth,
-      arg_image_read_.ignore_profile, /*ignore_gain_map=*/true);
+  avifResult result =
+      ReadImage(base_image.get(), arg_base_filename_, pixel_format,
+                arg_image_read_.depth, arg_image_read_.ignore_profile,
+                /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read base image: " << avifResultToString(result)
               << "\n";
@@ -114,7 +116,8 @@ avifResult CombineCommand::Run() {
   }
   result =
       ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
-                arg_image_read_.depth, arg_image_read_.ignore_profile);
+                arg_image_read_.depth, arg_image_read_.ignore_profile,
+                /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read alternate image: "
               << avifResultToString(result) << "\n";
@@ -189,6 +192,8 @@ avifResult CombineCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
+  encoder->maxThreads = arg_jobs_.jobs.value();
+  encoder->autoTiling = true;  // Match avifenc default.
   result =
       WriteAvifGrid(base_image.get(), arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows, encoder.get(),

@@ -50,6 +50,7 @@ TonemapCommand::TonemapCommand()
           "MaxCLL,MaxPALL. Only relevant when saving to AVIF.");
   arg_image_read_.Init(argparse_);
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult TonemapCommand::Run() {
@@ -63,6 +64,7 @@ avifResult TonemapCommand::Run() {
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
                                arg_image_read_.ignore_profile);
@@ -215,7 +217,7 @@ avifResult TonemapCommand::Run() {
   return WriteImage(tone_mapped.get(), arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows,
                     arg_output_filename_, arg_image_encode_.quality,
-                    arg_image_encode_.speed);
+                    arg_image_encode_.speed, arg_jobs_.jobs.value());
 }
 
 }  // namespace avif

@@ -29,6 +29,7 @@ class SwapBaseCommand : public ProgramCommand {
   ImageReadArgs arg_image_read_;
   BasicImageEncodeArgs arg_image_encode_;
   argparse::ArgValue<int> arg_gain_map_quality_;
+  JobsArgs arg_jobs_;
 };
 
 }  // namespace avif

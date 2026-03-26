@@ -26,6 +26,7 @@ class ConvertCommand : public ProgramCommand {
   argparse::ArgValue<int> arg_gain_map_pixel_format_;
   BasicImageEncodeArgs arg_image_encode_;
   ImageReadArgs arg_image_read_;
+  JobsArgs arg_jobs_;
 };
 
 }  // namespace avif

@@ -23,6 +23,7 @@ class TonemapCommand : public ProgramCommand {
   argparse::ArgValue<CicpValues> arg_output_cicp_;
   ImageReadArgs arg_image_read_;
   BasicImageEncodeArgs arg_image_encode_;
+  JobsArgs arg_jobs_;
 };
 
 }  // namespace avif

@@ -36,6 +36,7 @@ ConvertCommand::ConvertCommand()
           "expressed as:  MaxCLL,MaxPALL.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);
   arg_image_read_.Init(argparse_);
+  arg_jobs_.Init(argparse_);
 }
 
 avifResult ConvertCommand::Run() {
@@ -61,7 +62,7 @@ avifResult ConvertCommand::Run() {
   avifResult result =
       ReadImage(image.get(), arg_input_filename_.value(), pixel_format,
                 arg_image_read_.depth, arg_image_read_.ignore_profile,
-                /*ignore_gain_map*/ false);
+                /*ignore_gain_map=*/false, arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to decode image: " << arg_input_filename_;
     return result;
@@ -112,6 +113,8 @@ avifResult ConvertCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
+  encoder->maxThreads = arg_jobs_.jobs.value();
+  encoder->autoTiling = true;  // Match avifenc default.
   result = WriteAvifGrid(image.get(), arg_image_encode_.grid.value().grid_cols,
                          arg_image_encode_.grid.value().grid_rows,
                          encoder.get(), arg_output_filename_);
