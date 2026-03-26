@@ -18,6 +18,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Require C11 for compilation. Public headers will remain C99.
 * Add --jobs flag to avifgainmaputil and enable auto tiling.
 * Use AOM_TUNE_IQ for layered image inter-frame encoding.
+* Update LocalAvm.cmake: research-v14.0.0
 
 ## [1.4.1] - 2026-03-20
 
