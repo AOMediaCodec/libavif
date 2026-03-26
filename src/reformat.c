@@ -93,6 +93,7 @@ avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInf
             break;
         case AVIF_RGB_FORMAT_GRAY:
             info->offsetBytesGray = info->channelBytes * 0;
+            info->offsetBytesA = 0;
             break;
         case AVIF_RGB_FORMAT_GRAYA:
             info->offsetBytesGray = info->channelBytes * 0;
