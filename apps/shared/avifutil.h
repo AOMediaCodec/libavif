@@ -56,7 +56,7 @@ avifAppFileFormat avifGuessBufferFileFormat(const uint8_t * data, size_t size);
 avifBool avifGetBestCellSize(const char * dimensionStr, uint32_t numPixels, uint32_t numCells, avifBool isSubsampled, uint32_t * cellSize);
 
 // Splits an image into a grid of cells, including its gain map, if any.
-// The returned cells must be destroyed with avifImageDestroy().
+// On success, the returned cells must be destroyed with avifImageDestroy().
 avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols, uint32_t gridRows, avifImage ** gridCells);
 
 // Performs a shallow copy of a rectangular area of an RGB image. 'dstImage' does not own the pixel data.
