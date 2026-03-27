@@ -664,16 +664,25 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         codec->internal->qualityFirstLayer = quality;
     }
 
-    // Determine whether the encoder should be configured to use intra frames only, either by setting aomUsage to AOM_USAGE_ALL_INTRA,
-    // or by manually configuring the encoder so all frames will be key frames (if AOM_USAGE_ALL_INTRA isn't available).
+    // Determine whether the encoder should be configured to use intra frames only, either by setting aomUsage to
+    // AOM_USAGE_ALL_INTRA, or by manually configuring the encoder so all frames will be key frames (if AOM_USAGE_ALL_INTRA isn't
+    // available).
 
-    // All-intra encoding is beneficial when encoding a two-layer image item and the quality of the first layer is very low.
-    // Switching to all-intra encoding comes with the following benefits:
+    // For libaom versions older than 3.14.0, all-intra encoding is beneficial when encoding a two-layer image item and the
+    // quality of the first layer is very low. Switching to all-intra encoding comes with the following benefits:
     // - The first layer will be smaller than the second layer (which is often not the case with inter encoding)
-    // - Outputs have predictable file sizes: the sum of the first layer (quality <= 10) plus the second layer (quality set by the caller)
-    // - Because the first layer is very small, layered encoding overhead is also smaller and more stable (about 5-8% for quality 40 and 2-4% for quality 60)
-    // - Option of choosing tune IQ (which requires AOM_USAGE_ALL_INTRA)
-    avifBool useAllIntraForLayered = encoder->extraLayerCount == 1 &&
+    // - Outputs have predictable file sizes: the sum of the first layer (quality <= 10) plus the second layer (quality set by
+    //   the caller)
+    // - Because the first layer is very small, layered encoding overhead is also smaller and more stable (about 5-8% for quality
+    //   40 and 2-4% for quality 60)
+    // Note: libaom 3.14.0 introduces a mechanism to completely control each layer's QP, and extends tune IQ to inter-frame
+    // encoding modes (AOM_USAGE_GOOD_QUALITY and AOM_USAGE_REALTIME), so there's no need to use all-intra encoding for layered.
+
+    // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
+    // TODO(wtc): Update constant with the libaom version that contains the layered-encoding improvements
+    static const int aomVersion_3_14_0 = INT_MAX;
+    const int aomVersion = aom_codec_version();
+    avifBool useAllIntraForLayered = aomVersion < aomVersion_3_14_0 && encoder->extraLayerCount == 1 &&
                                      codec->internal->qualityFirstLayer <= TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD;
     // Also use all-intra encoding when encoding still images.
     avifBool useAllIntra = (addImageFlags & AVIF_ADD_IMAGE_FLAG_SINGLE) || useAllIntraForLayered;
@@ -711,9 +720,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         }
     }
 
-    // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
     static const int aomVersion_2_0_0 = (2 << 16);
-    const int aomVersion = aom_codec_version();
     if (aomVersion <= aomVersion_2_0_0) {
         // Issue with v1.0.0-errata1-avif: https://github.com/AOMediaCodec/libavif/issues/56
         // Issue with v2.0.0: https://aomedia-review.googlesource.com/q/I26a39791f820b4d4e1d63ff7141f594c3c7181f5
@@ -750,13 +757,18 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
                 // AOM_TUNE_IQ has been tuned for the YCbCr family of color spaces, and is favored for
                 // its low perceptual distortion. AOM_TUNE_IQ partially generalizes to, and benefits
                 // from other "YUV-like" spaces (e.g. YCgCo and ICtCp) including monochrome (luma only).
-                // AOM_TUNE_IQ sets --deltaq-mode=6 which can only be used in all intra mode.
+                //
                 // AOM_TUNE_IQ was introduced in libaom v3.12.0 but it has significantly different bit
                 // allocation characteristics compared to v3.13.0. AOM_TUNE_IQ is used by default
                 // starting with v3.13.0 for fewer behavior changes in libavif.
+                //
+                // Starting with libaom v3.14.0, AOM_TUNE_IQ supports all-intra, good-quality and
+                // realtime modes (for single and layered images). Prior to v3.14.0, AOM_TUNE_IQ is only
+                // supported in all-intra mode.
                 static const int aomVersion_3_13_0 = (3 << 16) | (13 << 8);
-                if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY && aomUsage == AOM_USAGE_ALL_INTRA &&
-                    aomVersion >= aomVersion_3_13_0) {
+                if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                    ((aomUsage == AOM_USAGE_ALL_INTRA && aomVersion >= aomVersion_3_13_0) ||
+                     (encoder->extraLayerCount > 0 && aomVersion >= aomVersion_3_14_0))) {
                     libavifDefaultTuneMetric = AOM_TUNE_IQ;
                 }
 #endif
@@ -904,6 +916,14 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // For layered image, disable lagged encoding to always get output
             // frame for each input frame.
             cfg->g_lag_in_frames = 0;
+
+            if (aomVersion >= aomVersion_3_14_0) {
+                // Disable QP offsets, so CQ level = frame QP for every frame.
+                // This feature requires libaom 3.14.0 or later.
+                if (cfg->rc_end_usage == AOM_Q) {
+                    cfg->use_fixed_qp_offsets = 2;
+                }
+            }
         }
         if (disableLaggedOutput) {
             cfg->g_lag_in_frames = 0;
