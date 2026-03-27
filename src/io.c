@@ -42,7 +42,9 @@ static avif_off_t avif_ftello(FILE * stream)
 #define AVIF_USE_FSEEKO
 #endif
 #elif defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L
-/* Standard Modern POSIX */
+// Standard Modern POSIX. The _POSIX_VERSION >= 200112L test for fseeko/ftello
+// is used in the first example in the APPLICATION USAGE section in
+// https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/unistd.h.html.
 #define AVIF_USE_FSEEKO
 #endif
 
