@@ -13,6 +13,16 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        externalNativeBuild {
+            cmake {
+                if (project.hasProperty('android.extraCMakeFlags')) {
+                    def extraCMakeFlags = project.property('android.extraCMakeFlags')
+                    if (extraCMakeFlags != null && !extraCMakeFlags.toString().isEmpty()) {
+                        arguments extraCMakeFlags.toString()
+                    }
+                }
+            }
+        }
     }
 
     buildTypes {
