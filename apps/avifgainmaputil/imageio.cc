@@ -146,11 +146,6 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
   std::vector<avifImage*> grid_cells_ptrs(grid_cell_count);
   if (!avifImageSplitGrid(image, grid_cols, grid_rows,
                           grid_cells_ptrs.data())) {
-    for (avifImage* img : grid_cells_ptrs) {
-      if (img) {
-        avifImageDestroy(img);
-      }
-    }
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
   // Take ownership of the pointers returned by avifImageSplitGrid.
