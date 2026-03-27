@@ -8,7 +8,10 @@
 
 void * avifAlloc(size_t size)
 {
-    assert(size != 0); // Implementation-defined. See https://en.cppreference.com/w/cpp/memory/c/malloc
+    if (size == 0) {
+        avifBreakOnError();
+        return NULL;
+    }
     return malloc(size);
 }
 

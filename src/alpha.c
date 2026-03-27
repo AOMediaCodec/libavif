@@ -165,7 +165,7 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return libyuvResult;
     }
 
-    assert(rgb->depth >= 8 && rgb->depth <= 16);
+    AVIF_ASSERT_OR_RETURN(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
     float maxF = (float)max;
@@ -352,7 +352,7 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
         return libyuvResult;
     }
 
-    assert(rgb->depth >= 8 && rgb->depth <= 16);
+    AVIF_ASSERT_OR_RETURN(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
     float maxF = (float)max;

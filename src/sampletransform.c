@@ -218,7 +218,8 @@ static int32_t avifSampleTransformOperation32bOneOperand(int32_t operand, uint8_
             return log2;
         }
         default:
-            assert(AVIF_FALSE);
+            avifBreakOnError();
+            return AVIF_RESULT_INTERNAL_ERROR;
     }
     return 0;
 }
@@ -271,7 +272,8 @@ static int32_t avifSampleTransformOperation32bTwoOperands(int32_t leftOperand, i
         case AVIF_SAMPLE_TRANSFORM_MAX:
             return leftOperand <= rightOperand ? rightOperand : leftOperand;
         default:
-            assert(AVIF_FALSE);
+            avifBreakOnError();
+            return AVIF_RESULT_INTERNAL_ERROR;
     }
     return 0;
 }

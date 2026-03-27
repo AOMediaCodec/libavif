@@ -62,6 +62,13 @@ static inline void avifBreakOnError()
 // AVIF_ASSERT_OR_RETURN() can be used instead of assert() for extra security in release builds.
 #ifdef NDEBUG
 #define AVIF_ASSERT_OR_RETURN(A) AVIF_CHECKERR((A), AVIF_RESULT_INTERNAL_ERROR)
+#define AVIF_ASSERT_OR_RETURN_VOID(A) \
+    do {                              \
+        if (!(A)) {                   \
+            avifBreakOnError();       \
+            return;                   \
+        }                             \
+    } while (0)
 #define AVIF_ASSERT_NOT_REACHED_OR_RETURN  \
     do {                                   \
         avifBreakOnError();                \
@@ -69,6 +76,7 @@ static inline void avifBreakOnError()
     } while (0)
 #else
 #define AVIF_ASSERT_OR_RETURN(A) assert(A)
+#define AVIF_ASSERT_OR_RETURN_VOID(A) assert(A)
 #define AVIF_ASSERT_NOT_REACHED_OR_RETURN assert(0);
 #endif
 
@@ -153,7 +161,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat.
 // Ignores the gainMap field.
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 // Appends an opaque image item property.
 avifResult avifImagePushProperty(avifImage * image,

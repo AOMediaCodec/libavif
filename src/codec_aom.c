@@ -98,7 +98,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
-    assert(sample);
+    if (!sample) {
+        avifBreakOnError();
+        return AVIF_FALSE;
+    }
 
     aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
     struct aom_codec_stream_info streamInfo = { 0 };
@@ -408,7 +411,10 @@ static avifBool avifAOMOptionsContainExplicitTuning(const avifCodec * codec, avi
 
             int val;
             if (aomOptionParseEnum(entry->value, tuneIqEnum, &val)) {
-                assert(val == AOM_TUNE_IQ);
+                if (val != AOM_TUNE_IQ) {
+                    avifBreakOnError();
+                    return AVIF_RESULT_INVALID_ARGUMENT;
+                }
                 *useTuneIq = AVIF_TRUE;
             } else {
                 *useTuneIq = AVIF_FALSE;

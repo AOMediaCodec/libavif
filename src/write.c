@@ -48,7 +48,10 @@ static avifResult writeConfigBox(avifRWStream * s, const avifCodecConfigurationB
 
 static int floorLog2(uint32_t n)
 {
-    assert(n > 0);
+    if (n == 0) {
+        avifBreakOnError();
+        return 0;
+    }
     int count = 0;
     while (n != 0) {
         ++count;
@@ -66,7 +69,10 @@ static int floorLog2(uint32_t n)
 //     *tileDim1Log2 >= *tileDim2Log2
 static void splitTilesLog2(uint32_t dim1, uint32_t dim2, int tilesLog2, int * tileDim1Log2, int * tileDim2Log2)
 {
-    assert(dim1 >= dim2);
+    if (dim1 < dim2) {
+        avifBreakOnError();
+        return;
+    }
     uint32_t ratio = dim1 / dim2;
     int diffLog2 = floorLog2(ratio);
     int subtract = tilesLog2 - diffLog2;
@@ -75,7 +81,10 @@ static void splitTilesLog2(uint32_t dim1, uint32_t dim2, int tilesLog2, int * ti
     }
     *tileDim2Log2 = subtract / 2;
     *tileDim1Log2 = tilesLog2 - *tileDim2Log2;
-    assert(*tileDim1Log2 >= *tileDim2Log2);
+    if (*tileDim1Log2 < *tileDim2Log2) {
+        avifBreakOnError();
+        return;
+    }
 }
 
 // Set the tile configuration: the number of tiles and the tile size.
@@ -1335,7 +1344,7 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
     AVIF_CHECKRES(
         avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR, &bitDepthExtensionColorItemId));
     avifEncoderItem * bitDepthExtensionColorItem = avifEncoderDataFindItemByID(encoder->data, bitDepthExtensionColorItemId);
-    assert(bitDepthExtensionColorItem);
+    AVIF_ASSERT_OR_RETURN(bitDepthExtensionColorItem != NULL);
     bitDepthExtensionColorItem->hiddenImage = AVIF_TRUE;
 
     // Set the color and bit depth extension items' dimgFromID value to point to the sample transform item.
@@ -1354,13 +1363,13 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
         AVIF_CHECKRES(
             avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA, &bitDepthExtensionAlphaItemId));
         avifEncoderItem * bitDepthExtensionAlphaItem = avifEncoderDataFindItemByID(encoder->data, bitDepthExtensionAlphaItemId);
-        assert(bitDepthExtensionAlphaItem);
+        AVIF_ASSERT_OR_RETURN(bitDepthExtensionAlphaItem != NULL);
         bitDepthExtensionAlphaItem->irefType = "auxl";
         bitDepthExtensionAlphaItem->irefToID = bitDepthExtensionColorItemId;
         if (encoder->data->imageMetadata->alphaPremultiplied) {
             // The reference may have changed; fetch it again.
             bitDepthExtensionColorItem = avifEncoderDataFindItemByID(encoder->data, bitDepthExtensionColorItemId);
-            assert(bitDepthExtensionColorItem);
+            AVIF_ASSERT_OR_RETURN(bitDepthExtensionColorItem != NULL);
             bitDepthExtensionColorItem->irefType = "prem";
             bitDepthExtensionColorItem->irefToID = bitDepthExtensionAlphaItemId;
         }
@@ -1548,9 +1557,11 @@ static avifResult avifEncoderCreateBitDepthExtensionImage(avifEncoder * encoder,
 
 static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
 {
-    // This asserts that images cannot be encoded with AVM unless AVIF_CODEC_CHOICE_AVM is explicitly selected.
-    assert((encoder->codecChoice != AVIF_CODEC_CHOICE_AUTO) ||
-           (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") != 0));
+    // Images cannot be encoded with AVM unless AVIF_CODEC_CHOICE_AVM is explicitly selected.
+    if ((encoder->codecChoice == AVIF_CODEC_CHOICE_AUTO) && (strcmp(avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE), "avm") == 0)) {
+        avifBreakOnError();
+        return AVIF_CODEC_TYPE_UNKNOWN;
+    }
     return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
 }
 
@@ -2080,7 +2091,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                     *encoderMinQuantizer = AVIF_QUANTIZER_LOSSLESS;
                     *encoderMaxQuantizer = AVIF_QUANTIZER_LOSSLESS;
                     if (!avifEncoderDetectChanges(encoder, &encoderChanges)) {
-                        assert(AVIF_FALSE);
+                        avifBreakOnError();
+                        return AVIF_RESULT_CANNOT_CHANGE_SETTING;
                     }
                 }
 
@@ -2093,7 +2105,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 }
                 AVIF_CHECKRES(
                     avifEncoderCreateBitDepthExtensionImage(encoder, item, itemWillBeEncodedLosslessly, cellImage, &sampleTransformedImage));
-                assert(cellImagePlaceholder == NULL);
+                if (cellImagePlaceholder != NULL) {
+                    avifBreakOnError();
+                    return AVIF_RESULT_INTERNAL_ERROR;
+                }
                 cellImagePlaceholder = sampleTransformedImage; // Transfer ownership.
                 cellImage = cellImagePlaceholder;
             }
@@ -2436,7 +2451,9 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
         }
 
         if (item->id == encoder->data->primaryItemID) {
-            assert(!colorItem);
+            if (colorItem != NULL) {
+                return AVIF_FALSE;
+            }
             colorItem = item;
             // main_item_data_size_minus1
             if (item->encodeOutput->samples.count != 1 || item->encodeOutput->samples.sample[0].data.size > (1 << 28)) {
@@ -2459,15 +2476,21 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
             continue; // The gainmap input image item can be stored in the MinimizedImageBox.
         }
         if (!memcmp(item->type, "tmap", 4)) {
-            assert(item->itemCategory == AVIF_ITEM_COLOR); // Cannot be differentiated from the primary item by its itemCategory.
+            if (item->itemCategory != AVIF_ITEM_COLOR) {
+                return AVIF_FALSE;
+            } // Cannot be differentiated from the primary item by its itemCategory.
             continue; // The tone mapping derived image item can be represented in the MinimizedImageBox.
         }
         if (!memcmp(item->type, "mime", 4) && !memcmp(item->infeName, "XMP", item->infeNameSize)) {
-            assert(item->metadataPayload.size == encoder->data->imageMetadata->xmp.size);
+            if (item->metadataPayload.size != encoder->data->imageMetadata->xmp.size) {
+                return AVIF_FALSE;
+            }
             continue; // XMP metadata can be stored in the MinimizedImageBox.
         }
         if (!memcmp(item->type, "Exif", 4) && !memcmp(item->infeName, "Exif", item->infeNameSize)) {
-            assert(item->metadataPayload.size == encoder->data->imageMetadata->exif.size + 4);
+            if (item->metadataPayload.size != encoder->data->imageMetadata->exif.size + 4) {
+                return AVIF_FALSE;
+            }
             const uint32_t exif_tiff_header_offset = *(uint32_t *)item->metadataPayload.data;
             if (exif_tiff_header_offset != 0) {
                 return AVIF_FALSE;
@@ -2970,7 +2993,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
         } else {
             AVIF_CHECKERR(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_NONE, AVIF_RESULT_NOT_IMPLEMENTED);
         }
-        assert(isSampleTransformImage == (item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM));
+        AVIF_ASSERT_OR_RETURN(isSampleTransformImage == (item->itemCategory == AVIF_ITEM_SAMPLE_TRANSFORM));
 
         if (hasPixi) {
             avifItemPropertyDedupStart(dedup);

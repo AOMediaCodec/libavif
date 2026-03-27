@@ -54,7 +54,10 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                                      avifBool * isLimitedRangeAlpha,
                                      avifImage * image)
 {
-    assert(sample);
+    if (!sample) {
+        avifBreakOnError();
+        return AVIF_FALSE;
+    }
 
     if (!codec->internal->decoderInitialized) {
         avm_codec_dec_cfg_t cfg;
@@ -425,7 +428,10 @@ static int avmScaleQuantizer(int quantizer, uint32_t depth)
     if (depth == 12) {
         return AVIF_CLAMP((quantizer * (255 + 96) + 31) / 63 - 96, -96, 255);
     }
-    assert(depth == 8);
+    if (depth != 8) {
+        avifBreakOnError();
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     return AVIF_CLAMP((quantizer * 255 + 31) / 63, 0, 255);
 }
 
@@ -440,7 +446,10 @@ static int avmQualityToQuantizer(int quality, uint32_t depth)
     if (depth == 12) {
         return 255 - (quality * (255 + 96) + 50) / 100;
     }
-    assert(depth == 8);
+    if (depth != 8) {
+        avifBreakOnError();
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     return 255 - (quality * 255 + 50) / 100;
 }
 

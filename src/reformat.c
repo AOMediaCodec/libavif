@@ -576,7 +576,10 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
 {
     const size_t cpCount = (size_t)1 << depth;
 
-    assert(unormFloatTableY);
+    if (!unormFloatTableY) {
+        avifBreakOnError();
+        return AVIF_FALSE;
+    }
     *unormFloatTableY = (float *)avifAlloc(cpCount * sizeof(float));
     AVIF_CHECK(*unormFloatTableY);
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
@@ -681,7 +684,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     // If toRGBAlphaMode is active (not no-op), assert that the alpha plane is present. The end of
     // the avifPrepareReformatState() function should ensure this, but this assert makes it clear
     // to clang's analyzer.
-    assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
+    AVIF_ASSERT_OR_RETURN((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
     for (uint32_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.

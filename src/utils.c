@@ -132,7 +132,10 @@ void * avifArrayPush(void * arrayStruct)
 void avifArrayPop(void * arrayStruct)
 {
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
-    assert(arr->count > 0);
+    if (arr->count == 0) {
+        avifBreakOnError();
+        return;
+    }
     --arr->count;
     memset(&arr->ptr[arr->count * (size_t)arr->elementSize], 0, arr->elementSize);
 }
@@ -256,7 +259,10 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     const int maxIter = 39;
     while (iter < maxIter) {
         const double numeratorDouble = (double)(*denominator) * v;
-        assert(numeratorDouble <= maxNumerator);
+        if (numeratorDouble > (double)maxNumerator) {
+            avifBreakOnError();
+            return AVIF_FALSE;
+        }
         *numerator = (uint32_t)round(numeratorDouble);
         if (fabs(numeratorDouble - (*numerator)) == 0.0) {
             return AVIF_TRUE;
@@ -268,7 +274,10 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
             return AVIF_TRUE;
         }
         previousD = *denominator;
-        assert(newD <= UINT32_MAX);
+        if (newD > (double)UINT32_MAX) {
+            avifBreakOnError();
+            return AVIF_FALSE;
+        }
         *denominator = (uint32_t)newD;
         currentV -= floor(currentV);
         ++iter;

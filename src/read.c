@@ -65,7 +65,7 @@ static const char * avifGetConfigurationPropertyName(avifCodecType codecType)
             return "av2C";
 #endif
         default:
-            assert(AVIF_FALSE);
+            avifBreakOnError();
             return kUnknown; // Easier to deal with than NULL.
     }
 }
@@ -1870,7 +1870,7 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
     const avifCropRect srcTileViewRect = { 0, 0, dstTileViewRect.width, dstTileViewRect.height };
     AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstTileView, &dstView, &dstTileViewRect) == AVIF_RESULT_OK);
     AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&srcTileView, tile->image, &srcTileViewRect) == AVIF_RESULT_OK);
-    avifImageCopySamples(&dstTileView, &srcTileView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    AVIF_ASSERT_OR_RETURN(avifImageCopySamples(&dstTileView, &srcTileView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV) == AVIF_RESULT_OK);
     return AVIF_RESULT_OK;
 }
 
@@ -2311,7 +2311,8 @@ static const avifProperty * avifDecoderItemCodecConfigOrFirstCellCodecConfig(con
             }
         }
         // The number of tiles was verified in avifDecoderItemReadAndParse().
-        assert(AVIF_FALSE);
+        avifBreakOnError();
+        return NULL;
     }
     return avifPropertyArrayFind(&item->properties, avifGetConfigurationPropertyName(avifGetCodecType(item->type)));
 }
@@ -4549,7 +4550,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     if (orientation == 3 || orientation == 5 || orientation == 6 || orientation == 7 || orientation == 8) {
         irotPropIndex = meta->properties.count; // Store index instead of pointer which may be invalidated by avifMetaCreateProperty().
         // Property with fixed 1-based index 9.
-        assert(irotPropIndex + 1 == 9);
+        AVIF_ASSERT_OR_RETURN(irotPropIndex + 1 == 9);
         avifProperty * irotProp = avifMetaCreateProperty(meta, "irot");
         AVIF_CHECKERR(irotProp, AVIF_RESULT_OUT_OF_MEMORY);
         irotProp->u.irot.angle = orientation == 3 ? 2 : (orientation == 5 || orientation == 8) ? 1 : 3;
@@ -4559,7 +4560,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     if (orientation == 2 || orientation == 4 || orientation == 5 || orientation == 7) {
         imirPropIndex = meta->properties.count;
         // Property with fixed 1-based index 10.
-        assert(imirPropIndex + 1 == 10);
+        AVIF_ASSERT_OR_RETURN(imirPropIndex + 1 == 10);
         avifProperty * imirProp = avifMetaCreateProperty(meta, "imir");
         AVIF_CHECKERR(imirProp, AVIF_RESULT_OUT_OF_MEMORY);
         imirProp->u.imir.axis = orientation == 2 ? 1 : 0;
@@ -5626,7 +5627,7 @@ static avifResult avifReadColorNclxProperty(const avifPropertyArray * properties
                                             avifRange * yuvRange,
                                             avifBool * cicpSet)
 {
-    assert(cicpSet == NULL || *cicpSet == AVIF_FALSE);
+    AVIF_ASSERT_OR_RETURN(cicpSet == NULL || *cicpSet == AVIF_FALSE);
     avifBool colrNCLXSeen = AVIF_FALSE;
     for (uint32_t propertyIndex = 0; propertyIndex < properties->count; ++propertyIndex) {
         avifProperty * prop = &properties->prop[propertyIndex];

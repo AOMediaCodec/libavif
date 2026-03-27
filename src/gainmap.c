@@ -113,8 +113,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     if (weight == 0.0f && outputTransferCharacteristics == baseTransferCharacteristics &&
         outputColorPrimaries == baseColorPrimaries && baseImage->format == toneMappedImage->format &&
         baseImage->depth == toneMappedImage->depth && baseImage->isFloat == toneMappedImage->isFloat) {
-        assert(baseImage->rowBytes == toneMappedImage->rowBytes);
-        assert(baseImage->height == toneMappedImage->height);
+        AVIF_ASSERT_OR_RETURN(baseImage->rowBytes == toneMappedImage->rowBytes);
+        AVIF_ASSERT_OR_RETURN(baseImage->height == toneMappedImage->height);
         // Copy the base image.
         memcpy(toneMappedImage->pixels, baseImage->pixels, (size_t)baseImage->rowBytes * baseImage->height);
         goto cleanup;
