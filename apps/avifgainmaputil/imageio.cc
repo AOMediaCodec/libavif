@@ -159,10 +159,9 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
   avifImageDump(image, grid_cols, grid_rows,
                 AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
   PrintEncodingSettings(encoder, image->gainMap != nullptr);
-  avifResult result = avifEncoderAddImageGrid(
-      encoder, grid_cols, grid_rows,
-      const_cast<const avifImage* const*>(grid_cells_ptrs.data()),
-      AVIF_ADD_IMAGE_FLAG_SINGLE);
+  avifResult result = avifEncoderAddImageGrid(encoder, grid_cols, grid_rows,
+                                              grid_cells_ptrs.data(),
+                                              AVIF_ADD_IMAGE_FLAG_SINGLE);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to encode image grid: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";
