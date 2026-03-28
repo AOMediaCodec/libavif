@@ -85,6 +85,12 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
+// Writes a libaom error code and error detail into the diagnostics.
+static void aomDiagPrintf(avifDiagnostics * diag, const char * func, const char * error, const char * detail)
+{
+    avifDiagnosticsPrintf(diag, "%s failed: %s: %s", func, error, detail ? detail : "no error detail");
+}
+
 #if defined(AVIF_CODEC_AOM_DECODE)
 
 static avifBool aomCodecGetNextImage(struct avifCodec * codec,
@@ -95,34 +101,53 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
 {
     assert(sample);
 
-    if (!codec->internal->decoderInitialized) {
-        aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
-        struct aom_codec_stream_info streamInfo = { 0 };
-        if (aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo) != AOM_CODEC_OK) {
+    aom_codec_iface_t * const decoderInterface = aom_codec_av1_dx();
+    struct aom_codec_stream_info streamInfo = { 0 };
+    aom_codec_err_t err = aom_codec_peek_stream_info(decoderInterface, sample->data.data, sample->data.size, &streamInfo);
+    if (err != AOM_CODEC_OK) {
+        avifDiagnosticsPrintf(codec->diag, "aom_codec_peek_stream_info() failed: %s", aom_codec_err_to_string(err));
+        return AVIF_FALSE;
+    }
+    if (streamInfo.w == 0 || streamInfo.h == 0) {
+        // The sequence header was not found.
+        if (!codec->internal->decoderInitialized) {
+            // Treat it as an error if the first frame isn't preceded by a sequence header.
             return AVIF_FALSE;
         }
-        if (streamInfo.w == 0 || streamInfo.h == 0) {
-            // The sequence header was not found: treat it as an error.
-            return AVIF_FALSE;
-        }
+    } else {
         if (avifDimensionsTooLarge(streamInfo.w, streamInfo.h, codec->imageSizeLimit, codec->imageDimensionLimit)) {
+            avifDiagnosticsPrintf(codec->diag, "Image dimensions too large: %dx%d", streamInfo.w, streamInfo.h);
             return AVIF_FALSE;
         }
+    }
 
+    if (!codec->internal->decoderInitialized) {
         aom_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(aom_codec_dec_cfg_t));
         cfg.threads = codec->maxThreads;
         cfg.allow_lowbitdepth = 1;
 
         if (aom_codec_dec_init(&codec->internal->decoder, decoderInterface, &cfg, 0)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_dec_init()",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
         codec->internal->decoderInitialized = AVIF_TRUE;
 
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_control(AV1D_SET_OUTPUT_ALL_LAYERS)",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPoint)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_control(AV1D_SET_OPERATING_POINT)",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
 
@@ -148,10 +173,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         } else if (sample) {
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
-                avifDiagnosticsPrintf(codec->diag,
-                                      "aom_codec_decode() failed: %s: %s",
-                                      aom_codec_error(&codec->internal->decoder),
-                                      aom_codec_error_detail(&codec->internal->decoder));
+                aomDiagPrintf(codec->diag,
+                              "aom_codec_decode()",
+                              aom_codec_error(&codec->internal->decoder),
+                              aom_codec_error_detail(&codec->internal->decoder));
                 return AVIF_FALSE;
             }
             spatialID = sample->spatialID;
@@ -507,12 +532,13 @@ static avifBool avifProcessAOMOptionsPostInit(avifCodec * codec, avifBool alpha)
             key += shortPrefixLen;
         }
         if (aom_codec_set_option(&codec->internal->encoder, key, entry->value) != AOM_CODEC_OK) {
+            const char * error_detail = aom_codec_error_detail(&codec->internal->encoder);
             avifDiagnosticsPrintf(codec->diag,
                                   "aom_codec_set_option(\"%s\", \"%s\") failed: %s: %s",
                                   key,
                                   entry->value,
                                   aom_codec_error(&codec->internal->encoder),
-                                  aom_codec_error_detail(&codec->internal->encoder));
+                                  error_detail ? error_detail : "no error detail");
             return AVIF_FALSE;
         }
 #else  // !defined(HAVE_AOM_CODEC_SET_OPTION)
@@ -922,10 +948,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             encoderFlags |= AOM_CODEC_USE_HIGHBITDEPTH;
         }
         if (aom_codec_enc_init(&codec->internal->encoder, encoderInterface, cfg, encoderFlags) != AOM_CODEC_OK) {
-            avifDiagnosticsPrintf(codec->diag,
-                                  "aom_codec_enc_init() failed: %s: %s",
-                                  aom_codec_error(&codec->internal->encoder),
-                                  aom_codec_error_detail(&codec->internal->encoder));
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_enc_init()",
+                          aom_codec_error(&codec->internal->encoder),
+                          aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_RESULT_UNKNOWN_ERROR;
         }
         codec->internal->encoderInitialized = AVIF_TRUE;
@@ -1076,10 +1102,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (quantizerUpdated || dimensionsChanged) {
             aom_codec_err_t err = aom_codec_enc_config_set(&codec->internal->encoder, cfg);
             if (err != AOM_CODEC_OK) {
-                avifDiagnosticsPrintf(codec->diag,
-                                      "aom_codec_enc_config_set() failed: %s: %s",
-                                      aom_codec_error(&codec->internal->encoder),
-                                      aom_codec_error_detail(&codec->internal->encoder));
+                aomDiagPrintf(codec->diag,
+                              "aom_codec_enc_config_set()",
+                              aom_codec_error(&codec->internal->encoder),
+                              aom_codec_error_detail(&codec->internal->encoder));
                 return AVIF_RESULT_UNKNOWN_ERROR;
             }
         }
@@ -1297,10 +1323,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         aom_img_free(&aomImage);
     }
     if (encodeErr != AOM_CODEC_OK) {
-        avifDiagnosticsPrintf(codec->diag,
-                              "aom_codec_encode() failed: %s: %s",
-                              aom_codec_error(&codec->internal->encoder),
-                              aom_codec_error_detail(&codec->internal->encoder));
+        aomDiagPrintf(codec->diag,
+                      "aom_codec_encode()",
+                      aom_codec_error(&codec->internal->encoder),
+                      aom_codec_error_detail(&codec->internal->encoder));
         return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
@@ -1341,10 +1367,10 @@ static avifBool aomCodecEncodeFinish(avifCodec * codec, avifCodecEncodeOutput * 
     for (;;) {
         // flush encoder
         if (aom_codec_encode(&codec->internal->encoder, NULL, 0, 1, 0) != AOM_CODEC_OK) {
-            avifDiagnosticsPrintf(codec->diag,
-                                  "aom_codec_encode() with img=NULL failed: %s: %s",
-                                  aom_codec_error(&codec->internal->encoder),
-                                  aom_codec_error_detail(&codec->internal->encoder));
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_encode() with img=NULL",
+                          aom_codec_error(&codec->internal->encoder),
+                          aom_codec_error_detail(&codec->internal->encoder));
             return AVIF_FALSE;
         }
 
