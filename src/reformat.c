@@ -224,6 +224,29 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
+    // Validate that rgb->rowBytes is consistent with the image dimensions and
+    // pixel format. The slow-path conversion loop indexes pixels as:
+    //   rgb->pixels[offsetBytes + (i * pixelBytes) + (j * rowBytes)]
+    // A rowBytes that is smaller than (width * pixelBytes) would cause the
+    // per-row offset to under-stride, producing out-of-bounds reads on the
+    // first row that is not the last. Reject such inputs early.
+    {
+        const uint32_t pixelSize = avifRGBImagePixelSize(rgb);
+        // Guard width * pixelSize against uint32_t overflow before comparing.
+        if (rgb->width > 0 && pixelSize > 0) {
+            if (rgb->width > UINT32_MAX / pixelSize) {
+                // Dimensions imply a row size that cannot be represented in
+                // uint32_t; the allocation could never have been large enough.
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
+            const uint32_t minRowBytes = rgb->width * pixelSize;
+            if (rgb->rowBytes < minRowBytes) {
+                // Caller-supplied rowBytes is too small for the declared width.
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
+        }
+    }
+
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
         return AVIF_RESULT_REFORMAT_FAILED;
