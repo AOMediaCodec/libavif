@@ -30,11 +30,22 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
 
 avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount)
 {
+    // Guard against unsigned underflow: if offset has somehow advanced past the
+    // end of the buffer (e.g. via a mishandled early-return leaving stale state),
+    // the subtraction below would wrap to SIZE_MAX and incorrectly return TRUE.
+    if (stream->offset > stream->raw->size) {
+        return AVIF_FALSE;
+    }
     return byteCount <= (stream->raw->size - stream->offset);
 }
 
 size_t avifROStreamRemainingBytes(const avifROStream * stream)
 {
+    // Same underflow guard as avifROStreamHasBytesLeft: return 0 instead of
+    // wrapping to SIZE_MAX when offset has advanced past the buffer end.
+    if (stream->offset > stream->raw->size) {
+        return 0;
+    }
     return stream->raw->size - stream->offset;
 }
 
