@@ -267,7 +267,12 @@ static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBIm
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
     // The width, height, and stride parameters of libyuv functions are all of the int type.
-    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
+    // avifReorderARGBThenConvertToYUV computes `src_stride_argb = width * 4` using signed
+    // int arithmetic. Any width > INT_MAX/4 overflows that multiply to a negative value,
+    // defeating the internal size check and corrupting the avifAlloc argument.
+    // Use INT_MAX/4 as the safe upper bound for width when this two-step helper is involved.
+    if (image->width > (INT_MAX / 4) || image->height > INT_MAX ||
+        image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
