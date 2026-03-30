@@ -90,13 +90,13 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
+#if defined(AVIF_CODEC_AOM_DECODE)
+
 // Writes a libaom error code and error detail into diagnostics.
 static void aomDiagPrintf(avifDiagnostics * diag, const char * func, const char * error, const char * detail)
 {
     avifDiagnosticsPrintf(diag, "%s failed: %s: %s", func, error, detail ? detail : "no error detail");
 }
-
-#if defined(AVIF_CODEC_AOM_DECODE)
 
 static avifBool aomCodecGetNextImage(struct avifCodec * codec,
                                      const avifDecodeSample * sample,
