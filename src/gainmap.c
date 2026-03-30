@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 
@@ -559,11 +560,11 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
+    AVIF_CHECKERR(width == 0 || height <= (SIZE_MAX / width), AVIF_RESULT_INVALID_ARGUMENT);
     const size_t numPixels = (size_t)width * height;
-    if (numPixels > SIZE_MAX / sizeof(float)) {
-        res = AVIF_RESULT_INVALID_ARGUMENT;
-        goto cleanup;
-    }
+    AVIF_CHECKERR(numPixels <= (SIZE_MAX / sizeof(float)), AVIF_RESULT_INVALID_ARGUMENT);
+    // avifFindMinMaxWithoutOutliers() takes numPixels as int.
+    AVIF_CHECKERR(numPixels <= INT_MAX, AVIF_RESULT_INVALID_ARGUMENT);
     const size_t gainMapChannelSize = numPixels * sizeof(float);
     const avifBool singleChannel = (gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     const int numGainMapChannels = singleChannel ? 1 : 3;
@@ -725,7 +726,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     float gainMapMinLog2[3] = { 0.0f, 0.0f, 0.0f };
     float gainMapMaxLog2[3] = { 0.0f, 0.0f, 0.0f };
     for (int c = 0; c < numGainMapChannels; ++c) {
-        res = avifFindMinMaxWithoutOutliers(gainMapF[c], numPixels, &gainMapMinLog2[c], &gainMapMaxLog2[c]);
+        res = avifFindMinMaxWithoutOutliers(gainMapF[c], (int)numPixels, &gainMapMinLog2[c], &gainMapMaxLog2[c]);
         if (res != AVIF_RESULT_OK) {
             goto cleanup;
         }
