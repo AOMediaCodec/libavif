@@ -90,6 +90,12 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     avifFree(codec->internal);
 }
 
+// Writes a libaom error code and error detail into diagnostics.
+static void aomDiagPrintf(avifDiagnostics * diag, const char * func, const char * error, const char * detail)
+{
+    avifDiagnosticsPrintf(diag, "%s failed: %s: %s", func, error, detail ? detail : "no error detail");
+}
+
 #if defined(AVIF_CODEC_AOM_DECODE)
 
 static avifBool aomCodecGetNextImage(struct avifCodec * codec,
@@ -127,14 +133,26 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         cfg.allow_lowbitdepth = 1;
 
         if (aom_codec_dec_init(&codec->internal->decoder, decoderInterface, &cfg, 0)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_dec_init()",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
         codec->internal->decoderInitialized = AVIF_TRUE;
 
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, codec->allLayers)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_control(AV1D_SET_OUTPUT_ALL_LAYERS)",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
         if (aom_codec_control(&codec->internal->decoder, AV1D_SET_OPERATING_POINT, codec->operatingPoint)) {
+            aomDiagPrintf(codec->diag,
+                          "aom_codec_control(AV1D_SET_OPERATING_POINT)",
+                          aom_codec_error(&codec->internal->decoder),
+                          aom_codec_error_detail(&codec->internal->decoder));
             return AVIF_FALSE;
         }
 
@@ -160,11 +178,10 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         } else if (sample) {
             codec->internal->iter = NULL;
             if (aom_codec_decode(&codec->internal->decoder, sample->data.data, sample->data.size, NULL)) {
-                const char * error_detail = aom_codec_error_detail(&codec->internal->decoder);
-                avifDiagnosticsPrintf(codec->diag,
-                                      "aom_codec_decode() failed: %s: %s",
-                                      aom_codec_error(&codec->internal->decoder),
-                                      error_detail ? error_detail : "no error detail");
+                aomDiagPrintf(codec->diag,
+                              "aom_codec_decode()",
+                              aom_codec_error(&codec->internal->decoder),
+                              aom_codec_error_detail(&codec->internal->decoder));
                 return AVIF_FALSE;
             }
             spatialID = sample->spatialID;
