@@ -159,6 +159,9 @@ static int avifReorderARGBThenConvertToYUV(int (*ReorderARGB)(const uint8_t *, i
 
     // A temporary buffer is needed to call ReorderARGB().
     uint8_t * src_argb;
+    if ((int64_t)width * 4 > INT_MAX) {
+        return -1;
+    }
     const int src_stride_argb = width * 4;
     const int soft_allocation_limit = 16384; // Arbitrarily chosen trade-off between CPU and memory footprints.
     int num_allocated_rows;
