@@ -2611,7 +2611,7 @@ int main(int argc, char * argv[])
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
 
     avifEncodedByteSizes byteSizes = { 0, 0, 0 };
-    if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage * const *)gridCells, &raw, &byteSizes)) {
+    if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage **)gridCells, &raw, &byteSizes)) {
         goto cleanup;
     }
 
