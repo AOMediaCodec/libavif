@@ -430,13 +430,13 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                     int uvI = outerI >> chromaShiftX;
                     int uvJ = outerJ >> chromaShiftY;
                     if (state.yuv.channelBytes > 1) {
-                        uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + (uvJ * uRowBytes)];
+                        uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + ((size_t)uvJ * uRowBytes)];
                         *pU = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                        uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + (uvJ * vRowBytes)];
+                        uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + ((size_t)uvJ * vRowBytes)];
                         *pV = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                     } else {
-                        uPlane[uvI + (uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                        vPlane[uvI + (uvJ * vRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
+                        uPlane[uvI + ((size_t)uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
+                        vPlane[uvI + ((size_t)uvJ * vRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                     }
                 } else if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422) {
                     // YUV422, average 2 samples (1x2), twice
@@ -456,13 +456,13 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                         int uvI = outerI >> chromaShiftX;
                         int uvJ = outerJ + bJ;
                         if (state.yuv.channelBytes > 1) {
-                            uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + (uvJ * uRowBytes)];
+                            uint16_t * pU = (uint16_t *)&uPlane[(uvI * 2) + ((size_t)uvJ * uRowBytes)];
                             *pU = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                            uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + (uvJ * vRowBytes)];
+                            uint16_t * pV = (uint16_t *)&vPlane[(uvI * 2) + ((size_t)uvJ * vRowBytes)];
                             *pV = (uint16_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                         } else {
-                            uPlane[uvI + (uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
-                            vPlane[uvI + (uvJ * vRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
+                            uPlane[uvI + ((size_t)uvJ * uRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgU);
+                            vPlane[uvI + ((size_t)uvJ * vRowBytes)] = (uint8_t)avifYUVColorSpaceInfoUVToUNorm(&state.yuv, avgV);
                         }
                     }
                 }
@@ -686,10 +686,10 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     for (uint32_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.
         const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
-        const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
-        const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
-        const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
-        const uint8_t * ptrA8 = aPlane ? &aPlane[j * aRowBytes] : NULL;
+        const uint8_t * ptrY8 = &yPlane[(size_t)j * yRowBytes];
+        const uint8_t * ptrU8 = uPlane ? &uPlane[(size_t)uvJ * uRowBytes] : NULL;
+        const uint8_t * ptrV8 = vPlane ? &vPlane[(size_t)uvJ * vRowBytes] : NULL;
+        const uint8_t * ptrA8 = aPlane ? &aPlane[(size_t)j * aRowBytes] : NULL;
         const uint16_t * ptrY16 = (const uint16_t *)ptrY8;
         const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
@@ -795,23 +795,23 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                     }
 
                     if (image->depth == 8) {
-                        unormU[0][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)];
-                        unormV[0][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)];
-                        unormU[1][0] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol];
-                        unormV[1][0] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol];
-                        unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow];
-                        unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow];
-                        unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
-                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
+                        unormU[0][0] = uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes)];
+                        unormV[0][0] = vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes)];
+                        unormU[1][0] = uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol];
+                        unormV[1][0] = vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol];
+                        unormU[0][1] = uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow];
+                        unormV[0][1] = vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow];
+                        unormU[1][1] = uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
+                        unormV[1][1] = vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
                     } else {
-                        unormU[0][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormV[0][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
-                        unormU[1][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
-                        unormV[1][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
-                        unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
-                        unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
-                        unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
+                        unormU[0][0] = *((const uint16_t *)&uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormV[0][0] = *((const uint16_t *)&vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
+                        unormU[1][0] = *((const uint16_t *)&uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol]);
+                        unormV[1][0] = *((const uint16_t *)&vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol]);
+                        unormU[0][1] = *((const uint16_t *)&uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
+                        unormV[0][1] = *((const uint16_t *)&vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
+                        unormU[1][1] = *((const uint16_t *)&uPlane[((size_t)uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
+                        unormV[1][1] = *((const uint16_t *)&vPlane[((size_t)uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {
