@@ -101,7 +101,8 @@ void PrintEncodingSettings(const avifEncoder* encoder, bool has_gain_map) {
             << ")], alpha quality ['" << encoder->qualityAlpha << "' ("
             << QualityLevelString(encoder->qualityAlpha) << ")]" << gain_map_str
             << ", "
-            << (encoder->autoTiling ? "automatic tiling" : manual_tiling_str)
+            << (encoder->autoTiling ? "automatic tiling"
+                                    : std::move(manual_tiling_str))
             << ", " << encoder->maxThreads
             << " worker thread(s), please wait...\n";
 }
