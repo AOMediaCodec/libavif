@@ -91,19 +91,19 @@ void PrintEncodingSettings(const avifEncoder* encoder, bool has_gain_map) {
                    std::to_string(encoder->qualityGainMap) + " (" +
                    QualityLevelString(encoder->qualityGainMap) + ")]";
   }
-  std::string manual_tiling_str =
-      "tileRowsLog2 [" + std::to_string(encoder->tileRowsLog2) +
-      "], tileColsLog2 [" + std::to_string(encoder->tileColsLog2) + "]";
+  std::string tiling_str = "automatic tiling";
+  if (!encoder->autoTiling) {
+    tiling_str = "tileRowsLog2 [" + std::to_string(encoder->tileRowsLog2) +
+                 "], tileColsLog2 [" + std::to_string(encoder->tileColsLog2) +
+                 "]";
+  }
   std::cout << "Encoding AVIF with settings: codec '"
             << avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE)
             << "' speed ['" << encoder->speed << "'], color quality ['"
             << encoder->quality << "' (" << QualityLevelString(encoder->quality)
             << ")], alpha quality ['" << encoder->qualityAlpha << "' ("
             << QualityLevelString(encoder->qualityAlpha) << ")]" << gain_map_str
-            << ", "
-            << (encoder->autoTiling ? "automatic tiling"
-                                    : std::move(manual_tiling_str))
-            << ", " << encoder->maxThreads
+            << ", " << tiling_str << ", " << encoder->maxThreads
             << " worker thread(s), please wait...\n";
 }
 }  // namespace
