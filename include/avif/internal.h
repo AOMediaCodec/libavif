@@ -664,6 +664,8 @@ typedef struct avifBoxHeader
     uint8_t usertype[16]; // Unused unless |type| is "uuid".
 } avifBoxHeader;
 
+// IMPORTANT: Functions operating on avifROStream * stream shall maintain the
+// invariant that stream->offset <= stream->raw->size.
 typedef struct avifROStream
 {
     avifROData * raw;
