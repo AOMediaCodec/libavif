@@ -4524,8 +4524,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         colorItem->premByID = alphaIsPremultiplied;
         avifProperty * alphaAuxProp = avifMetaCreateProperty(meta, "auxC");
         AVIF_CHECKERR(alphaAuxProp, AVIF_RESULT_OUT_OF_MEMORY);
-        // Use memcpy instead of strcpy to make the buffer boundary explicit.
-        // AVIF_URN_ALPHA0 is 43 bytes + null terminator, well within AUXTYPE_SIZE (64).
         memcpy(alphaAuxProp->u.auxC.auxType, AVIF_URN_ALPHA0, sizeof(AVIF_URN_ALPHA0));
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaAuxProp), AVIF_RESULT_OUT_OF_MEMORY);
 
