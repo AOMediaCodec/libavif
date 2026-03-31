@@ -285,7 +285,11 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
         clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
-        const float rgbAverageLinear = rgbSumLinear / ((size_t)width * height);
+        const size_t numPixels = (size_t)width * height;
+        if (numPixels == 0) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+        const float rgbAverageLinear = rgbSumLinear / numPixels;
         clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
     }
 
@@ -559,6 +563,9 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
+    if (width == 0 || height == 0 || height > (SIZE_MAX / width)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     const size_t numPixels = (size_t)width * height;
     if (numPixels > SIZE_MAX / sizeof(float)) {
         res = AVIF_RESULT_INVALID_ARGUMENT;
