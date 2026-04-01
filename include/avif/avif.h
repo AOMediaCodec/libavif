@@ -1415,6 +1415,9 @@ AVIF_API avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image
 // to reset the internal decoder back to before the first frame. Calling either
 // avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
 //
+// The decoder must be destroyed once there is no need for further parsing or decoding.
+// The decoder instance cannot be reused for another asset. Call avifDecoderCreate() instead.
+//
 // avifDecoderSetSource() allows you not only to choose whether to parse tracks or
 // items in a file containing both, but switch between sources without having to
 // Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
@@ -1666,6 +1669,9 @@ typedef uint32_t avifAddImageFlags;
 //
 // The image passed to avifEncoderAddImage() or avifEncoderAddImageGrid() is encoded during the
 // call (which may be slow) and can be freed after the function returns.
+//
+// The encoder must be destroyed after avifEncoderFinish() is called.
+// The encoder instance cannot be reused for another asset. Call avifEncoderCreate() instead.
 //
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
 // or if we are encoding a layered image.
