@@ -2647,7 +2647,7 @@ static avifResult avifParseMiniHDRProperties(avifROStream * s, uint32_t * hasCll
 // See https://aomediacodec.github.io/av1-isobmff/v1.2.0.html#av1codecconfigurationbox-syntax.
 static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigurationBox * config, const char * configPropName, avifDiagnostics * diag)
 {
-    const size_t av1COffset = s->offset;
+    const size_t av1COffset = avifROStreamOffset(s);
 
     uint32_t marker, version;
     AVIF_CHECK(avifROStreamReadBitsU32(s, &marker, /*bitCount=*/1)); // unsigned int (1) marker = 1;
@@ -2691,7 +2691,7 @@ static avifBool avifParseCodecConfiguration(avifROStream * s, avifCodecConfigura
     // The following is skipped by avifParseItemPropertyContainerBox().
     // unsigned int (8) configOBUs[];
 
-    AVIF_CHECK(s->offset - av1COffset == 4); // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
+    AVIF_CHECK(avifROStreamOffset(s) - av1COffset == 4); // Make sure avifParseCodecConfiguration() reads exactly 4 bytes.
     return AVIF_TRUE;
 }
 
@@ -4837,7 +4837,7 @@ static avifResult avifParse(avifDecoder * decoder)
         BEGIN_STREAM(headerStream, headerContents.data, headerContents.size, &decoder->diag, "File-level box header");
         avifBoxHeader header;
         AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header, /*topLevel=*/AVIF_TRUE), AVIF_RESULT_BMFF_PARSE_FAILED);
-        parseOffset += headerStream.offset;
+        parseOffset += avifROStreamOffset(&headerStream);
         AVIF_ASSERT_OR_RETURN(decoder->io->sizeHint == 0 || parseOffset <= decoder->io->sizeHint);
 
         // Try to get the remainder of the box, if necessary

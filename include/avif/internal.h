@@ -666,6 +666,8 @@ typedef struct avifBoxHeader
 
 // IMPORTANT: Functions operating on avifROStream * stream shall maintain the
 // invariant that stream->offset <= stream->raw->size.
+// Code outside src/stream.c shall only access stream->raw and stream->offset
+// through the avifROStream*() functions.
 typedef struct avifROStream
 {
     avifROData * raw;
