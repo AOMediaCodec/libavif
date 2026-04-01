@@ -4525,7 +4525,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifProperty * alphaAuxProp = avifMetaCreateProperty(meta, "auxC");
         AVIF_CHECKERR(alphaAuxProp, AVIF_RESULT_OUT_OF_MEMORY);
         static_assert(sizeof(alphaAuxProp->u.auxC.auxType) >= sizeof(AVIF_URN_ALPHA0), "");
-        strcpy(alphaAuxProp->u.auxC.auxType, AVIF_URN_ALPHA0);
+        memcpy(alphaAuxProp->u.auxC.auxType, AVIF_URN_ALPHA0, sizeof(AVIF_URN_ALPHA0));
         AVIF_CHECKERR(avifDecoderItemAddProperty(alphaItem, alphaAuxProp), AVIF_RESULT_OUT_OF_MEMORY);
 
         // Property with fixed index 2 (reused).
