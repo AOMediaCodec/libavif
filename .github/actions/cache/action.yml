@@ -50,7 +50,7 @@ runs:
       shell: bash
     - name: Cache all of cargo
       if: ${{ inputs.use-rust == 'true' }}
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       continue-on-error: true
       with:
         path: |
@@ -61,12 +61,12 @@ runs:
         key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
     - name: Cache external dependencies in ext
       id: cache-ext
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: ext
         key: ext-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'ext/*.cmd', 'ext/*.sh') }}
     - name: Cache external dependencies in build/_deps
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: build/_deps
         key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/*') }}
