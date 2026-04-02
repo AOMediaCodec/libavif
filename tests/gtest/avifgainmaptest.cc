@@ -775,7 +775,6 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     // Gain map marked as not present because the metadata is not supported.
     ASSERT_EQ(decoded->gainMap, nullptr);
 
-    ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
     decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
               AVIF_RESULT_OK);
