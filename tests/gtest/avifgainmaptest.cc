@@ -759,14 +759,14 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
   // The two test files should produce the same results:
   // One has an unsupported 'version' field, the other an unsupported
   // 'minimum_version' field, but the behavior of these two fields is the same.
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
   for (const std::string image : {"unsupported_gainmap_version.avif",
                                   "unsupported_gainmap_minimum_version.avif"}) {
     SCOPED_TRACE(image);
     const std::string path = std::string(data_path) + image;
     ImagePtr decoded(avifImageCreateEmpty());
     ASSERT_NE(decoded, nullptr);
-    DecoderPtr decoder(avifDecoderCreate());
-    ASSERT_NE(decoder, nullptr);
 
     // Decode with and without gain map decoding.
 
@@ -775,7 +775,6 @@ TEST(GainMapTest, DecodeUnsupportedVersion) {
     // Gain map marked as not present because the metadata is not supported.
     ASSERT_EQ(decoded->gainMap, nullptr);
 
-    ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
     decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     ASSERT_EQ(avifDecoderReadFile(decoder.get(), decoded.get(), path.c_str()),
               AVIF_RESULT_OK);
@@ -895,12 +894,13 @@ TEST(GainMapTest, CreateTestImages) {
   // Set to true to update test images.
   constexpr bool kUpdateTestImages = false;
 
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+
   // Generate seine_sdr_gainmap_big_srgb.jpg
   {
     const std::string path =
         std::string(data_path) + "seine_sdr_gainmap_srgb.avif";
-    DecoderPtr decoder(avifDecoderCreate());
-    ASSERT_NE(decoder, nullptr);
     decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
 
     ImagePtr image(avifImageCreateEmpty());
@@ -937,8 +937,6 @@ TEST(GainMapTest, CreateTestImages) {
 
     const std::string sdr_path =
         std::string(data_path) + "seine_sdr_gainmap_srgb.avif";
-    DecoderPtr decoder(avifDecoderCreate());
-    ASSERT_NE(decoder, nullptr);
     decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     ImagePtr sdr_with_gainmap(avifImageCreateEmpty());
     ASSERT_NE(sdr_with_gainmap, nullptr);
