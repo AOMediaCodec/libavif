@@ -1416,7 +1416,7 @@ AVIF_API avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image
 // avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
 //
 // The decoder must be destroyed once there is no need for further parsing or decoding.
-// The decoder instance cannot be reused for another file. Call avifDecoderCreate() instead.
+// Reusing the decoder instance for another file is not recommended. Call avifDecoderCreate() instead.
 //
 // avifDecoderSetSource() allows you not only to choose whether to parse tracks or
 // items in a file containing both, but switch between sources without having to
