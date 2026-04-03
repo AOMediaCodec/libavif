@@ -269,6 +269,12 @@ AVIF_API avifResult avifGetExifTiffHeaderOffset(const uint8_t * exif, size_t exi
 // If the offset is set to exifSize, there was no parsing error but no orientation tag was found.
 AVIF_API avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, size_t * offset);
 
+// Returns the offset and size of the data payload of the first top-level 'uuid' box with
+// the corresponding 'usertype' in the ISOBMFF file represented by dataSize bytes of data.
+// Returns AVIF_RESULT_NO_CONTENT if there is no such box.
+AVIF_API avifResult
+avifGetTopLevelUUID(const uint8_t * fileData, size_t fileSize, const uint8_t usertype[16], size_t * uuidOffset, size_t * uuidSize);
+
 // ---------------------------------------------------------------------------
 // avifPixelFormat
 //
