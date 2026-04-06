@@ -1183,6 +1183,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     if ((aomScalingMode.h_scaling_mode != AOME_NORMAL) || (aomScalingMode.v_scaling_mode != AOME_NORMAL)) {
         // AOME_SET_SCALEMODE only applies to next frame (layer), so we have to set it every time.
         aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &aomScalingMode);
+
+        // Check if we need to avoid a multithreading crash in loop restoration
+        // code in libaom < 3.13.3 when the first layer of a layered image is
+        // scaled. See https://aomedia-review.googlesource.com/208901.
+        static const int aomVersion_3_13_3 = (3 << 16) | (13 << 8) | 3;
+        if (aomVersion < aomVersion_3_13_3 && encoder->maxThreads > 1 && encoder->extraLayerCount > 0 &&
+            codec->internal->currentLayer == 0) {
+            aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_RESTORATION, 0);
+        }
     }
 
     aom_image_t aomImage;
