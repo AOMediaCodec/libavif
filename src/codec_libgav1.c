@@ -96,9 +96,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
                 break;
         }
 
-        // Throw away the old color planes if there are
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
-
         image->width = gav1Image->displayed_width[0];
         image->height = gav1Image->displayed_height[0];
         image->depth = gav1Image->bitdepth;
@@ -112,6 +109,7 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
         // Steal the pointers from the decoder's image directly
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = gav1Image->plane[yuvPlane];
@@ -120,9 +118,6 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - set image to correct size, fill alpha
-
-        // Throw away the old alpha plane if there are
-        avifImageFreePlanes(image, AVIF_PLANES_A);
 
         image->width = gav1Image->displayed_width[0];
         image->height = gav1Image->displayed_height[0];
