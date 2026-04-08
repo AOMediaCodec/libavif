@@ -171,7 +171,7 @@ TEST_F(ProgressiveTest, DimensionChangeWithAlpha) {
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_OK);
 
-  // Encode the small image twice to verify frame buffer reallocation
+  // Encode the scaled image twice to verify frame buffer reallocation
   // behavior during decode
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
