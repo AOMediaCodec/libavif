@@ -224,9 +224,6 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
             yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         }
 
-        // Throw away the old color planes if there are
-        avifImageFreePlanes(image, AVIF_PLANES_YUV);
-
         image->width = codec->internal->image->d_w;
         image->height = codec->internal->image->d_h;
         image->depth = codec->internal->image->bit_depth;
@@ -240,6 +237,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         image->matrixCoefficients = (avifMatrixCoefficients)codec->internal->image->mc;
 
         // Steal the pointers from the decoder's image directly
+        avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = codec->internal->image->planes[yuvPlane];
@@ -249,13 +247,11 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
     } else {
         // Alpha plane - set image to correct size, fill alpha
 
-        // Throw away the old alpha plane if there are
-        avifImageFreePlanes(image, AVIF_PLANES_A);
-
         image->width = codec->internal->image->d_w;
         image->height = codec->internal->image->d_h;
         image->depth = codec->internal->image->bit_depth;
 
+        avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = codec->internal->image->planes[0];
         image->alphaRowBytes = codec->internal->image->stride[0];
         *isLimitedRangeAlpha = (codec->internal->image->range == AOM_CR_STUDIO_RANGE);
