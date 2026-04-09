@@ -1,4 +1,4 @@
-set(AVIF_AVM_GIT_TAG research-v14.0.0)
+set(AVIF_AVM_GIT_TAG research-v14.1.0)
 
 message(CHECK_START "libavif(AVIF_CODEC_AVM=LOCAL): fetching and configuring avm")
 
