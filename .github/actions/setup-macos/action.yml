@@ -61,7 +61,7 @@ runs:
       # imagemagick is used in sh tests (not gtest tests) but we assume that no tests are run by the CI
       # if gtest is off
       if: ${{ inputs.gtest != 'OFF' }}
-      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} imagemagick-full" >> "$GITHUB_ENV"
+      run: echo "AVIF_MAC_LIBRARIES=${{ env.AVIF_MAC_LIBRARIES }} imagemagick" >> "$GITHUB_ENV"
       shell: bash
     - name: Install gtest
       if: ${{ inputs.gtest == 'SYSTEM' }}
