@@ -44,6 +44,8 @@ typedef struct
     avifHeaderFormatFlags headerFormat;
     uint64_t creationTime;
     uint64_t modificationTime;
+    uint32_t width;
+    uint32_t height;
 
     avifBool paspPresent;
     uint32_t paspValues[2];
@@ -241,6 +243,8 @@ static void syntaxLong(void)
     printf("    --progressive                     : Automatically set parameters to encode a simple layered image supporting progressive rendering from a single input frame.\n");
     printf("    --layered                         : Encode a layered AVIF. Each input is encoded as one layer and at most %d layers can be encoded.\n",
            AVIF_MAX_AV1_LAYER_COUNT);
+    printf("    --render-size WxH                 : Set the rendered size of the AVIF image.\n");
+    printf("                                        Supported for still images and layered still images only.\n");
     printf("    -g,--grid MxN                     : Encode a single-image grid AVIF with M cols & N rows. Either supply MxN identical W/H/D images, or a single\n");
     printf("                                        image that can be evenly split into the MxN grid and follow AVIF grid image restrictions. The grid will adopt\n");
     printf("                                        the color profile of the first image supplied.\n");
@@ -449,6 +453,35 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, uint32_t clapVal
     clapValues[5] = clap.horizOffD;
     clapValues[6] = clap.vertOffN;
     clapValues[7] = clap.vertOffD;
+    return AVIF_TRUE;
+}
+
+static avifBool avifSettingsUsesRenderedSizeOverride(const avifSettings * settings)
+{
+    return (settings->width != 0) || (settings->height != 0);
+}
+
+static void avifSettingsGetEffectiveOutputDimensions(const avifSettings * settings, const avifImage * image, uint32_t * width, uint32_t * height)
+{
+    *width = settings->width ? settings->width : image->width;
+    *height = settings->height ? settings->height : image->height;
+}
+
+static avifBool avifSettingsVerifyRenderedSizeBounds(const avifSettings * settings, const avifImage * image, const char * filename)
+{
+    if (!avifSettingsUsesRenderedSizeOverride(settings)) {
+        return AVIF_TRUE;
+    }
+    if ((image->width > settings->width) || (image->height > settings->height)) {
+        fprintf(stderr,
+                "ERROR: Input image dimensions [%ux%u] exceed rendered size [%ux%u]: %s\n",
+                image->width,
+                image->height,
+                settings->width,
+                settings->height,
+                filename);
+        return AVIF_FALSE;
+    }
     return AVIF_TRUE;
 }
 
@@ -837,10 +870,11 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
 static avifBool avifEncoderVerifyImageCompatibility(const avifImage * refImage,
                                                     const avifImage * testImage,
                                                     const char * seriesType,
-                                                    const char * filename)
+                                                    const char * filename,
+                                                    avifBool allowDimensionChange)
 {
     // Verify that this frame's properties matches the first frame's properties
-    if ((refImage->width != testImage->width) || (refImage->height != testImage->height)) {
+    if (!allowDimensionChange && ((refImage->width != testImage->width) || (refImage->height != testImage->height))) {
         fprintf(stderr,
                 "ERROR: Image %s dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
                 seriesType,
@@ -930,7 +964,14 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 settings->inputFormat)) {
             goto cleanup;
         }
-        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", avifPrettyFilename(nextFile->filename))) {
+        if (!avifSettingsVerifyRenderedSizeBounds(settings, nextImage, avifPrettyFilename(nextFile->filename))) {
+            goto cleanup;
+        }
+        if (!avifEncoderVerifyImageCompatibility(firstImage,
+                                                 nextImage,
+                                                 "sequence",
+                                                 avifPrettyFilename(nextFile->filename),
+                                                 /*allowDimensionChange=*/AVIF_FALSE)) {
             goto cleanup;
         }
         if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -1036,6 +1077,9 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     settings->inputFormat)) {
                 goto cleanup;
             }
+            if (!avifSettingsVerifyRenderedSizeBounds(settings, nextImage, avifPrettyFilename(nextFile->filename))) {
+                goto cleanup;
+            }
             // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
             if (input->frameIter) {
                 fprintf(stderr,
@@ -1043,7 +1087,11 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                         avifPrettyFilename(nextFile->filename));
                 goto cleanup;
             }
-            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", avifPrettyFilename(nextFile->filename))) {
+            if (!avifEncoderVerifyImageCompatibility(firstImage,
+                                                     nextImage,
+                                                     "layer",
+                                                     avifPrettyFilename(nextFile->filename),
+                                                     avifSettingsUsesRenderedSizeOverride(settings))) {
                 goto cleanup;
             }
             if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -1104,6 +1152,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->creationTime = settings->creationTime;
     encoder->modificationTime = settings->modificationTime;
     encoder->extraLayerCount = settings->layers - 1;
+    encoder->width = settings->width;
+    encoder->height = settings->height;
     if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings)) {
         goto cleanup;
     }
@@ -1748,6 +1798,15 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             settings.layered = AVIF_TRUE;
+        } else if (!strcmp(arg, "--render-size")) {
+            uint32_t renderSize[2] = { 0 };
+            NEXTARG();
+            if (!parseU32List(renderSize, 2, arg, 'x') || (renderSize[0] == 0) || (renderSize[1] == 0)) {
+                fprintf(stderr, "ERROR: Invalid render size: %s\n", arg);
+                goto cleanup;
+            }
+            settings.width = renderSize[0];
+            settings.height = renderSize[1];
         } else if (!strcmp(arg, "--scaling-mode") || strpre(arg, "--scaling-mode:")) {
             avifOptionSuffixType type = parseOptionSuffix(arg, input.filesCount != 0);
             if (type == AVIF_OPTION_SUFFIX_INVALID) {
@@ -2106,6 +2165,11 @@ int main(int argc, char * argv[])
         fprintf(stderr, "WARNING: Trailing options with update suffix has no effect. Place them before the input you intend to apply to.\n");
     }
 
+    if (avifSettingsUsesRenderedSizeOverride(&settings) && ((settings.width == 0) || (settings.height == 0))) {
+        fprintf(stderr, "ERROR: --render-size must be specified as WxH.\n");
+        goto cleanup;
+    }
+
     // Check layer config
     if (settings.progressive) {
         assert(!settings.layered);
@@ -2131,6 +2195,14 @@ int main(int argc, char * argv[])
     }
     if (settings.layers > 1 && settings.gridDimsPresent) {
         fprintf(stderr, "Layered grid image unimplemented in avifenc.\n");
+        goto cleanup;
+    }
+    if (avifSettingsUsesRenderedSizeOverride(&settings) && settings.gridDimsPresent) {
+        fprintf(stderr, "ERROR: --render-size is not supported with --grid.\n");
+        goto cleanup;
+    }
+    if (avifSettingsUsesRenderedSizeOverride(&settings) && (settings.layers == 1) && (input.filesCount > 1)) {
+        fprintf(stderr, "ERROR: --render-size is not supported with image sequences. Use --layered for multiple still inputs.\n");
         goto cleanup;
     }
 
@@ -2352,6 +2424,19 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    if (!avifSettingsVerifyRenderedSizeBounds(&settings, image, avifPrettyFilename(firstFile->filename))) {
+        goto cleanup;
+    }
+
+    if (avifSettingsUsesRenderedSizeOverride(&settings) && (settings.layers == 1) && input.frameIter) {
+        fprintf(stderr, "ERROR: --render-size is not supported with image sequences.\n");
+        goto cleanup;
+    }
+
+    uint32_t outputImageWidth;
+    uint32_t outputImageHeight;
+    avifSettingsGetEffectiveOutputDimensions(&settings, image, &outputImageWidth, &outputImageHeight);
+
     printf("Successfully loaded: %s\n", avifPrettyFilename(firstFile->filename));
 
     // Prepare image timings
@@ -2404,7 +2489,7 @@ int main(int argc, char * argv[])
         image->pasp.vSpacing = settings.paspValues[1];
     }
     if (cropConversionRequired) {
-        if (!convertCropToClap(image->width, image->height, settings.clapValues)) {
+        if (!convertCropToClap(outputImageWidth, outputImageHeight, settings.clapValues)) {
             goto cleanup;
         }
         settings.clapValid = AVIF_TRUE;
@@ -2424,7 +2509,7 @@ int main(int argc, char * argv[])
         avifCropRect cropRect;
         avifDiagnostics diag;
         avifDiagnosticsClearError(&diag);
-        if (!avifCropRectFromCleanApertureBox(&cropRect, &image->clap, image->width, image->height, &diag)) {
+        if (!avifCropRectFromCleanApertureBox(&cropRect, &image->clap, outputImageWidth, outputImageHeight, &diag)) {
             fprintf(stderr,
                     "ERROR: Invalid clap: width:[%d / %d], height:[%d / %d], horizOff:[%d / %d], vertOff:[%d / %d] - %s\n",
                     (int32_t)image->clap.widthN,
@@ -2609,6 +2694,9 @@ int main(int argc, char * argv[])
                   settings.gridDims[0],
                   settings.gridDims[1],
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    if (avifSettingsUsesRenderedSizeOverride(&settings)) {
+        printf(" * Rendered Size  : %ux%u\n", settings.width, settings.height);
+    }
 
     avifEncodedByteSizes byteSizes = { 0, 0, 0 };
     if (!avifEncodeImages(&settings, &input, firstFile, image, (const avifImage **)gridCells, &raw, &byteSizes)) {
