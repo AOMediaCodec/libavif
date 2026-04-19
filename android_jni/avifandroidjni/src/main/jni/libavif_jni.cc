@@ -50,8 +50,39 @@ struct AvifDecoderWrapper {
   avifCropRect crop;
 };
 
+// Returns true when `encoded` is a direct ByteBuffer of at least `length`
+// bytes and `length` is non-negative. On success, `*out_buffer` is set to the
+// direct buffer address and `*out_size` is set to `(size_t)length`. On
+// failure, logs via LOGE() and returns false; callers should propagate a
+// clean failure (false / 0 / nullptr) to the Java layer.
+bool ValidateDirectBuffer(JNIEnv* env, jobject encoded, jint length,
+                          const uint8_t** out_buffer, size_t* out_size) {
+  if (length < 0) {
+    LOGE("AVIF JNI: negative length (%d) rejected.", length);
+    return false;
+  }
+  const jlong capacity = env->GetDirectBufferCapacity(encoded);
+  if (capacity < 0) {
+    LOGE("AVIF JNI: encoded is not a direct ByteBuffer.");
+    return false;
+  }
+  if (static_cast<jlong>(length) > capacity) {
+    LOGE("AVIF JNI: length (%d) exceeds direct buffer capacity (%lld).",
+         length, static_cast<long long>(capacity));
+    return false;
+  }
+  const void* const address = env->GetDirectBufferAddress(encoded);
+  if (address == nullptr) {
+    LOGE("AVIF JNI: GetDirectBufferAddress returned null.");
+    return false;
+  }
+  *out_buffer = static_cast<const uint8_t*>(address);
+  *out_size = static_cast<size_t>(length);
+  return true;
+}
+
 bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
-                           const uint8_t* const buffer, int length,
+                           const uint8_t* const buffer, size_t length,
                            int threads) {
   decoder->decoder = avifDecoderCreate();
   if (decoder->decoder == nullptr) {
@@ -255,9 +286,12 @@ jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
 
 FUNC(jboolean, isAvifImage, jobject encoded, int length) {
   IGNORE_UNUSED_JNI_PARAMETERS;
-  const uint8_t* const buffer =
-      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
-  const avifROData avif = {buffer, static_cast<size_t>(length)};
+  const uint8_t* buffer = nullptr;
+  size_t size = 0;
+  if (!ValidateDirectBuffer(env, encoded, length, &buffer, &size)) {
+    return false;
+  }
+  const avifROData avif = {buffer, size};
   return avifPeekCompatibleFileType(&avif);
 }
 
@@ -278,10 +312,13 @@ FUNC(jboolean, isAvifImage, jobject encoded, int length) {
 
 FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
   IGNORE_UNUSED_JNI_PARAMETERS;
-  const uint8_t* const buffer =
-      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
+  const uint8_t* buffer = nullptr;
+  size_t size = 0;
+  if (!ValidateDirectBuffer(env, encoded, length, &buffer, &size)) {
+    return false;
+  }
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length, /*threads=*/1)) {
+  if (!CreateDecoderAndParse(&decoder, buffer, size, /*threads=*/1)) {
     return false;
   }
   FIND_CLASS(info_class, "org/aomedia/avif/android/AvifDecoder$Info", false);
@@ -303,10 +340,13 @@ FUNC(jboolean, getInfo, jobject encoded, int length, jobject info) {
 FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
      jint threads) {
   IGNORE_UNUSED_JNI_PARAMETERS;
-  const uint8_t* const buffer =
-      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
+  const uint8_t* buffer = nullptr;
+  size_t size = 0;
+  if (!ValidateDirectBuffer(env, encoded, length, &buffer, &size)) {
+    return false;
+  }
   AvifDecoderWrapper decoder;
-  if (!CreateDecoderAndParse(&decoder, buffer, length,
+  if (!CreateDecoderAndParse(&decoder, buffer, size,
                              getThreadCount(threads))) {
     return false;
   }
@@ -314,14 +354,17 @@ FUNC(jboolean, decode, jobject encoded, int length, jobject bitmap,
 }
 
 FUNC(jlong, createDecoder, jobject encoded, jint length, jint threads) {
-  const uint8_t* const buffer =
-      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
+  const uint8_t* buffer = nullptr;
+  size_t size = 0;
+  if (!ValidateDirectBuffer(env, encoded, length, &buffer, &size)) {
+    return 0;
+  }
   std::unique_ptr<AvifDecoderWrapper> decoder(new (std::nothrow)
                                                   AvifDecoderWrapper());
   if (decoder == nullptr) {
     return 0;
   }
-  if (!CreateDecoderAndParse(decoder.get(), buffer, length,
+  if (!CreateDecoderAndParse(decoder.get(), buffer, size,
                              getThreadCount(threads))) {
     return 0;
   }
