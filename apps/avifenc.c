@@ -222,7 +222,7 @@ static void syntaxLong(void)
     printf("    --mini                            : EXPERIMENTAL: Use reduced header if possible (backward-incompatible)\n");
 #endif
     printf("    -l,--lossless                     : Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it\n");
-    printf("    -d,--depth D[,Dextension]         : D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m or stdin: bit depth is retained)\n");
+    printf("    -d,--depth D[,Dextension]         : D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m or stdin: bit depth is retained and must match if specified; Dextension is unsupported)\n");
     printf("                                        If specified, Dextension adds a hidden encoded image of Dextension bit depth in the same file as the primary image to reach 16-bit depth at decoding.\n");
     printf("                                        See avifSampleTransformRecipe for the supported combinations (8,8 and 12,4 and 12,8).\n");
     printf("    -y,--yuv FORMAT                   : Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained)\n");
@@ -610,20 +610,21 @@ static avifBool avifInputReadImage(avifInput * input,
 
     const avifColorPrimaries colorPrimariesBefore = dstImage->colorPrimaries;
     const avifTransferCharacteristics transferCharacteristicsBefore = dstImage->transferCharacteristics;
-    if (avifReadImage(currentFile->filename,
-                      inputFormat,
-                      input->requestedFormat,
-                      input->requestedDepthExtension == 0 ? input->requestedDepth : 16,
-                      chromaDownsampling,
-                      ignoreColorProfile,
-                      ignoreExif,
-                      ignoreXMP,
-                      ignoreGainMap,
-                      UINT32_MAX,
-                      dstImage,
-                      dstDepth,
-                      dstSourceTiming,
-                      &input->frameIter) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+    const avifAppFileFormat actualInputFormat = avifReadImage(currentFile->filename,
+                                                              inputFormat,
+                                                              input->requestedFormat,
+                                                              input->requestedDepthExtension == 0 ? input->requestedDepth : 16,
+                                                              chromaDownsampling,
+                                                              ignoreColorProfile,
+                                                              ignoreExif,
+                                                              ignoreXMP,
+                                                              ignoreGainMap,
+                                                              UINT32_MAX,
+                                                              dstImage,
+                                                              dstDepth,
+                                                              dstSourceTiming,
+                                                              &input->frameIter);
+    if (actualInputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr,
                 "ERROR: Couldn't read %s file %s\n",
                 avifFileFormatToString(inputFormat),
@@ -632,6 +633,22 @@ static avifBool avifInputReadImage(avifInput * input,
             fprintf(stderr, "Specify --input-format if the input is not y4m\n");
         }
         return AVIF_FALSE;
+    }
+    if (actualInputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
+        if (input->requestedDepthExtension) {
+            fprintf(stderr,
+                    "ERROR: --depth %d,%d is not supported for Y4M input\n",
+                    input->requestedDepth,
+                    input->requestedDepthExtension);
+            return AVIF_FALSE;
+        }
+        if (input->requestedDepth && (input->requestedDepth != (int)dstImage->depth)) {
+            fprintf(stderr,
+                    "ERROR: --depth %d does not match Y4M bit depth %u; Y4M bit-depth conversion is not supported\n",
+                    input->requestedDepth,
+                    dstImage->depth);
+            return AVIF_FALSE;
+        }
     }
     if (!allowChangingCicp) {
         // Restore the previous primaries/transfer in case avifReadImage changed them.
@@ -643,7 +660,7 @@ static avifBool avifInputReadImage(avifInput * input,
         ++input->fileIndex;
     }
     if (dstSourceIsRGB) {
-        *dstSourceIsRGB = (inputFormat != AVIF_APP_FILE_FORMAT_Y4M);
+        *dstSourceIsRGB = (actualInputFormat != AVIF_APP_FILE_FORMAT_Y4M);
     }
     if (dstSettings) {
         *dstSettings = &currentFile->settings;

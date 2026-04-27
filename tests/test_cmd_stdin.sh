@@ -23,11 +23,12 @@ INPUT_JPEG="${TESTDATA_DIR}/paris_extended_xmp.jpg"
 # Output file names.
 ENCODED_FILE_REGULAR="avif_test_cmd_stdin_encoded.avif"
 ENCODED_FILE_STDIN="avif_test_cmd_stdin_encoded_with_stdin.avif"
+OUT_MSG="avif_test_cmd_stdin_out_msg.txt"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
-    rm -f -- "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}"
+    rm -f -- "${ENCODED_FILE_REGULAR}" "${ENCODED_FILE_STDIN}" "${OUT_MSG}"
   popd
 }
 trap cleanup EXIT
@@ -80,6 +81,9 @@ test_stdin() {
 
 pushd ${TMP_DIR}
   test_stdin "${INPUT_Y4M_STILL}" y4m
+  "${AVIFENC}" -s 8 --stdin --input-format y4m --depth 10 -o "${ENCODED_FILE_STDIN}" \
+    < "${INPUT_Y4M_STILL}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: --depth 10 does not match Y4M bit depth 8" "${OUT_MSG}"
   test_stdin "${INPUT_PNG}" png
   test_stdin "${INPUT_JPEG}" jpeg
 
