@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -137,7 +138,7 @@ struct NonPersistentIO {
 // previous read call to ensure non-persistent IO.
 avifResult NonPersistentRead(struct avifIO* io, uint32_t flags, uint64_t offset,
                              size_t size, avifROData* out) {
-  NonPersistentIO* io_data = (NonPersistentIO*)io->data;
+  NonPersistentIO* io_data = reinterpret_cast<NonPersistentIO*>(io->data);
   if (flags != 0 || offset > io_data->ro_data.size) {
     return AVIF_RESULT_IO_ERROR;
   }
