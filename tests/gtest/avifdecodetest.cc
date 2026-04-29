@@ -176,7 +176,8 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
   EXPECT_EQ(decoder->imageCount, 2);
-  for (int i = 0; i < 2; ++i) {
+  if (testutil::Av1DecoderAvailable()) {
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
     EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
   }
 }
