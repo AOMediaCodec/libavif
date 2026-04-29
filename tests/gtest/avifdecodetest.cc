@@ -162,13 +162,13 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
   const testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "poc_b_506387278.avif");
   NonPersistentIO io_data;
-  io_data.ro_data = {.data = avif.data, .size = avif.size};
-  avifIO io = {.destroy = nullptr,
-               .read = NonPersistentRead,
-               .write = nullptr,
-               .sizeHint = avif.size,
-               .persistent = false,
-               .data = &io_data};
+  io_data.ro_data = {/*.data=*/avif.data, /*.size=*/avif.size};
+  avifIO io = {/*.destroy=*/nullptr,
+               /*.read=*/NonPersistentRead,
+               /*.write=*/nullptr,
+               /*.sizeHint=*/avif.size,
+               /*.persistent=*/false,
+               /*.data=*/&io_data};
   // |io| must outlive the decoder.
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
