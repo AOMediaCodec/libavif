@@ -981,6 +981,14 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Random frames generated with libavif.
 
+### File [poc_b_506387278.avif](poc_b_506387278.avif)
+
+![](poc_b_506387278.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: https://b.corp.google.com/issues/506387278
+
 ### File [webp_logo_animated.y4m](webp_logo_animated.y4m)
 
 ![](webp_logo_animated.y4m)
