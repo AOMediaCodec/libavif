@@ -222,8 +222,10 @@ typedef struct avifDecoderItem
     avifContentType contentType;
     avifPropertyArray properties;
     avifExtentArray extents;       // All extent offsets/sizes
-    avifRWData mergedExtents;      // if set, is a single contiguous block of this item's extents (unused when extents.count == 1)
-    avifBool ownsMergedExtents;    // if true, mergedExtents must be freed when this item is destroyed
+    avifRWData mergedExtents;      // A single contiguous block of this item's extents
+    avifBool ownsMergedExtents;    // If true, mergedExtents must be freed when this item is destroyed.
+                                   // If false, mergedExtents is used as an avifROData and points to a
+                                   // buffer it doesn't own.
     avifBool partialMergedExtents; // If true, mergedExtents doesn't have all of the item data yet
     uint32_t thumbnailForID;       // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
     uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
