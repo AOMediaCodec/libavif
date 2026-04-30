@@ -1533,7 +1533,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
         }
 
         if (singlePersistentBuffer) {
-            item->mergedExtents.data = (uint8_t *)offsetBuffer.data;  // const_cast
+            item->mergedExtents.data = (uint8_t *)offsetBuffer.data; // const_cast
             AVIF_ASSERT_OR_RETURN(bytesToRead <= offsetBuffer.size);
             item->mergedExtents.size = bytesToRead;
         } else {
