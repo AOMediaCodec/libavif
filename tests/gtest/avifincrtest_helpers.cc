@@ -211,8 +211,8 @@ void EncodeAsGrid(const avifImage& image, uint32_t grid_cols,
 
   std::vector<ImagePtr> cell_images;
   cell_images.reserve(grid_cols * grid_rows);
-  for (uint32_t row = 0, i_cell = 0; row < grid_rows; ++row) {
-    for (uint32_t col = 0; col < grid_cols; ++col, ++i_cell) {
+  for (uint32_t row = 0; row < grid_rows; ++row) {
+    for (uint32_t col = 0; col < grid_cols; ++col) {
       avifCropRect cell;
       cell.x = col * *cell_width;
       cell.y = row * *cell_height;
