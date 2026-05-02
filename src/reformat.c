@@ -300,8 +300,8 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                 }
 
                 // Convert an entire 2x2 block to YUV, and populate any fully sampled channels as we go
-                for (size_t bJ = 0; bJ < blockH; ++bJ) {
-                    for (size_t bI = 0; bI < blockW; ++bI) {
+                for (uint32_t bJ = 0; bJ < blockH; ++bJ) {
+                    for (uint32_t bI = 0; bI < blockW; ++bI) {
                         const size_t i = outerI + bI;
                         const size_t j = outerJ + bJ;
 
@@ -680,9 +680,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     // to clang's analyzer.
     assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
-    for (size_t j = 0; j < image->height; ++j) {
+    for (uint32_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.
-        const size_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
+        const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
@@ -692,12 +692,12 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
         const uint16_t * ptrA16 = (const uint16_t *)ptrA8;
 
-        uint8_t * ptrR = &rgb->pixels[state->rgb.offsetBytesR + (j * rgb->rowBytes)];
-        uint8_t * ptrG = &rgb->pixels[state->rgb.offsetBytesG + (j * rgb->rowBytes)];
-        uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + (j * rgb->rowBytes)];
-        uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + (j * rgb->rowBytes)];
+        uint8_t * ptrR = &rgb->pixels[state->rgb.offsetBytesR + ((size_t)j * rgb->rowBytes)];
+        uint8_t * ptrG = &rgb->pixels[state->rgb.offsetBytesG + ((size_t)j * rgb->rowBytes)];
+        uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + ((size_t)j * rgb->rowBytes)];
+        uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + ((size_t)j * rgb->rowBytes)];
 
-        for (size_t i = 0; i < image->width; ++i) {
+        for (uint32_t i = 0; i < image->width; ++i) {
             float Y, Cb = 0.5f, Cr = 0.5f;
 
             // Calculate Y
@@ -712,7 +712,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
 
             // Calculate Cb and Cr
             if (yuvHasColor) {
-                const size_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
+                const uint32_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
 
@@ -1420,7 +1420,7 @@ static avifResult avifRGBImageToF16(avifRGBImage * rgb)
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
     }
-    const uint32_t channelCount = avifRGBFormatChannelCount(rgb->format);
+    const size_t channelCount = avifRGBFormatChannelCount(rgb->format);
     const float scale = 1.0f / ((1 << rgb->depth) - 1);
     const float multiplier = F16_MULTIPLIER * scale;
     uint16_t * pixelRowBase = (uint16_t *)rgb->pixels;
@@ -1700,7 +1700,7 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     }
     const uint32_t rowsForLastJob = image->height - rowsPerJob * (jobs - 1);
     uint32_t startRow = 0;
-    size_t i;
+    uint32_t i;
     for (i = 0; i < jobs; ++i, startRow += rowsPerJob) {
         YUVToRGBThreadData * tdata = &threadData[i];
         const avifCropRect rect = { .x = 0, .y = startRow, .width = image->width, .height = (i == jobs - 1) ? rowsForLastJob : rowsPerJob };
