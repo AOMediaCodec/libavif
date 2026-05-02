@@ -38,6 +38,12 @@ static const size_t VISUALSAMPLEENTRY_SIZE = 78;
 // can't be more than 4 unique tuples right now.
 #define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
 
+// Security limits for BMFF structures to prevent resource exhaustion (DoS).
+#define AVIF_MAX_ITEM_COUNT 4096
+#define AVIF_MAX_PROPERTY_COUNT 4096
+#define AVIF_MAX_EXTENT_COUNT 64
+#define AVIF_MAX_GROUP_COUNT 1024
+
 // ---------------------------------------------------------------------------
 // AVIF codec type (AV1 or AV2)
 
@@ -2015,6 +2021,10 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
     } else {
         AVIF_CHECKERR(avifROStreamReadU32(&s, &itemCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) item_count;
     }
+    if (itemCount > AVIF_MAX_ITEM_COUNT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_ITEM_COUNT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
     for (uint32_t i = 0; i < itemCount; ++i) {
         uint32_t itemID;
         if (version < 2) {
@@ -2058,6 +2068,10 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
+        if (extentCount > AVIF_MAX_EXTENT_COUNT) {
+            avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_EXTENT_COUNT");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
             if ((version == 1 || version == 2) && indexSize > 0) {
                 // Section 8.11.3.1 of ISO/IEC 14496-12:
@@ -2926,6 +2940,11 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
         avifBoxHeader header;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
+        if (properties->count >= AVIF_MAX_PROPERTY_COUNT) {
+            avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_PROPERTY_COUNT");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+
         avifProperty * prop = (avifProperty *)avifArrayPush(properties);
         AVIF_CHECKERR(prop != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         memcpy(prop->type, header.type, 4);
@@ -2995,6 +3014,10 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED);
+    if (entryCount > AVIF_MAX_ITEM_COUNT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_ITEM_COUNT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
     unsigned int prevItemID = 0;
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         // ISO/IEC 14496-12, Seventh edition, 2022-01, Section 8.11.14.1:
@@ -3315,6 +3338,11 @@ static avifResult avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, siz
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
+    if (entryCount > AVIF_MAX_ITEM_COUNT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_ITEM_COUNT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &infeHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3374,6 +3402,10 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
 
         uint16_t referenceCount = 0;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &referenceCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) reference_count;
+        if (referenceCount > AVIF_MAX_ITEM_COUNT) {
+            avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_ITEM_COUNT");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
 
         for (uint16_t refIndex = 0; refIndex < referenceCount; ++refIndex) {
             uint32_t toID = 0;
@@ -3421,6 +3453,10 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[grpl]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
+        if (meta->entityToGroups.count >= AVIF_MAX_GROUP_COUNT) {
+            avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_GROUP_COUNT");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         avifBoxHeader groupHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &groupHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
         // We don't check the flag or version as they depend on the grouping type (and for simplicity).
@@ -3438,6 +3474,10 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
         AVIF_CHECKERR(avifROStreamReadU32(&s, &group->groupID), AVIF_RESULT_BMFF_PARSE_FAILED);
         uint32_t numEntitiesInGroup;
         AVIF_CHECKERR(avifROStreamReadU32(&s, &numEntitiesInGroup), AVIF_RESULT_BMFF_PARSE_FAILED);
+        if (numEntitiesInGroup > AVIF_MAX_ITEM_COUNT) {
+            avifDiagnosticsPrintf(diag, "Exceeded AVIF_MAX_ITEM_COUNT");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         for (uint32_t i = 0; i < numEntitiesInGroup; ++i) {
             uint32_t * entityId = avifArrayPush(&group->entityIDs);
             AVIF_CHECKERR(entityId != NULL, AVIF_RESULT_OUT_OF_MEMORY);
@@ -3605,6 +3645,10 @@ static avifResult avifParseChunkOffsetBox(avifSampleTable * sampleTable, avifBoo
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
+    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
     for (uint32_t i = 0; i < entryCount; ++i) {
         uint64_t offset;
         if (largeOffsets) {
@@ -3630,6 +3674,10 @@ static avifResult avifParseSampleToChunkBox(avifSampleTable * sampleTable, const
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
+    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
     uint32_t prevFirstChunk = 0;
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableSampleToChunk * sampleToChunk = (avifSampleTableSampleToChunk *)avifArrayPush(&sampleTable->sampleToChunks);
@@ -3664,6 +3712,10 @@ static avifResult avifParseSampleSizeBox(avifSampleTable * sampleTable, const ui
     uint32_t allSamplesSize, sampleCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &allSamplesSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) sample_size;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &sampleCount), AVIF_RESULT_BMFF_PARSE_FAILED);    // unsigned int(32) sample_count;
+    if (sampleCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
 
     if (allSamplesSize > 0) {
         sampleTable->allSamplesSize = allSamplesSize;
@@ -3685,6 +3737,10 @@ static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const ui
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
+    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
 
     for (uint32_t i = 0; i < entryCount; ++i) {
         uint32_t sampleNumber = 0;
@@ -3704,6 +3760,10 @@ static avifResult avifParseTimeToSampleBox(avifSampleTable * sampleTable, const 
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
+    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
+        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
 
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifSampleTableTimeToSample * timeToSample = (avifSampleTableTimeToSample *)avifArrayPush(&sampleTable->timeToSamples);
@@ -3772,9 +3832,10 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
         avifDiagnosticsPrintf(diag, "Duplicate Box[stbl] for a single track detected");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    track->sampleTable = avifSampleTableCreate();
-    AVIF_CHECKERR(track->sampleTable != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-
+    if (!track->sampleTable) {
+        track->sampleTable = avifSampleTableCreate();
+        AVIF_CHECKERR(track->sampleTable, AVIF_RESULT_OUT_OF_MEMORY);
+    }
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stbl]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
@@ -4945,7 +5006,8 @@ static avifResult avifParse(avifDecoder * decoder)
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
             AVIF_CHECKERR(!miniSeen, AVIF_RESULT_BMFF_PARSE_FAILED);
 #endif
-            AVIF_CHECKRES(avifParseMetaBox(data->meta, boxOffset, boxContents.data, boxContents.size, data->diag));
+            avifMeta * meta = data->meta;
+            AVIF_CHECKRES(avifParseMetaBox(meta, boxOffset, boxContents.data, boxContents.size, data->diag));
             metaSeen = AVIF_TRUE;
 
             for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
