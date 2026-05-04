@@ -100,6 +100,18 @@ typedef int avifBool;
 // a 12 hour AVIF image sequence, running at 60 fps (a basic sanity check as this is quite ridiculous)
 #define AVIF_DEFAULT_IMAGE_COUNT_LIMIT (12 * 3600 * 60)
 
+// A reasonable default for maximum item count in a meta box.
+#define AVIF_DEFAULT_ITEM_COUNT_LIMIT 4096
+
+// A reasonable default for maximum property count in a meta box.
+#define AVIF_DEFAULT_PROPERTY_COUNT_LIMIT 4096
+
+// A reasonable default for maximum extent count for an item.
+#define AVIF_DEFAULT_EXTENT_COUNT_LIMIT 64
+
+// A reasonable default for maximum group count in a grpl box.
+#define AVIF_DEFAULT_GROUP_COUNT_LIMIT 1024
+
 #define AVIF_QUALITY_DEFAULT -1
 #define AVIF_QUALITY_WORST 0
 #define AVIF_QUALITY_BEST 100
@@ -1383,6 +1395,23 @@ typedef struct avifDecoder
     avifImageContentTypeFlags imageContentToDecode; // Changeable decoder setting.
 
     // Version 1.2.0 ends here. Add any new members after this line.
+
+    // This provides an upper bound on how many items can be created in a meta box.
+    // The default is AVIF_DEFAULT_ITEM_COUNT_LIMIT, and setting this to 0 disables the limit.
+    uint32_t itemCountLimit;
+
+    // This provides an upper bound on how many properties can be created in a meta box.
+    // The default is AVIF_DEFAULT_PROPERTY_COUNT_LIMIT, and setting this to 0 disables the limit.
+    uint32_t propertyCountLimit;
+
+    // This provides an upper bound on how many extents an item can have.
+    // The default is AVIF_DEFAULT_EXTENT_COUNT_LIMIT, and setting this to 0 disables the limit.
+    uint32_t extentCountLimit;
+
+    // This provides an upper bound on how many groups can be created in a grpl box.
+    // The default is AVIF_DEFAULT_GROUP_COUNT_LIMIT, and setting this to 0 disables the limit.
+    uint32_t groupCountLimit;
+
     // --------------------------------------------------------------------------------------------
 } avifDecoder;
 
