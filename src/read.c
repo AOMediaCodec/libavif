@@ -38,7 +38,6 @@ static const size_t VISUALSAMPLEENTRY_SIZE = 78;
 // can't be more than 4 unique tuples right now.
 #define MAX_IPMA_VERSION_AND_FLAGS_SEEN 4
 
-
 // ---------------------------------------------------------------------------
 // AVIF codec type (AV1 or AV2)
 
