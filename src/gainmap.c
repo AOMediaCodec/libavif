@@ -153,7 +153,11 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                         avifLinearRGBConvertColorSpace(basePixelRGBA, conversionCoeffs);
                     }
                     for (int c = 0; c < 3; ++c) {
-                        basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(basePixelRGBA[c]), 0.0f, 1.0f);
+                        // Use fminf/fmaxf instead of AVIF_CLAMP for NaN safety:
+                        // AVIF_CLAMP passes NaN through because IEEE 754 comparisons
+                        // with NaN always return false. fmaxf/fminf return the non-NaN
+                        // argument per C99 §7.12.12.
+                        basePixelRGBA[c] = fminf(1.0f, fmaxf(0.0f, linearToGamma(basePixelRGBA[c])));
                     }
                 }
                 avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, basePixelRGBA);
@@ -270,7 +274,8 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
             }
 
             for (int c = 0; c < 3; ++c) {
-                toneMappedPixelRGBA[c] = AVIF_CLAMP(linearToGamma(toneMappedPixelRGBA[c]), 0.0f, 1.0f);
+                // NaN-safe clamp: fmaxf/fminf return the non-NaN argument per C99.
+                toneMappedPixelRGBA[c] = fminf(1.0f, fmaxf(0.0f, linearToGamma(toneMappedPixelRGBA[c])));
             }
 
             toneMappedPixelRGBA[3] = basePixelRGBA[3]; // Alpha is unaffected by tone mapping.
@@ -762,7 +767,11 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                     float v = gainMapF[c][(size_t)j * width + i];
                     v = AVIF_CLAMP(v, gainMapMinLog2[c], gainMapMaxLog2[c]);
                     v = powf((v - gainMapMinLog2[c]) / range, gainMapGamma);
-                    gainMapF[c][(size_t)j * width + i] = AVIF_CLAMP(v, 0.0f, 1.0f);
+                    // NaN-safe clamp: powf() can return NaN for degenerate gamma
+                    // values, and AVIF_CLAMP passes NaN through because IEEE 754
+                    // comparisons with NaN return false. fmaxf/fminf return the
+                    // non-NaN argument per C99 §7.12.12.
+                    gainMapF[c][(size_t)j * width + i] = fminf(1.0f, fmaxf(0.0f, v));
                 }
             }
         }
