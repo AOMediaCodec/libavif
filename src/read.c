@@ -3638,7 +3638,12 @@ static avifBool avifParseMediaHeaderBox(avifTrack * track, const uint8_t * raw, 
     return AVIF_TRUE;
 }
 
-static avifResult avifParseChunkOffsetBox(const avifDecoder * decoder, avifSampleTable * sampleTable, avifBool largeOffsets, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseChunkOffsetBox(const avifDecoder * decoder,
+                                          avifSampleTable * sampleTable,
+                                          avifBool largeOffsets,
+                                          const uint8_t * raw,
+                                          size_t rawLen,
+                                          avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, largeOffsets ? "Box[co64]" : "Box[stco]");
 
@@ -3667,7 +3672,11 @@ static avifResult avifParseChunkOffsetBox(const avifDecoder * decoder, avifSampl
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSampleToChunkBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSampleToChunkBox(const avifDecoder * decoder,
+                                            avifSampleTable * sampleTable,
+                                            const uint8_t * raw,
+                                            size_t rawLen,
+                                            avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsc]");
 
@@ -3704,7 +3713,11 @@ static avifResult avifParseSampleToChunkBox(const avifDecoder * decoder, avifSam
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSampleSizeBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSampleSizeBox(const avifDecoder * decoder,
+                                         avifSampleTable * sampleTable,
+                                         const uint8_t * raw,
+                                         size_t rawLen,
+                                         avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsz]");
 
@@ -3730,7 +3743,11 @@ static avifResult avifParseSampleSizeBox(const avifDecoder * decoder, avifSample
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSyncSampleBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSyncSampleBox(const avifDecoder * decoder,
+                                         avifSampleTable * sampleTable,
+                                         const uint8_t * raw,
+                                         size_t rawLen,
+                                         avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stss]");
 
@@ -3753,7 +3770,11 @@ static avifResult avifParseSyncSampleBox(const avifDecoder * decoder, avifSample
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseTimeToSampleBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseTimeToSampleBox(const avifDecoder * decoder,
+                                           avifSampleTable * sampleTable,
+                                           const uint8_t * raw,
+                                           size_t rawLen,
+                                           avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stts]");
 
@@ -3844,9 +3865,11 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         if (!memcmp(header.type, "stco", 4)) {
-            AVIF_CHECKRES(avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(
+                avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "co64", 4)) {
-            AVIF_CHECKRES(avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(
+                avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsc", 4)) {
             AVIF_CHECKRES(avifParseSampleToChunkBox(track->meta->decoder, track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsz", 4)) {
