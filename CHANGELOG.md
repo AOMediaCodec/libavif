@@ -22,6 +22,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update LocalAvm.cmake: research-v15.0.0-rc1
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Fix decoding layered image with multiple scaled alpha layers
+* avifenc: reject mismatched --depth for Y4M input
 
 ## [1.4.1] - 2026-03-20
 
