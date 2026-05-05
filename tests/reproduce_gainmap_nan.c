@@ -11,6 +11,13 @@
  *   - 0.0f * +Inf = NaN
  *   - AVIF_CLAMP(NaN, 0, 1) = NaN (ternary comparisons with NaN are false)
  *
+ * We use LINEAR output transfer because sRGB's avifToGammaSRGB() absorbs
+ * NaN: all branch conditions (< 0, < 0.003, < 1.0) are false for NaN,
+ * so it falls through to "return 1.0f" — masking the bug as silent data
+ * corruption (black becomes white) instead of a crash. LINEAR's transfer
+ * function uses AVIF_CLAMP which passes NaN through, allowing it to reach
+ * the assertion in avifSetRGBAPixel().
+ *
  * Build (from libavif root):
  *
  *   mkdir build && cd build
@@ -20,8 +27,8 @@
  *   cd ..
  *
  *   cc -g -O1 -I include tests/reproduce_gainmap_nan.c \
- *     build/libavif.a build/_deps/libyuv-build/libyuv.a \
- *     build/_deps/aom-build/libaom.a -lstdc++ -lm -lpthread \
+ *     build/libavif_internal.a build/_deps/libyuv-build/libyuv.a \
+ *     build/_deps/libaom-build/libaom.a -lstdc++ -lm -lpthread \
  *     -o reproduce_gainmap_nan
  *
  *   ./reproduce_gainmap_nan
@@ -123,10 +130,12 @@ int main(void) {
     avifDiagnostics diag;
     avifDiagnosticsClearError(&diag);
 
-    /* Apply with full HDR headroom (weight = 1.0) */
+    /* Apply with full HDR headroom (weight = 1.0).
+     * Use LINEAR transfer so NaN propagates through to avifSetRGBAPixel.
+     * (sRGB's gamma function absorbs NaN to 1.0f, hiding the crash.) */
     avifResult result = avifImageApplyGainMap(base, gainMap, 6.0f,
                                               AVIF_COLOR_PRIMARIES_SRGB,
-                                              AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+                                              AVIF_TRANSFER_CHARACTERISTICS_LINEAR,
                                               &toneMap, &clli, &diag);
 
     if (result == AVIF_RESULT_OK) {
