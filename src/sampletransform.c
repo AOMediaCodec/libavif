@@ -85,7 +85,7 @@ static avifBool avifPushOperator(avifSampleTransformExpression * expression, avi
     if (token == NULL) {
         return AVIF_FALSE;
     }
-    token->type = (uint8_t) operator;
+    token->type = (uint8_t)operator;
     return AVIF_TRUE;
 }
 
