@@ -3638,7 +3638,7 @@ static avifBool avifParseMediaHeaderBox(avifTrack * track, const uint8_t * raw, 
     return AVIF_TRUE;
 }
 
-static avifResult avifParseChunkOffsetBox(avifSampleTable * sampleTable, avifBool largeOffsets, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseChunkOffsetBox(const avifDecoder * decoder, avifSampleTable * sampleTable, avifBool largeOffsets, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, largeOffsets ? "Box[co64]" : "Box[stco]");
 
@@ -3646,8 +3646,8 @@ static avifResult avifParseChunkOffsetBox(avifSampleTable * sampleTable, avifBoo
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
-    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
-        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+    if (decoder->imageCountLimit > 0 && entryCount > decoder->imageCountLimit) {
+        avifDiagnosticsPrintf(diag, "Exceeded imageCountLimit (%u)", decoder->imageCountLimit);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     for (uint32_t i = 0; i < entryCount; ++i) {
@@ -3667,7 +3667,7 @@ static avifResult avifParseChunkOffsetBox(avifSampleTable * sampleTable, avifBoo
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSampleToChunkBox(avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSampleToChunkBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsc]");
 
@@ -3675,8 +3675,8 @@ static avifResult avifParseSampleToChunkBox(avifSampleTable * sampleTable, const
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
-    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
-        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+    if (decoder->imageCountLimit > 0 && entryCount > decoder->imageCountLimit) {
+        avifDiagnosticsPrintf(diag, "Exceeded imageCountLimit (%u)", decoder->imageCountLimit);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     uint32_t prevFirstChunk = 0;
@@ -3704,7 +3704,7 @@ static avifResult avifParseSampleToChunkBox(avifSampleTable * sampleTable, const
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSampleSizeBox(avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSampleSizeBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stsz]");
 
@@ -3713,8 +3713,8 @@ static avifResult avifParseSampleSizeBox(avifSampleTable * sampleTable, const ui
     uint32_t allSamplesSize, sampleCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &allSamplesSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) sample_size;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &sampleCount), AVIF_RESULT_BMFF_PARSE_FAILED);    // unsigned int(32) sample_count;
-    if (sampleCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
-        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+    if (decoder->imageCountLimit > 0 && sampleCount > decoder->imageCountLimit) {
+        avifDiagnosticsPrintf(diag, "Exceeded imageCountLimit (%u)", decoder->imageCountLimit);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
@@ -3730,7 +3730,7 @@ static avifResult avifParseSampleSizeBox(avifSampleTable * sampleTable, const ui
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseSyncSampleBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stss]");
 
@@ -3738,8 +3738,8 @@ static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const ui
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
-    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
-        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+    if (decoder->imageCountLimit > 0 && entryCount > decoder->imageCountLimit) {
+        avifDiagnosticsPrintf(diag, "Exceeded imageCountLimit (%u)", decoder->imageCountLimit);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
@@ -3753,7 +3753,7 @@ static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const ui
     return AVIF_RESULT_OK;
 }
 
-static avifResult avifParseTimeToSampleBox(avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifParseTimeToSampleBox(const avifDecoder * decoder, avifSampleTable * sampleTable, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stts]");
 
@@ -3761,8 +3761,8 @@ static avifResult avifParseTimeToSampleBox(avifSampleTable * sampleTable, const 
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
-    if (entryCount > AVIF_DEFAULT_IMAGE_COUNT_LIMIT) {
-        avifDiagnosticsPrintf(diag, "Exceeded AVIF_DEFAULT_IMAGE_COUNT_LIMIT");
+    if (decoder->imageCountLimit > 0 && entryCount > decoder->imageCountLimit) {
+        avifDiagnosticsPrintf(diag, "Exceeded imageCountLimit (%u)", decoder->imageCountLimit);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
 
@@ -3835,10 +3835,8 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
         avifDiagnosticsPrintf(diag, "Duplicate Box[stbl] for a single track detected");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    if (!track->sampleTable) {
-        track->sampleTable = avifSampleTableCreate();
-        AVIF_CHECKERR(track->sampleTable, AVIF_RESULT_OUT_OF_MEMORY);
-    }
+    track->sampleTable = avifSampleTableCreate();
+    AVIF_CHECKERR(track->sampleTable, AVIF_RESULT_OUT_OF_MEMORY);
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stbl]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
@@ -3846,17 +3844,17 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         if (!memcmp(header.type, "stco", 4)) {
-            AVIF_CHECKRES(avifParseChunkOffsetBox(track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "co64", 4)) {
-            AVIF_CHECKRES(avifParseChunkOffsetBox(track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseChunkOffsetBox(track->meta->decoder, track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsc", 4)) {
-            AVIF_CHECKRES(avifParseSampleToChunkBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseSampleToChunkBox(track->meta->decoder, track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsz", 4)) {
-            AVIF_CHECKRES(avifParseSampleSizeBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseSampleSizeBox(track->meta->decoder, track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stss", 4)) {
-            AVIF_CHECKRES(avifParseSyncSampleBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseSyncSampleBox(track->meta->decoder, track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stts", 4)) {
-            AVIF_CHECKRES(avifParseTimeToSampleBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
+            AVIF_CHECKRES(avifParseTimeToSampleBox(track->meta->decoder, track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsd", 4)) {
             AVIF_CHECKRES(avifParseSampleDescriptionBox(track->meta->decoder,
                                                         track->sampleTable,
