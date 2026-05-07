@@ -7,6 +7,14 @@
 #include <math.h>
 #include <string.h>
 
+// NaN-safe clamp to [0, 1]. AVIF_CLAMP passes NaN through because IEEE 754
+// comparisons with NaN always return false. fmaxf/fminf return the non-NaN
+// argument per C99 §7.12.12, so this clamps NaN to 0.
+static float avifNanSafeClamp(float val)
+{
+    return fminf(1.0f, fmaxf(0.0f, val));
+}
+
 static void avifGainMapSetEncodingDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
@@ -153,11 +161,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                         avifLinearRGBConvertColorSpace(basePixelRGBA, conversionCoeffs);
                     }
                     for (int c = 0; c < 3; ++c) {
-                        // Use fminf/fmaxf instead of AVIF_CLAMP for NaN safety:
-                        // AVIF_CLAMP passes NaN through because IEEE 754 comparisons
-                        // with NaN always return false. fmaxf/fminf return the non-NaN
-                        // argument per C99 §7.12.12.
-                        basePixelRGBA[c] = fminf(1.0f, fmaxf(0.0f, linearToGamma(basePixelRGBA[c])));
+                        basePixelRGBA[c] = avifNanSafeClamp(linearToGamma(basePixelRGBA[c]));
                     }
                 }
                 avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, basePixelRGBA);
@@ -274,8 +278,12 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
             }
 
             for (int c = 0; c < 3; ++c) {
-                // NaN-safe clamp: fmaxf/fminf return the non-NaN argument per C99.
-                toneMappedPixelRGBA[c] = fminf(1.0f, fmaxf(0.0f, linearToGamma(toneMappedPixelRGBA[c])));
+                if (isnan(toneMappedPixelRGBA[c])) {
+                    avifDiagnosticsPrintf(diag, "Degenerate gain map parameters produce NaN at pixel (%u, %u)", i, j);
+                    res = AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+                    goto cleanup;
+                }
+                toneMappedPixelRGBA[c] = avifNanSafeClamp(linearToGamma(toneMappedPixelRGBA[c]));
             }
 
             toneMappedPixelRGBA[3] = basePixelRGBA[3]; // Alpha is unaffected by tone mapping.
@@ -767,11 +775,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                     float v = gainMapF[c][(size_t)j * width + i];
                     v = AVIF_CLAMP(v, gainMapMinLog2[c], gainMapMaxLog2[c]);
                     v = powf((v - gainMapMinLog2[c]) / range, gainMapGamma);
-                    // NaN-safe clamp: powf() can return NaN for degenerate gamma
-                    // values, and AVIF_CLAMP passes NaN through because IEEE 754
-                    // comparisons with NaN return false. fmaxf/fminf return the
-                    // non-NaN argument per C99 §7.12.12.
-                    gainMapF[c][(size_t)j * width + i] = fminf(1.0f, fmaxf(0.0f, v));
+                    gainMapF[c][(size_t)j * width + i] = avifNanSafeClamp(v);
                 }
             }
         }
