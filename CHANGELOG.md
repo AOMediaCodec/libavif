@@ -18,7 +18,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Require C11 for compilation. Public headers will remain C99.
 * Add --jobs flag to avifgainmaputil and enable auto tiling.
 * Use AOM_TUNE_IQ for layered image inter-frame encoding.
-* Update aom.cmd/LocalAom.cmake: v3.13.3
+* Update aom.cmd/LocalAom.cmake: v3.14.0
 * Update LocalAvm.cmake: research-v15.0.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Fix decoding layered image with multiple scaled alpha layers
