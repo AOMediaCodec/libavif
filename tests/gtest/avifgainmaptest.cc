@@ -1671,10 +1671,9 @@ TEST(GainMapTest, ApplyGainMapNaN) {
   // Apply with full HDR headroom (weight = 1.0).
   // Use LINEAR transfer so NaN propagates through to the clamp check.
   // (sRGB's gamma function absorbs NaN to 1.0f, hiding the issue.)
-  avifResult result = avifImageApplyGainMap(base.get(), gainMap.get(), 6.0f,
-                                            AVIF_COLOR_PRIMARIES_SRGB,
-                                            AVIF_TRANSFER_CHARACTERISTICS_LINEAR,
-                                            &toneMap, &clli, &diag);
+  avifResult result = avifImageApplyGainMap(
+      base.get(), gainMap.get(), 6.0f, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_LINEAR, &toneMap, &clli, &diag);
 
   EXPECT_EQ(result, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE)
       << avifResultToString(result) << " (" << diag.error << ")";
