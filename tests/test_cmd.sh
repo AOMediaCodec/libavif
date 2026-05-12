@@ -69,6 +69,11 @@ pushd ${TMP_DIR}
   if [[ ${RET} -ne 1 ]]; then
     exit 1
   fi
+  "${AVIFENC}" -s 8 --depth 8 "${INPUT_Y4M}" -o "${ENCODED_FILE}"
+  "${AVIFENC}" -s 8 --depth 8,8 "${INPUT_Y4M}" -o "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: --depth 8,8 is not supported for Y4M input" "${OUT_MSG}"
+  "${AVIFENC}" -s 8 --depth 10 "${INPUT_Y4M}" -o "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: --depth 10 does not match Y4M bit depth 8" "${OUT_MSG}"
 
   # Argument parsing test with filenames starting with a dash.
   echo "Testing arguments"

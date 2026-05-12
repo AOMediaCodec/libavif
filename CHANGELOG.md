@@ -19,10 +19,14 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Add --jobs flag to avifgainmaputil and enable auto tiling.
 * Use AOM_TUNE_IQ for layered image inter-frame encoding.
 * Update aom.cmd/LocalAom.cmake: v3.13.3
-* Update LocalAvm.cmake: research-v15.0.0-rc1
+* Update LocalAvm.cmake: research-v15.0.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Fix decoding layered image with multiple scaled alpha layers
+<<<<<<< fix/nan-safe-clamp-gainmap
 * Fix NaN bypass of AVIF_CLAMP in gain map tone mapping (use fminf/fmaxf)
+=======
+* avifenc: reject mismatched --depth for Y4M input
+>>>>>>> main
 
 ## [1.4.1] - 2026-03-20
 
