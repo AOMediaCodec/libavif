@@ -684,8 +684,7 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     // encoding modes (AOM_USAGE_GOOD_QUALITY and AOM_USAGE_REALTIME), so there's no need to use all-intra encoding for layered.
 
     // aom_codec.h says: aom_codec_version() == (major<<16 | minor<<8 | patch)
-    // TODO(wtc): Update constant with the libaom version that contains the layered-encoding improvements
-    static const int aomVersion_3_14_0 = INT_MAX;
+    static const int aomVersion_3_14_0 = (3 << 16) | (14 << 8);
     const int aomVersion = aom_codec_version();
     avifBool useAllIntraForLayered = aomVersion < aomVersion_3_14_0 && encoder->extraLayerCount == 1 &&
                                      codec->internal->qualityFirstLayer <= TWO_LAYER_ALL_INTRA_QUALITY_THRESHOLD;
