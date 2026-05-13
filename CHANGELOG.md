@@ -24,6 +24,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix decoding layered image with multiple scaled alpha layers
 * Fix NaN bypass of AVIF_CLAMP in gain map tone mapping (use fminf/fmaxf)
 * avifenc: reject mismatched --depth for Y4M input
+* Use libaom AOMD_SET_FRAME_SIZE_LIMIT if available
 
 ## [1.4.1] - 2026-03-20
 
