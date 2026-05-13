@@ -1593,6 +1593,94 @@ TEST(FindMinMaxWithoutOutliers, Test) {
   }
 }
 
+// Verify that applying a gain map with degenerate parameters that produce NaN
+// (0 * Inf from black pixels with baseOffset=0 and large gainMapMax) returns
+// AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE instead of crashing or producing
+// garbage output.
+TEST(GainMapTest, ApplyGainMapNaN) {
+  // 2x2 black base image (sRGB, BT.709).
+  ImagePtr base(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV444));
+  ASSERT_NE(base, nullptr);
+  base->colorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+  base->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+  base->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+  base->yuvRange = AVIF_RANGE_FULL;
+  ASSERT_EQ(avifImageAllocatePlanes(base.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_OK)
+      << "Failed to allocate base planes";
+  // Y=0 (black), U=128/V=128 (neutral chroma).
+  memset(base->yuvPlanes[0], 0, (size_t)base->yuvRowBytes[0] * 2);
+  memset(base->yuvPlanes[1], 128, (size_t)base->yuvRowBytes[1] * 2);
+  memset(base->yuvPlanes[2], 128, (size_t)base->yuvRowBytes[2] * 2);
+
+  // 2x2 gain map image — all pixels at maximum (255 -> 1.0 normalized).
+  GainMapPtr gainMap(avifGainMapCreate());
+  ASSERT_NE(gainMap, nullptr);
+  gainMap->image = avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV444);
+  ASSERT_NE(gainMap->image, nullptr) << "Failed to create gain map image";
+  gainMap->image->yuvRange = AVIF_RANGE_FULL;
+  gainMap->image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+  ASSERT_EQ(avifImageAllocatePlanes(gainMap->image, AVIF_PLANES_YUV),
+            AVIF_RESULT_OK)
+      << "Failed to allocate gain map planes";
+  memset(gainMap->image->yuvPlanes[0], 255,
+         (size_t)gainMap->image->yuvRowBytes[0] * 2);
+  memset(gainMap->image->yuvPlanes[1], 255,
+         (size_t)gainMap->image->yuvRowBytes[1] * 2);
+  memset(gainMap->image->yuvPlanes[2], 255,
+         (size_t)gainMap->image->yuvRowBytes[2] * 2);
+
+  // Gain map metadata crafted to trigger NaN:
+  //   gainMapMin  = 0     -> lerp lower bound
+  //   gainMapMax  = 1000  -> lerp upper bound
+  //   gamma       = 1     -> no gamma distortion
+  //   baseOffset  = 0     -> (baseLinear + 0) = 0 for black pixels
+  //   altOffset   = 0
+  //
+  // The math: lerp(0, 1000, powf(1.0, 1.0)) = 1000
+  //           exp2f(1000 * weight) = +Inf
+  //           (0.0 + 0.0) * +Inf = NaN  (IEEE 754)
+  for (int c = 0; c < 3; ++c) {
+    gainMap->gainMapMin[c] = {0, 1};
+    gainMap->gainMapMax[c] = {1000, 1};
+    gainMap->gainMapGamma[c] = {1, 1};
+    gainMap->baseOffset[c] = {0, 1};
+    gainMap->alternateOffset[c] = {0, 1};
+  }
+  gainMap->baseHdrHeadroom = {0, 1};
+  gainMap->alternateHdrHeadroom = {6, 1};
+  gainMap->useBaseColorSpace = 1;
+  gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_SRGB;
+  gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+  gainMap->altMatrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+  gainMap->altYUVRange = AVIF_RANGE_FULL;
+  gainMap->altDepth = 8;
+  gainMap->altPlaneCount = 3;
+
+  // Output tone-mapped image.
+  avifRGBImage toneMap;
+  memset(&toneMap, 0, sizeof(toneMap));
+  toneMap.depth = 8;
+  toneMap.format = AVIF_RGB_FORMAT_RGBA;
+
+  avifContentLightLevelInformationBox clli;
+  memset(&clli, 0, sizeof(clli));
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+
+  // Apply with full HDR headroom (weight = 1.0).
+  // Use LINEAR transfer so NaN propagates through to the clamp check.
+  // (sRGB's gamma function absorbs NaN to 1.0f, hiding the issue.)
+  avifResult result = avifImageApplyGainMap(
+      base.get(), gainMap.get(), 6.0f, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_LINEAR, &toneMap, &clli, &diag);
+
+  EXPECT_EQ(result, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE)
+      << avifResultToString(result) << " (" << diag.error << ")";
+
+  avifRGBImageFreePixels(&toneMap);
+}
+
 }  // namespace
 }  // namespace avif
 

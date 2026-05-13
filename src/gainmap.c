@@ -7,6 +7,14 @@
 #include <math.h>
 #include <string.h>
 
+// NaN-safe clamp to [0, 1]. AVIF_CLAMP passes NaN through because IEEE 754
+// comparisons with NaN always return false. fmaxf/fminf return the non-NaN
+// argument per C99 §7.12.12, so this clamps NaN to 0.
+static float avifNanSafeClamp(float val)
+{
+    return fminf(1.0f, fmaxf(0.0f, val));
+}
+
 static void avifGainMapSetEncodingDefaults(avifGainMap * gainMap)
 {
     for (int i = 0; i < 3; ++i) {
@@ -153,7 +161,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
                         avifLinearRGBConvertColorSpace(basePixelRGBA, conversionCoeffs);
                     }
                     for (int c = 0; c < 3; ++c) {
-                        basePixelRGBA[c] = AVIF_CLAMP(linearToGamma(basePixelRGBA[c]), 0.0f, 1.0f);
+                        basePixelRGBA[c] = avifNanSafeClamp(linearToGamma(basePixelRGBA[c]));
                     }
                 }
                 avifSetRGBAPixel(toneMappedImage, i, j, &toneMappedPixelRGBInfo, basePixelRGBA);
@@ -270,7 +278,12 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
             }
 
             for (int c = 0; c < 3; ++c) {
-                toneMappedPixelRGBA[c] = AVIF_CLAMP(linearToGamma(toneMappedPixelRGBA[c]), 0.0f, 1.0f);
+                if (isnan(toneMappedPixelRGBA[c])) {
+                    avifDiagnosticsPrintf(diag, "Degenerate gain map parameters produce NaN at pixel (%u, %u)", i, j);
+                    res = AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE;
+                    goto cleanup;
+                }
+                toneMappedPixelRGBA[c] = avifNanSafeClamp(linearToGamma(toneMappedPixelRGBA[c]));
             }
 
             toneMappedPixelRGBA[3] = basePixelRGBA[3]; // Alpha is unaffected by tone mapping.
@@ -762,7 +775,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                     float v = gainMapF[c][(size_t)j * width + i];
                     v = AVIF_CLAMP(v, gainMapMinLog2[c], gainMapMaxLog2[c]);
                     v = powf((v - gainMapMinLog2[c]) / range, gainMapGamma);
-                    gainMapF[c][(size_t)j * width + i] = AVIF_CLAMP(v, 0.0f, 1.0f);
+                    gainMapF[c][(size_t)j * width + i] = avifNanSafeClamp(v);
                 }
             }
         }
