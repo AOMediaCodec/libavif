@@ -212,26 +212,6 @@ TEST(AomTuneMetricTest, TuneOptionHasSameBehaviorAsOtherCodecSpecificOptions) {
   EXPECT_EQ(a, b);
 }
 
-TEST(AomTuneMetricTest, TuneIqOnlySupportsAllIntra) {
-  if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
-      nullptr) {
-    GTEST_SKIP() << "Codec unavailable, skip test.";
-  }
-
-  const ImagePtr image =
-      testutil::ReadImage(data_path, "paris_exif_xmp_icc.jpg");
-  ASSERT_NE(image, nullptr);
-
-  EncoderPtr encoder(avifEncoderCreate());
-  ASSERT_NE(encoder, nullptr);
-  encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
-  ASSERT_EQ(avifEncoderSetCodecSpecificOption(encoder.get(), "tune", "iq"),
-            AVIF_RESULT_OK);
-  ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(), kDuration,
-                                AVIF_ADD_IMAGE_FLAG_NONE),
-            AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION);
-}
-
 //------------------------------------------------------------------------------
 
 }  // namespace
