@@ -54,12 +54,12 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 :   Set all defaults to encode losslessly, and emit warnings when settings/input don't allow for it.
 
 **-d**, **\--depth** _D_[,_EXTENSION_]
-:   D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m or stdin: bit depth is retained and must match if specified; EXTENSION is unsupported).
+:   D is the output bit depth per channel. D must be 8, 10 or 12. (JPEG/PNG only; y4m: bit depth is retained and must match if specified; EXTENSION is unsupported).
     If specified, EXTENSION adds a hidden encoded image of EXTENSION bit depth in the same file as the primary image to reach 16-bit depth at decoding.
     See avifSampleTransformRecipe for the supported combinations (8,8 and 12,4 and 12,8).
 
 **-y**, **\--yuv** _FORMAT_
-:   Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m or stdin (y4m format is retained).
+:   Output format, one of 'auto' (default), 444, 422, 420 or 400. Ignored for y4m (y4m format is retained).
 
     For JPEG, auto honors the JPEG's internal format, if possible. For grayscale PNG, auto defaults to 400.\
     For all other cases, auto defaults to 444.
@@ -86,7 +86,7 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
     Use 2 for any you wish to leave unspecified.
 
 **-r**, **\--range** _RANGE_
-:   YUV range, one of 'limited' or 'l', 'full' or 'f'. (JPEG/PNG only, default: full; For y4m or stdin, range is retained).
+:   YUV range, one of 'limited' or 'l', 'full' or 'f'. (JPEG/PNG only, default: full; For y4m, range is retained).
 
 **\--target-size** _S_
 :   Set target file size in bytes (up to 7 times slower)
