@@ -148,6 +148,7 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
 
 #if defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
         if (codec->imageSizeLimit != 0 && aom_codec_control(&codec->internal->decoder, AOMD_SET_FRAME_SIZE_LIMIT, codec->imageSizeLimit)) {
+            aomDiagPrintf(codec->diag, "aom_codec_control(AOMD_SET_FRAME_SIZE_LIMIT)", &codec->internal->decoder);
             return AVIF_FALSE;
         }
 #endif // defined(AOM_CTRL_AOMD_SET_FRAME_SIZE_LIMIT)
