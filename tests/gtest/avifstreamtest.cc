@@ -202,6 +202,43 @@ TEST(StreamTest, WriteBitsLimit) {
             AVIF_RESULT_INVALID_ARGUMENT);
 }
 
+TEST(StreamTest, WriteBoxSizeLimit) {
+  testutil::AvifRwData rw_data;
+  avifRWStream rw_stream;
+  avifRWStreamStart(&rw_stream, &rw_data);
+  const char box_type[] = "type";
+  avifBoxMarker marker = 123;
+
+  EXPECT_EQ(avifRWStreamWriteBox(&rw_stream, box_type,
+                                 std::numeric_limits<uint32_t>::max() -
+                                     sizeof(uint32_t) - 4,
+                                 &marker),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(marker, size_t{0});
+  EXPECT_EQ(avifRWStreamOffset(&rw_stream), sizeof(uint32_t) + 4);
+
+  EXPECT_EQ(avifRWStreamWriteBox(&rw_stream, box_type,
+                                 std::numeric_limits<uint32_t>::max() -
+                                     sizeof(uint32_t) - 3,
+                                 &marker),
+            AVIF_RESULT_INVALID_ARGUMENT);
+
+  EXPECT_EQ(avifRWStreamWriteFullBox(
+                &rw_stream, box_type,
+                std::numeric_limits<uint32_t>::max() - sizeof(uint32_t) - 8,
+                /*version=*/0, /*flags=*/0, &marker),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(marker, sizeof(uint32_t) + 4);
+  EXPECT_EQ(avifRWStreamOffset(&rw_stream), 2 * (sizeof(uint32_t) + 4) + 4);
+
+  EXPECT_EQ(avifRWStreamWriteFullBox(
+                &rw_stream, box_type,
+                std::numeric_limits<uint32_t>::max() - sizeof(uint32_t) - 7,
+                /*version=*/0, /*flags=*/0, &marker),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamOffset(&rw_stream), 2 * (sizeof(uint32_t) + 4) + 4);
+}
+
 // Test the overflow checks in the makeRoom() function in src/stream.c.
 TEST(StreamTest, OverflowChecksInMakeRoom) {
   testutil::AvifRwData rw_data;

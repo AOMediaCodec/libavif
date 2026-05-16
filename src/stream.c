@@ -397,13 +397,11 @@ avifResult avifRWStreamWriteChars(avifRWStream * stream, const char * chars, siz
 avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags, avifBoxMarker * marker)
 {
     assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
-    if (marker) {
-        *marker = stream->offset;
-    }
     size_t headerSize = sizeof(uint32_t) + 4 /* size of type */;
     if (version != -1) {
         headerSize += 4;
     }
+    AVIF_CHECKERR(contentSize <= UINT32_MAX - headerSize, AVIF_RESULT_INVALID_ARGUMENT);
 
     AVIF_CHECKRES(makeRoom(stream, headerSize));
     memset(stream->raw->data + stream->offset, 0, headerSize);
@@ -415,6 +413,9 @@ avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, si
         stream->raw->data[stream->offset + 9] = (uint8_t)((flags >> 16) & 0xff);
         stream->raw->data[stream->offset + 10] = (uint8_t)((flags >> 8) & 0xff);
         stream->raw->data[stream->offset + 11] = (uint8_t)((flags >> 0) & 0xff);
+    }
+    if (marker) {
+        *marker = stream->offset;
     }
     stream->offset += headerSize;
 
