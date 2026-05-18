@@ -686,10 +686,10 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     for (uint32_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.
         const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
-        const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
-        const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
-        const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
-        const uint8_t * ptrA8 = aPlane ? &aPlane[j * aRowBytes] : NULL;
+        const uint8_t * ptrY8 = &yPlane[(size_t)j * yRowBytes];
+        const uint8_t * ptrU8 = uPlane ? &uPlane[((size_t)uvJ * uRowBytes)] : NULL;
+        const uint8_t * ptrV8 = vPlane ? &vPlane[((size_t)uvJ * vRowBytes)] : NULL;
+        const uint8_t * ptrA8 = aPlane ? &aPlane[(size_t)j * aRowBytes] : NULL;
         const uint16_t * ptrY16 = (const uint16_t *)ptrY8;
         const uint16_t * ptrU16 = (const uint16_t *)ptrU8;
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
