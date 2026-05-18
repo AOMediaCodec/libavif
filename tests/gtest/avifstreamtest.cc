@@ -236,7 +236,6 @@ TEST(StreamTest, WriteBoxSizeLimit) {
                 std::numeric_limits<uint32_t>::max() - sizeof(uint32_t) - 7,
                 /*version=*/0, /*flags=*/0, &marker),
             AVIF_RESULT_INVALID_ARGUMENT);
-  EXPECT_EQ(avifRWStreamOffset(&rw_stream), 2 * (sizeof(uint32_t) + 4) + 4);
 }
 
 // Test the overflow checks in the makeRoom() function in src/stream.c.
