@@ -187,6 +187,10 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
     if (gainMap->image->width != width || gainMap->image->height != height) {
         rescaledGainMap = avifImageCreateEmpty();
+        if (rescaledGainMap == NULL) {
+            res = AVIF_RESULT_OUT_OF_MEMORY;
+            goto cleanup;
+        }
         const avifCropRect rect = { 0, 0, gainMap->image->width, gainMap->image->height };
         res = avifImageSetViewRect(rescaledGainMap, gainMap->image, &rect);
         if (res != AVIF_RESULT_OK) {
