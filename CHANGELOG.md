@@ -23,6 +23,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Fix decoding layered image with multiple scaled alpha layers
 * Fix NaN bypass of AVIF_CLAMP in gain map tone mapping (use fminf/fmaxf)
+* Fix null pointer dereference in avifImageCopy() when avifImageCreateEmpty()
+  fails to allocate the destination gain map image.
 * avifenc: reject mismatched --depth for Y4M input
 * Use libaom AOMD_SET_FRAME_SIZE_LIMIT if available
 
