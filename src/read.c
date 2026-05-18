@@ -2054,6 +2054,10 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 
         uint16_t dataReferenceIndex;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &dataReferenceIndex), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) data_reference_index;
+        if (dataReferenceIndex != 0) {
+            avifDiagnosticsPrintf(diag, "Box[iloc] has an unsupported data_reference_index [%u]", dataReferenceIndex);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         uint64_t baseOffset;
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
