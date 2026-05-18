@@ -305,6 +305,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         if (srcImage->gainMap->image) {
             if (!dstImage->gainMap->image) {
                 dstImage->gainMap->image = avifImageCreateEmpty();
+                AVIF_CHECKERR(dstImage->gainMap->image, AVIF_RESULT_OUT_OF_MEMORY);
             }
             AVIF_CHECKRES(avifImageCopy(dstImage->gainMap->image, srcImage->gainMap->image, planes));
         } else if (dstImage->gainMap->image) {
