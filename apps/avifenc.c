@@ -630,7 +630,7 @@ static avifBool avifInputReadImage(avifInput * input,
                 avifFileFormatToString(inputFormat),
                 currentFile->filename == AVIF_FILENAME_STDIN ? "from standard input" : currentFile->filename);
         if (currentFile->filename == AVIF_FILENAME_STDIN && inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
-            fprintf(stderr, "Specify --input-format if the input is not y4m\n");
+            fprintf(stderr, "Specify --input-format if the standard input is not Y4M\n");
         }
         return AVIF_FALSE;
     }
