@@ -132,11 +132,10 @@ static void avifIOMemoryReaderDestroy(struct avifIO * io)
 
 avifIO * avifIOCreateMemoryReader(const uint8_t * data, size_t size)
 {
-    avifIOMemoryReader * reader = (avifIOMemoryReader *)avifAlloc(sizeof(avifIOMemoryReader));
+    avifIOMemoryReader * reader = (avifIOMemoryReader *)avifCalloc(1, sizeof(avifIOMemoryReader));
     if (reader == NULL) {
         return NULL;
     }
-    memset(reader, 0, sizeof(avifIOMemoryReader));
     reader->io.destroy = avifIOMemoryReaderDestroy;
     reader->io.read = avifIOMemoryReaderRead;
     reader->io.sizeHint = size;
@@ -230,12 +229,11 @@ avifIO * avifIOCreateFileReader(const char * filename)
         return NULL;
     }
 
-    avifIOFileReader * reader = (avifIOFileReader *)avifAlloc(sizeof(avifIOFileReader));
+    avifIOFileReader * reader = (avifIOFileReader *)avifCalloc(1, sizeof(avifIOFileReader));
     if (!reader) {
         fclose(f);
         return NULL;
     }
-    memset(reader, 0, sizeof(avifIOFileReader));
     reader->f = f;
     reader->io.destroy = avifIOFileReaderDestroy;
     reader->io.read = avifIOFileReaderRead;

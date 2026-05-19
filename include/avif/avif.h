@@ -156,6 +156,11 @@ AVIF_API unsigned int avifLibYUVVersion(void); // returns 0 if libavif wasn't co
 
 // Returns NULL on memory allocation failure.
 AVIF_API void * avifAlloc(size_t size);
+// Allocates count * size bytes and zero-initializes them. Returns NULL on memory
+// allocation failure, if either argument is 0, or if count * size overflows size_t.
+// Using avifCalloc() instead of avifAlloc() + memset() ensures the multiplication
+// is overflow-checked at a single, audited site.
+AVIF_API void * avifCalloc(size_t count, size_t size);
 AVIF_API void avifFree(void * p);
 
 // ---------------------------------------------------------------------------
