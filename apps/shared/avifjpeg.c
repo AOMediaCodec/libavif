@@ -1061,6 +1061,10 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
         if ((marker->marker == (JPEG_APP0 + 2)) && (marker->data_length > tagMpf.size) &&
             !memcmp(marker->data, tagMpf.data, tagMpf.size)) {
             avifImage * image = avifImageCreateEmpty();
+            if (!image) {
+                fprintf(stderr, "Warning: out of memory when reading gain map\n");
+                return AVIF_FALSE;
+            }
             // Set jpeg native matrix coefficients to allow copying YUV values directly.
             image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
             assert(avifJPEGHasCompatibleMatrixCoefficients(image->matrixCoefficients));
@@ -1069,7 +1073,7 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
             if (!avifJPEGExtractGainMapImageFromMpf(f, sizeLimit, &mpfData, image, chromaDownsampling)) {
                 if (f == stdin) {
                     // Not supported because fseek doesn't work on stdin.
-                    fprintf(stderr, "Warning: gain map transcoding is not supported with sdtin\n");
+                    fprintf(stderr, "Warning: gain map transcoding is not supported with stdin\n");
                 } else if (expectIsoGainMap) {
                     fprintf(stderr, "Note: XMP metadata indicated the presence of a gain map, but it could not be found or decoded\n");
                 }

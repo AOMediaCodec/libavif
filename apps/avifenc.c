@@ -545,6 +545,10 @@ static avifBool avifInputReadImage(avifInput * input,
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         if (cached->image->gainMap && cached->image->gainMap->image) {
             image->gainMap->image = avifImageCreateEmpty();
+            if (!image->gainMap->image) {
+                fprintf(stderr, "ERROR: Out of memory\n");
+                return AVIF_FALSE;
+            }
             const avifCropRect gainMapRect = { 0, 0, cached->image->gainMap->image->width, cached->image->gainMap->image->height };
             if (avifImageSetViewRect(image->gainMap->image, cached->image->gainMap->image, &gainMapRect) != AVIF_RESULT_OK) {
                 assert(AVIF_FALSE);
@@ -573,7 +577,7 @@ static avifBool avifInputReadImage(avifInput * input,
     avifAppSourceTiming * dstSourceTiming = sourceTiming;
     if (input->cacheEnabled) {
         if (!avifInputAddCachedImage(input)) {
-            fprintf(stderr, "ERROR: Out of memory");
+            fprintf(stderr, "ERROR: Out of memory\n");
             return AVIF_FALSE;
         }
         assert(imageIndex + 1 == input->cacheCount);
