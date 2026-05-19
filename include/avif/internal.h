@@ -734,8 +734,14 @@ void avifRWStreamFinishWrite(avifRWStream * stream);
 // The following functions require byte alignment.
 avifResult avifRWStreamWrite(avifRWStream * stream, const void * data, size_t size);
 avifResult avifRWStreamWriteChars(avifRWStream * stream, const char * chars, size_t size);
+// On success, if marker is not null, *marker contains the offset of the size
+// field in stream and should be passed to avifRWStreamFinishBox().
 avifResult avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t contentSize, avifBoxMarker * marker);
+// On success, if marker is not null, *marker contains the offset of the size
+// field in stream and should be passed to avifRWStreamFinishBox().
 avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags, avifBoxMarker * marker);
+// marker is the offset of the size field in stream, returned by a previous
+// avifRWStreamWriteBox() or avifRWStreamWriteFullBox() call.
 void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
 avifResult avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
 avifResult avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
