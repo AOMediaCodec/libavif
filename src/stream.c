@@ -426,7 +426,7 @@ avifResult avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t
     return avifRWStreamWriteFullBox(stream, type, contentSize, -1, 0, marker);
 }
 
-void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
+avifResult avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
 {
     assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
     size_t boxSize = stream->offset - marker;
@@ -434,12 +434,11 @@ void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker)
     // avifRWStreamWriteFullBox() call, boxSize must be >= the size of the size
     // and type fields. This implies that boxSize cannot be equal to the two
     // special values 0 and 1.
-    assert(boxSize >= sizeof(uint32_t) + 4);
-    if (boxSize > UINT32_MAX) {
-        abort();
-    }
+    AVIF_ASSERT_OR_RETURN(boxSize >= sizeof(uint32_t) + 4);
+    AVIF_CHECKERR(boxSize <= UINT32_MAX, AVIF_RESULT_INVALID_ARGUMENT);
     uint32_t noSize = avifHTONL((uint32_t)boxSize);
     memcpy(stream->raw->data + marker, &noSize, sizeof(uint32_t));
+    return AVIF_RESULT_OK;
 }
 
 avifResult avifRWStreamWriteU8(avifRWStream * stream, uint8_t v)

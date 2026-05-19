@@ -742,7 +742,7 @@ avifResult avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t
 avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags, avifBoxMarker * marker);
 // marker is the offset of the size field in stream, returned by a previous
 // avifRWStreamWriteBox() or avifRWStreamWriteFullBox() call.
-void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
+AVIF_NODISCARD avifResult avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
 avifResult avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
 avifResult avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
 avifResult avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
