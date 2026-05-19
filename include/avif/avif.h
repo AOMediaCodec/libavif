@@ -1576,6 +1576,7 @@ typedef struct avifEncoder
     avifBool autoTiling;
 
     // Up/down scaling of the image to perform before encoding.
+    // This cannot be used together with encoder->width / encoder->height.
     avifScalingMode scalingMode;
 
     // --------------------------------------------------------------------------------------------
@@ -1622,6 +1623,13 @@ typedef struct avifEncoder
 
     // Version 1.4.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
+
+    // Override the rendered size of the encoded image.
+    // Defaults to 0. When set to 0, libavif uses the width and height of the first added image.
+    // Typical use case is layered image, where these are set to the size of the last layer,
+    // while encoding smaller images as the previous layers.
+    uint32_t width;
+    uint32_t height;
 } avifEncoder;
 
 // Creates an encoder initialized with default settings values.

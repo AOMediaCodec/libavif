@@ -83,6 +83,11 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     // SVT-AV1 does not support disabling lagged output. Ignore this setting.
     (void)disableLaggedOutput;
 
+    if (encoder->width || encoder->height) {
+        avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support rendered-size override");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     avifResult result = AVIF_RESULT_UNKNOWN_ERROR;
     EbColorFormat color_format = EB_YUV420;
     uint8_t * uvPlanes = NULL; // 4:2:0 U and V placeholder for alpha because SVT-AV1 does not support 4:0:0.
@@ -165,6 +170,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #endif
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
+        svt_config->forced_max_frame_width = encoder->width;
+        svt_config->forced_max_frame_height = encoder->height;
 #if SVT_AV1_CHECK_VERSION(3, 0, 0)
         svt_config->level_of_parallelism = encoder->maxThreads;
 #else
