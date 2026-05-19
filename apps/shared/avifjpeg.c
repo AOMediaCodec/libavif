@@ -1062,7 +1062,7 @@ static avifBool avifJPEGExtractGainMapImage(FILE * f,
             !memcmp(marker->data, tagMpf.data, tagMpf.size)) {
             avifImage * image = avifImageCreateEmpty();
             if (!image) {
-                fprintf(stderr, "Warning: out of memory\n");
+                fprintf(stderr, "Warning: out of memory when reading gain map\n");
                 return AVIF_FALSE;
             }
             // Set jpeg native matrix coefficients to allow copying YUV values directly.
