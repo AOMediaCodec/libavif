@@ -683,9 +683,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     // to clang's analyzer.
     assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
-    for (uint32_t j = 0; j < image->height; ++j) {
+    for (size_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.
-        const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
+        const size_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
@@ -695,12 +695,12 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         const uint16_t * ptrV16 = (const uint16_t *)ptrV8;
         const uint16_t * ptrA16 = (const uint16_t *)ptrA8;
 
-        uint8_t * ptrR = &rgb->pixels[state->rgb.offsetBytesR + ((size_t)j * rgb->rowBytes)];
-        uint8_t * ptrG = &rgb->pixels[state->rgb.offsetBytesG + ((size_t)j * rgb->rowBytes)];
-        uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + ((size_t)j * rgb->rowBytes)];
-        uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + ((size_t)j * rgb->rowBytes)];
+        uint8_t * ptrR = &rgb->pixels[state->rgb.offsetBytesR + (j * rgb->rowBytes)];
+        uint8_t * ptrG = &rgb->pixels[state->rgb.offsetBytesG + (j * rgb->rowBytes)];
+        uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + (j * rgb->rowBytes)];
+        uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + (j * rgb->rowBytes)];
 
-        for (uint32_t i = 0; i < image->width; ++i) {
+        for (size_t i = 0; i < image->width; ++i) {
             float Y, Cb = 0.5f, Cr = 0.5f;
 
             // Calculate Y
@@ -715,7 +715,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
 
             // Calculate Cb and Cr
             if (yuvHasColor) {
-                const uint32_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
+                const size_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
 
