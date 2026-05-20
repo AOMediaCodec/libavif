@@ -528,6 +528,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifBool ignoreColorProfile,
                                    avifBool ignoreExif,
                                    avifBool ignoreXMP,
+                                   avifBool ignoreAlpha,
                                    avifBool allowChangingCicp,
                                    avifBool ignoreGainMap,
                                    avifImage * image,
@@ -653,6 +654,11 @@ static avifBool avifInputReadImage(avifInput * input,
             return AVIF_FALSE;
         }
     }
+    
+    if (ignoreAlpha) {
+        dstImage->alphaPlane = NULL;
+        dstImage->alphaRowBytes = 0;
+    }
     if (!allowChangingCicp) {
         // Restore the previous primaries/transfer in case avifReadImage changed them.
         dstImage->colorPrimaries = colorPrimariesBefore;
@@ -678,6 +684,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                   ignoreColorProfile,
                                   ignoreExif,
                                   ignoreXMP,
+                                  ignoreAlpha,
                                   allowChangingCicp,
                                   ignoreGainMap,
                                   image,
@@ -939,6 +946,7 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 /*ignoreColorProfile=*/AVIF_TRUE,
                                 /*ignoreExif=*/AVIF_TRUE,
                                 /*ignoreXMP=*/AVIF_TRUE,
+                                settings->ignoreAlpha,
                                 /*allowChangingCicp=*/AVIF_FALSE,
                                 /*ignoreGainMap=*/AVIF_TRUE,
                                 nextImage,
@@ -1045,6 +1053,7 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     /*ignoreColorProfile=*/AVIF_TRUE,
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
+                                    settings->ignoreAlpha,
                                     !settings->cicpExplicitlySet,
                                     /*ignoreGainMap=*/AVIF_TRUE,
                                     nextImage,
@@ -2347,6 +2356,7 @@ int main(int argc, char * argv[])
                             settings.ignoreColorProfile,
                             settings.ignoreExif,
                             settings.ignoreXMP,
+                            settings.ignoreAlpha,
                             /*allowChangingCicp=*/!settings.cicpExplicitlySet,
                             ignoreGainMap,
                             image,
@@ -2475,11 +2485,6 @@ int main(int argc, char * argv[])
         image->clli.maxPALL = (uint16_t)settings.clliValues[1];
     }
 
-    if (settings.ignoreAlpha) {
-        image->alphaPlane    = NULL;
-        image->alphaRowBytes = 0;
-    }
-
     avifBool hasAlpha = (image->alphaPlane && image->alphaRowBytes);
     avifBool usingLosslessColor = (firstFile->settings.quality.value == AVIF_QUALITY_LOSSLESS);
     avifBool usingLosslessAlpha = (firstFile->settings.qualityAlpha.value == AVIF_QUALITY_LOSSLESS);
@@ -2597,6 +2602,7 @@ int main(int argc, char * argv[])
                                     /*ignoreColorProfile=*/AVIF_TRUE,
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
+                                    settings.ignoreAlpha,
                                     /*allowChangingCicp=*/AVIF_FALSE,
                                     settings.ignoreGainMap,
                                     cellImage,
