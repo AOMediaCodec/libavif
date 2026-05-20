@@ -1152,7 +1152,7 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speedStr[16];
     if (settings->speed == AVIF_SPEED_DEFAULT) {
-        strcpy(speedStr, "default");
+        snprintf(speedStr, sizeof(speedStr), "default");
     } else {
         snprintf(speedStr, sizeof(speedStr), "%d", settings->speed);
     }
