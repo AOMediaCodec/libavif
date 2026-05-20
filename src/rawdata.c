@@ -9,8 +9,7 @@ avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
 {
     if (raw->size != newSize) {
         if (newSize == 0) {
-            // Shrink-to-zero: release the buffer instead of calling avifAlloc(0),
-            // which would return NULL under the new contract and falsely look like OOM.
+            // avifAlloc(0) returns NULL, so handle the shrink-to-zero case by freeing the buffer.
             avifRWDataFree(raw);
             return AVIF_RESULT_OK;
         }
