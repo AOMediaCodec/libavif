@@ -28,7 +28,7 @@ endfunction()
 FetchContent_Declare(
     libavm
     EXCLUDE_FROM_ALL
-    GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/avm.git"
+    GIT_REPOSITORY "https://github.com/AOMediaCodec/avm.git"
     GIT_TAG ${AVIF_AVM_GIT_TAG}
     GIT_PROGRESS ON
     GIT_SHALLOW ON
