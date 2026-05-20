@@ -393,7 +393,7 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixel
 
     const int maxNumBuckets = 10000;
     const int numBuckets = AVIF_MIN((int)ceilf((max - min) / bucketSize), maxNumBuckets);
-    int * histogram = avifCalloc((size_t)numBuckets, sizeof(int));
+    int * histogram = avifCalloc(numBuckets, sizeof(int));
     if (histogram == NULL) {
         return AVIF_RESULT_OUT_OF_MEMORY;
     }

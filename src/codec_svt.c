@@ -291,7 +291,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         if (uvSize * 2 > UINT32_MAX - input_buffer->n_filled_len) {
             goto cleanup;
         }
-        uvPlanes = avifCalloc(1, uvSize);
+        uvPlanes = avifCalloc(uvSize, sizeof(uint8_t));
         if (uvPlanes == NULL) {
             goto cleanup;
         }
