@@ -8,9 +8,14 @@
 avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
 {
     if (raw->size != newSize) {
+        if (newSize == 0) {
+            // avifAlloc(0) returns NULL, so handle the shrink-to-zero case by freeing the buffer.
+            avifRWDataFree(raw);
+            return AVIF_RESULT_OK;
+        }
         uint8_t * newData = (uint8_t *)avifAlloc(newSize);
         AVIF_CHECKERR(newData, AVIF_RESULT_OUT_OF_MEMORY);
-        if (raw->size && newSize) {
+        if (raw->size) {
             memcpy(newData, raw->data, AVIF_MIN(raw->size, newSize));
         }
         avifFree(raw->data);
