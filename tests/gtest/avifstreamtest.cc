@@ -52,10 +52,10 @@ TEST(StreamTest, Roundtrip) {
   const uint16_t rw_someu16 = 0xAABB;
   EXPECT_EQ(avifRWStreamWriteU16(&rw_stream, rw_someu16), AVIF_RESULT_OK);
 
-  EXPECT_EQ(avifRWStreamFinishBox(&rw_stream, rw_full_box_marker),
+  ASSERT_EQ(avifRWStreamFinishBox(&rw_stream, rw_full_box_marker),
             AVIF_RESULT_OK);
 
-  EXPECT_EQ(avifRWStreamFinishBox(&rw_stream, rw_box_marker), AVIF_RESULT_OK);
+  ASSERT_EQ(avifRWStreamFinishBox(&rw_stream, rw_box_marker), AVIF_RESULT_OK);
 
   const uint32_t rw_someu32 = 0xAABBCCDD;
   EXPECT_EQ(avifRWStreamWriteU32(&rw_stream, rw_someu32), AVIF_RESULT_OK);
