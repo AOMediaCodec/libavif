@@ -19,6 +19,7 @@ extern "C" {
 struct y4mFrameIterator;
 
 avifBool y4mRead(const char * inputFilename,
+                 avifBool ignoreAlpha,
                  uint32_t imageSizeLimit,
                  avifImage * avif,
                  avifAppSourceTiming * sourceTiming,

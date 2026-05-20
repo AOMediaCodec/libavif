@@ -257,7 +257,7 @@ static void syntaxLong(void)
     printf("    --ignore-exif                     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-xmp                      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --ignore-profile,--ignore-icc     : If the input file contains an embedded color profile, ignore it (no-op if absent)\n");
-    printf("    --ignore-alpha,--noalpha          : Discard the alpha channel when encoding.\n");
+    printf("    --ignore-alpha                    : If the input file contains an alpha channel, ignore it (no-op if absent)\n");
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     printf("    --ignore-gain-map                 : If the input file contains an embedded gain map, ignore it (no-op if absent)\n");
     printf("    --qgain-map Q                     : Quality for the gain map in %d..%d where %d is lossless\n",
@@ -528,8 +528,8 @@ static avifBool avifInputReadImage(avifInput * input,
                                    avifBool ignoreColorProfile,
                                    avifBool ignoreExif,
                                    avifBool ignoreXMP,
-                                   avifBool ignoreAlpha,
                                    avifBool allowChangingCicp,
+                                   avifBool ignoreAlpha,
                                    avifBool ignoreGainMap,
                                    avifImage * image,
                                    const avifInputFileSettings ** settings,
@@ -625,6 +625,7 @@ static avifBool avifInputReadImage(avifInput * input,
                                                               ignoreColorProfile,
                                                               ignoreExif,
                                                               ignoreXMP,
+                                                              ignoreAlpha,
                                                               ignoreGainMap,
                                                               UINT32_MAX,
                                                               dstImage,
@@ -654,11 +655,6 @@ static avifBool avifInputReadImage(avifInput * input,
             return AVIF_FALSE;
         }
     }
-    
-    if (ignoreAlpha) {
-        dstImage->alphaPlane = NULL;
-        dstImage->alphaRowBytes = 0;
-    }
     if (!allowChangingCicp) {
         // Restore the previous primaries/transfer in case avifReadImage changed them.
         dstImage->colorPrimaries = colorPrimariesBefore;
@@ -684,8 +680,8 @@ static avifBool avifInputReadImage(avifInput * input,
                                   ignoreColorProfile,
                                   ignoreExif,
                                   ignoreXMP,
-                                  ignoreAlpha,
                                   allowChangingCicp,
+                                  ignoreAlpha,
                                   ignoreGainMap,
                                   image,
                                   settings,
@@ -946,8 +942,8 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 /*ignoreColorProfile=*/AVIF_TRUE,
                                 /*ignoreExif=*/AVIF_TRUE,
                                 /*ignoreXMP=*/AVIF_TRUE,
-                                settings->ignoreAlpha,
                                 /*allowChangingCicp=*/AVIF_FALSE,
+                                settings->ignoreAlpha,
                                 /*ignoreGainMap=*/AVIF_TRUE,
                                 nextImage,
                                 &nextSettings,
@@ -1053,8 +1049,8 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     /*ignoreColorProfile=*/AVIF_TRUE,
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
-                                    settings->ignoreAlpha,
                                     !settings->cicpExplicitlySet,
+                                    settings->ignoreAlpha,
                                     /*ignoreGainMap=*/AVIF_TRUE,
                                     nextImage,
                                     &nextSettings,
@@ -1861,8 +1857,6 @@ int main(int argc, char * argv[])
                 goto cleanup;
             }
             settings.ignoreColorProfile = AVIF_TRUE;
-        } else if (!strcmp(arg, "--ignore-alpha") || !strcmp(arg, "--noalpha")) {
-            settings.ignoreAlpha = AVIF_TRUE;
         } else if (!strcmp(arg, "--duration") || strpre(arg, "--duration:")) {
             // --duration is special, we always treat it as suffixed with :u, so don't print warning for it.
             avifOptionSuffixType type = parseOptionSuffix(arg, /*warnNoSuffix=*/AVIF_FALSE);
@@ -1943,6 +1937,8 @@ int main(int argc, char * argv[])
             settings.ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-profile") || !strcmp(arg, "--ignore-icc")) {
             settings.ignoreColorProfile = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-alpha")) {
+            settings.ignoreAlpha = AVIF_TRUE;
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         } else if (!strcmp(arg, "--ignore-gain-map")) {
             settings.ignoreGainMap = AVIF_TRUE;
@@ -2356,8 +2352,8 @@ int main(int argc, char * argv[])
                             settings.ignoreColorProfile,
                             settings.ignoreExif,
                             settings.ignoreXMP,
-                            settings.ignoreAlpha,
                             /*allowChangingCicp=*/!settings.cicpExplicitlySet,
+                            settings.ignoreAlpha,
                             ignoreGainMap,
                             image,
                             /*settings=*/NULL, // Must use the setting for first input
@@ -2602,8 +2598,8 @@ int main(int argc, char * argv[])
                                     /*ignoreColorProfile=*/AVIF_TRUE,
                                     /*ignoreExif=*/AVIF_TRUE,
                                     /*ignoreXMP=*/AVIF_TRUE,
-                                    settings.ignoreAlpha,
                                     /*allowChangingCicp=*/AVIF_FALSE,
+                                    settings.ignoreAlpha,
                                     settings.ignoreGainMap,
                                     cellImage,
                                     /*settings=*/NULL,

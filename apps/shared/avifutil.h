@@ -95,6 +95,8 @@ struct y4mFrameIterator;
 // In case of a y4m file, sourceTiming and frameIter can be set.
 // Returns the format of the file, or AVIF_APP_FILE_FORMAT_UNKNOWN in case of
 // error.
+// 'ignoreAlpha' is only relevant for y4m or png files that have an alpha
+// channel. Otherwise it has no effect.
 // 'ignoreGainMap' is only relevant for jpeg files that have a gain map
 // and only if AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION is ON
 // (requires libxml2). Otherwise it has no effect.
@@ -108,6 +110,7 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
+                                avifBool ignoreAlpha,
                                 avifBool ignoreGainMap,
                                 uint32_t imageSizeLimit,
                                 avifImage * image,

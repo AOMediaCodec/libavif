@@ -19,6 +19,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifBool ignoreColorProfile,
                      avifBool ignoreExif,
                      avifBool ignoreXMP,
+                     avifBool ignoreAlpha,
                      uint32_t imageSizeLimit,
                      uint32_t * outPNGDepth);
 avifBool avifPNGWrite(const char * outputFilename,

@@ -28,6 +28,7 @@ TEST(LosslessTest, YCGCO_RO) {
       /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/false, /*ignoreExif=*/false, /*ignoreXMP=*/false,
+      /*ignoreAlpha=*/false,
       /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
       /*outDepth=*/nullptr,
       /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
@@ -51,7 +52,7 @@ void ReadImageSimple(const std::string& file_path, avifPixelFormat pixel_format,
       /*requestedFormat=*/pixel_format, /*requestedDepth=*/0,
       /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
       /*ignoreColorProfile=*/ignore_icc, /*ignoreExif=*/false,
-      /*ignoreXMP=*/false, /*ignoreGainMap=*/true,
+      /*ignoreXMP=*/false, /*ignoreAlpha=*/false, /*ignoreGainMap=*/true,
       AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(), /*outDepth=*/nullptr,
       /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
   if (matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
@@ -79,7 +80,7 @@ void GetIsGray(const std::string& path, bool& is_gray) {
           AVIF_PIXEL_FORMAT_NONE, /*requestedDepth=*/0,
           /*chromaDownsampling=*/AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
           /*ignoreColorProfile=*/true, /*ignoreExif=*/true,
-          /*ignoreXMP=*/true,
+          /*ignoreXMP=*/true, /*ignoreAlpha=*/false,
           /*ignoreGainMap=*/true, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image.get(),
           /*outDepth=*/nullptr, /*sourceTiming=*/nullptr,
           /*frameIter=*/nullptr));

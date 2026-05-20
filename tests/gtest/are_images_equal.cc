@@ -95,7 +95,8 @@ int main(int argc, char** argv) {
             requestedFormat, kRequestedDepth,
             AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
             /*ignoreColorProfile==*/AVIF_FALSE, /*ignoreExif=*/AVIF_FALSE,
-            /*ignoreXMP=*/AVIF_FALSE, ignore_gain_map,
+            /*ignoreXMP=*/AVIF_FALSE, /*ignoreAlpha=*/AVIF_FALSE,
+            ignore_gain_map,
             /*imageSizeLimit=*/std::numeric_limits<uint32_t>::max(),
             decoded[i].get(), &depth[i], nullptr,
             nullptr) == AVIF_APP_FILE_FORMAT_UNKNOWN) {
