@@ -208,5 +208,27 @@ TEST(AvifAllocTest, Extremes) {
 }
 #endif
 
+TEST(AvifAllocTest, ZeroReturnsNull) {
+  // avifAlloc(0) must return NULL deterministically (rather than aborting via
+  // assert or relying on implementation-defined malloc(0) behavior). Callers
+  // rely on this contract to treat 0 as an allocation failure.
+  EXPECT_EQ(avifAlloc(0), nullptr);
+}
+
+TEST(AvifAllocTest, RWDataReallocShrinkToZeroSucceeds) {
+  // Shrinking an avifRWData to size 0 must release the buffer and return OK,
+  // not surface a phantom OOM from avifAlloc(0) returning NULL.
+  avifRWData raw = {};
+  ASSERT_EQ(avifRWDataRealloc(&raw, 16), AVIF_RESULT_OK);
+  ASSERT_NE(raw.data, nullptr);
+  ASSERT_EQ(raw.size, 16u);
+
+  EXPECT_EQ(avifRWDataRealloc(&raw, 0), AVIF_RESULT_OK);
+  EXPECT_EQ(raw.data, nullptr);
+  EXPECT_EQ(raw.size, 0u);
+
+  avifRWDataFree(&raw);
+}
+
 }  // namespace
 }  // namespace avif

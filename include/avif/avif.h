@@ -154,7 +154,7 @@ AVIF_API unsigned int avifLibYUVVersion(void); // returns 0 if libavif wasn't co
 // ---------------------------------------------------------------------------
 // Memory management
 
-// Returns NULL on memory allocation failure.
+// Returns NULL on memory allocation failure or if size is 0.
 AVIF_API void * avifAlloc(size_t size);
 AVIF_API void avifFree(void * p);
 
