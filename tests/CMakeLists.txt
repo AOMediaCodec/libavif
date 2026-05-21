@@ -74,6 +74,38 @@ if(AVIF_GTEST)
     target_link_libraries(avifincrtest_helpers PRIVATE GTest::GTest avif_enable_warnings)
 endif()
 
+# Tests that have been audited for the Safe Buffers Programming Model. Adding
+# a new test to this list requires that the file compiles cleanly under
+# -Wunsafe-buffer-usage. See avif_enable_safe_buffers_warning() in the root
+# CMakeLists.txt.
+if(AVIF_GTEST)
+    avif_enable_safe_buffers_warning(
+        gtest/avifalphapremtest.cc
+        gtest/avifbasictest.cc
+        gtest/avifcicptest.cc
+        gtest/avifclaptest.cc
+        gtest/avifcllitest.cc
+        gtest/avifcodectest.cc
+        gtest/avifcolrtest.cc
+        gtest/avifgridapitest.cc
+        gtest/avifimagetest.cc
+        gtest/avifjpeggainmaptest.cc
+        gtest/avifopaquetest.cc
+        gtest/avifpropinternaltest.cc
+        gtest/avifrgbtest.cc
+        gtest/avifsampletransformtest.cc
+        gtest/aviftilingtest.cc
+        gtest/avifutilstest.cc
+        gtest/avify4mtest.cc
+    )
+    if(AVIF_CODEC_AVM_ENABLED)
+        avif_enable_safe_buffers_warning(gtest/avifavmtest.cc)
+        if(AVIF_ENABLE_EXPERIMENTAL_MINI)
+            avif_enable_safe_buffers_warning(gtest/avifavmminitest.cc)
+        endif()
+    endif()
+endif()
+
 if(AVIF_GTEST)
     add_avif_gtest_with_data(avif16bittest)
     add_avif_gtest(avifallocationtest)

@@ -563,6 +563,25 @@ if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST O
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag(-Wunsafe-buffer-usage AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
+    endif()
+endif()
+
+# Opt a list of C++ source files into the -Wunsafe-buffer-usage diagnostic
+# (the first step of adopting the Safe Buffers Programming Model). Apply only
+# to .cc files that have been audited to be free of raw pointer arithmetic and
+# raw-pointer indexing; new code added to those files must keep them clean.
+# No-op on toolchains where the flag is not available (Clang < 16, GCC, MSVC).
+function(avif_enable_safe_buffers_warning)
+    if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
+        set_source_files_properties(${ARGN} PROPERTIES COMPILE_OPTIONS "-Wunsafe-buffer-usage")
+    endif()
+endfunction()
+
+if(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    avif_enable_safe_buffers_warning(src/compliance.cc)
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
@@ -723,6 +742,7 @@ if(AVIF_BUILD_APPS)
         apps/avifgainmaputil/program_command.cc
         apps/avifgainmaputil/swapbase_command.cc
     )
+    avif_enable_safe_buffers_warning(${AVIFGAINMAPUTIL_SRCS})
 
     add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
     if(WIN32)
