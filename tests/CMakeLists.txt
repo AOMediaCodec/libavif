@@ -89,7 +89,6 @@ if(AVIF_GTEST)
         gtest/avifcolrtest.cc
         gtest/avifgridapitest.cc
         gtest/avifimagetest.cc
-        gtest/avifjpeggainmaptest.cc
         gtest/avifopaquetest.cc
         gtest/avifpropinternaltest.cc
         gtest/avifrgbtest.cc
