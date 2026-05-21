@@ -317,7 +317,7 @@ static float avifToGammaLog100Sqrt10(float linear)
 static float avifToLinearIEC61966(float gamma)
 {
     if (gamma < -4.5f * 0.018053968510807f) {
-        return powf((-gamma + 0.09929682680944f) / -1.09929682680944f, 1.0f / 0.45f);
+        return -powf((gamma - 0.09929682680944f) / -1.09929682680944f, 1.0f / 0.45f);
     } else if (gamma < 4.5f * 0.018053968510807f) {
         return gamma / 4.5f;
     } else {
