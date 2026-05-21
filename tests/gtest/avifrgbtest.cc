@@ -1,7 +1,6 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <array>
 #include <tuple>
 
 #include "avif/internal.h"
@@ -41,18 +40,18 @@ TEST_P(SetGetRGBATest, SetGetTest) {
     epsilon = 0.0005f;  // Half precision floats are not that precise.
   }
 
-  std::array<float, 4> pixel_read;
+  float pixel_read[4];
   for (uint32_t j = 0; j < rgb.height; ++j) {
     for (uint32_t i = 0; i < rgb.width; ++i) {
       // Generate some arbitrary pixel values.
-      const std::array<float, 4> pixel_to_write = {
+      const float pixel_to_write[4] = {
           0.0f + static_cast<float>(i) / rgb.width,
           0.5f + static_cast<float>(j) / (rgb.height * 2),
           1.0f - static_cast<float>(i + j) / ((rgb.width + rgb.height) * 2),
           1.0f - static_cast<float>(i) / rgb.width};
 
-      avifSetRGBAPixel(&rgb, i, j, &color_space, pixel_to_write.data());
-      avifGetRGBAPixel(&rgb, i, j, &color_space, pixel_read.data());
+      avifSetRGBAPixel(&rgb, i, j, &color_space, pixel_to_write);
+      avifGetRGBAPixel(&rgb, i, j, &color_space, pixel_read);
       EXPECT_NEAR(pixel_read[0], pixel_to_write[0], epsilon);
       EXPECT_NEAR(pixel_read[1], pixel_to_write[1], epsilon);
       EXPECT_NEAR(pixel_read[2], pixel_to_write[2], epsilon);
@@ -65,17 +64,17 @@ TEST_P(SetGetRGBATest, SetGetTest) {
   }
 
   // Check that 0 maps to 0 and 1.0f maps to 1.0f.
-  const std::array<float, 4> pixel_zero = {0.0f, 0.0f, 0.0f, 1.0f};
-  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_zero.data());
-  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read.data());
+  const float pixel_zero[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_zero);
+  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read);
   EXPECT_EQ(pixel_read[0], pixel_zero[0]);
   EXPECT_EQ(pixel_read[1], pixel_zero[1]);
   EXPECT_EQ(pixel_read[2], pixel_zero[2]);
   EXPECT_EQ(pixel_read[3], pixel_zero[3]);
 
-  const std::array<float, 4> pixel_one = {1.0f, 1.0f, 1.0f, 1.0f};
-  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_one.data());
-  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read.data());
+  const float pixel_one[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  avifSetRGBAPixel(&rgb, 0, 0, &color_space, pixel_one);
+  avifGetRGBAPixel(&rgb, 0, 0, &color_space, pixel_read);
   EXPECT_EQ(pixel_read[0], pixel_one[0]);
   EXPECT_EQ(pixel_read[1], pixel_one[1]);
   EXPECT_EQ(pixel_read[2], pixel_one[2]);
@@ -104,9 +103,9 @@ TEST_P(SetGetRGBATest, GradientTest) {
 
   for (uint32_t j = 0; j < input_rgb.height; ++j) {
     for (uint32_t i = 0; i < input_rgb.width; ++i) {
-      std::array<float, 4> pixel;
-      avifGetRGBAPixel(&input_rgb, i, j, &color_space, pixel.data());
-      avifSetRGBAPixel(&output_rgb, i, j, &color_space, pixel.data());
+      float pixel[4];
+      avifGetRGBAPixel(&input_rgb, i, j, &color_space, pixel);
+      avifSetRGBAPixel(&output_rgb, i, j, &color_space, pixel);
     }
   }
   EXPECT_TRUE(testutil::AreImagesEqual(input_rgb, output_rgb));

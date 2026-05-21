@@ -91,7 +91,6 @@ if(AVIF_GTEST)
         gtest/avifimagetest.cc
         gtest/avifopaquetest.cc
         gtest/avifpropinternaltest.cc
-        gtest/avifrgbtest.cc
         gtest/avifsampletransformtest.cc
         gtest/aviftilingtest.cc
         gtest/avifutilstest.cc

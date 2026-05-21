@@ -91,30 +91,19 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // argv is a raw pointer with no associated bound, so -Wunsafe-buffer-usage
-  // cannot prove these accesses safe. They are bounded by the argc checks
-  // above and by the host's contract with main(): argv[0..argc-1] are valid.
-  const char* command_cstr;
-  const char* sub_command_cstr = nullptr;
-  char* const* command_argv;
+  // -Wunsafe-buffer-usage doesn't know the raw pointer argv is associated with
+  // the bound argc, so it cannot prove these accesses safe. They are bounded
+  // by the argc checks and by the host's contract with main():
+  // argv[0..argc-1] are valid.
 #ifdef __clang__
 #if __has_warning("-Wunsafe-buffer-usage")
 #pragma clang unsafe_buffer_usage begin
 #endif
 #endif
-  command_cstr = argv[1];
-  if (argc >= 3) sub_command_cstr = argv[2];
-  command_argv = argv + 1;
-#ifdef __clang__
-#if __has_warning("-Wunsafe-buffer-usage")
-#pragma clang unsafe_buffer_usage end
-#endif
-#endif
-
-  const std::string command_name(command_cstr);
+  const std::string command_name(argv[1]);
   if (command_name == "help") {
-    if (sub_command_cstr != nullptr) {
-      const std::string sub_command_name(sub_command_cstr);
+    if (argc >= 3) {
+      const std::string sub_command_name(argv[2]);
       for (const auto& command : commands) {
         if (command->name() == sub_command_name) {
           command->PrintUsage();
@@ -133,7 +122,7 @@ int main(int argc, char** argv) {
   for (const auto& command : commands) {
     if (command->name() == command_name) {
       try {
-        avifResult result = command->ParseArgs(argc - 1, command_argv);
+        avifResult result = command->ParseArgs(argc - 1, argv + 1);
         if (result == AVIF_RESULT_OK) {
           result = command->Run();
         }
@@ -149,6 +138,11 @@ int main(int argc, char** argv) {
       }
     }
   }
+#ifdef __clang__
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang unsafe_buffer_usage end
+#endif
+#endif
 
   std::cerr << "Unknown command " << command_name << "\n";
   avif::PrintUsage(commands);
