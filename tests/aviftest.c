@@ -165,16 +165,15 @@ static int runIOTests(const char * dataDir)
     static const char * ioSuffix = "/io/";
 
     char ioDir[FILENAME_MAX_LENGTH + 1];
-    size_t dataDirLen = strlen(dataDir);
-    size_t ioSuffixLen = strlen(ioSuffix);
-
-    if ((dataDirLen + ioSuffixLen) > FILENAME_MAX_LENGTH) {
+    const size_t dataDirLen = strlen(dataDir);
+    const size_t ioSuffixLen = strlen(ioSuffix);
+    const size_t ioDirLen = dataDirLen + ioSuffixLen;
+    if (ioDirLen > FILENAME_MAX_LENGTH) {
         printf("Path too long: %s\n", dataDir);
         return 1;
     }
-    strcpy(ioDir, dataDir);
-    strcat(ioDir, ioSuffix);
-    size_t ioDirLen = strlen(ioDir);
+    memcpy(ioDir, dataDir, dataDirLen);
+    memcpy(ioDir + dataDirLen, ioSuffix, ioSuffixLen + 1); // includes the NUL terminator
 
     int retCode = 0;
 
@@ -184,14 +183,14 @@ static int runIOTests(const char * dataDir)
     const char * filename = nextFilename(ioDir, "avif", &nfd);
     for (; filename != NULL; filename = nextFilename(ioDir, "avif", &nfd)) {
         char fullFilename[FILENAME_MAX_LENGTH + 1];
-        size_t filenameLen = strlen(filename);
+        const size_t filenameLen = strlen(filename);
         if ((ioDirLen + filenameLen) > FILENAME_MAX_LENGTH) {
             printf("Path too long: %s\n", filename);
             retCode = 1;
             break;
         }
-        strcpy(fullFilename, ioDir);
-        strcat(fullFilename, filename);
+        memcpy(fullFilename, ioDir, ioDirLen);
+        memcpy(fullFilename + ioDirLen, filename, filenameLen + 1); // includes the NUL terminator
 
         FILE * f = fopen(fullFilename, "rb");
         if (!f) {
