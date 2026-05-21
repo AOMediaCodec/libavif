@@ -167,13 +167,13 @@ static int runIOTests(const char * dataDir)
     char ioDir[FILENAME_MAX_LENGTH + 1];
     const size_t dataDirLen = strlen(dataDir);
     const size_t ioSuffixLen = strlen(ioSuffix);
-    if ((dataDirLen + ioSuffixLen) > FILENAME_MAX_LENGTH) {
+    const size_t ioDirLen = dataDirLen + ioSuffixLen;
+    if (ioDirLen > FILENAME_MAX_LENGTH) {
         printf("Path too long: %s\n", dataDir);
         return 1;
     }
     memcpy(ioDir, dataDir, dataDirLen);
     memcpy(ioDir + dataDirLen, ioSuffix, ioSuffixLen + 1); // includes the NUL terminator
-    const size_t ioDirLen = dataDirLen + ioSuffixLen;
 
     int retCode = 0;
 
