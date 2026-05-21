@@ -573,10 +573,16 @@ endif()
 # (the first step of adopting the Safe Buffers Programming Model). Apply only
 # to .cc files that have been audited to be free of raw pointer arithmetic and
 # raw-pointer indexing; new code added to those files must keep them clean.
+# The libc-call subgroup (Clang 17+) is disabled because it fires on functions
+# such as strdup() that are used in third-party headers (e.g. libargparse) we
+# do not own; our own code avoids those by convention.
 # No-op on toolchains where the flag is not available (Clang < 16, GCC, MSVC).
 function(avif_enable_safe_buffers_warning)
     if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
-        set_source_files_properties(${ARGN} PROPERTIES COMPILE_OPTIONS "-Wunsafe-buffer-usage")
+        set_source_files_properties(
+            ${ARGN} PROPERTIES COMPILE_OPTIONS
+                               "-Wunsafe-buffer-usage;-Wno-unsafe-buffer-usage-in-libc-call"
+        )
     endif()
 endfunction()
 
