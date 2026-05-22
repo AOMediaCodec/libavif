@@ -21,6 +21,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update aom.cmd/LocalAom.cmake: v3.14.1
 * Update LocalAvm.cmake: research-v15.0.0
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
+* Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.58
 * Fix decoding layered image with multiple scaled alpha layers
 * Fix NaN bypass of AVIF_CLAMP in gain map tone mapping (use fminf/fmaxf)
 * Fix null pointer dereference in avifImageCopy() when avifImageCreateEmpty()
