@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -58,6 +59,20 @@ void FillTestGainMapMetadata(bool base_rendition_is_hdr, avifGainMap* gainMap) {
     gainMap->gainMapMin[c] = {-1, static_cast<uint32_t>(c + 1)};
     gainMap->gainMapMax[c] = {10 + c + 1, static_cast<uint32_t>(c + 1)};
   }
+}
+
+TEST(GainMapTest, DimensionsToPixelCountRejectsInvalidInput) {
+  size_t pixel_count = 0;
+
+  EXPECT_TRUE(avifDimensionsToPixelCount(12, 34, &pixel_count));
+  EXPECT_EQ(pixel_count, 408u);
+
+  EXPECT_FALSE(avifDimensionsToPixelCount(0, 34, &pixel_count));
+  EXPECT_FALSE(avifDimensionsToPixelCount(34, 0, &pixel_count));
+  EXPECT_FALSE(avifDimensionsToPixelCount(std::numeric_limits<uint32_t>::max(),
+                                          std::numeric_limits<uint32_t>::max(),
+                                          &pixel_count));
+  EXPECT_TRUE(avifDimensionsTooLarge(1, 0, 1, 1));
 }
 
 ImagePtr CreateTestImageWithGainMap(bool base_rendition_is_hdr) {

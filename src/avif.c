@@ -642,6 +642,9 @@ uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
 
 avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
+    if ((width == 0) || (height == 0)) {
+        return AVIF_TRUE;
+    }
     if (width > (imageSizeLimit / height)) {
         return AVIF_TRUE;
     }
@@ -649,6 +652,20 @@ avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageS
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
+}
+
+avifBool avifDimensionsToPixelCount(uint32_t width, uint32_t height, size_t * pixelCount)
+{
+    if ((pixelCount == NULL) || (width == 0) || (height == 0)) {
+        return AVIF_FALSE;
+    }
+
+    if ((size_t)width > (SIZE_MAX / (size_t)height)) {
+        return AVIF_FALSE;
+    }
+
+    *pixelCount = (size_t)width * (size_t)height;
+    return AVIF_TRUE;
 }
 
 // avifCodecCreate*() functions are in their respective codec_*.c files

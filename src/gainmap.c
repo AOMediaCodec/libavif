@@ -109,6 +109,10 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     memset(&rgbGainMap, 0, sizeof(rgbGainMap));
 
     avifResult res = AVIF_RESULT_OK;
+    size_t numPixels;
+    if (!avifDimensionsToPixelCount(width, height, &numPixels)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     toneMappedImage->width = width;
     toneMappedImage->height = height;
     AVIF_CHECKRES(avifRGBImageAllocatePixels(toneMappedImage));
@@ -302,7 +306,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
         clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
-        const float rgbAverageLinear = rgbSumLinear / ((size_t)width * height);
+        const float rgbAverageLinear = rgbSumLinear / (float)numPixels;
         clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
     }
 
@@ -360,7 +364,7 @@ cleanup:
 // Create a gain map.
 
 // Returns the index of the histogram bucket for a given value, for a histogram with 'numBuckets' buckets,
-// and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
+// and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
 static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
@@ -576,8 +580,8 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
-    const size_t numPixels = (size_t)width * height;
-    if (numPixels > SIZE_MAX / sizeof(float)) {
+    size_t numPixels;
+    if (!avifDimensionsToPixelCount(width, height, &numPixels) || (numPixels > SIZE_MAX / sizeof(float))) {
         res = AVIF_RESULT_INVALID_ARGUMENT;
         goto cleanup;
     }

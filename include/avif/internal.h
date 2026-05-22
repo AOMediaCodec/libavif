@@ -380,6 +380,7 @@ avifResult avifRGBImagePremultiplyAlphaLibYUV(avifRGBImage * rgb);
 avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb);
 
 AVIF_NODISCARD avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit);
+AVIF_NODISCARD avifBool avifDimensionsToPixelCount(uint32_t width, uint32_t height, size_t * pixelCount);
 
 // Given the number of encoding threads or decoding threads available and the image dimensions,
 // chooses suitable values of *tileRowsLog2 and *tileColsLog2.
@@ -742,7 +743,7 @@ avifResult avifRWStreamWriteBox(avifRWStream * stream, const char * type, size_t
 avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, size_t contentSize, int version, uint32_t flags, avifBoxMarker * marker);
 // marker is the offset of the size field in stream, returned by a previous
 // avifRWStreamWriteBox() or avifRWStreamWriteFullBox() call.
-AVIF_NODISCARD avifResult avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
+void avifRWStreamFinishBox(avifRWStream * stream, avifBoxMarker marker);
 avifResult avifRWStreamWriteU8(avifRWStream * stream, uint8_t v);
 avifResult avifRWStreamWriteU16(avifRWStream * stream, uint16_t v);
 avifResult avifRWStreamWriteU32(avifRWStream * stream, uint32_t v);
