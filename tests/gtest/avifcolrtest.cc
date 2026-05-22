@@ -75,6 +75,29 @@ TEST(TransferCharacteristicsTest, RoundTrip) {
   }
 }
 
+TEST(TransferCharacteristicsTest, NegativeRoundTrip) {
+  // Transfer functions that accept negative values.
+  const avifTransferCharacteristics tcs[] = {
+      AVIF_TRANSFER_CHARACTERISTICS_IEC61966,
+      AVIF_TRANSFER_CHARACTERISTICS_BT1361,
+  };
+  for (const avifTransferCharacteristics tc : tcs) {
+    SCOPED_TRACE("transfer characteristics: " + std::to_string(tc));
+
+    const avifTransferFunction to_linear =
+        avifTransferCharacteristicsGetGammaToLinearFunction(tc);
+    const avifTransferFunction to_gamma =
+        avifTransferCharacteristicsGetLinearToGammaFunction(tc);
+
+    const float test_values[] = {-0.1f, -0.05f, -0.2f};
+    for (const float v : test_values) {
+      // Check round trips.
+      EXPECT_NEAR(to_linear(to_gamma(v)), v, 0.00001f);
+      EXPECT_NEAR(to_gamma(to_linear(v)), v, 0.00001f);
+    }
+  }
+}
+
 // Check that the liner->gamma function has the right shape, i.e. it's mostly
 // above the y=x diagonal.
 // This detects bugs where the linear->gamma and

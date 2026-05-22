@@ -27,6 +27,7 @@ The changes are relative to the previous release, unless the baseline is specifi
   fails to allocate the destination gain map image.
 * avifenc: reject mismatched --depth for Y4M input
 * Use libaom AOMD_SET_FRAME_SIZE_LIMIT if available
+* Fix bug in transfer function 11 (used for gain map creation/tone mapping)
 
 ## [1.4.1] - 2026-03-20
 
