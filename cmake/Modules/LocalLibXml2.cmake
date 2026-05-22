@@ -1,4 +1,4 @@
-set(AVIF_LIBXML_GIT_TAG "v2.15.2")
+set(AVIF_LIBXML_GIT_TAG "v2.15.3")
 
 # First, whether the library exists.
 set(PREFIXES lib ${AVIF_LIBRARY_PREFIX})
