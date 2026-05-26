@@ -22,6 +22,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update LocalAvm.cmake: research-v15.0.0
 * Update libjpeg.cmd/LocalJpeg.cmake: 3.1.4.1
 * Update libxml2.cmd/LocalLibXml2.cmake: v2.15.3
+* Update libyuv.cmd/LocalLibyuv.cmake: 644251f25 (1924)
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.58
 * Fix decoding layered image with multiple scaled alpha layers
