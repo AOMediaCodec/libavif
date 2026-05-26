@@ -8,6 +8,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-05-26
+
 ### Added since 1.4.1
 
 * Add --jobs flag to avifgainmaputil to use multiple worker threads when
@@ -25,6 +27,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update libyuv.cmd/LocalLibyuv.cmake: 644251f25 (1924)
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.1.0
 * Update zlibpng.cmd/LocalZlibpng.cmake: libpng 1.6.58
+* Fix memory leak of altICC if avifDecoderFindGainMapItem returns early.
+* Avoid MT loop restoration crash in libaom < 3.13.3
 * Fix decoding layered image with multiple scaled alpha layers
 * Fix NaN bypass of AVIF_CLAMP in gain map tone mapping (use fminf/fmaxf)
 * Fix null pointer dereference in avifImageCopy() when avifImageCreateEmpty()
@@ -1381,7 +1385,8 @@ code.
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/AOMediaCodec/libavif/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/AOMediaCodec/libavif/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/AOMediaCodec/libavif/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/AOMediaCodec/libavif/compare/v1.2.1...v1.3.0
