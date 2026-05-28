@@ -8,6 +8,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.4.2
+
+* avifenc: add --ignore-alpha flag to discard alpha channel on encode
+
 ## [1.4.2] - 2026-05-26
 
 ### Added since 1.4.1

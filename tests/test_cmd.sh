@@ -143,6 +143,14 @@ pushd ${TMP_DIR}
   "${AVIFENC}" --autotiling --tilerowslog2 1 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
   "${AVIFENC}" --autotiling --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
   "${AVIFENC}" --autotiling --tilerowslog2 1 --tilecolslog2 2 "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
+
+  # Test --ignore-alpha.
+  echo "Testing --ignore-alpha"
+  "${AVIFENC}" -s 10 "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Alpha          : Not premultiplied" "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Alpha          : Absent" "${OUT_MSG}"
+  grep " Alpha total size: 0 bytes" "${OUT_MSG}"
 popd
 
 exit 0

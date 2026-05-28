@@ -277,6 +277,7 @@ static avifBool avifPNGReadImpl(FILE * f,
                                 avifBool ignoreColorProfile,
                                 avifBool ignoreExif,
                                 avifBool ignoreXMP,
+                                avifBool ignoreAlpha,
                                 uint32_t imageSizeLimit,
                                 uint32_t * outPNGDepth)
 {
@@ -524,6 +525,7 @@ static avifBool avifPNGReadImpl(FILE * f,
     } else if (numChannels == 3) {
         rgb.format = AVIF_RGB_FORMAT_RGB;
     }
+    rgb.ignoreAlpha = ignoreAlpha;
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
         fprintf(stderr, "Conversion to YUV failed: %s (out of memory)\n", inputFilename);
         goto cleanup;
@@ -584,6 +586,7 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifBool ignoreColorProfile,
                      avifBool ignoreExif,
                      avifBool ignoreXMP,
+                     avifBool ignoreAlpha,
                      uint32_t imageSizeLimit,
                      uint32_t * outPNGDepth)
 {
@@ -608,6 +611,7 @@ avifBool avifPNGRead(const char * inputFilename,
                                          ignoreColorProfile,
                                          ignoreExif,
                                          ignoreXMP,
+                                         ignoreAlpha,
                                          imageSizeLimit,
                                          outPNGDepth);
 

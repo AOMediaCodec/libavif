@@ -238,8 +238,8 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
         input_filename.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
         requested_format, static_cast<int>(requested_depth),
         AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile,
-        /*ignoreExif=*/false, /*ignoreXMP=*/false, ignore_gain_map,
-        AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
+        /*ignoreExif=*/false, /*ignoreXMP=*/false, /*ignoreAlpha=*/false,
+        ignore_gain_map, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
         /*outDepth=*/nullptr,
         /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
     if (file_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {

@@ -140,6 +140,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--ignore-profile**, **\--ignore-icc**
 :   If the input file contains an embedded color profile, ignore it (no-op if absent).
 
+**\--ignore-alpha**
+:   If the input file contains an alpha channel, ignore it (no-op if absent).
+
 **\--ignore-gain-map**
 :   If the input file contains an embedded gain map, ignore it (no-op if absent).
 

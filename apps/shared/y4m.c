@@ -254,6 +254,7 @@ static avifBool y4mClampSamples(avifImage * avif)
     } while (0)
 
 avifBool y4mRead(const char * inputFilename,
+                 avifBool ignoreAlpha,
                  uint32_t imageSizeLimit,
                  avifImage * avif,
                  avifAppSourceTiming * sourceTiming,
@@ -434,6 +435,10 @@ avifBool y4mRead(const char * inputFilename,
             }
             row += rowBytes;
         }
+    }
+
+    if (frame.hasAlpha && ignoreAlpha) {
+        avifImageFreePlanes(avif, AVIF_PLANES_A);
     }
 
     // libavif API does not guarantee the absence of undefined behavior if samples exceed the specified avif->depth.
