@@ -12,6 +12,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 * avifenc: add --ignore-alpha flag to discard alpha channel on encode
 
+### Changed since 1.4.2
+
+* Update LocalAvm.cmake: v1.0.0
+
 ## [1.4.2] - 2026-05-26
 
 ### Added since 1.4.1
