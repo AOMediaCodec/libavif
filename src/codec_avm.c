@@ -917,7 +917,13 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             // Allocate the U plane if necessary.
             if (!avmImageAllocated) {
                 uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
+                if (monoUVWidth > UINT32_MAX / channelSize) {
+                    return AVIF_RESULT_INVALID_ARGUMENT;
+                }
                 uint32_t monoUVRowBytes = channelSize * monoUVWidth;
+                if (monoUVHeight > PTRDIFF_MAX / monoUVRowBytes) {
+                    return AVIF_RESULT_INVALID_ARGUMENT;
+                }
                 size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
 
                 monoUVPlane = avifAlloc(monoUVSize);
