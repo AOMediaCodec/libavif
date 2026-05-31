@@ -49,5 +49,22 @@ TEST(AvifImageTest, WriteImage) {
       image.get(), (testing::TempDir() + "/avifimagetest.png").c_str()));
 }
 
+TEST(AvifImageTest, CopySelf) {
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/1, /*height=*/1, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV);
+  ASSERT_NE(image, nullptr);
+  ASSERT_NE(image->yuvPlanes[AVIF_CHAN_Y], nullptr);
+  image->yuvPlanes[AVIF_CHAN_Y][0] = 42;
+
+  ASSERT_EQ(avifImageCopy(image.get(), image.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(image->width, 1u);
+  EXPECT_EQ(image->height, 1u);
+  ASSERT_NE(image->yuvPlanes[AVIF_CHAN_Y], nullptr);
+  EXPECT_TRUE(image->imageOwnsYUVPlanes);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_Y][0], 42);
+}
+
 }  // namespace
 }  // namespace avif

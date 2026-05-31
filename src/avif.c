@@ -251,6 +251,9 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
 
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
+    if (dstImage == srcImage) {
+        return AVIF_RESULT_OK;
+    }
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
 
