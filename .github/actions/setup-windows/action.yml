@@ -76,7 +76,7 @@ runs:
       shell: bash
 
     - name: Install libraries
-      uses: johnwason/vcpkg-action@caa1c94fbb94d8b023a0cc93edf10cd3791349a7 # v7.0.1
+      uses: johnwason/vcpkg-action@04c68c847bf5196ecaa72331ecf51208583916ef # v8.0.0
       if: env.AVIF_WIN_LIBRARIES != ''
       id: vcpkg
       with:
