@@ -14,10 +14,6 @@ extern "C" {
 #error "Your target is linking against avif and avif_internal: only one should be chosen"
 #endif
 
-// Allocates count * size bytes and zero-initializes them. Returns NULL on memory
-// allocation failure, including the case when count * size overflows size_t.
-void * avifCalloc(size_t count, size_t size);
-
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high) (((x) < (low)) ? (low) : (((high) < (x)) ? (high) : (x)))
 #define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -83,6 +79,13 @@ static inline void avifBreakOnError()
 #define AVIF_URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
 
 #define AVIF_CONTENT_TYPE_XMP "application/rdf+xml"
+
+// ---------------------------------------------------------------------------
+// Memory management
+
+// Allocates count * size bytes and zero-initializes them. Returns NULL on memory
+// allocation failure, including the case when count * size overflows size_t.
+void * avifCalloc(size_t count, size_t size);
 
 // ---------------------------------------------------------------------------
 // Utils
