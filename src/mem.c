@@ -1,7 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/avif.h"
+#include "avif/internal.h"
 
 #include <stdlib.h>
 
@@ -15,6 +15,11 @@ void * avifAlloc(size_t size)
         return NULL;
     }
     return malloc(size);
+}
+
+void * avifCalloc(size_t count, size_t size)
+{
+    return calloc(count, size);
 }
 
 void avifFree(void * p)

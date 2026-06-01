@@ -291,11 +291,10 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         if (uvSize * 2 > UINT32_MAX - input_buffer->n_filled_len) {
             goto cleanup;
         }
-        uvPlanes = avifAlloc(uvSize);
+        uvPlanes = avifCalloc(uvSize, sizeof(uint8_t));
         if (uvPlanes == NULL) {
             goto cleanup;
         }
-        memset(uvPlanes, 0, uvSize);
         input_picture_buffer->cb = uvPlanes;
         input_buffer->n_filled_len += (uint32_t)uvSize;
         input_picture_buffer->cr = uvPlanes;
@@ -402,21 +401,19 @@ static void svtCodecDestroyInternal(avifCodec * codec)
 
 avifCodec * avifCodecCreateSvt(void)
 {
-    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    avifCodec * codec = (avifCodec *)avifCalloc(1, sizeof(avifCodec));
     if (codec == NULL) {
         return NULL;
     }
-    memset(codec, 0, sizeof(struct avifCodec));
     codec->encodeImage = svtCodecEncodeImage;
     codec->encodeFinish = svtCodecEncodeFinish;
     codec->destroyInternal = svtCodecDestroyInternal;
 
-    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(avifCodecInternal));
+    codec->internal = (struct avifCodecInternal *)avifCalloc(1, sizeof(avifCodecInternal));
     if (codec->internal == NULL) {
         avifFree(codec);
         return NULL;
     }
-    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;
 }
 
@@ -426,11 +423,10 @@ static avifBool allocate_svt_buffers(EbBufferHeaderType ** input_buf)
     if (!(*input_buf)) {
         return AVIF_FALSE;
     }
-    (*input_buf)->p_buffer = avifAlloc(sizeof(EbSvtIOFormat));
+    (*input_buf)->p_buffer = avifCalloc(1, sizeof(EbSvtIOFormat));
     if (!(*input_buf)->p_buffer) {
         return AVIF_FALSE;
     }
-    memset((*input_buf)->p_buffer, 0, sizeof(EbSvtIOFormat));
     (*input_buf)->size = sizeof(EbBufferHeaderType);
     (*input_buf)->p_app_private = NULL;
     (*input_buf)->pic_type = EB_AV1_INVALID_PICTURE;

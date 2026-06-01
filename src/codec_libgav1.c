@@ -140,20 +140,18 @@ const char * avifCodecVersionGav1(void)
 
 avifCodec * avifCodecCreateGav1(void)
 {
-    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    avifCodec * codec = (avifCodec *)avifCalloc(1, sizeof(avifCodec));
     if (codec == NULL) {
         return NULL;
     }
-    memset(codec, 0, sizeof(struct avifCodec));
     codec->getNextImage = gav1CodecGetNextImage;
     codec->destroyInternal = gav1CodecDestroyInternal;
 
-    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    codec->internal = (struct avifCodecInternal *)avifCalloc(1, sizeof(struct avifCodecInternal));
     if (codec->internal == NULL) {
         avifFree(codec);
         return NULL;
     }
-    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     Libgav1DecoderSettingsInitDefault(&codec->internal->gav1Settings);
     return codec;
 }

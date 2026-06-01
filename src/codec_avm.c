@@ -1043,11 +1043,10 @@ const char * avifCodecVersionAVM(void)
 
 avifCodec * avifCodecCreateAVM(void)
 {
-    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    avifCodec * codec = (avifCodec *)avifCalloc(1, sizeof(avifCodec));
     if (codec == NULL) {
         return NULL;
     }
-    memset(codec, 0, sizeof(struct avifCodec));
 
     codec->getNextImage = avmCodecGetNextImage;
 
@@ -1055,11 +1054,10 @@ avifCodec * avifCodecCreateAVM(void)
     codec->encodeFinish = avmCodecEncodeFinish;
 
     codec->destroyInternal = avmCodecDestroyInternal;
-    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    codec->internal = (struct avifCodecInternal *)avifCalloc(1, sizeof(struct avifCodecInternal));
     if (codec->internal == NULL) {
         avifFree(codec);
         return NULL;
     }
-    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;
 }

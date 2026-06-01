@@ -81,6 +81,13 @@ static inline void avifBreakOnError()
 #define AVIF_CONTENT_TYPE_XMP "application/rdf+xml"
 
 // ---------------------------------------------------------------------------
+// Memory management
+
+// Allocates count * size bytes and zero-initializes them. Returns NULL on memory
+// allocation failure, including the case when count * size overflows size_t.
+void * avifCalloc(size_t count, size_t size);
+
+// ---------------------------------------------------------------------------
 // Utils
 
 float avifRoundf(float v);

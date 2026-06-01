@@ -1395,11 +1395,10 @@ const char * avifCodecVersionAOM(void)
 
 avifCodec * avifCodecCreateAOM(void)
 {
-    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    avifCodec * codec = (avifCodec *)avifCalloc(1, sizeof(avifCodec));
     if (codec == NULL) {
         return NULL;
     }
-    memset(codec, 0, sizeof(struct avifCodec));
 
 #if defined(AVIF_CODEC_AOM_DECODE)
     codec->getNextImage = aomCodecGetNextImage;
@@ -1411,12 +1410,11 @@ avifCodec * avifCodecCreateAOM(void)
 #endif
 
     codec->destroyInternal = aomCodecDestroyInternal;
-    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    codec->internal = (struct avifCodecInternal *)avifCalloc(1, sizeof(struct avifCodecInternal));
     if (codec->internal == NULL) {
         avifFree(codec);
         return NULL;
     }
-    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
     return codec;
 }
 
