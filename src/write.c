@@ -1624,7 +1624,7 @@ static avifResult avifValidateGrid(uint32_t gridCols,
     const uint32_t tileHeight = firstCell->height;
     if ((tileWidth > 65536) || (tileHeight > 65536)) {
         avifDiagnosticsPrintf(diag,
-                              "the first %s cell has invalid dimensions for AV1: %ux%u",
+                              "the first %s cell has invalid dimensions for AV1 and AV2: %ux%u",
                               validateGainMap ? "gain map" : "image",
                               tileWidth,
                               tileHeight);
