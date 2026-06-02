@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <string>
 
@@ -98,6 +99,49 @@ TEST(AltrTest, OnlySampleTransformContentToDecode) {
   ASSERT_NE(image, nullptr);
   ASSERT_EQ(avifDecoderReadFile(decoder.get(), image.get(), file_path.c_str()),
             AVIF_RESULT_NO_CONTENT);
+}
+
+// A 'sato' derived image item that references zero input image items must be
+// rejected at parse time. Otherwise it would reach an AVIF_ASSERT_OR_RETURN in
+// avifDecoderApplySampleTransformForPlanesImpl() and surface as
+// AVIF_RESULT_INTERNAL_ERROR.
+TEST(AltrTest, SampleTransformZeroInputItemsRejected) {
+  const std::string file_path =
+      std::string(data_path) + "weld_sato_12B_8B_q0.avif";
+  testutil::AvifRwData encoded = testutil::ReadFile(file_path);
+  ASSERT_GE(encoded.size, size_t{0x7f1 + 17});
+
+  // Sanity check: the fixture is the version this test was authored against.
+  ASSERT_EQ(std::memcmp(encoded.data + 0x111, "dimg", 4), 0);
+  ASSERT_EQ(encoded.data[0x7f1], 0x02);
+  ASSERT_EQ(encoded.data[0x7f2], 0x07);
+
+  // Demote the iref's inner reference type from 'dimg' to a type libavif does
+  // not interpret, so no item gets dimgForID == sato.id (i.e. the 'sato' item
+  // ends up with zero input image items).
+  std::memcpy(encoded.data + 0x111, "xxxx", 4);
+  // Rewrite the 17-byte 'sato' payload to a constants-only expression that
+  // passes avifSampleTransformExpressionIsValid(_, /*numInputImageItems=*/0):
+  //   token_count = 11, [CONSTANT(16), NEGATION x 10] -> stack stays at 1.
+  encoded.data[0x7f2] = 0x0b;
+  encoded.data[0x7f3] = 0x00;
+  encoded.data[0x7f4] = 0x00;
+  encoded.data[0x7f5] = 0x00;
+  encoded.data[0x7f6] = 0x00;
+  encoded.data[0x7f7] = 0x10;
+  for (int i = 0; i < 10; ++i) {
+    encoded.data[0x7f8 + i] = 0x40;
+  }
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  const avifResult result = avifDecoderReadMemory(decoder.get(), image.get(),
+                                                  encoded.data, encoded.size);
+  EXPECT_EQ(result, AVIF_RESULT_BMFF_PARSE_FAILED);
+  EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
 //------------------------------------------------------------------------------
