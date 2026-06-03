@@ -15,6 +15,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Changed since 1.4.2
 
 * Update LocalAvm.cmake: v1.0.0
+* Update libyuv.cmd/LocalLibyuv.cmake: 3c5fa6ef2 (1945)
 
 ## [1.4.2] - 2026-05-26
 
