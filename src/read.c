@@ -6347,6 +6347,11 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                     ++data->sampleTransformNumInputImageItems;
                 }
             }
+            // A 'sato' derived image item must reference at least one input image item via 'iref dimg'.
+            if (data->sampleTransformNumInputImageItems == 0) {
+                avifDiagnosticsPrintf(data->diag, "Box[sato] item %u has no input image items", sampleTransformItem->id);
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
             // Check max number of input items allowed by the format.
             if (data->sampleTransformNumInputImageItems > 32) {
                 avifDiagnosticsPrintf(data->diag,
