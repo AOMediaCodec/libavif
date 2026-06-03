@@ -250,6 +250,7 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
 
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
+    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
 
@@ -321,6 +322,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 
 avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
 {
+    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
     if ((rect->width > srcImage->width) || (rect->height > srcImage->height) || (rect->x > (srcImage->width - rect->width)) ||
