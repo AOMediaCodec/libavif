@@ -1,7 +1,7 @@
 # When changing the commit below to a newer version of libyuv, it is best to make sure it is being used by chromium,
 # because the test suite of chromium provides additional test coverage of libyuv.
 # It can be looked up at https://source.chromium.org/chromium/chromium/src/+/main:DEPS?q=libyuv.
-set(AVIF_LIBYUV_TAG "3c5fa6ef272f6077d76816ee3d6a697ef1d6d272")
+set(AVIF_LIBYUV_TAG "957f295ea946cbbd13fcfc46e7066f2efa801233")
 
 set(AVIF_LIBYUV_BUILD_DIR "${AVIF_SOURCE_DIR}/ext/libyuv/build")
 # If ${ANDROID_ABI} is set, look for the library under that subdirectory.
