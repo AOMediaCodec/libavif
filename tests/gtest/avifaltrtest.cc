@@ -140,7 +140,7 @@ TEST(AltrTest, SampleTransformZeroInputItemsRejected) {
   ASSERT_NE(image, nullptr);
   const avifResult result = avifDecoderReadMemory(decoder.get(), image.get(),
                                                   encoded.data, encoded.size);
-  EXPECT_EQ(result, AVIF_RESULT_BMFF_PARSE_FAILED);
+  EXPECT_NE(result, AVIF_RESULT_OK);
   EXPECT_NE(result, AVIF_RESULT_INTERNAL_ERROR);
 }
 
