@@ -5,7 +5,7 @@
 
 #include "gav1/decoder.h"
 
-#include <string.h>
+#include <stddef.h>
 
 struct avifCodecInternal
 {
