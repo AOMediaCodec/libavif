@@ -250,6 +250,8 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
 
 avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
+    // Disallow self copy even though it could be supported easily. Self copy is
+    // unlikely to be needed, so it almost always indicates a programming error.
     AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
