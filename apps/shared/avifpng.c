@@ -38,7 +38,7 @@ static avifBool avifHexStringToBytes(const char * hexString, size_t hexStringLen
             ++i;
             continue;
         }
-        if (!isxdigit(hexString[i]) || !isxdigit(hexString[i + 1])) {
+        if (!isxdigit((unsigned char)hexString[i]) || !isxdigit((unsigned char)hexString[i + 1])) {
             avifRWDataFree(bytes);
             fprintf(stderr, "Metadata extraction failed: invalid character at %" AVIF_FMT_ZU "\n", i);
             return AVIF_FALSE;
