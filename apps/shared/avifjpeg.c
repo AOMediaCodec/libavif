@@ -766,7 +766,7 @@ static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNo
             // Make sure that remaining characters (if any) are only whitespace.
             const int len = (int)strlen(textValues[i]);
             while (charsRead < len) {
-                if (!isspace(textValues[i][charsRead])) {
+                if (!isspace((unsigned char)textValues[i][charsRead])) {
                     return AVIF_FALSE; // Invalid character.
                 }
                 ++charsRead;
