@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <math.h>
 #include <setjmp.h>
 #include <stdint.h>
@@ -579,6 +580,14 @@ static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, con
 #define XML_NAME_SPACE_RDF "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 #define XML_NAME_SPACE_XMP_NOTE "http://ns.adobe.com/xmp/note/"
 
+static xmlDoc * avifJPEGReadXMLMemory(const uint8_t * data, size_t size, const char * url)
+{
+    if (size > INT_MAX) {
+        return NULL;
+    }
+    return xmlReadMemory((const char *)data, (int)size, url, NULL, /*options=*/0);
+}
+
 // Finds an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
 // Returns NULL if not found.
 static const xmlNode * avifJPEGFindIsoGainMapXMPNode(const xmlNode * rootNode)
@@ -664,7 +673,7 @@ static const xmlNode * avifJPEGFindGainMapXMPNode(const xmlNode * rootNode, avif
 // If not null, isAppleGainMap is set to AVIF_TRUE for an Apple style gain map, and AVIF_FALSE for an ISO gain map.
 static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSize, avifBool * isAppleGainMap)
 {
-    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
+    xmlDoc * document = avifJPEGReadXMLMemory(xmpData, xmpSize, NULL);
     if (document == NULL) {
         return AVIF_FALSE; // Probably and out of memory error.
     }
@@ -885,7 +894,7 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 // Returns AVIF_TRUE if the gain map metadata was successfully read.
 avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap, avifBool * isAppleGainMap)
 {
-    xmlDoc * document = xmlReadMemory((const char *)xmpData, (int)xmpSize, NULL, NULL, /*options=*/0);
+    xmlDoc * document = avifJPEGReadXMLMemory(xmpData, xmpSize, NULL);
     if (document == NULL) {
         return AVIF_FALSE; // Probably an out of memory error.
     }
@@ -1122,7 +1131,12 @@ static avifBool avifJPEGMergeXMP(const uint8_t * standardXMPData,
     avifBool isValid = AVIF_TRUE;
     xmlDoc * extendedXMPDoc = NULL;
     xmlChar * xmlBuff = NULL;
-    xmlDoc * xmpDoc = xmlReadMemory((const char *)standardXMPData, (int)standardXMPSize, "standard.xml", NULL, /*options=*/0);
+    xmlDoc * xmpDoc = avifJPEGReadXMLMemory(standardXMPData, standardXMPSize, "standard.xml");
+    if (xmpDoc == NULL) {
+        fprintf(stderr, "XMP extraction failed: invalid standard XMP segment\n");
+        isValid = AVIF_FALSE;
+        goto cleanup_xml;
+    }
     xmlNode * xmpRdf = (xmlNode *)avifJPEGFindXMLNodeByName(xmlDocGetRootElement(xmpDoc),
                                                             XML_NAME_SPACE_RDF,
                                                             "RDF",
@@ -1174,11 +1188,12 @@ static avifBool avifJPEGMergeXMP(const uint8_t * standardXMPData,
     }
 
     // Read the extended XMP.
-    extendedXMPDoc = xmlReadMemory((const char *)extendedXMP.data,
-                                   (int)extendedXMP.size,
-                                   "extended.xml",
-                                   NULL,
-                                   /*options=*/0);
+    extendedXMPDoc = avifJPEGReadXMLMemory(extendedXMP.data, extendedXMP.size, "extended.xml");
+    if (extendedXMPDoc == NULL) {
+        fprintf(stderr, "XMP extraction failed: invalid extended XMP segment\n");
+        isValid = AVIF_FALSE;
+        goto cleanup_xml;
+    }
     const xmlNode * extendedXMPRdf = avifJPEGFindXMLNodeByName(xmlDocGetRootElement(extendedXMPDoc),
                                                                XML_NAME_SPACE_RDF,
                                                                "RDF",
