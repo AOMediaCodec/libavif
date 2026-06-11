@@ -213,6 +213,18 @@ avifResult TonemapCommand::Run() {
               << "\n";
     return result;
   }
+  result = avifImageSetMetadataXMP(tone_mapped.get(), decoder->image->xmp.data,
+                                   decoder->image->xmp.size);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to copy XMP: " << avifResultToString(result) << "\n";
+    return result;
+  }
+  result = avifImageSetMetadataExif(
+      tone_mapped.get(), decoder->image->exif.data, decoder->image->exif.size);
+  if (result != AVIF_RESULT_OK) {
+    std::cerr << "Failed to copy EXIF: " << avifResultToString(result) << "\n";
+    return result;
+  }
 
   return WriteImage(tone_mapped.get(), arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows,
