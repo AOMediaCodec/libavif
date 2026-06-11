@@ -3,6 +3,8 @@
 
 #include <math.h>
 
+#include <limits>
+
 #include "avif/avif.h"
 #include "avifjpeg.h"
 #include "aviftest_helpers.h"
@@ -331,6 +333,15 @@ TEST(JpegTest, EmptyXMP) {
   avifBool is_avif_gain_map;
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
                                        gain_map.get(), &is_avif_gain_map));
+}
+
+TEST(JpegTest, TooLargeXMP) {
+  const uint8_t xmp = 0;
+  GainMapPtr gain_map(avifGainMapCreate());
+  avifBool is_avif_gain_map;
+  EXPECT_FALSE(avifJPEGParseGainMapXMP(
+      &xmp, static_cast<size_t>(std::numeric_limits<int>::max()) + 1,
+      gain_map.get(), &is_avif_gain_map));
 }
 
 //------------------------------------------------------------------------------
