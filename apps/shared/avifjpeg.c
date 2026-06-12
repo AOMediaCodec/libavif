@@ -556,17 +556,17 @@ static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
 
 // Searches for a node called 'nameSpace:nodeName' in the children (or descendants if 'recursive' is set) of 'parentNode'.
 // Returns the first such node found (in depth first search). Returns NULL if no such node is found.
-static const xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, const char * nameSpace, const char * nodeName, avifBool recursive)
+static xmlNode * avifJPEGFindXMLNodeByName(const xmlNode * parentNode, const char * nameSpace, const char * nodeName, avifBool recursive)
 {
     if (parentNode == NULL) {
         return NULL;
     }
-    for (const xmlNode * node = parentNode->children; node != NULL; node = node->next) {
+    for (xmlNode * node = parentNode->children; node != NULL; node = node->next) {
         if (node->ns != NULL && !xmlStrcmp(node->ns->href, (const xmlChar *)nameSpace) &&
             !xmlStrcmp(node->name, (const xmlChar *)nodeName)) {
             return node;
         } else if (recursive) {
-            const xmlNode * descendantNode = avifJPEGFindXMLNodeByName(node, nameSpace, nodeName, recursive);
+            xmlNode * descendantNode = avifJPEGFindXMLNodeByName(node, nameSpace, nodeName, recursive);
             if (descendantNode != NULL) {
                 return descendantNode;
             }
@@ -1137,10 +1137,10 @@ static avifBool avifJPEGMergeXMP(const uint8_t * standardXMPData,
         isValid = AVIF_FALSE;
         goto cleanup_xml;
     }
-    xmlNode * xmpRdf = (xmlNode *)avifJPEGFindXMLNodeByName(xmlDocGetRootElement(xmpDoc),
-                                                            XML_NAME_SPACE_RDF,
-                                                            "RDF",
-                                                            /*recursive=*/AVIF_TRUE);
+    xmlNode * xmpRdf = avifJPEGFindXMLNodeByName(xmlDocGetRootElement(xmpDoc),
+                                                 XML_NAME_SPACE_RDF,
+                                                 "RDF",
+                                                 /*recursive=*/AVIF_TRUE);
     if (!xmpRdf) {
         fprintf(stderr, "XMP extraction failed: cannot find RDF node\n");
         isValid = AVIF_FALSE;
@@ -1199,7 +1199,7 @@ static avifBool avifJPEGMergeXMP(const uint8_t * standardXMPData,
                                                                "RDF",
                                                                /*recursive=*/AVIF_TRUE);
     if (!extendedXMPRdf) {
-        fprintf(stderr, "XMP extraction failed: invalid standard XMP segment\n");
+        fprintf(stderr, "XMP extraction failed: cannot find RDF node\n");
         isValid = AVIF_FALSE;
         goto cleanup_xml;
     }
