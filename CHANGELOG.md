@@ -15,6 +15,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Changed since 1.4.2
 
 * Update LocalAvm.cmake: v1.0.0
+* Copy XMP/Exif in avifgainmaputil tonemap
 
 ## [1.4.2] - 2026-05-26
 
