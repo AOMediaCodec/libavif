@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-        generator: [Ninja, "Visual Studio 17 2022"]
+        generator: ["-G Ninja", ""]
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -52,7 +52,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake -G "${{ matrix.generator }}" -S . -B build
+          cmake "${{ matrix.generator }}" -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_DAV1D=LOCAL
           -DAVIF_CODEC_RAV1E=LOCAL -DAVIF_CODEC_SVT=LOCAL
