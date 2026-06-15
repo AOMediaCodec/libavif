@@ -191,6 +191,8 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
             svt_config->min_qp_allowed = AVIF_CLAMP(encoder->minQuantizer, 0, 62);
             svt_config->max_qp_allowed = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
         }
+        printf("quality %d\n", quality);
+        printf("svt_config->qp %u\n", svt_config->qp);
         svt_config->qp = svtQualityToQuantizer(quality);
 
         if (tileRowsLog2 != 0) {

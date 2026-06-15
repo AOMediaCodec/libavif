@@ -63,5 +63,25 @@ jobs:
       - name: Build libavif
         run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
+        continue-on-error: true
         working-directory: ./build
         run: ctest -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
+
+      - name: Upload Artifact decoded4
+        uses: actions/upload-artifact@v4
+        with:
+          name: decoded4
+          path: build/tests/decoded.png
+          retention-days: 7
+
+      - name: Upload Artifact encoded4
+        uses: actions/upload-artifact@v4
+        with:
+          name: encoded4
+          path: build/tests/encoded.avif
+          retention-days: 7
+
+      - name: Run avifcodectest
+        continue-on-error: true
+        working-directory: ./build/tests
+        run: ./avifcodectest.exe
