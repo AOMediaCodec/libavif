@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <fstream>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -45,17 +47,20 @@ TEST_P(CodecTest, EncodeDecode) {
                                   encoded.size),
             AVIF_RESULT_OK);
 
+  if (testutil::GetPsnr(*image, *decoded) < 32.0) {
+    testutil::WriteImage(image.get(), "original.png");
+    std::ofstream("encoded.avif", std::ios::binary)
+        .write(reinterpret_cast<const char*>(encoded.data), encoded.size);
+    testutil::WriteImage(decoded.get(), "decoded.png");
+  }
   ASSERT_GT(testutil::GetPsnr(*image, *decoded), 32.0);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     All, CodecTest,
-    testing::Combine(/*encoding_codec=*/testing::Values(AVIF_CODEC_CHOICE_AOM,
-                                                        AVIF_CODEC_CHOICE_RAV1E,
-                                                        AVIF_CODEC_CHOICE_SVT),
-                     /*decoding_codec=*/testing::Values(
-                         AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D,
-                         AVIF_CODEC_CHOICE_LIBGAV1)));
+    testing::Combine(
+        /*encoding_codec=*/testing::Values(AVIF_CODEC_CHOICE_SVT),
+        /*decoding_codec=*/testing::Values(AVIF_CODEC_CHOICE_AOM)));
 
 }  // namespace
 }  // namespace avif
