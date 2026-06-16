@@ -32,7 +32,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
+        # Use windows-2022 instead of windows-latest until
+        # https://github.com/AOMediaCodec/libavif/issues/3255 is fixed.
+        os: [windows-2022]
         generator: ["-G Ninja", ""]
 
     steps:
