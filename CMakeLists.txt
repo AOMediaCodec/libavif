@@ -428,11 +428,15 @@ target_sources(avif_obj PRIVATE ${AVIF_SRCS})
 # /usr/local/include.
 set(CMAKE_FIND_FRAMEWORK LAST)
 
+if(NOT WIN32 AND NOT APPLE)
+    target_link_libraries(avif_obj PRIVATE m)
+endif()
+
 if(UNIX OR MINGW)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    target_link_libraries(avif_obj PRIVATE m Threads::Threads)
+    target_link_libraries(avif_obj PRIVATE Threads::Threads)
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
@@ -656,7 +660,7 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     macro(add_avif_apps_library suffix)
         add_library(avif_apps${suffix} STATIC ${AVIF_APPS_SRCS})
         target_link_libraries(avif_apps${suffix} PUBLIC avif${suffix} PRIVATE PNG::PNG ZLIB::ZLIB JPEG::JPEG avif_enable_warnings)
-        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        if(NOT WIN32 AND NOT APPLE)
             target_link_libraries(avif_apps${suffix} PRIVATE m)
         endif()
         if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
