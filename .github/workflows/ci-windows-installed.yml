@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-windows-installed:
     # Use windows-2022 instead of windows-latest until
-    # https://github.com/AOMediaCodec/libavif/issues/3255 is fixed.
+    # https://github.com/microsoft/vcpkg/issues/52468 is fixed.
     runs-on: windows-2022
     strategy:
       fail-fast: false
