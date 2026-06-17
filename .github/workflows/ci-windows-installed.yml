@@ -16,7 +16,9 @@ concurrency:
 
 jobs:
   build-windows-installed:
-    runs-on: windows-latest
+    # Use windows-2022 instead of windows-latest until
+    # https://github.com/AOMediaCodec/libavif/issues/3255 is fixed.
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
