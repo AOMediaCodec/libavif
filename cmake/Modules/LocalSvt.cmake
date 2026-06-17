@@ -42,6 +42,8 @@ else()
         GIT_TAG "${AVIF_SVT_GIT_TAG}"
         UPDATE_COMMAND ""
         GIT_SHALLOW ON
+        # See https://github.com/AOMediaCodec/libavif/issues/3255.
+        PATCH_COMMAND git apply ${AVIF_SOURCE_DIR}/cmake/Modules/LocalSvt.diff
     )
 
     set(BUILD_DEC OFF CACHE BOOL "")
