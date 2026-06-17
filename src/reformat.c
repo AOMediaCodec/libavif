@@ -667,10 +667,10 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     const uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
     const uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
     const uint8_t * aPlane = image->alphaPlane;
-    const uint32_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
-    const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
-    const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
-    const uint32_t aRowBytes = image->alphaRowBytes;
+    const size_t yRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+    const size_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+    const size_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+    const size_t aRowBytes = image->alphaRowBytes;
 
     // Various observations and limits
     const avifBool yuvHasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
@@ -683,9 +683,9 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
     // to clang's analyzer.
     assert((alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_NO_OP) || aPlane);
 
-    for (uint32_t j = 0; j < image->height; ++j) {
+    for (size_t j = 0; j < image->height; ++j) {
         // uvJ is used only when yuvHasColor is true.
-        const uint32_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
+        const size_t uvJ = yuvHasColor ? (j >> state->yuv.formatInfo.chromaShiftY) : 0;
         const uint8_t * ptrY8 = &yPlane[j * yRowBytes];
         const uint8_t * ptrU8 = uPlane ? &uPlane[(uvJ * uRowBytes)] : NULL;
         const uint8_t * ptrV8 = vPlane ? &vPlane[(uvJ * vRowBytes)] : NULL;
@@ -700,7 +700,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
         uint8_t * ptrB = &rgb->pixels[state->rgb.offsetBytesB + ((size_t)j * rgb->rowBytes)];
         uint8_t * ptrGray = &rgb->pixels[state->rgb.offsetBytesGray + ((size_t)j * rgb->rowBytes)];
 
-        for (uint32_t i = 0; i < image->width; ++i) {
+        for (size_t i = 0; i < image->width; ++i) {
             float Y, Cb = 0.5f, Cr = 0.5f;
 
             // Calculate Y
@@ -715,7 +715,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
 
             // Calculate Cb and Cr
             if (yuvHasColor) {
-                const uint32_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
+                const size_t uvI = i >> state->yuv.formatInfo.chromaShiftX;
                 if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
                     uint16_t unormU, unormV;
 
