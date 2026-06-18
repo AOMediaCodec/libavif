@@ -147,9 +147,15 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     printf(" * Gain map       : ");
     avifImage * gainMapImage = avif->gainMap ? avif->gainMap->image : NULL;
     if (gainMapImage != NULL) {
+        uint32_t gainMapWidth = gainMapImage->width;
+        uint32_t gainMapHeight = gainMapImage->height;
+        if (gridCols && gridRows) {
+            gainMapWidth *= gridCols;
+            gainMapHeight *= gridRows;
+        }
         printf("%ux%u pixels, %u bit, %s, %s Range, Matrix Coeffs. %u, Base Headroom %.2f (%s), Alternate Headroom %.2f (%s)\n",
-               gainMapImage->width,
-               gainMapImage->height,
+               gainMapWidth,
+               gainMapHeight,
                gainMapImage->depth,
                avifPixelFormatToString(gainMapImage->yuvFormat),
                (gainMapImage->yuvRange == AVIF_RANGE_FULL) ? "Full" : "Limited",
