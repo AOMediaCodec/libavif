@@ -48,7 +48,10 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_HDR}" "${AVIF_OUTPUT}" \
       -q 50 --qgain-map 90 --ignore-profile
   "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \
-      -q 50 --downscaling 2 --yuv-gain-map 400 --grid 2x2
+      -q 50 --downscaling 2 --yuv-gain-map 400 --grid 2x2 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep "Resolution     : 400x300$" "${OUT_MSG}"
+  grep "Gain map       : 200x150 pixels" "${OUT_MSG}"
 
   "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_HDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
       -q 90 --qgain-map 90
@@ -57,6 +60,7 @@ pushd ${TMP_DIR}
   "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40 1
   # Check that metadata is copied over.
   "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}" --headroom 0 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
   grep "XMP Metadata   : Present" "${OUT_MSG}"
   grep "Exif Metadata  : Present" "${OUT_MSG}"
 

@@ -20,6 +20,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   files when SVT-AV1 is built with MSVC. See
   https://github.com/AOMediaCodec/libavif/issues/3255.
 * Link with -lm when NOT WIN32 AND NOT APPLE
+* Fix printed image size in avifgainmaputil when using --grid.
+* Fix printed gain map size in avifenc when converting a jpeg with a gain map
+  and using --grid.
 
 ## [1.4.2] - 2026-05-26
 
