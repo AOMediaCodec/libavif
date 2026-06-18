@@ -70,6 +70,32 @@ extern "C" {
 #endif
 #endif
 
+// AVIF_COUNTED_BY(N) adopts the C bounds-safety ("Safe Buffers" / -fbounds-safety)
+// model: it annotates a pointer field as referring to exactly N elements, where N
+// is another field of the same struct. When the translation unit is compiled with
+// bounds-safety enabled, the compiler can bounds-check accesses through the pointer
+// and reject annotation mismatches; otherwise the macro expands to nothing, so it
+// is a no-op for normal builds and stays ABI- and source-compatible.
+//
+// The attribute is only spellable while bounds-safety is active: a stock Clang
+// answers __has_attribute(__counted_by__) with 1 even in a normal build, but then
+// rejects the count expression as an "undeclared identifier". So it is gated on
+// __has_feature(bounds_safety) (defined only under -fbounds-safety) in addition to
+// __has_attribute, mirroring how AVIF_NODISCARD probes before using its attribute.
+// Both the reserved spelling (__counted_by__) and the plain spelling (counted_by)
+// are accepted.
+#if defined(__has_feature) && defined(__has_attribute)
+#if __has_feature(bounds_safety) && __has_attribute(__counted_by__)
+#define AVIF_COUNTED_BY(N) __attribute__((__counted_by__(N)))
+#elif __has_feature(bounds_safety) && __has_attribute(counted_by)
+#define AVIF_COUNTED_BY(N) __attribute__((counted_by(N)))
+#else
+#define AVIF_COUNTED_BY(N)
+#endif
+#else
+#define AVIF_COUNTED_BY(N)
+#endif
+
 // ---------------------------------------------------------------------------
 // Constants
 
@@ -237,7 +263,7 @@ typedef int avifHeaderFormatFlags;
 
 typedef struct avifROData
 {
-    const uint8_t * data;
+    const uint8_t * data AVIF_COUNTED_BY(size);
     size_t size;
 } avifROData;
 
@@ -245,7 +271,7 @@ typedef struct avifROData
 
 typedef struct avifRWData
 {
-    uint8_t * data;
+    uint8_t * data AVIF_COUNTED_BY(size);
     size_t size;
 } avifRWData;
 
@@ -839,7 +865,7 @@ typedef struct avifImage
     // At decoding: Forwarded here as opaque byte sequences by the avifDecoder.
     // At encoding: Set using avifImageAddOpaqueProperty() or avifImageAddUUIDProperty() and written by the
     //              avifEncoder as non-essential properties in the order that they are added to the image.
-    avifImageItemProperty * properties; // NULL only if numProperties is 0.
+    avifImageItemProperty * properties AVIF_COUNTED_BY(numProperties); // NULL only if numProperties is 0.
     size_t numProperties;
 
     // Gain map image and metadata. NULL if no gain map is present.
