@@ -809,6 +809,16 @@ typedef struct avifMeta
     // and are then further modified/updated as new information for an item's ID is parsed.
     avifDecoderItemArray items;
 
+    // O(1) lookup index for avifMetaFindOrCreateItem(): maps an item ID to its (1-based) position in
+    // `items` (slot value 0 means "empty"). Without this, finding an item is an O(N) linear scan, and
+    // because the parser performs a find-or-create for every item ID it encounters in iref/iloc/iinf/ipma,
+    // a malformed file declaring many item IDs makes parsing O(N^2) (a CPU denial-of-service). The table
+    // capacity is always a power of two and is grown (and fully rehashed) as items are added. Items are
+    // only ever appended to `items` (never reordered or removed after creation), so stored indices remain
+    // valid. Lazily allocated; itemIndexByIDCapacity is 0 until the first item is created.
+    uint32_t * itemIndexByID;
+    uint32_t itemIndexByIDCapacity;
+
     // Any ipco boxes explained above are populated into this array as a staging area, which are
     // then duplicated into the appropriate items upon encountering an item property association
     // (ipma) box.
@@ -876,6 +886,7 @@ static void avifMetaDestroy(avifMeta * meta)
         avifFree(item);
     }
     avifArrayDestroy(&meta->items);
+    avifFree(meta->itemIndexByID);
     avifPropertyArrayDestroy(&meta->properties);
     avifRWDataFree(&meta->idat);
     avifArrayDestroy(&meta->sampleTransformExpression);
@@ -903,15 +914,63 @@ static avifResult avifCheckItemID(const char * boxFourcc, uint32_t itemID, avifD
     return AVIF_RESULT_OK;
 }
 
+// Inserts (id -> index) into an already-sufficiently-sized open-addressing table with linear probing.
+static void avifMetaItemIndexInsertRaw(avifMeta * meta, uint32_t itemID, uint32_t index)
+{
+    const uint32_t mask = meta->itemIndexByIDCapacity - 1;
+    // Knuth multiplicative hash; any reasonable hash works since the table is power-of-two sized.
+    uint32_t slot = (itemID * 2654435761u) & mask;
+    while (meta->itemIndexByID[slot] != 0) {
+        slot = (slot + 1) & mask;
+    }
+    meta->itemIndexByID[slot] = index + 1; // store 1-based; 0 means empty
+}
+
+// Records that meta->items.item[index] (already appended) is reachable by its ID, growing/rehashing the
+// index table when the load factor would reach 0.75. O(1) amortized.
+static avifResult avifMetaItemIndexAdd(avifMeta * meta, uint32_t index)
+{
+    const uint32_t needed = meta->items.count; // includes the just-appended item
+    if ((meta->itemIndexByIDCapacity == 0) || ((uint64_t)needed * 4 >= (uint64_t)meta->itemIndexByIDCapacity * 3)) {
+        uint32_t newCapacity = (meta->itemIndexByIDCapacity == 0) ? 16 : meta->itemIndexByIDCapacity;
+        while ((uint64_t)needed * 4 >= (uint64_t)newCapacity * 3) {
+            AVIF_CHECKERR(newCapacity <= UINT32_MAX / 2, AVIF_RESULT_OUT_OF_MEMORY);
+            newCapacity *= 2;
+        }
+        uint32_t * newTable = (uint32_t *)avifAlloc((size_t)newCapacity * sizeof(uint32_t));
+        AVIF_CHECKERR(newTable != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        memset(newTable, 0, (size_t)newCapacity * sizeof(uint32_t));
+        avifFree(meta->itemIndexByID);
+        meta->itemIndexByID = newTable;
+        meta->itemIndexByIDCapacity = newCapacity;
+        // Rehash everything currently in `items` (covers the new item too).
+        for (uint32_t i = 0; i < meta->items.count; ++i) {
+            avifMetaItemIndexInsertRaw(meta, meta->items.item[i]->id, i);
+        }
+    } else {
+        avifMetaItemIndexInsertRaw(meta, meta->items.item[index]->id, index);
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avifDecoderItem ** item)
 {
     *item = NULL;
     AVIF_ASSERT_OR_RETURN(itemID != 0);
 
-    for (uint32_t i = 0; i < meta->items.count; ++i) {
-        if (meta->items.item[i]->id == itemID) {
-            *item = meta->items.item[i];
-            return AVIF_RESULT_OK;
+    if (meta->itemIndexByIDCapacity != 0) {
+        const uint32_t mask = meta->itemIndexByIDCapacity - 1;
+        uint32_t slot = (itemID * 2654435761u) & mask;
+        for (;;) {
+            const uint32_t stored = meta->itemIndexByID[slot];
+            if (stored == 0) {
+                break; // not found
+            }
+            if (meta->items.item[stored - 1]->id == itemID) {
+                *item = meta->items.item[stored - 1];
+                return AVIF_RESULT_OK;
+            }
+            slot = (slot + 1) & mask;
         }
     }
 
@@ -940,6 +999,17 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
     }
     (*item)->id = itemID;
     (*item)->meta = meta;
+
+    // Register the new item in the O(1) lookup index. On failure, undo the partial creation.
+    const avifResult indexResult = avifMetaItemIndexAdd(meta, meta->items.count - 1);
+    if (indexResult != AVIF_RESULT_OK) {
+        avifPropertyArrayDestroy(&(*item)->properties);
+        avifArrayDestroy(&(*item)->extents);
+        avifFree(*item);
+        *item = NULL;
+        avifArrayPop(&meta->items);
+        return indexResult;
+    }
     return AVIF_RESULT_OK;
 }
 
