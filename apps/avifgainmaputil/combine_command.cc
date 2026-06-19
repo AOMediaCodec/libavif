@@ -96,10 +96,10 @@ avifResult CombineCommand::Run() {
         arg_base_cicp_.value().transfer_characteristics;
     base_image->matrixCoefficients = arg_base_cicp_.value().matrix_coefficients;
   }
-  avifResult result =
-      ReadImage(base_image.get(), arg_base_filename_, pixel_format,
-                arg_image_read_.depth, arg_image_read_.ignore_profile,
-                /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
+  avifResult result = ReadImage(
+      base_image.get(), arg_base_filename_, pixel_format, arg_image_read_.depth,
+      arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha,
+      /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read base image: " << avifResultToString(result)
               << "\n";
@@ -117,7 +117,8 @@ avifResult CombineCommand::Run() {
   result =
       ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
                 arg_image_read_.depth, arg_image_read_.ignore_profile,
-                /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
+                arg_image_read_.ignore_alpha, /*ignore_gain_map=*/true,
+                arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read alternate image: "
               << avifResultToString(result) << "\n";

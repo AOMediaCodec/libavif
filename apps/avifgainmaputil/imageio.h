@@ -19,7 +19,8 @@ avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
 // Reads an image in any of the supported formats. Ignores any gain map.
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile, bool ignore_gain_map, int jobs);
+                     bool ignore_profile, bool ignore_alpha,
+                     bool ignore_gain_map, int jobs);
 
 // Reads an image in avif format given a pre-configured encoder.
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
@@ -33,7 +34,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 // Reads an image in avif format given a pre-configured decoder.
 // The image can be accessed at decoder->image.
 avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
-                    bool ignore_profile);
+                    bool ignore_profile, bool ignore_alpha);
 
 }  // namespace avif
 

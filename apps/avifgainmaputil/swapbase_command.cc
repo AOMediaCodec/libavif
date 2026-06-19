@@ -56,6 +56,9 @@ avifResult ChangeBase(const avifImage& image, int depth,
   avifRGBImage swapped_rgb;
   RGBImageCleanup rgb_cleanup(&swapped_rgb);
   avifRGBImageSetDefaults(&swapped_rgb, swapped);
+  if (image.alphaPlane == nullptr) {
+    swapped_rgb.format = AVIF_RGB_FORMAT_RGB;
+  }
 
   avifContentLightLevelInformationBox clli = image.gainMap->altCLLI;
   const bool compute_clli =
@@ -161,8 +164,9 @@ avifResult SwapBaseCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
-                               arg_image_read_.ignore_profile);
+  avifResult result =
+      ReadAvif(decoder.get(), arg_input_filename_,
+               arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
