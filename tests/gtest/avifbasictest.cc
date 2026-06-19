@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <array>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -39,6 +41,18 @@ TEST(BasicTest, EncodeDecode) {
 
   // Uncomment the following to save the decoded image as a PNG file.
   //  testutil::WriteImage(decoded.get(), "/tmp/avifbasictest.png");
+}
+
+TEST(BasicTest, DecodeIssue3275) {
+  std::array<uint8_t, 8> data = {0x66, 0x74, 0x79, 0x70,
+                                 0x69, 0x73, 0x6f, 0x6d};
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  avifResult result = avifDecoderReadMemory(decoder.get(), image.get(),
+                                            data.data(), data.size());
+  ASSERT_NE(result, AVIF_RESULT_OK);
 }
 
 TEST(BasicTest, RGBImageCleanup) {
