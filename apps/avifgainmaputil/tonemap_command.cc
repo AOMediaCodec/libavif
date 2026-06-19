@@ -66,8 +66,9 @@ avifResult TonemapCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  avifResult result = ReadAvif(decoder.get(), arg_input_filename_,
-                               arg_image_read_.ignore_profile);
+  avifResult result =
+      ReadAvif(decoder.get(), arg_input_filename_,
+               arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
@@ -197,6 +198,9 @@ avifResult TonemapCommand::Run() {
   avifRGBImage tone_mapped_rgb;
   RGBImageCleanup rgb_cleanup(&tone_mapped_rgb);
   avifRGBImageSetDefaults(&tone_mapped_rgb, tone_mapped.get());
+  if (image->alphaPlane == nullptr) {
+    tone_mapped_rgb.format = AVIF_RGB_FORMAT_RGB;
+  }
   avifDiagnostics diag;
   result = avifImageApplyGainMap(
       decoder->image, image->gainMap, arg_headroom_, cicp.color_primaries,

@@ -118,6 +118,38 @@ pushd ${TMP_DIR}
   LC_ALL=C sed 's/<rdf:li>1/<rdf:li>2/' "${INPUT_JPEG_GAINMAP_SDR}" > "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}"
   "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}" 0 0 0 && exit 1
   "${ARE_IMAGES_EQUAL}" "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_JPEG_GAINMAP_SDR_MODIFIED}" 0 30 0 && exit 1
+
+  # Test --ignore-alpha.
+  echo "Testing --ignore-alpha"
+  # Combine PNG with alpha. Output should have alpha.
+  "${AVIFGAINMAPUTIL}" combine "${TESTDATA_DIR}/circle-trns-after-plte.png" "${TESTDATA_DIR}/circle-trns-after-plte.png" "${AVIF_OUTPUT}" \
+      -q 50 --ignore-profile > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Not premultiplied" "${OUT_MSG}"
+  # Combine PNG with alpha and --ignore-alpha. Output should NOT have alpha.
+  "${AVIFGAINMAPUTIL}" combine "${TESTDATA_DIR}/circle-trns-after-plte.png" "${TESTDATA_DIR}/circle-trns-after-plte.png" "${AVIF_OUTPUT}" \
+      -q 50 --ignore-profile --ignore-alpha > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Absent" "${OUT_MSG}"
+  # Re-create AVIF with alpha.
+  "${AVIFGAINMAPUTIL}" combine "${TESTDATA_DIR}/circle-trns-after-plte.png" "${TESTDATA_DIR}/circle-trns-after-plte.png" "${AVIF_OUTPUT}" \
+      -q 50 --ignore-profile > /dev/null
+  # Tonemap AVIF with alpha. Output should have alpha.
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.tonemapped.avif" --headroom 0 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Not premultiplied" "${OUT_MSG}"
+  # Tonemap AVIF with alpha and --ignore-alpha. Output should NOT have alpha.
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.tonemapped.avif" --headroom 0 --ignore-alpha > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Absent" "${OUT_MSG}"
+  # Swapbase AVIF with alpha. Output should have alpha.
+  "${AVIFGAINMAPUTIL}" swapbase "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.swapped.avif" --qcolor 90 --qgain-map 90 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Not premultiplied" "${OUT_MSG}"
+  # Swapbase AVIF with alpha and --ignore-alpha. Output should NOT have alpha.
+  "${AVIFGAINMAPUTIL}" swapbase "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.swapped.avif" --qcolor 90 --qgain-map 90 --ignore-alpha > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep " Alpha          : Absent" "${OUT_MSG}"
 popd
 
 exit 0

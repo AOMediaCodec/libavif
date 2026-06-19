@@ -26,7 +26,8 @@ avifResult ExtractGainMapCommand::Run() {
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
 
   avifResult result =
-      ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true);
+      ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true,
+               /*ignore_alpha=*/false);
   if (result != AVIF_RESULT_OK) {
     return result;
   }

@@ -133,6 +133,7 @@ struct ImageReadArgs {
   argparse::ArgValue<int> depth;
   argparse::ArgValue<int> pixel_format;
   argparse::ArgValue<bool> ignore_profile;
+  argparse::ArgValue<bool> ignore_alpha;
 
   void Init(argparse::ArgumentParser& argparse) {
     argparse
@@ -144,6 +145,12 @@ struct ImageReadArgs {
     argparse.add_argument(ignore_profile, "--ignore-profile")
         .help(
             "If the input file contains an embedded color profile, ignore it "
+            "(no-op if absent)")
+        .action(argparse::Action::STORE_TRUE)
+        .default_value("false");
+    argparse.add_argument(ignore_alpha, "--ignore-alpha")
+        .help(
+            "If the input file contains an alpha channel, ignore it "
             "(no-op if absent)")
         .action(argparse::Action::STORE_TRUE)
         .default_value("false");
