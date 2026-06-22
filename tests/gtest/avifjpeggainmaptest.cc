@@ -1,9 +1,14 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <limits.h>
 #include <math.h>
+#include <stdint.h>
+#include <string.h>
 
 #include <limits>
+#include <memory>
+#include <new>
 
 #include "avif/avif.h"
 #include "avifjpeg.h"
@@ -215,8 +220,7 @@ TEST(JpegTest, ParseXMPAllDefaultValues) {
     </rdf:Description>
   </rdf:RDF>
 </x:xmpmeta>
-<?xpacket end="w"?>
-  )";
+<?xpacket end="w"?>)";
   GainMapPtr gain_map(avifGainMapCreate());
   avifBool is_avif_gain_map;
   ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
@@ -335,7 +339,7 @@ TEST(JpegTest, EmptyXMP) {
                                        gain_map.get(), &is_avif_gain_map));
 }
 
-TEST(JpegTest, TooLargeXMP) {
+TEST(JpegTest, TooLargeXMPFake) {
   const uint8_t xmp = 0;
   GainMapPtr gain_map(avifGainMapCreate());
   avifBool is_avif_gain_map;
@@ -343,6 +347,34 @@ TEST(JpegTest, TooLargeXMP) {
       &xmp, static_cast<size_t>(std::numeric_limits<int>::max()) + 1,
       gain_map.get(), &is_avif_gain_map));
 }
+
+// This test requires a 64-bit size_t type.
+#if SIZE_MAX > UINT_MAX
+TEST(JpegTest, TooLargeXMP) {
+  const std::string xmp = R"(
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about="stuff"
+      xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/" hdrgm:Version="1.0">
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>)";
+  // When xmp_size is cast to int, it is equal to xmp.size().
+  const size_t xmp_size = size_t{UINT_MAX} + 1 + xmp.size();
+  std::unique_ptr<uint8_t[]> xmp_data(new (std::nothrow) uint8_t[xmp_size]);
+  if (!xmp_data) {
+    GTEST_SKIP() << "Allocation of " << xmp_size << " bytes failed";
+  }
+  memcpy(xmp_data.get(), xmp.data(), xmp.size());
+  // Add junk after the xmp string.
+  memset(xmp_data.get() + xmp.size(), 'a', xmp_size - xmp.size());
+  GainMapPtr gain_map(avifGainMapCreate());
+  avifBool is_avif_gain_map;
+  EXPECT_FALSE(avifJPEGParseGainMapXMP(xmp_data.get(), xmp_size, gain_map.get(),
+                                       &is_avif_gain_map));
+}
+#endif  // SIZE_MAX > UINT_MAX
 
 //------------------------------------------------------------------------------
 
