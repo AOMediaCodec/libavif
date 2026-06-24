@@ -3,6 +3,7 @@
 
 #include "imageio.h"
 
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -201,7 +202,9 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (decoder == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    if (!ignore_gain_map) {
+    if (ignore_gain_map) {
+      decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_GAIN_MAP;
+    } else {
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
     decoder->maxThreads = jobs;
@@ -210,10 +213,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (result != AVIF_RESULT_OK) {
       return result;
     }
-    if (ignore_gain_map && decoder->image->gainMap) {
-      avifGainMapDestroy(decoder->image->gainMap);
-      decoder->image->gainMap = nullptr;
-    }
+    assert(!ignore_gain_map || decoder->image->gainMap == nullptr);
     const avifColorPrimaries in_primaries = image->colorPrimaries;
     const avifTransferCharacteristics in_transfer =
         image->transferCharacteristics;
