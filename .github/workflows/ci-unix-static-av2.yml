@@ -31,6 +31,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-linux
         with:
           codec-aom: "LOCAL"
@@ -71,9 +73,9 @@ jobs:
         shell: bash
       - name: Check static link bundling
         # Disabled until libavm properly depends on tensorflow-lite.
-        if: ${{ false }}
+        if: false
         run: |
-          ${{ env.CC }} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
+          ${CC} -o avifenc  -I./apps/shared -I./third_party/iccjpeg -I./include apps/avifenc.c \
             apps/shared/*.c third_party/iccjpeg/iccjpeg.c build/libavif.a \
             -lpng -ljpeg -lz -lm -ldl -lstdc++
 

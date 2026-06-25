@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: RafikFarhad/clang-format-github-action@40f11200e893c5e48dee28fbfe3da60d6862418d # v6
         with:
           style: file
@@ -24,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: neg-c/cmake-format-action@ba83660ac46d64c12ca96f39478dcde7680a52bf # v0.1.3
         with:
           exclude: libavif.pc.cmake
