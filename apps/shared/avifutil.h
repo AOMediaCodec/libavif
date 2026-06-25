@@ -128,6 +128,12 @@ void avifImageFixXMP(avifImage * image);
 // This must match the cited fallback for "--yuv auto" in avifenc.c's syntax() function.
 #define AVIF_APP_DEFAULT_PIXEL_FORMAT AVIF_PIXEL_FORMAT_YUV444
 
+// Creates a shallow copy of an image (a view of the pixels, but deep copy of metadata).
+// If a gain map is present in 'srcImage', the gain map of 'dstImage' is also set to
+// a view of the original gain map.
+// 'dstImage' should be an empty image. It will not own the pixel data.
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha, avifBool ignoreGainMap);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

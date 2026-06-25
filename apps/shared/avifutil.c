@@ -823,3 +823,94 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
     }
     return AVIF_RESULT_OK;
 }
+
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha, avifBool ignoreGainMap)
+{
+    avifResult res = AVIF_RESULT_OK;
+    if (!dstImage || !srcImage) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
+    avifCropRect rect = { 0, 0, srcImage->width, srcImage->height };
+    res = avifImageSetViewRect(dstImage, srcImage, &rect);
+    if (res != AVIF_RESULT_OK) {
+        return res;
+    }
+
+    if (ignoreAlpha && dstImage->alphaPlane) {
+        avifImageFreePlanes(dstImage, AVIF_PLANES_A);
+    }
+
+    if (!ignoreColorProfile) {
+        res = avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
+        if (res != AVIF_RESULT_OK) {
+            return res;
+        }
+    }
+
+    // Using avifRWDataSet directly to match the internal avifImageCopy() behavior.
+    // This avoids re-extracting Exif orientation into irot/imir on an already decoded image.
+    res = avifRWDataSet(&dstImage->exif, srcImage->exif.data, srcImage->exif.size);
+    if (res != AVIF_RESULT_OK) {
+        return res;
+    }
+    res = avifImageSetMetadataXMP(dstImage, srcImage->xmp.data, srcImage->xmp.size);
+    if (res != AVIF_RESULT_OK) {
+        return res;
+    }
+
+    for (size_t i = 0; i < srcImage->numProperties; ++i) {
+        if (memcmp(srcImage->properties[i].boxtype, "uuid", 4) == 0) {
+            res = avifImageAddUUIDProperty(dstImage,
+                                           srcImage->properties[i].usertype,
+                                           srcImage->properties[i].boxPayload.data,
+                                           srcImage->properties[i].boxPayload.size);
+        } else {
+            res = avifImageAddOpaqueProperty(dstImage,
+                                             srcImage->properties[i].boxtype,
+                                             srcImage->properties[i].boxPayload.data,
+                                             srcImage->properties[i].boxPayload.size);
+        }
+        if (res != AVIF_RESULT_OK) {
+            return res;
+        }
+    }
+
+    if (!ignoreGainMap && srcImage->gainMap) {
+        dstImage->gainMap = avifGainMapCreate();
+        if (!dstImage->gainMap) {
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
+
+        // Copy all gain map scalars at once
+        *dstImage->gainMap = *srcImage->gainMap;
+        // Reset pointers to prevent shared ownership and double-free
+        dstImage->gainMap->image = NULL;
+        dstImage->gainMap->altICC.data = NULL;
+        dstImage->gainMap->altICC.size = 0;
+
+        if (!ignoreColorProfile && srcImage->gainMap->altICC.size > 0) {
+            res = avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size);
+            if (res != AVIF_RESULT_OK) {
+                return res;
+            }
+        }
+
+        if (srcImage->gainMap->image) {
+            dstImage->gainMap->image = avifImageCreateEmpty();
+            if (!dstImage->gainMap->image) {
+                return AVIF_RESULT_OUT_OF_MEMORY;
+            }
+            res = avifImageCreateView(dstImage->gainMap->image,
+                                      srcImage->gainMap->image,
+                                      ignoreColorProfile,
+                                      /*ignoreAlpha=*/AVIF_TRUE,
+                                      /*ignoreGainMap=*/AVIF_TRUE);
+            if (res != AVIF_RESULT_OK) {
+                return res;
+            }
+        }
+    }
+
+    return AVIF_RESULT_OK;
+}

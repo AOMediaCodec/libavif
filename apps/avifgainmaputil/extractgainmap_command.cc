@@ -4,6 +4,7 @@
 #include "extractgainmap_command.h"
 
 #include "avif/avif_cxx.h"
+#include "avifutil.h"
 #include "imageio.h"
 
 namespace avif {
@@ -25,21 +26,30 @@ avifResult ExtractGainMapCommand::Run() {
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
 
-  avifResult result =
-      ReadAvif(decoder.get(), arg_input_filename_, /*ignore_profile=*/true,
-               /*ignore_alpha=*/false);
+  avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
 
-  if (decoder->image->gainMap == nullptr ||
-      decoder->image->gainMap->image == nullptr) {
+  ImagePtr image(avifImageCreateEmpty());
+  if (!image) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  result = avifImageCreateView(image.get(), decoder->image,
+                               /*ignoreColorProfile=*/true,
+                               /*ignoreAlpha=*/false,
+                               /*ignoreGainMap=*/false);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+
+  if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
 
-  return WriteImage(decoder->image->gainMap->image,
+  return WriteImage(image->gainMap->image,
                     arg_image_encode_.grid.value().grid_cols,
                     arg_image_encode_.grid.value().grid_rows,
                     arg_output_filename_, arg_image_encode_.quality,

@@ -33,8 +33,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
 // Reads an image in avif format given a pre-configured decoder.
 // The image can be accessed at decoder->image.
-avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
-                    bool ignore_profile, bool ignore_alpha);
+avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename);
 
 }  // namespace avif
 

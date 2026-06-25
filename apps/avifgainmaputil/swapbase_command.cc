@@ -4,6 +4,7 @@
 #include "swapbase_command.h"
 
 #include "avif/avif_cxx.h"
+#include "avifutil.h"
 #include "imageio.h"
 
 namespace avif {
@@ -164,14 +165,23 @@ avifResult SwapBaseCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  avifResult result =
-      ReadAvif(decoder.get(), arg_input_filename_,
-               arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha);
+  avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
 
-  avifImage* const image = decoder->image;
+  ImagePtr image(avifImageCreateEmpty());
+  if (!image) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  result = avifImageCreateView(image.get(), decoder->image,
+                               arg_image_read_.ignore_profile,
+                               arg_image_read_.ignore_alpha,
+                               /*ignore_gain_map=*/false);
+  if (result != AVIF_RESULT_OK) {
+    return result;
+  }
+
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";

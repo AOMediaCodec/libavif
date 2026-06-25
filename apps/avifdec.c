@@ -304,6 +304,7 @@ int main(int argc, char * argv[])
 
     // ------ After this point, use 'goto cleanup;' in case of failure ------
     int returnCode = 1;
+    avifImage * imageView = NULL;
     avifDecoder * decoder = avifDecoderCreate();
     if (!decoder) {
         fprintf(stderr, "Memory allocation failure\n");
@@ -400,20 +401,37 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (ignoreICC && (decoder->image->icc.size > 0)) {
-            printf("[--ignore-icc] Discarding ICC profile.\n");
-            // This cannot fail.
-            result = avifImageSetProfileICC(decoder->image, NULL, 0);
-            assert(result == AVIF_RESULT_OK);
-        }
-
-        if (iccOverrideFilename) {
-            printf("[--icc] Setting ICC profile: %s\n", iccOverrideFilename);
-            result = avifImageSetProfileICC(decoder->image, iccOverride.data, iccOverride.size);
-            if (result != AVIF_RESULT_OK) {
-                fprintf(stderr, "ERROR: Failed to set ICC: %s\n", avifResultToString(result));
+        if (ignoreICC || iccOverrideFilename) {
+            if (imageView != NULL && imageView != decoder->image) {
+                avifImageDestroy(imageView);
+            }
+            imageView = avifImageCreateEmpty();
+            if (!imageView) {
+                fprintf(stderr, "ERROR: Out of memory\n");
                 goto cleanup;
             }
+            if (ignoreICC && (decoder->image->icc.size > 0)) {
+                printf("[--ignore-icc] Discarding ICC profile.\n");
+            }
+            result = avifImageCreateView(imageView,
+                                         decoder->image,
+                                         /*ignoreColorProfile=*/ignoreICC,
+                                         /*ignoreAlpha=*/AVIF_FALSE,
+                                         /*ignoreGainMap=*/AVIF_FALSE);
+            if (result != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to create image view\n");
+                goto cleanup;
+            }
+            if (iccOverrideFilename) {
+                printf("[--icc] Setting ICC profile: %s\n", iccOverrideFilename);
+                result = avifImageSetProfileICC(imageView, iccOverride.data, iccOverride.size);
+                if (result != AVIF_RESULT_OK) {
+                    fprintf(stderr, "ERROR: Failed to set ICC: %s\n", avifResultToString(result));
+                    goto cleanup;
+                }
+            }
+        } else {
+            imageView = decoder->image;
         }
 
         if (decodeAllFrames) {
@@ -436,11 +454,11 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: Unable to generate output filename\n");
                 goto cleanup;
             }
-            if (!avifWriteToFile(outputFormat, frameFilename, decoder->image, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
+            if (!avifWriteToFile(outputFormat, frameFilename, imageView, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
                 goto cleanup;
             }
         } else {
-            if (!avifWriteToFile(outputFormat, outputFilename, decoder->image, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
+            if (!avifWriteToFile(outputFormat, outputFilename, imageView, rawColor, jpegQuality, pngCompressionLevel, requestedDepth, chromaUpsampling)) {
                 goto cleanup;
             }
             if (isSequence && !frameIndexSpecified) {
@@ -475,6 +493,9 @@ cleanup:
     if (decoder != NULL) {
         if (returnCode != 0) {
             avifDumpDiagnostics(&decoder->diag);
+        }
+        if (imageView != NULL && imageView != decoder->image) {
+            avifImageDestroy(imageView);
         }
         avifDecoderDestroy(decoder);
     }
