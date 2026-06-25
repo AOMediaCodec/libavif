@@ -1384,6 +1384,10 @@ typedef struct avifDecoder
 
     // Version 1.2.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
+
+    // Enable this to avoid reading and surfacing ICC profile to the decoded avifImage and gain map
+    // metadata.
+    avifBool ignoreColorProfile;
 } avifDecoder;
 
 // Creates a decoder initialized with default settings values.

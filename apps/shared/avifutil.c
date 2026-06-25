@@ -824,7 +824,7 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha)
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreAlpha)
 {
     avifResult res = AVIF_RESULT_OK;
     if (!dstImage || !srcImage) {
@@ -841,7 +841,7 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
         avifImageFreePlanes(dstImage, AVIF_PLANES_A);
     }
 
-    if (!ignoreColorProfile) {
+    if (srcImage->icc.size > 0) {
         res = avifImageSetProfileICC(dstImage, srcImage->icc.data, srcImage->icc.size);
         if (res != AVIF_RESULT_OK) {
             return res;
@@ -889,7 +889,7 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
         dstImage->gainMap->altICC.data = NULL;
         dstImage->gainMap->altICC.size = 0;
 
-        if (!ignoreColorProfile && srcImage->gainMap->altICC.size > 0) {
+        if (srcImage->gainMap->altICC.size > 0) {
             res = avifRWDataSet(&dstImage->gainMap->altICC, srcImage->gainMap->altICC.data, srcImage->gainMap->altICC.size);
             if (res != AVIF_RESULT_OK) {
                 return res;
@@ -903,7 +903,6 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
             }
             res = avifImageCreateView(dstImage->gainMap->image,
                                       srcImage->gainMap->image,
-                                      ignoreColorProfile,
                                       /*ignoreAlpha=*/AVIF_TRUE);
             if (res != AVIF_RESULT_OK) {
                 return res;

@@ -321,6 +321,7 @@ int main(int argc, char * argv[])
     } else if (enableSampleTransforms) {
         decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
     }
+    decoder->ignoreColorProfile = ignoreICC;
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
     if (result != AVIF_RESULT_OK) {
@@ -405,30 +406,25 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (ignoreICC) {
+        assert(!ignoreICC || decoder->image->icc.size == 0);
+        if (iccOverrideFilename) {
             imageView = avifImageCreateEmpty();
             if (!imageView) {
                 fprintf(stderr, "ERROR: Out of memory\n");
                 goto cleanup;
             }
-            if (decoder->image->icc.size > 0) {
-                printf("[--ignore-icc] Discarding ICC profile.\n");
-            }
             result = avifImageCreateView(imageView,
                                          decoder->image,
-                                         /*ignoreColorProfile=*/AVIF_TRUE,
                                          /*ignoreAlpha=*/AVIF_FALSE);
             if (result != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to create image view\n");
                 goto cleanup;
             }
-            if (iccOverrideFilename) {
-                printf("[--icc] Setting ICC profile: %s\n", iccOverrideFilename);
-                result = avifImageSetProfileICC(imageView, iccOverride.data, iccOverride.size);
-                if (result != AVIF_RESULT_OK) {
-                    fprintf(stderr, "ERROR: Failed to set ICC: %s\n", avifResultToString(result));
-                    goto cleanup;
-                }
+            printf("[--icc] Setting ICC profile: %s\n", iccOverrideFilename);
+            result = avifImageSetProfileICC(imageView, iccOverride.data, iccOverride.size);
+            if (result != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to set ICC: %s\n", avifResultToString(result));
+                goto cleanup;
             }
         } else {
             imageView = decoder->image;

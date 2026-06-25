@@ -5648,7 +5648,7 @@ static avifResult avifReadColorNclxProperty(const avifPropertyArray * properties
 
 // On success, this function returns AVIF_RESULT_OK and does the following:
 // * If a colr property was found in |properties|:
-//   - Read the icc data into |icc| from |io|.
+//   - If |icc| is not null, reads the icc data into |icc| from |io|.
 //   - Sets the CICP values as documented in avifReadColorNclxProperty().
 // This function fails if more than one icc or nclx property is found in
 // |properties|. The output parameters may be populated even in case of failure
@@ -5671,10 +5671,12 @@ static avifResult avifReadColorProperties(avifIO * io,
             if (colrICCSeen) {
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            avifROData iccRead;
-            AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
+            if (icc) {
+                avifROData iccRead;
+                AVIF_CHECKRES(io->read(io, 0, prop->u.colr.iccOffset, prop->u.colr.iccSize, &iccRead));
+                AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
+            }
             colrICCSeen = AVIF_TRUE;
-            AVIF_CHECKRES(avifRWDataSet(icc, iccRead.data, iccRead.size));
         }
     }
     return avifReadColorNclxProperty(properties, colorPrimaries, transferCharacteristics, matrixCoefficients, yuvRange, cicpSet);
@@ -5818,7 +5820,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     // This may allocate gainMapTmp.altICC which must be freed in case of error.
     result = avifReadColorProperties(decoder->io,
                                      &toneMappedImageItemTmp->properties,
-                                     &gainMapTmp.altICC,
+                                     decoder->ignoreColorProfile ? NULL : &gainMapTmp.altICC,
                                      &gainMapTmp.altColorPrimaries,
                                      &gainMapTmp.altTransferCharacteristics,
                                      &gainMapTmp.altMatrixCoefficients,
@@ -6548,7 +6550,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     AVIF_CHECKRES(avifReadColorProperties(decoder->io,
                                           colorProperties,
-                                          &decoder->image->icc,
+                                          decoder->ignoreColorProfile ? NULL : &decoder->image->icc,
                                           &decoder->image->colorPrimaries,
                                           &decoder->image->transferCharacteristics,
                                           &decoder->image->matrixCoefficients,

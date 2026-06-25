@@ -3,6 +3,7 @@
 
 #include "imageio.h"
 
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -201,10 +202,11 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (decoder == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    decoder->maxThreads = jobs;
     if (!ignore_gain_map) {
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
-    decoder->maxThreads = jobs;
+    decoder->ignoreColorProfile = ignore_profile;
     avifResult result = ReadAvif(decoder.get(), input_filename);
     if (result != AVIF_RESULT_OK) {
       return result;
@@ -214,8 +216,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (!view) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    result = avifImageCreateView(view.get(), decoder->image, ignore_profile,
-                                 ignore_alpha);
+    result = avifImageCreateView(view.get(), decoder->image, ignore_alpha);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
@@ -283,6 +284,12 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename) {
     std::cerr << "Failed to decode image: " << avifResultToString(result)
               << " (" << decoder->diag.error << ")\n";
     return result;
+  }
+  if (decoder->ignoreColorProfile) {
+    assert(decoder->image->icc.size == 0);
+    if (decoder->image->gainMap) {
+      assert(decoder->image->gainMap->altICC.size == 0);
+    }
   }
 
   return AVIF_RESULT_OK;

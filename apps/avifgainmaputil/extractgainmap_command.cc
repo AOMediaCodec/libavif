@@ -25,6 +25,7 @@ avifResult ExtractGainMapCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
+  decoder->ignoreColorProfile = true;
 
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {
@@ -36,7 +37,6 @@ avifResult ExtractGainMapCommand::Run() {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   result = avifImageCreateView(image.get(), decoder->image,
-                               /*ignoreColorProfile=*/true,
                                /*ignoreAlpha=*/false);
   if (result != AVIF_RESULT_OK) {
     return result;
