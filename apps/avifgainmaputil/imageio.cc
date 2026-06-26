@@ -210,10 +210,6 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (result != AVIF_RESULT_OK) {
       return result;
     }
-    if (ignore_gain_map && decoder->image->gainMap) {
-      avifGainMapDestroy(decoder->image->gainMap);
-      decoder->image->gainMap = nullptr;
-    }
     const avifColorPrimaries in_primaries = image->colorPrimaries;
     const avifTransferCharacteristics in_transfer =
         image->transferCharacteristics;
