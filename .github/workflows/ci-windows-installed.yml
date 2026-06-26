@@ -53,7 +53,7 @@ jobs:
 
       - name: Prepare libavif (cmake)
         run: >
-          cmake $env:STEPS_SETUP_OUTPUTS_VCPKG_CMAKE_CONFIG -G Ninja -S . -B build
+          cmake ${env:STEPS_SETUP_OUTPUTS_VCPKG_CMAKE_CONFIG} -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM
           -DAVIF_CODEC_RAV1E=SYSTEM -DAVIF_CODEC_SVT=SYSTEM
