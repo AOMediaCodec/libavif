@@ -171,7 +171,7 @@ avifResult SwapBaseCommand::Run() {
     return result;
   }
 
-  avifImage* image = decoder->image;
+  avifImage* const image = decoder->image;
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
