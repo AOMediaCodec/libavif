@@ -645,7 +645,7 @@ uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
 
 avifBool avifDimensionsTooLarge(uint32_t width, uint32_t height, uint32_t imageSizeLimit, uint32_t imageDimensionLimit)
 {
-    if (width > (imageSizeLimit / height)) {
+    if ((imageSizeLimit != 0) && (width > (imageSizeLimit / height))) {
         return AVIF_TRUE;
     }
     if ((imageDimensionLimit != 0) && ((width > imageDimensionLimit) || (height > imageDimensionLimit))) {

@@ -75,10 +75,6 @@ void DecodeIncr(const std::string& arbitrary_bytes, bool is_persistent,
   // Reduce the limit further to include pixel buffer copies and other memory
   // allocations.
   constexpr uint32_t kImageSizeLimit = kMaxImageSize / 4;
-  // avifDecoderParse returns AVIF_RESULT_NOT_IMPLEMENTED if kImageSizeLimit is
-  // bigger than AVIF_DEFAULT_IMAGE_SIZE_LIMIT.
-  static_assert(kImageSizeLimit <= AVIF_DEFAULT_IMAGE_SIZE_LIMIT,
-                "Too big an image size limit");
   decoder->imageSizeLimit = kImageSizeLimit;
   // This can lead to AVIF_RESULT_NO_CONTENT.
   decoder->imageContentToDecode = content_to_decode;

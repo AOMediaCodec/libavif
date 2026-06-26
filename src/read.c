@@ -5289,11 +5289,6 @@ avifResult avifDecoderParse(avifDecoder * decoder)
 {
     avifDiagnosticsClearError(&decoder->diag);
 
-    // An imageSizeLimit greater than AVIF_DEFAULT_IMAGE_SIZE_LIMIT and the special value of 0 to
-    // disable the limit are not yet implemented.
-    if ((decoder->imageSizeLimit > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (decoder->imageSizeLimit == 0)) {
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
     // Color only or alpha only is not currently supported.
     if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) != 0 &&
         (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) != AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA) {

@@ -229,7 +229,7 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--size-limit")) {
             NEXTARG();
             unsigned long value = strtoul(arg, NULL, 10);
-            if ((value > AVIF_DEFAULT_IMAGE_SIZE_LIMIT) || (value == 0)) {
+            if (value > UINT32_MAX) {
                 fprintf(stderr, "ERROR: invalid image size limit: %s\n", arg);
                 return 1;
             }
