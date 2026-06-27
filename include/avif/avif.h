@@ -1453,7 +1453,7 @@ AVIF_API avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint3
 // avifDecoderNextImage() or avifDecoderNthImage() was called, the gain map's planes can also be accessed
 // in the same way. If the gain map's height is different from the main image, then the number of
 // available gain map rows is at least:
-//   roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap.image->height)
+//   roundf((float)decoded_row_count / decoder->image->height * decoder->image->gainMap->image->height)
 // When gain map scaling is needed, callers might choose to use a few less rows depending on how many rows
 // are needed by the scaling algorithm, to avoid the last row(s) changing when more data becomes available.
 // decoder->allowIncremental must be set to true before calling avifDecoderNextImage() or

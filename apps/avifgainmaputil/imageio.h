@@ -22,7 +22,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      bool ignore_profile, bool ignore_alpha,
                      bool ignore_gain_map, int jobs);
 
-// Reads an image in avif format given a pre-configured encoder.
+// Writes an image in avif format given a pre-configured encoder.
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename);
 
