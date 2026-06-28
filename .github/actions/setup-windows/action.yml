@@ -84,10 +84,6 @@ runs:
         triplet: x64-windows-release
         token: ${{ github.token }}
         cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
-        # [svt-av1] Work around Visual Studio 2026 MSVC bug (#52469)
-        # TODO(wtc): Remove this after a vcpkg release newer than 2026.06.01 is
-        # published at https://github.com/microsoft/vcpkg/tags.
-        revision: 'a900048467b8199f82c31411e0f1597c267fdada'
 
     - name: Install nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-avm == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
