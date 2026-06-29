@@ -80,7 +80,7 @@ avifResult TonemapCommand::Run() {
         arg_input_cicp_.value().matrix_coefficients;
   }
 
-  avifImage* image = decoder->image;
+  avifImage* const image = decoder->image;
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
@@ -203,7 +203,7 @@ avifResult TonemapCommand::Run() {
   }
   avifDiagnostics diag;
   result = avifImageApplyGainMap(
-      decoder->image, image->gainMap, arg_headroom_, cicp.color_primaries,
+      image, image->gainMap, arg_headroom_, cicp.color_primaries,
       cicp.transfer_characteristics, &tone_mapped_rgb,
       clli_set ? nullptr : &clli_box, &diag);
   if (result != AVIF_RESULT_OK) {
@@ -217,14 +217,14 @@ avifResult TonemapCommand::Run() {
               << "\n";
     return result;
   }
-  result = avifImageSetMetadataXMP(tone_mapped.get(), decoder->image->xmp.data,
-                                   decoder->image->xmp.size);
+  result = avifImageSetMetadataXMP(tone_mapped.get(), image->xmp.data,
+                                   image->xmp.size);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to copy XMP: " << avifResultToString(result) << "\n";
     return result;
   }
-  result = avifImageSetMetadataExif(
-      tone_mapped.get(), decoder->image->exif.data, decoder->image->exif.size);
+  result = avifImageSetMetadataExif(tone_mapped.get(), image->exif.data,
+                                    image->exif.size);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to copy EXIF: " << avifResultToString(result) << "\n";
     return result;
