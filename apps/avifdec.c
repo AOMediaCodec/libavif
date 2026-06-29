@@ -47,10 +47,10 @@ static void syntax(void)
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
     printf("    --icc FILENAME    : Provide an ICC profile payload (implies --ignore-icc)\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
-    printf("    --size-limit C    : Maximum image size (in total pixels) that should be tolerated. (Default: %u)\n",
-           AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
+    printf("    --size-limit C    : Maximum image size (in total pixels) that should be tolerated.\n");
+    printf("                        0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
     printf("  --dimension-limit C : Maximum image dimension (width or height) that should be tolerated.\n");
-    printf("                        Set to 0 to ignore. (Default: %u)\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
+    printf("                        0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
     printf("    --                : Signal the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();

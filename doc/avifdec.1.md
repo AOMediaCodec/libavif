@@ -83,11 +83,11 @@ Output format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 
 **\--size-limit** _C_
 :   Maximum image size (in total pixels) that should be tolerated.
-    (Default: 268435456).
+    0 means unlimited. (Default: 268435456).
 
 **\--dimension-limit** _C_
 :   Maximum image dimension (width or height) that should be tolerated.
-    Set to 0 to ignore. (Default: 32768).
+    0 means unlimited. (Default: 32768).
 
 **\--**
 :   Signal the end of options. Everything after this is interpreted as file names.
