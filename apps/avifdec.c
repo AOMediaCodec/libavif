@@ -367,6 +367,10 @@ int main(int argc, char * argv[])
     const avifBool decodeAllFrames = frameIndex == DECODE_ALL_FRAMES;
     int currIndex = decodeAllFrames ? 0 : frameIndex;
     for (;;) {
+        if (imageView != NULL && imageView != decoder->image) {
+            avifImageDestroy(imageView);
+        }
+        imageView = NULL;
         result = decodeAllFrames ? avifDecoderNextImage(decoder) : avifDecoderNthImage(decoder, frameIndex);
         if (result != AVIF_RESULT_OK) {
             break;
@@ -401,21 +405,18 @@ int main(int argc, char * argv[])
             }
         }
 
-        if (ignoreICC || iccOverrideFilename) {
-            if (imageView != NULL && imageView != decoder->image) {
-                avifImageDestroy(imageView);
-            }
+        if (ignoreICC) {
             imageView = avifImageCreateEmpty();
             if (!imageView) {
                 fprintf(stderr, "ERROR: Out of memory\n");
                 goto cleanup;
             }
-            if (ignoreICC && (decoder->image->icc.size > 0)) {
+            if (decoder->image->icc.size > 0) {
                 printf("[--ignore-icc] Discarding ICC profile.\n");
             }
             result = avifImageCreateView(imageView,
                                          decoder->image,
-                                         /*ignoreColorProfile=*/ignoreICC,
+                                         /*ignoreColorProfile=*/AVIF_TRUE,
                                          /*ignoreAlpha=*/AVIF_FALSE,
                                          /*ignoreGainMap=*/AVIF_FALSE);
             if (result != AVIF_RESULT_OK) {
