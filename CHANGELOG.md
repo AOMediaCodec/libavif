@@ -24,6 +24,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix printed image size in avifgainmaputil when using --grid.
 * Fix printed gain map size in avifenc when converting a jpeg with a gain map
   and using --grid.
+* Allow setting avifDecoder::imageSizeLimit to any value.
 
 ## [1.4.2] - 2026-05-26
 

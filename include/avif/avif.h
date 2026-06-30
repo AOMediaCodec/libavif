@@ -1290,14 +1290,14 @@ typedef struct avifDecoder
     avifBool ignoreXMP;
 
     // This represents the maximum size of an image (in pixel count) that libavif and the underlying
-    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT, and can
-    // be set to a smaller value. The value 0 is reserved.
-    // Note: Only some underlying AV1 codecs support a configurable size limit (such as dav1d).
+    // AV1 decoder should attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_SIZE_LIMIT. 0 means
+    // unlimited.
+    // Note: Only some underlying AV1 codecs support a configurable size limit (such as dav1d and
+    // libaom v3.14.0 or later).
     uint32_t imageSizeLimit;
 
     // This represents the maximum dimension of an image (width or height) that libavif should
-    // attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT. Set it to 0 to ignore
-    // the limit.
+    // attempt to decode. It defaults to AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT. 0 means unlimited.
     uint32_t imageDimensionLimit;
 
     // This provides an upper bound on how many images the decoder is willing to attempt to decode,
