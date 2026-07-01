@@ -205,29 +205,31 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
     decoder->maxThreads = jobs;
-    avifResult result =
-        ReadAvif(decoder.get(), input_filename, ignore_profile, ignore_alpha);
+    avifResult result = ReadAvif(decoder.get(), input_filename);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
-    if (ignore_gain_map && decoder->image->gainMap) {
-      avifGainMapDestroy(decoder->image->gainMap);
-      decoder->image->gainMap = nullptr;
+
+    ImagePtr view(avifImageCreateEmpty());
+    if (!view) {
+      return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    result = avifImageCreateView(view.get(), decoder->image, ignore_profile,
+                                 ignore_alpha, ignore_gain_map);
+    if (result != AVIF_RESULT_OK) {
+      return result;
+    }
+
     const avifColorPrimaries in_primaries = image->colorPrimaries;
     const avifTransferCharacteristics in_transfer =
         image->transferCharacteristics;
     const avifMatrixCoefficients in_matrix = image->matrixCoefficients;
-    if (decoder->image->imageOwnsYUVPlanes &&
-        (decoder->image->alphaPlane == nullptr ||
-         decoder->image->imageOwnsAlphaPlane)) {
-      std::swap(*image, *decoder->image);
-    } else {
-      result = avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
-      if (result != AVIF_RESULT_OK) {
-        return result;
-      }
+
+    result = avifImageCopy(image, view.get(), AVIF_PLANES_ALL);
+    if (result != AVIF_RESULT_OK) {
+      return result;
     }
+
     if (in_primaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
         in_transfer != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED ||
         in_matrix != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
@@ -264,8 +266,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
   return AVIF_RESULT_OK;
 }
 
-avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
-                    bool ignore_profile, bool ignore_alpha) {
+avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename) {
   avifResult result = avifDecoderSetIOFile(decoder, input_filename.c_str());
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Cannot open file for read: " << input_filename << "\n";
@@ -282,15 +283,6 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
     std::cerr << "Failed to decode image: " << avifResultToString(result)
               << " (" << decoder->diag.error << ")\n";
     return result;
-  }
-  if (ignore_profile) {
-    avifRWDataFree(&decoder->image->icc);
-    if (decoder->image->gainMap) {
-      avifRWDataFree(&decoder->image->gainMap->altICC);
-    }
-  }
-  if (ignore_alpha && decoder->image->alphaPlane) {
-    avifImageFreePlanes(decoder->image, AVIF_PLANES_A);
   }
 
   return AVIF_RESULT_OK;

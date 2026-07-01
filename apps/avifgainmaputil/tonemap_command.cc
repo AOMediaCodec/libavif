@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "avif/avif_cxx.h"
+#include "avifutil.h"
 #include "imageio.h"
 
 namespace avif {
@@ -66,21 +67,30 @@ avifResult TonemapCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  avifResult result =
-      ReadAvif(decoder.get(), arg_input_filename_,
-               arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha);
+  avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
-  if (arg_input_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
-    decoder->image->colorPrimaries = arg_input_cicp_.value().color_primaries;
-    decoder->image->transferCharacteristics =
-        arg_input_cicp_.value().transfer_characteristics;
-    decoder->image->matrixCoefficients =
-        arg_input_cicp_.value().matrix_coefficients;
+
+  ImagePtr image(avifImageCreateEmpty());
+  if (!image) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  result = avifImageCreateView(image.get(), decoder->image,
+                               arg_image_read_.ignore_profile,
+                               arg_image_read_.ignore_alpha,
+                               /*ignore_gain_map=*/false);
+  if (result != AVIF_RESULT_OK) {
+    return result;
   }
 
-  avifImage* const image = decoder->image;
+  if (arg_input_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
+    image->colorPrimaries = arg_input_cicp_.value().color_primaries;
+    image->transferCharacteristics =
+        arg_input_cicp_.value().transfer_characteristics;
+    image->matrixCoefficients = arg_input_cicp_.value().matrix_coefficients;
+  }
+
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_
               << " does not contain a gain map\n";
@@ -203,7 +213,7 @@ avifResult TonemapCommand::Run() {
   }
   avifDiagnostics diag;
   result = avifImageApplyGainMap(
-      image, image->gainMap, arg_headroom_, cicp.color_primaries,
+      image.get(), image->gainMap, arg_headroom_, cicp.color_primaries,
       cicp.transfer_characteristics, &tone_mapped_rgb,
       clli_set ? nullptr : &clli_box, &diag);
   if (result != AVIF_RESULT_OK) {
