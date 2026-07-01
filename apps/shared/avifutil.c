@@ -824,7 +824,7 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreAlpha)
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage)
 {
     avifResult res = AVIF_RESULT_OK;
     if (!dstImage || !srcImage) {
@@ -835,10 +835,6 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
     res = avifImageSetViewRect(dstImage, srcImage, &rect);
     if (res != AVIF_RESULT_OK) {
         return res;
-    }
-
-    if (ignoreAlpha && dstImage->alphaPlane) {
-        avifImageFreePlanes(dstImage, AVIF_PLANES_A);
     }
 
     if (srcImage->icc.size > 0) {
@@ -901,9 +897,7 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
             if (!dstImage->gainMap->image) {
                 return AVIF_RESULT_OUT_OF_MEMORY;
             }
-            res = avifImageCreateView(dstImage->gainMap->image,
-                                      srcImage->gainMap->image,
-                                      /*ignoreAlpha=*/AVIF_TRUE);
+            res = avifImageCreateView(dstImage->gainMap->image, srcImage->gainMap->image);
             if (res != AVIF_RESULT_OK) {
                 return res;
             }

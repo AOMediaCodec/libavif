@@ -36,8 +36,7 @@ avifResult ExtractGainMapCommand::Run() {
   if (!image) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  result = avifImageCreateView(image.get(), decoder->image,
-                               /*ignoreAlpha=*/false);
+  result = avifImageCreateView(image.get(), decoder->image);
   if (result != AVIF_RESULT_OK) {
     return result;
   }

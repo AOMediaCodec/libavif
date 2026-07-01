@@ -350,7 +350,18 @@ TEST_P(GainmapSampleTransformTest, ImageContentToDecode) {
     ASSERT_EQ(image->depth, decoded->depth);
     ASSERT_EQ(image->width, decoded->width);
     ASSERT_EQ(image->height, decoded->height);
-    EXPECT_GE(testutil::GetPsnr(*image, *decoded), 20.0);
+    const bool ignore_alpha =
+        (content_to_decode & AVIF_IMAGE_CONTENT_ALPHA) == 0;
+    if (create_alpha && !ignore_alpha) {
+      EXPECT_TRUE(decoder->alphaPresent);
+      EXPECT_NE(decoded->alphaPlane, nullptr);
+      EXPECT_NE(decoded->alphaRowBytes, 0);
+    } else {
+      EXPECT_FALSE(decoder->alphaPresent);
+      EXPECT_EQ(decoded->alphaPlane, nullptr);
+      EXPECT_EQ(decoded->alphaRowBytes, 0);
+    }
+    EXPECT_GE(testutil::GetPsnr(*image, *decoded, ignore_alpha), 20.0);
   }
   if (create_gainmap && content_to_decode & AVIF_IMAGE_CONTENT_GAIN_MAP) {
     ASSERT_NE(image->gainMap, nullptr);
@@ -374,7 +385,8 @@ INSTANTIATE_TEST_SUITE_P(
         // AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS is always set in this test.
         testing::Values(AVIF_IMAGE_CONTENT_NONE,
                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
-                        AVIF_IMAGE_CONTENT_GAIN_MAP, AVIF_IMAGE_CONTENT_ALL)));
+                        AVIF_IMAGE_CONTENT_COLOR, AVIF_IMAGE_CONTENT_GAIN_MAP,
+                        AVIF_IMAGE_CONTENT_ALL)));
 
 //------------------------------------------------------------------------------
 

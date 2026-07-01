@@ -413,9 +413,7 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: Out of memory\n");
                 goto cleanup;
             }
-            result = avifImageCreateView(imageView,
-                                         decoder->image,
-                                         /*ignoreAlpha=*/AVIF_FALSE);
+            result = avifImageCreateView(imageView, decoder->image);
             if (result != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to create image view\n");
                 goto cleanup;
