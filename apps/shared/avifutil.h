@@ -132,7 +132,7 @@ void avifImageFixXMP(avifImage * image);
 // If a gain map is present in 'srcImage', the gain map of 'dstImage' is also set to
 // a view of the original gain map.
 // 'dstImage' should be an empty image. It will not own the pixel data.
-avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha);
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile);
 
 #ifdef __cplusplus
 } // extern "C"

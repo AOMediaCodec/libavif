@@ -1229,8 +1229,10 @@ AVIF_API const char * avifProgressiveStateToString(avifProgressiveState progress
 typedef enum avifImageContentTypeFlag
 {
     AVIF_IMAGE_CONTENT_NONE = 0,
-    // Color only or alpha only is not currently supported.
-    AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA = (1 << 0) | (1 << 1),
+    AVIF_IMAGE_CONTENT_COLOR = (1 << 0),
+    // Alpha only is not currently supported.
+    AVIF_IMAGE_CONTENT_ALPHA = (1 << 1),
+    AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA = AVIF_IMAGE_CONTENT_COLOR | AVIF_IMAGE_CONTENT_ALPHA,
     AVIF_IMAGE_CONTENT_GAIN_MAP = (1 << 2),
     AVIF_IMAGE_CONTENT_ALL = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_GAIN_MAP,
 
