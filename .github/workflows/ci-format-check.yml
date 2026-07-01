@@ -13,7 +13,7 @@ jobs:
   clang-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - uses: RafikFarhad/clang-format-github-action@40f11200e893c5e48dee28fbfe3da60d6862418d # v6
@@ -25,7 +25,7 @@ jobs:
   cmake-format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - uses: neg-c/cmake-format-action@ba83660ac46d64c12ca96f39478dcde7680a52bf # v0.1.3
