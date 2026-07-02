@@ -154,6 +154,10 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
     if (!rgb->pixels || !rgb->rowBytes) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
+    // Validate that rowBytes covers a full row (same class as issue #3146).
+    if (rgb->rowBytes < (size_t)rgb->width * avifRGBImagePixelSize(rgb)) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
 
     // no alpha.
     if (!avifRGBFormatHasAlpha(rgb->format)) {
@@ -339,6 +343,10 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
 {
     // no data
     if (!rgb->pixels || !rgb->rowBytes) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+    // Validate that rowBytes covers a full row (same class as issue #3146).
+    if (rgb->rowBytes < (size_t)rgb->width * avifRGBImagePixelSize(rgb)) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 

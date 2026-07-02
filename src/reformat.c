@@ -223,6 +223,12 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
     if (!rgb->pixels || rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
+    // Validate that rowBytes covers one full row of pixels. Without this check the
+    // manual pixel loop reads (width-1)*pixelSize bytes past the end of each row when
+    // rowBytes is smaller than width*pixelSize. (GitHub issue #3146)
+    if (rgb->rowBytes < (size_t)rgb->width * avifRGBImagePixelSize(rgb)) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
 
     avifReformatState state;
     if (!avifPrepareReformatState(image, rgb, &state)) {
@@ -1651,6 +1657,11 @@ avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
     // It is okay for rgb->maxThreads to be equal to zero in order to allow clients to zero initialize the avifRGBImage struct
     // with memset.
     if (!image->yuvPlanes[AVIF_CHAN_Y] || rgb->maxThreads < 0) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+    // Validate that rowBytes covers one full row of pixels when the caller has
+    // pre-allocated rgb->pixels. Same issue as in avifImageRGBToYUV (issue #3146).
+    if (rgb->pixels && rgb->rowBytes < (size_t)rgb->width * avifRGBImagePixelSize(rgb)) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
