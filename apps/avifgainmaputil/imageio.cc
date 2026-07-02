@@ -214,8 +214,10 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (!view) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    // When ignore_gain_map is true, decoder->image won't have a gain map but
+    // may have gain map metadata. It is fine to copy gain map metadata.
     result = avifImageCreateView(view.get(), decoder->image, ignore_profile,
-                                 ignore_alpha, ignore_gain_map);
+                                 ignore_alpha, /*ignoreGainMap=*/false);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
