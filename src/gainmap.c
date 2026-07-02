@@ -91,6 +91,12 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         avifDiagnosticsPrintf(diag, "NULL input image");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    // Validate that baseImage->rowBytes is large enough before pixel access (issue #3146).
+    if (baseImage->pixels &&
+        baseImage->rowBytes < (size_t)baseImage->width * avifRGBImagePixelSize(baseImage)) {
+        avifDiagnosticsPrintf(diag, "baseImage rowBytes is too small for its width");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
 
     const uint32_t width = baseImage->width;
@@ -547,6 +553,17 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     AVIF_CHECKERR(baseRgbImage != NULL && altRgbImage != NULL && gainMap != NULL && gainMap->image != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     if (baseRgbImage->width != altRgbImage->width || baseRgbImage->height != altRgbImage->height) {
         avifDiagnosticsPrintf(diag, "Both images should have the same dimensions");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    // Validate rowBytes for both input images before entering pixel loops (issue #3146).
+    if (baseRgbImage->pixels &&
+        baseRgbImage->rowBytes < (size_t)baseRgbImage->width * avifRGBImagePixelSize(baseRgbImage)) {
+        avifDiagnosticsPrintf(diag, "baseRgbImage rowBytes is too small for its width");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    if (altRgbImage->pixels &&
+        altRgbImage->rowBytes < (size_t)altRgbImage->width * avifRGBImagePixelSize(altRgbImage)) {
+        avifDiagnosticsPrintf(diag, "altRgbImage rowBytes is too small for its width");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (gainMap->image->width == 0 || gainMap->image->height == 0 || gainMap->image->depth == 0 ||

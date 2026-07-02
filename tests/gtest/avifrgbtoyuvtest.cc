@@ -903,5 +903,27 @@ TEST(RGBToYUVTest, UndersizedRowBytesFails) {
     EXPECT_EQ(avifImageYUVToRGB(image.get(), &rgb), AVIF_RESULT_REFORMAT_FAILED);
 }
 
+// Same class of bug in alpha premultiply / unpremultiply (issue #3146 follow-up).
+TEST(AlphaTest, UndersizedRowBytesFailsPremultiply) {
+    for (uint32_t depth : {8u, 10u, 16u}) {
+        ImagePtr image(avifImageCreate(100, 1, depth, AVIF_PIXEL_FORMAT_YUV444));
+        ASSERT_NE(image, nullptr);
+
+        avifRGBImage rgb;
+        avifRGBImageSetDefaults(&rgb, image.get());
+        rgb.depth = depth;
+
+        const uint32_t pixelSize = avifRGBImagePixelSize(&rgb);
+        rgb.rowBytes = pixelSize;  // one pixel wide, but width = 100
+        std::vector<uint8_t> buf(static_cast<size_t>(rgb.rowBytes) * rgb.height, 0x80);
+        rgb.pixels = buf.data();
+
+        EXPECT_EQ(avifRGBImagePremultiplyAlpha(&rgb), AVIF_RESULT_REFORMAT_FAILED)
+            << "depth=" << depth;
+        EXPECT_EQ(avifRGBImageUnpremultiplyAlpha(&rgb), AVIF_RESULT_REFORMAT_FAILED)
+            << "depth=" << depth;
+    }
+}
+
 }  // namespace
 }  // namespace avif
