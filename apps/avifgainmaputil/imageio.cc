@@ -210,23 +210,26 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       return result;
     }
 
+    ImagePtr view(avifImageCreateEmpty());
+    if (!view) {
+      return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    // When ignore_gain_map is true, decoder->image won't have a gain map but
+    // may have gain map metadata. It is fine to copy gain map metadata.
+    result = avifImageCreateView(view.get(), decoder->image, ignore_profile,
+                                 ignore_alpha, /*ignoreGainMap=*/false);
+    if (result != AVIF_RESULT_OK) {
+      return result;
+    }
+
     const avifColorPrimaries in_primaries = image->colorPrimaries;
     const avifTransferCharacteristics in_transfer =
         image->transferCharacteristics;
     const avifMatrixCoefficients in_matrix = image->matrixCoefficients;
 
-    result = avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
+    result = avifImageCopy(image, view.get(), AVIF_PLANES_ALL);
     if (result != AVIF_RESULT_OK) {
       return result;
-    }
-    if (ignore_profile) {
-      avifRWDataFree(&image->icc);
-      if (image->gainMap) {
-        avifRWDataFree(&image->gainMap->altICC);
-      }
-    }
-    if (ignore_alpha && image->alphaPlane) {
-      avifImageFreePlanes(image, AVIF_PLANES_A);
     }
 
     if (in_primaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED ||
