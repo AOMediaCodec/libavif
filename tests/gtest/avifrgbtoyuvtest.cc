@@ -880,5 +880,28 @@ INSTANTIATE_TEST_SUITE_P(
             /*max_average_abs_diff=*/Values(10.),
             /*min_psnr=*/Values(10.)));
 
+// Regression test for GitHub issue #3146:
+// avifImageRGBToYUV and avifImageYUVToRGB must reject an avifRGBImage whose
+// rowBytes is smaller than width * pixelSize before entering the pixel loop.
+TEST(RGBToYUVTest, UndersizedRowBytesFails) {
+    ImagePtr image(avifImageCreate(100, 1, 8, AVIF_PIXEL_FORMAT_YUV444));
+    ASSERT_NE(image, nullptr);
+
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image.get());
+
+    // rowBytes = 4 (one pixel wide) but rgb.width = 100 — deliberate mismatch.
+    const uint32_t pixelSize = avifRGBImagePixelSize(&rgb);
+    rgb.rowBytes = pixelSize;
+    std::vector<uint8_t> buf(static_cast<size_t>(rgb.rowBytes) * rgb.height, 0x41);
+    rgb.pixels = buf.data();
+    rgb.avoidLibYUV = AVIF_TRUE;
+
+    EXPECT_EQ(avifImageRGBToYUV(image.get(), &rgb), AVIF_RESULT_REFORMAT_FAILED);
+
+    ASSERT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_YUV), AVIF_RESULT_OK);
+    EXPECT_EQ(avifImageYUVToRGB(image.get(), &rgb), AVIF_RESULT_REFORMAT_FAILED);
+}
+
 }  // namespace
 }  // namespace avif
