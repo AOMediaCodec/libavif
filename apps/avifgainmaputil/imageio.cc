@@ -3,6 +3,7 @@
 
 #include "imageio.h"
 
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -201,6 +202,9 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (decoder == nullptr) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
+    if (ignore_alpha) {
+      decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_ALPHA;
+    }
     if (!ignore_gain_map) {
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
@@ -214,8 +218,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (!view) {
       return AVIF_RESULT_OUT_OF_MEMORY;
     }
-    result = avifImageCreateView(view.get(), decoder->image, ignore_profile,
-                                 ignore_alpha);
+    result = avifImageCreateView(view.get(), decoder->image, ignore_profile);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
@@ -284,6 +287,8 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename) {
               << " (" << decoder->diag.error << ")\n";
     return result;
   }
+  assert((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA) != 0 ||
+         decoder->image->alphaPlane == nullptr);
 
   return AVIF_RESULT_OK;
 }

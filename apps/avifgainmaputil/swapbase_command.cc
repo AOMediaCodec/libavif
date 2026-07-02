@@ -165,6 +165,9 @@ avifResult SwapBaseCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  if (arg_image_read_.ignore_alpha) {
+    decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_ALPHA;
+  }
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {
     return result;
@@ -175,8 +178,7 @@ avifResult SwapBaseCommand::Run() {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
   result = avifImageCreateView(image.get(), decoder->image,
-                               arg_image_read_.ignore_profile,
-                               arg_image_read_.ignore_alpha);
+                               arg_image_read_.ignore_profile);
   if (result != AVIF_RESULT_OK) {
     return result;
   }

@@ -10,6 +10,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Added since 1.4.2
 
+* Support ignoring alpha in avifDecoder::imageContentToDecode.
 * avifenc: add --ignore-alpha flag to discard alpha channel on encode
 * avifgainmaputil: add --ignore-alpha flag to discard alpha channel
 

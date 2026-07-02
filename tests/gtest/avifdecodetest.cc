@@ -74,13 +74,11 @@ TEST(AvifDecodeTest, ParseEmptyData) {
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_INVALID_FTYP);
 }
 
-TEST(AvifDecodeTest, ImageContentToDecodeColorXorAlpha) {
+TEST(AvifDecodeTest, ImageContentToDecodeAlphaOnly) {
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), nullptr, 0), AVIF_RESULT_OK);
-  decoder->imageContentToDecode = static_cast<avifImageContentTypeFlag>(1 << 0);
-  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_NOT_IMPLEMENTED);
-  decoder->imageContentToDecode = static_cast<avifImageContentTypeFlag>(1 << 1);
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_ALPHA;
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_NOT_IMPLEMENTED);
 }
 
