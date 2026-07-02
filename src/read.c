@@ -6380,42 +6380,42 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                         break;
                     }
                 }
-                if (!foundItem) {
-                    AVIF_CHECKERR(numExtraInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS,
+                if (foundItem) {
+                    continue;
+                }
+                AVIF_CHECKERR(numExtraInputImageItems < AVIF_SAMPLE_TRANSFORM_MAX_NUM_EXTRA_INPUT_IMAGE_ITEMS, AVIF_RESULT_NOT_IMPLEMENTED);
+                *category = (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems);
+                const avifItemCategory alphaCategory =
+                    (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems);
+                mainItems[*category] = inputImageItem;
+                ++numExtraInputImageItems;
+
+                AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
+                                                          inputImageItem,
+                                                          /*isItemInInput=*/AVIF_TRUE,
+                                                          &data->tileInfos[*category].grid,
+                                                          &codecType[*category]));
+
+                // Optional alpha auxiliary item
+                avifBool isAlphaInputImageItemInInput = AVIF_FALSE;
+                AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
+                                                    mainItems[*category],
+                                                    &data->tileInfos[*category],
+                                                    &mainItems[alphaCategory],
+                                                    &data->tileInfos[alphaCategory],
+                                                    &isAlphaInputImageItemInInput));
+
+                AVIF_CHECKERR(!mainItems[alphaCategory] == !mainItems[AVIF_ITEM_ALPHA], AVIF_RESULT_NOT_IMPLEMENTED);
+                if (mainItems[alphaCategory] != NULL) {
+                    AVIF_CHECKERR(isAlphaInputImageItemInInput == isAlphaItemInInput, AVIF_RESULT_NOT_IMPLEMENTED);
+                    AVIF_CHECKERR((mainItems[*category]->premByID == mainItems[alphaCategory]->id) ==
+                                      (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id),
                                   AVIF_RESULT_NOT_IMPLEMENTED);
-                    *category = (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR + numExtraInputImageItems);
-                    const avifItemCategory alphaCategory =
-                        (avifItemCategory)(AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA + numExtraInputImageItems);
-                    mainItems[*category] = inputImageItem;
-                    ++numExtraInputImageItems;
-
                     AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
-                                                              inputImageItem,
-                                                              /*isItemInInput=*/AVIF_TRUE,
-                                                              &data->tileInfos[*category].grid,
-                                                              &codecType[*category]));
-
-                    // Optional alpha auxiliary item
-                    avifBool isAlphaInputImageItemInInput = AVIF_FALSE;
-                    AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
-                                                        mainItems[*category],
-                                                        &data->tileInfos[*category],
-                                                        &mainItems[alphaCategory],
-                                                        &data->tileInfos[alphaCategory],
-                                                        &isAlphaInputImageItemInInput));
-
-                    AVIF_CHECKERR(!mainItems[alphaCategory] == !mainItems[AVIF_ITEM_ALPHA], AVIF_RESULT_NOT_IMPLEMENTED);
-                    if (mainItems[alphaCategory] != NULL) {
-                        AVIF_CHECKERR(isAlphaInputImageItemInInput == isAlphaItemInInput, AVIF_RESULT_NOT_IMPLEMENTED);
-                        AVIF_CHECKERR((mainItems[*category]->premByID == mainItems[alphaCategory]->id) ==
-                                          (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id),
-                                      AVIF_RESULT_NOT_IMPLEMENTED);
-                        AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
-                                                                  mainItems[alphaCategory],
-                                                                  isAlphaInputImageItemInInput,
-                                                                  &data->tileInfos[alphaCategory].grid,
-                                                                  &codecType[alphaCategory]));
-                    }
+                                                              mainItems[alphaCategory],
+                                                              isAlphaInputImageItemInInput,
+                                                              &data->tileInfos[alphaCategory].grid,
+                                                              &codecType[alphaCategory]));
                 }
             }
 
