@@ -139,6 +139,7 @@ avifResult CombineCommand::Run() {
   if (base_image->gainMap) {
     assert(base_image->gainMap->image == nullptr);
     avifGainMapDestroy(base_image->gainMap);
+    base_image->gainMap = nullptr;
   }
   base_image->gainMap = avifGainMapCreate();
   base_image->gainMap->image =
