@@ -37,8 +37,7 @@ avifResult ExtractGainMapCommand::Run() {
   }
   result = avifImageCreateView(image.get(), decoder->image,
                                /*ignoreColorProfile=*/true,
-                               /*ignoreAlpha=*/false,
-                               /*ignoreGainMap=*/false);
+                               /*ignoreAlpha=*/false);
   if (result != AVIF_RESULT_OK) {
     return result;
   }

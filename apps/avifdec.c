@@ -417,8 +417,7 @@ int main(int argc, char * argv[])
             result = avifImageCreateView(imageView,
                                          decoder->image,
                                          /*ignoreColorProfile=*/AVIF_TRUE,
-                                         /*ignoreAlpha=*/AVIF_FALSE,
-                                         /*ignoreGainMap=*/AVIF_FALSE);
+                                         /*ignoreAlpha=*/AVIF_FALSE);
             if (result != AVIF_RESULT_OK) {
                 fprintf(stderr, "ERROR: Failed to create image view\n");
                 goto cleanup;

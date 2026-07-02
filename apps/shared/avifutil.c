@@ -824,7 +824,7 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha, avifBool ignoreGainMap)
+avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage, avifBool ignoreColorProfile, avifBool ignoreAlpha)
 {
     avifResult res = AVIF_RESULT_OK;
     if (!dstImage || !srcImage) {
@@ -876,7 +876,7 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
         }
     }
 
-    if (!ignoreGainMap && srcImage->gainMap) {
+    if (srcImage->gainMap) {
         dstImage->gainMap = avifGainMapCreate();
         if (!dstImage->gainMap) {
             return AVIF_RESULT_OUT_OF_MEMORY;
@@ -904,8 +904,7 @@ avifResult avifImageCreateView(avifImage * dstImage, const avifImage * srcImage,
             res = avifImageCreateView(dstImage->gainMap->image,
                                       srcImage->gainMap->image,
                                       ignoreColorProfile,
-                                      /*ignoreAlpha=*/AVIF_TRUE,
-                                      /*ignoreGainMap=*/AVIF_TRUE);
+                                      /*ignoreAlpha=*/AVIF_TRUE);
             if (res != AVIF_RESULT_OK) {
                 return res;
             }

@@ -78,8 +78,7 @@ avifResult TonemapCommand::Run() {
   }
   result = avifImageCreateView(image.get(), decoder->image,
                                arg_image_read_.ignore_profile,
-                               arg_image_read_.ignore_alpha,
-                               /*ignore_gain_map=*/false);
+                               arg_image_read_.ignore_alpha);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
