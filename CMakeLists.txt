@@ -566,6 +566,9 @@ if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST O
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         include(CheckCXXCompilerFlag)
         check_cxx_compiler_flag(-Wunsafe-buffer-usage AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
+        # Probe the positive form: Clang accepts unknown -Wno- flags silently,
+        # so checking -Wno-unsafe-buffer-usage-in-libc-call would always pass.
+        check_cxx_compiler_flag(-Wunsafe-buffer-usage-in-libc-call AVIF_HAVE_WUNSAFE_BUFFER_USAGE_IN_LIBC_CALL)
     endif()
 endif()
 
@@ -573,16 +576,17 @@ endif()
 # (the first step of adopting the Safe Buffers Programming Model). Apply only
 # to .cc files that have been audited to be free of raw pointer arithmetic and
 # raw-pointer indexing; new code added to those files must keep them clean.
-# The libc-call subgroup (Clang 17+) is disabled because it fires on functions
-# such as strdup() that are used in third-party headers (e.g. libargparse) we
-# do not own; our own code avoids those by convention.
+# The libc-call subgroup is disabled where it exists because it fires on
+# functions such as strdup() that are used in third-party headers (e.g.
+# libargparse) we do not own; our own code avoids those by convention.
 # No-op on toolchains where the flag is not available (Clang < 16, GCC, MSVC).
 function(avif_enable_safe_buffers_warning)
     if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
-        set_source_files_properties(
-            ${ARGN} PROPERTIES COMPILE_OPTIONS
-                               "-Wunsafe-buffer-usage;-Wno-unsafe-buffer-usage-in-libc-call"
-        )
+        set(safe_buffers_options "-Wunsafe-buffer-usage")
+        if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE_IN_LIBC_CALL)
+            list(APPEND safe_buffers_options "-Wno-unsafe-buffer-usage-in-libc-call")
+        endif()
+        set_source_files_properties(${ARGN} PROPERTIES COMPILE_OPTIONS "${safe_buffers_options}")
     endif()
 endfunction()
 
