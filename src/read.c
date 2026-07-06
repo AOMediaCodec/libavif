@@ -5820,7 +5820,7 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
     // This may allocate gainMapTmp.altICC which must be freed in case of error.
     result = avifReadColorProperties(decoder->io,
                                      &toneMappedImageItemTmp->properties,
-                                     decoder->ignoreColorProfile ? NULL : &gainMapTmp.altICC,
+                                     decoder->ignoreICC ? NULL : &gainMapTmp.altICC,
                                      &gainMapTmp.altColorPrimaries,
                                      &gainMapTmp.altTransferCharacteristics,
                                      &gainMapTmp.altMatrixCoefficients,
@@ -6550,7 +6550,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
     AVIF_CHECKRES(avifReadColorProperties(decoder->io,
                                           colorProperties,
-                                          decoder->ignoreColorProfile ? NULL : &decoder->image->icc,
+                                          decoder->ignoreICC ? NULL : &decoder->image->icc,
                                           &decoder->image->colorPrimaries,
                                           &decoder->image->transferCharacteristics,
                                           &decoder->image->matrixCoefficients,

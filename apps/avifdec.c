@@ -321,7 +321,7 @@ int main(int argc, char * argv[])
     } else if (enableSampleTransforms) {
         decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
     }
-    decoder->ignoreColorProfile = ignoreICC;
+    decoder->ignoreICC = ignoreICC;
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
     if (result != AVIF_RESULT_OK) {

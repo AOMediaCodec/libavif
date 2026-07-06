@@ -25,7 +25,7 @@ avifResult ExtractGainMapCommand::Run() {
   }
   decoder->maxThreads = arg_jobs_.jobs.value();
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
-  decoder->ignoreColorProfile = true;
+  decoder->ignoreICC = true;
 
   avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
   if (result != AVIF_RESULT_OK) {

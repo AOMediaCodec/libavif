@@ -218,7 +218,7 @@ TEST(MetadataTest, DecoderParseICC) {
 
   decoder = avifDecoderCreate();
   ASSERT_NE(decoder, nullptr);
-  decoder->ignoreColorProfile = true;
+  decoder->ignoreICC = true;
   EXPECT_EQ(avifDecoderSetIOFile(decoder, file_path.c_str()), AVIF_RESULT_OK);
   EXPECT_EQ(avifDecoderParse(decoder), AVIF_RESULT_OK);
   ASSERT_EQ(decoder->image->icc.size, 0u);

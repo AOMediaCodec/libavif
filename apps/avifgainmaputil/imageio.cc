@@ -206,7 +206,7 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     if (!ignore_gain_map) {
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
-    decoder->ignoreColorProfile = ignore_profile;
+    decoder->ignoreICC = ignore_profile;
     avifResult result = ReadAvif(decoder.get(), input_filename);
     if (result != AVIF_RESULT_OK) {
       return result;
@@ -285,7 +285,7 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename) {
               << " (" << decoder->diag.error << ")\n";
     return result;
   }
-  if (decoder->ignoreColorProfile) {
+  if (decoder->ignoreICC) {
     assert(decoder->image->icc.size == 0);
     if (decoder->image->gainMap) {
       assert(decoder->image->gainMap->altICC.size == 0);
