@@ -17,6 +17,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 ### Changed since 1.4.2
 
 * Update LocalAvm.cmake: v1.0.0
+* Update libyuv.cmd/LocalLibyuv.cmake: 5d03bf9ba (1949)
 * Copy XMP/Exif in avifgainmaputil tonemap
 * Apply patch to SVT-AV1 with AVIF_CODEC_SVT=LOCAL to fix corrupted encoded
   files when SVT-AV1 is built with MSVC. See
