@@ -222,6 +222,7 @@ TEST(StreamTest, WriteBoxSizeLimit) {
           &rw_stream, box_type,
           std::numeric_limits<uint32_t>::max() - sizeof(uint32_t) - 3, &marker),
       AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamOffset(&rw_stream), sizeof(uint32_t) + 4);
 
   EXPECT_EQ(avifRWStreamWriteFullBox(
                 &rw_stream, box_type,
