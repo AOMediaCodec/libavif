@@ -5,6 +5,9 @@ import static com.google.common.truth.Truth.assertThat;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
+import android.graphics.ColorSpace;
+import android.hardware.HardwareBuffer;
+import android.os.Build;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.IOException;
 import java.io.InputStream;
@@ -252,6 +255,74 @@ public class AvifDecoderTest {
           assertThat(decoder.nextFrame(bitmap)).isEqualTo(AVIF_RESULT_OK);
         }
       }
+    }
+    decoder.release();
+  }
+
+  @Test
+  public void testDecodeToHardwareBuffer() throws IOException {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+      return;
+    }
+    if (image.isAnimated || config != Config.ARGB_8888) {
+      return;
+    }
+    ByteBuffer buffer = image.getBuffer();
+    assertThat(buffer).isNotNull();
+    Info info = new Info();
+    assertThat(AvifDecoder.getInfo(buffer, buffer.remaining(), info)).isTrue();
+
+    HardwareBuffer hardwareBuffer =
+        AvifDecoder.decodeToHardwareBuffer(buffer, buffer.remaining(), image.threads);
+    assertThat(hardwareBuffer).isNotNull();
+    assertThat(hardwareBuffer.getWidth()).isEqualTo(info.width);
+    assertThat(hardwareBuffer.getHeight()).isEqualTo(info.height);
+    assertThat(hardwareBuffer.getFormat()).isEqualTo(HardwareBuffer.RGBA_8888);
+    hardwareBuffer.close();
+
+    for (float scaleFactor : SCALE_FACTORS) {
+      int targetWidth = (int) (info.width * scaleFactor);
+      int targetHeight = (int) (info.height * scaleFactor);
+      hardwareBuffer =
+          AvifDecoder.decodeToHardwareBuffer(
+              buffer, buffer.remaining(), targetWidth, targetHeight, image.threads);
+      assertThat(hardwareBuffer).isNotNull();
+      assertThat(hardwareBuffer.getWidth()).isEqualTo(targetWidth);
+      assertThat(hardwareBuffer.getHeight()).isEqualTo(targetHeight);
+      Bitmap hardwareBitmap =
+          Bitmap.wrapHardwareBuffer(hardwareBuffer, ColorSpace.get(ColorSpace.Named.SRGB));
+      assertThat(hardwareBitmap).isNotNull();
+      assertThat(hardwareBitmap.getWidth()).isEqualTo(targetWidth);
+      assertThat(hardwareBitmap.getHeight()).isEqualTo(targetHeight);
+      hardwareBitmap.recycle();
+      hardwareBuffer.close();
+    }
+  }
+
+  @Test
+  public void testDecodeToHardwareBufferRegularClass() throws IOException {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+      return;
+    }
+    if (config != Config.ARGB_8888) {
+      return;
+    }
+    ByteBuffer buffer = image.getBuffer();
+    assertThat(buffer).isNotNull();
+    AvifDecoder decoder = AvifDecoder.create(buffer, image.threads);
+    assertThat(decoder).isNotNull();
+    for (int i = 0; i < image.frameCount; ++i) {
+      assertThat(decoder.nextFrameIndex()).isEqualTo(i);
+      HardwareBuffer hardwareBuffer = decoder.nextFrameHardwareBuffer();
+      assertThat(hardwareBuffer).isNotNull();
+      assertThat(hardwareBuffer.getWidth()).isEqualTo(image.width);
+      assertThat(hardwareBuffer.getHeight()).isEqualTo(image.height);
+      hardwareBuffer.close();
+    }
+    if (image.isAnimated) {
+      HardwareBuffer hardwareBuffer = decoder.nthFrameHardwareBuffer(0);
+      assertThat(hardwareBuffer).isNotNull();
+      hardwareBuffer.close();
     }
     decoder.release();
   }

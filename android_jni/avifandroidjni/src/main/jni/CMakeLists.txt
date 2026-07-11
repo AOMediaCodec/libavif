@@ -44,4 +44,4 @@ include_directories(${CPU_FEATURES_DIR})
 add_library(cpufeatures STATIC "${CPU_FEATURES_DIR}/cpu-features.c")
 
 target_link_options(avif_android PRIVATE "-Wl,-z,max-page-size=16384")
-target_link_libraries(avif_android jnigraphics avif log cpufeatures)
+target_link_libraries(avif_android jnigraphics nativewindow avif log cpufeatures)

@@ -4,6 +4,9 @@
 # This script only works on linux. You must pass the path to the android NDK as
 # a parameter to this script.
 #
+# The build is configured for 8-bit AV1 only (-Dbitdepths=8) to reduce binary
+# size. 10/12-bit AVIF images will fail to decode with this configuration.
+#
 # Android NDK: https://developer.android.com/ndk/downloads
 #
 # The git tag below is known to work, and will occasionally be updated. Feel
@@ -32,6 +35,6 @@ for i in "${!ABI_LIST[@]}"; do
   abi="${ABI_LIST[i]}"
   PATH=$PATH:${android_bin} meson setup --default-library=static --buildtype release \
     --cross-file="../../package/crossfiles/${ARCH_LIST[i]}-android.meson" \
-    -Denable_tools=false -Denable_tests=false "dav1d/build/${abi}" dav1d
+    -Dbitdepths=8 -Denable_tools=false -Denable_tests=false "dav1d/build/${abi}" dav1d
   PATH=$PATH:${android_bin} meson compile -C "dav1d/build/${abi}"
 done

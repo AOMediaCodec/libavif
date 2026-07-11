@@ -39,6 +39,9 @@ $ ./dav1d_android.sh "${ANDROID_NDK_HOME}"
 $ cd ..
 ```
 
+The Android dav1d build is configured with `-Dbitdepths=8` (8-bit AV1 only). Re-run the
+script after changing this option so that all ABIs are rebuilt.
+
 If you want to use libgav1 instead:
 
 ```

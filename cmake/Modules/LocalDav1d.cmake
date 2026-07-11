@@ -74,6 +74,10 @@ function(avif_build_local_dav1d)
     endif()
     file(MAKE_DIRECTORY ${install_dir}/include)
 
+    if(ANDROID)
+        set(DAV1D_BITDEPTHS_ARG -Dbitdepths=8)
+    endif()
+
     ExternalProject_Add(
         dav1d
         ${download_step_args}
@@ -89,7 +93,7 @@ function(avif_build_local_dav1d)
         CONFIGURE_COMMAND
             ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${MESON_EXECUTABLE} setup --buildtype=release --default-library=static
             --prefix=<INSTALL_DIR> --libdir=lib -Denable_asm=true -Denable_tools=false -Denable_examples=false
-            -Denable_tests=false ${EXTRA_ARGS} <SOURCE_DIR>
+            -Denable_tests=false ${DAV1D_BITDEPTHS_ARG} ${EXTRA_ARGS} <SOURCE_DIR>
         BUILD_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${NINJA_EXECUTABLE} -C <BINARY_DIR>
         INSTALL_COMMAND ${CMAKE_COMMAND} -E env "PATH=${PATH}" ${NINJA_EXECUTABLE} -C <BINARY_DIR> install
         BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libdav1d.a

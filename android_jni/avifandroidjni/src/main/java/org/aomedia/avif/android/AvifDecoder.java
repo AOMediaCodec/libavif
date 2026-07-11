@@ -4,7 +4,9 @@
 package org.aomedia.avif.android;
 
 import android.graphics.Bitmap;
+import android.hardware.HardwareBuffer;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import java.nio.ByteBuffer;
 
 /**
@@ -16,8 +18,9 @@ import java.nio.ByteBuffer;
  *
  * <p>This class can be accessed statically without instantiating an object. This is useful to
  * simply sniff and decode still AVIF images without having to maintain any decoder state. The
- * following are the methods that can be accessed this way: {@link isAvifImage}, {@link getInfo} and
- * {@link decode}. The {@link Info} inner class is used only in this case.
+ * following are the methods that can be accessed this way: {@link isAvifImage}, {@link getInfo},
+ * {@link decode} and {@link decodeToHardwareBuffer}. The {@link Info} inner class is used only in
+ * this case.
  *
  * <p>2) As an instantiated regular class.
  *
@@ -118,6 +121,44 @@ public class AvifDecoder {
    */
   public static native boolean decode(ByteBuffer encoded, int length, Bitmap bitmap, int threads);
 
+  /**
+   * Decodes the AVIF image into an {@link HardwareBuffer} with RGBA_8888 pixels.
+   *
+   * <p>The returned buffer can be wrapped as a hardware {@link Bitmap} via {@link
+   * Bitmap#wrapHardwareBuffer(HardwareBuffer, android.graphics.ColorSpace)} on API 29+. Callers on
+   * older API levels must not use this method.
+   *
+   * <p>If {@code targetWidth} and {@code targetHeight} are both positive, the decoded image is
+   * scaled to those dimensions before RGB conversion. Otherwise the cropped image dimensions are
+   * used.
+   *
+   * @param encoded The encoded AVIF image. encoded.position() must be 0.
+   * @param length Length of the encoded buffer.
+   * @param targetWidth Desired output width, or 0 to use the image width.
+   * @param targetHeight Desired output height, or 0 to use the image height.
+   * @param threads Number of threads to be used for the AVIF decode.
+   * @return a HardwareBuffer on success, or null on failure.
+   */
+  @RequiresApi(29)
+  public static HardwareBuffer decodeToHardwareBuffer(
+      ByteBuffer encoded, int length, int targetWidth, int targetHeight, int threads) {
+    return decodeToHardwareBufferNative(encoded, length, targetWidth, targetHeight, threads);
+  }
+
+  /**
+   * Decodes the AVIF image into an {@link HardwareBuffer} at the cropped image dimensions.
+   *
+   * @see #decodeToHardwareBuffer(ByteBuffer, int, int, int, int)
+   */
+  @RequiresApi(29)
+  public static HardwareBuffer decodeToHardwareBuffer(
+      ByteBuffer encoded, int length, int threads) {
+    return decodeToHardwareBuffer(encoded, length, 0, 0, threads);
+  }
+
+  private static native HardwareBuffer decodeToHardwareBufferNative(
+      ByteBuffer encoded, int length, int targetWidth, int targetHeight, int threads);
+
   /** Get the width of the image. */
   public int getWidth() {
     return width;
@@ -209,6 +250,33 @@ public class AvifDecoder {
   private native int nextFrame(long decoder, Bitmap bitmap);
 
   /**
+   * Decodes the next frame of the animated AVIF into an {@link HardwareBuffer}.
+   *
+   * @param targetWidth Desired output width, or 0 to use the image width.
+   * @param targetHeight Desired output height, or 0 to use the image height.
+   * @return a HardwareBuffer on success, or null on failure.
+   * @see #decodeToHardwareBuffer(ByteBuffer, int, int, int, int)
+   */
+  @RequiresApi(29)
+  @Nullable
+  public HardwareBuffer nextFrameHardwareBuffer(int targetWidth, int targetHeight) {
+    return nextFrameHardwareBuffer(decoder, targetWidth, targetHeight);
+  }
+
+  /**
+   * Decodes the next frame of the animated AVIF into an {@link HardwareBuffer} at the cropped
+   * image dimensions.
+   */
+  @RequiresApi(29)
+  @Nullable
+  public HardwareBuffer nextFrameHardwareBuffer() {
+    return nextFrameHardwareBuffer(decoder, 0, 0);
+  }
+
+  private native HardwareBuffer nextFrameHardwareBuffer(
+      long decoder, int targetWidth, int targetHeight);
+
+  /**
    * Get the 0-based index of the frame that will be returned by the next call to {@link nextFrame}.
    * If the returned value is same as {@link getFrameCount}, then the next call to {@link nextFrame}
    * will fail.
@@ -237,6 +305,34 @@ public class AvifDecoder {
   }
 
   private native int nthFrame(long decoder, int n, Bitmap bitmap);
+
+  /**
+   * Decodes the nth frame of the animated AVIF into an {@link HardwareBuffer}.
+   *
+   * @param n The zero-based index of the frame to be decoded.
+   * @param targetWidth Desired output width, or 0 to use the image width.
+   * @param targetHeight Desired output height, or 0 to use the image height.
+   * @return a HardwareBuffer on success, or null on failure.
+   * @see #decodeToHardwareBuffer(ByteBuffer, int, int, int, int)
+   */
+  @RequiresApi(29)
+  @Nullable
+  public HardwareBuffer nthFrameHardwareBuffer(int n, int targetWidth, int targetHeight) {
+    return nthFrameHardwareBuffer(decoder, n, targetWidth, targetHeight);
+  }
+
+  /**
+   * Decodes the nth frame of the animated AVIF into an {@link HardwareBuffer} at the cropped
+   * image dimensions.
+   */
+  @RequiresApi(29)
+  @Nullable
+  public HardwareBuffer nthFrameHardwareBuffer(int n) {
+    return nthFrameHardwareBuffer(decoder, n, 0, 0);
+  }
+
+  private native HardwareBuffer nthFrameHardwareBuffer(
+      long decoder, int n, int targetWidth, int targetHeight);
 
   /**
    * Returns a String describing an avifResult enum value.
