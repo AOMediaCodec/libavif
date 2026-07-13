@@ -1,7 +1,10 @@
 set(AVIF_LIBXML_GIT_TAG "v2.15.3")
 
 # First, whether the library exists.
-set(PREFIXES lib ${AVIF_LIBRARY_PREFIX})
+set(PREFIXES "lib")
+if(NOT AVIF_LIBRARY_PREFIX STREQUAL "lib")
+    list(APPEND PREFIXES ${AVIF_LIBRARY_PREFIX})
+endif()
 set(SUFFIXES "s" "sd" "")
 foreach(PREFIX IN LISTS PREFIXES)
     foreach(SUFFIX IN LISTS SUFFIXES)
@@ -19,13 +22,10 @@ foreach(PREFIX IN LISTS PREFIXES)
             target_compile_definitions(LibXml2 INTERFACE LIBXML_STATIC)
             target_include_directories(LibXml2 INTERFACE "${AVIF_SOURCE_DIR}/ext/libxml2/install.libavif/include/libxml2")
             add_library(LibXml2::LibXml2 ALIAS LibXml2)
+            return()
         endif()
     endforeach()
 endforeach()
-
-if(TARGET LibXml2::LibXml2)
-    return()
-endif()
 
 message(STATUS "libavif(AVIF_LIBXML2=LOCAL): compiled library not found at ${LIB_FILENAME}; using FetchContent")
 if(EXISTS "${AVIF_SOURCE_DIR}/ext/libxml2")

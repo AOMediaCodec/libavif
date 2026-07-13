@@ -30,6 +30,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * avifdec: The message "[--ignore-icc] Discarding ICC profile.\n" won't be
   printed if the --ignore-icc or --icc option is specified and the image has an
   ICC profile.
+* LocalLibXml2.cmake: Properly handle a libxml2 library compiled by
+  ext/libxml2.cmd.
 
 ## [1.4.2] - 2026-05-26
 
