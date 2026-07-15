@@ -587,18 +587,41 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   ASSERT_NE(decoder, nullptr);
   // Decode just the gain map.
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
-  result = avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
-                                 encoded.size);
+  result = avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
+  result = avifDecoderParse(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Main image metadata is available.
   EXPECT_EQ(decoder->image->width, 12u);
   EXPECT_EQ(decoder->image->height, 34u);
+  EXPECT_EQ(decoder->image->depth, 10);
+  EXPECT_EQ(decoder->image->yuvFormat, AVIF_PIXEL_FORMAT_YUV420);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+
+  result = avifDecoderNextImage(decoder.get());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
+  result = avifImageCopy(decoded.get(), decoder->image, AVIF_PLANES_ALL);
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
+
+  // Main image metadata is available.
+  EXPECT_EQ(decoder->image->width, 12u);
+  EXPECT_EQ(decoder->image->height, 34u);
+  EXPECT_EQ(decoder->image->depth, 10);
+  EXPECT_EQ(decoder->image->yuvFormat, AVIF_PIXEL_FORMAT_YUV420);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
   // But pixels are not.
+  EXPECT_EQ(decoder->image->yuvPlanes[0], nullptr);
+  EXPECT_EQ(decoder->image->yuvPlanes[1], nullptr);
+  EXPECT_EQ(decoder->image->yuvPlanes[2], nullptr);
   EXPECT_EQ(decoder->image->yuvRowBytes[0], 0u);
   EXPECT_EQ(decoder->image->yuvRowBytes[1], 0u);
   EXPECT_EQ(decoder->image->yuvRowBytes[2], 0u);
+  EXPECT_EQ(decoder->image->alphaPlane, nullptr);
   EXPECT_EQ(decoder->image->alphaRowBytes, 0u);
   // The gain map was decoded.
   ASSERT_NE(decoded->gainMap, nullptr);
@@ -629,6 +652,13 @@ TEST(GainMapTest, IgnoreAll) {
   ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+
+  // Main image metadata is available.
+  EXPECT_EQ(decoder->image->width, 12u);
+  EXPECT_EQ(decoder->image->height, 34u);
+  EXPECT_EQ(decoder->image->depth, 10);
+  EXPECT_EQ(decoder->image->yuvFormat, AVIF_PIXEL_FORMAT_YUV420);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
 
   EXPECT_TRUE(decoder->image->gainMap != nullptr);
   CheckGainMapMetadataMatches(*decoder->image->gainMap, *image->gainMap);
