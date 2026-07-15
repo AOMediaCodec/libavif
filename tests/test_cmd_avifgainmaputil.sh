@@ -59,10 +59,24 @@ pushd ${TMP_DIR}
   "${AVIFGAINMAPUTIL}" tonemap "${INPUT_AVIF_GAINMAP_SDR}" "${PNG_OUTPUT}" --headroom 0 --clli 400,500
   "${ARE_IMAGES_EQUAL}" "${PNG_OUTPUT}" "${INPUT_JPEG_GAINMAP_SDR}" 0 40 1
   # Check that metadata is copied over.
-  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}" --headroom 0 > "${OUT_MSG}"
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.tonemapped.avif" --headroom 0 > "${OUT_MSG}"
   cat "${OUT_MSG}"
   grep "XMP Metadata   : Present" "${OUT_MSG}"
   grep "Exif Metadata  : Present" "${OUT_MSG}"
+
+  # Check that metadata can be ignored (tonemap command).
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.ignored.avif" --headroom 0 --ignore-xmp --ignore-exif > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep "XMP Metadata   : Absent" "${OUT_MSG}"
+  grep "Exif Metadata  : Absent" "${OUT_MSG}"
+
+  # Check that metadata can be ignored (combine command).
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_HDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}.ignored-combine.avif" \
+      -q 90 --qgain-map 90 --ignore-xmp --ignore-exif
+  "${AVIFGAINMAPUTIL}" tonemap "${AVIF_OUTPUT}.ignored-combine.avif" "${AVIF_OUTPUT}.ignored-combine.tonemapped.avif" --headroom 0 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep "XMP Metadata   : Absent" "${OUT_MSG}"
+  grep "Exif Metadata  : Absent" "${OUT_MSG}"
 
   # Test combine with overridden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \

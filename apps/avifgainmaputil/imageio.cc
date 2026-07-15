@@ -191,8 +191,8 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile, bool ignore_alpha,
-                     bool ignore_gain_map, int jobs) {
+                     bool ignore_profile, bool ignore_alpha, bool ignore_exif,
+                     bool ignore_xmp, bool ignore_gain_map, int jobs) {
   avifAppFileFormat input_format = avifGuessFileFormat(input_filename.c_str());
   if (input_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     std::cerr << "Cannot determine input format: " << input_filename;
@@ -207,6 +207,8 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
     }
     decoder->ignoreICC = ignore_profile;
+    decoder->ignoreExif = ignore_exif;
+    decoder->ignoreXMP = ignore_xmp;
     avifResult result = ReadAvif(decoder.get(), input_filename);
     if (result != AVIF_RESULT_OK) {
       return result;
@@ -242,9 +244,9 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
     const avifAppFileFormat file_format = avifReadImage(
         input_filename.c_str(), AVIF_APP_FILE_FORMAT_UNKNOWN /* guess format */,
         requested_format, static_cast<int>(requested_depth),
-        AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile,
-        /*ignoreExif=*/false, /*ignoreXMP=*/false, ignore_alpha,
-        ignore_gain_map, AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
+        AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC, ignore_profile, ignore_exif,
+        ignore_xmp, ignore_alpha, ignore_gain_map,
+        AVIF_DEFAULT_IMAGE_SIZE_LIMIT, image,
         /*outDepth=*/nullptr,
         /*sourceTiming=*/nullptr, /*frameIter=*/nullptr);
     if (file_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {

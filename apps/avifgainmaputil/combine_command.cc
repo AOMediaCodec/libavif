@@ -99,6 +99,7 @@ avifResult CombineCommand::Run() {
   avifResult result = ReadImage(
       base_image.get(), arg_base_filename_, pixel_format, arg_image_read_.depth,
       arg_image_read_.ignore_profile, arg_image_read_.ignore_alpha,
+      arg_image_read_.ignore_exif, arg_image_read_.ignore_xmp,
       /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read base image: " << avifResultToString(result)
@@ -117,7 +118,8 @@ avifResult CombineCommand::Run() {
   result =
       ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
                 arg_image_read_.depth, arg_image_read_.ignore_profile,
-                arg_image_read_.ignore_alpha, /*ignore_gain_map=*/true,
+                arg_image_read_.ignore_alpha, arg_image_read_.ignore_exif,
+                arg_image_read_.ignore_xmp, /*ignore_gain_map=*/true,
                 arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read alternate image: "

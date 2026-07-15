@@ -134,6 +134,8 @@ struct ImageReadArgs {
   argparse::ArgValue<int> pixel_format;
   argparse::ArgValue<bool> ignore_profile;
   argparse::ArgValue<bool> ignore_alpha;
+  argparse::ArgValue<bool> ignore_exif;
+  argparse::ArgValue<bool> ignore_xmp;
 
   void Init(argparse::ArgumentParser& argparse) {
     argparse
@@ -151,6 +153,18 @@ struct ImageReadArgs {
     argparse.add_argument(ignore_alpha, "--ignore-alpha")
         .help(
             "If the input file contains an alpha channel, ignore it "
+            "(no-op if absent)")
+        .action(argparse::Action::STORE_TRUE)
+        .default_value("false");
+    argparse.add_argument(ignore_exif, "--ignore-exif")
+        .help(
+            "If the input file contains embedded Exif metadata, ignore it "
+            "(no-op if absent)")
+        .action(argparse::Action::STORE_TRUE)
+        .default_value("false");
+    argparse.add_argument(ignore_xmp, "--ignore-xmp")
+        .help(
+            "If the input file contains embedded XMP metadata, ignore it "
             "(no-op if absent)")
         .action(argparse::Action::STORE_TRUE)
         .default_value("false");
