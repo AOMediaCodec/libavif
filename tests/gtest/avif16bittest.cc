@@ -350,14 +350,13 @@ TEST_P(GainmapSampleTransformTest, ImageContentToDecode) {
     ASSERT_EQ(image->depth, decoded->depth);
     ASSERT_EQ(image->width, decoded->width);
     ASSERT_EQ(image->height, decoded->height);
+    EXPECT_EQ(decoder->alphaPresent, create_alpha);
     const bool ignore_alpha =
         (content_to_decode & AVIF_IMAGE_CONTENT_ALPHA) == 0;
     if (create_alpha && !ignore_alpha) {
-      EXPECT_TRUE(decoder->alphaPresent);
       EXPECT_NE(decoded->alphaPlane, nullptr);
       EXPECT_NE(decoded->alphaRowBytes, 0);
     } else {
-      EXPECT_FALSE(decoder->alphaPresent);
       EXPECT_EQ(decoded->alphaPlane, nullptr);
       EXPECT_EQ(decoded->alphaRowBytes, 0);
     }

@@ -282,8 +282,6 @@ avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename) {
               << decoder->diag.error << ")\n";
     return result;
   }
-  assert((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA) != 0 ||
-         !decoder->alphaPresent);
   result = avifDecoderNextImage(decoder);
   if (result != AVIF_RESULT_OK) {
     std::cerr << "Failed to decode image: " << avifResultToString(result)

@@ -6178,59 +6178,60 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             }
         }
 
+        uint32_t alphaTrackIndex = 0;
         avifCodecType alphaCodecType = AVIF_CODEC_TYPE_UNKNOWN;
-        if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA) {
-            uint32_t alphaTrackIndex = 0;
-            for (; alphaTrackIndex < data->tracks.count; ++alphaTrackIndex) {
-                avifTrack * track = &data->tracks.track[alphaTrackIndex];
-                if (!track->sampleTable) {
-                    continue;
-                }
-                if (!track->id) {
-                    continue;
-                }
-                if (!track->sampleTable->chunks.count) {
-                    continue;
-                }
-                alphaCodecType = avifSampleTableGetCodecType(track->sampleTable);
-                if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
-                    continue;
-                }
-                const avifPropertyArray * properties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
-                const avifProperty * auxiProp = properties ? avifPropertyArrayFind(properties, "auxi") : NULL;
-                // If auxi is present, check that it contains the alpha URN.
-                // If auxi is not present, assume that the track is alpha. This is for backward compatibility with
-                // old versions of libavif that did not write this property, see
-                // https://github.com/AOMediaCodec/libavif/commit/98faa17
-                if (auxiProp && !isAlphaURN(auxiProp->u.auxC.auxType)) {
-                    continue;
-                }
-                // Do not check the track's handlerType. It should be "auxv" according to
-                // HEIF (ISO/IEC 23008-12:2022), Section 7.5.3.1, but old versions of libavif used to write
-                // "pict" instead. See https://github.com/AOMediaCodec/libavif/commit/65d0af9
+        for (; alphaTrackIndex < data->tracks.count; ++alphaTrackIndex) {
+            avifTrack * track = &data->tracks.track[alphaTrackIndex];
+            if (!track->sampleTable) {
+                continue;
+            }
+            if (!track->id) {
+                continue;
+            }
+            if (!track->sampleTable->chunks.count) {
+                continue;
+            }
+            alphaCodecType = avifSampleTableGetCodecType(track->sampleTable);
+            if (alphaCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
+                continue;
+            }
+            const avifPropertyArray * properties = avifSampleTableGetProperties(track->sampleTable, alphaCodecType);
+            const avifProperty * auxiProp = properties ? avifPropertyArrayFind(properties, "auxi") : NULL;
+            // If auxi is present, check that it contains the alpha URN.
+            // If auxi is not present, assume that the track is alpha. This is for backward compatibility with
+            // old versions of libavif that did not write this property, see
+            // https://github.com/AOMediaCodec/libavif/commit/98faa17
+            if (auxiProp && !isAlphaURN(auxiProp->u.auxC.auxType)) {
+                continue;
+            }
+            // Do not check the track's handlerType. It should be "auxv" according to
+            // HEIF (ISO/IEC 23008-12:2022), Section 7.5.3.1, but old versions of libavif used to write
+            // "pict" instead. See https://github.com/AOMediaCodec/libavif/commit/65d0af9
 
-                if (track->auxForID == colorTrack->id) {
-                    // Found it!
-                    alphaProperties = properties;
-                    break;
-                }
+            if (track->auxForID == colorTrack->id) {
+                // Found it!
+                alphaProperties = properties;
+                break;
             }
-            if (alphaTrackIndex != data->tracks.count) {
-                alphaTrack = &data->tracks.track[alphaTrackIndex];
-            }
+        }
+        if (alphaTrackIndex != data->tracks.count) {
+            alphaTrack = &data->tracks.track[alphaTrackIndex];
         }
 
         const uint8_t operatingPoint = 0; // No way to set operating point via tracks
-        avifTile * colorTile = avifDecoderDataCreateTile(data, colorCodecType, colorTrack->width, colorTrack->height, operatingPoint);
-        AVIF_CHECKERR(colorTile != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-        AVIF_CHECKRES(avifCodecDecodeInputFillFromSampleTable(colorTile->input,
-                                                              colorTrack->sampleTable,
-                                                              decoder->imageCountLimit,
-                                                              decoder->io->sizeHint,
-                                                              data->diag));
-        data->tileInfos[AVIF_ITEM_COLOR].tileCount = 1;
+        avifTile * colorTile = NULL;
+        if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR) {
+            colorTile = avifDecoderDataCreateTile(data, colorCodecType, colorTrack->width, colorTrack->height, operatingPoint);
+            AVIF_CHECKERR(colorTile != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+            AVIF_CHECKRES(avifCodecDecodeInputFillFromSampleTable(colorTile->input,
+                                                                  colorTrack->sampleTable,
+                                                                  decoder->imageCountLimit,
+                                                                  decoder->io->sizeHint,
+                                                                  data->diag));
+            data->tileInfos[AVIF_ITEM_COLOR].tileCount = 1;
+        }
 
-        if (alphaTrack) {
+        if (alphaTrack && (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA)) {
             avifTile * alphaTile = avifDecoderDataCreateTile(data, alphaCodecType, alphaTrack->width, alphaTrack->height, operatingPoint);
             AVIF_CHECKERR(alphaTile != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             AVIF_CHECKRES(avifCodecDecodeInputFillFromSampleTable(alphaTile->input,
@@ -6247,7 +6248,31 @@ avifResult avifDecoderReset(avifDecoder * decoder)
 
         // Image sequence timing
         decoder->imageIndex = -1;
-        decoder->imageCount = (int)colorTile->input->samples.count;
+        uint32_t imageCount;
+        if (colorTile) {
+            imageCount = colorTile->input->samples.count;
+        } else {
+            imageCount = 0;
+            for (uint32_t chunkIndex = 0; chunkIndex < colorTrack->sampleTable->chunks.count; ++chunkIndex) {
+                // First, figure out how many samples are in this chunk
+                uint32_t sampleCount = avifGetSampleCountOfChunk(&colorTrack->sampleTable->sampleToChunks, chunkIndex);
+                if (sampleCount == 0) {
+                    // chunks with 0 samples are invalid
+                    avifDiagnosticsPrintf(data->diag, "Sample table contains a chunk with 0 samples");
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                if (imageCount > UINT32_MAX - sampleCount) {
+                    avifDiagnosticsPrintf(data->diag, "Total number of samples exceeds UINT32_MAX");
+                    return AVIF_RESULT_BMFF_PARSE_FAILED;
+                }
+                imageCount += sampleCount;
+            }
+        }
+        if (imageCount > INT_MAX) {
+            avifDiagnosticsPrintf(data->diag, "Total number of samples exceeds INT_MAX");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        decoder->imageCount = (int)imageCount;
         decoder->timescale = colorTrack->mediaTimescale;
         decoder->durationInTimescales = colorTrack->mediaDuration;
         if (colorTrack->mediaTimescale) {
@@ -6297,21 +6322,19 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         colorCodecType = codecType[AVIF_ITEM_COLOR];
 
         // Optional alpha auxiliary item
-        avifBool isAlphaItemInInput = AVIF_FALSE;
-        if (decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA) {
-            AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
-                                                mainItems[AVIF_ITEM_COLOR],
-                                                &data->tileInfos[AVIF_ITEM_COLOR],
-                                                &mainItems[AVIF_ITEM_ALPHA],
-                                                &data->tileInfos[AVIF_ITEM_ALPHA],
-                                                &isAlphaItemInInput));
-            if (mainItems[AVIF_ITEM_ALPHA]) {
-                AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
-                                                          mainItems[AVIF_ITEM_ALPHA],
-                                                          isAlphaItemInInput,
-                                                          &data->tileInfos[AVIF_ITEM_ALPHA].grid,
-                                                          &codecType[AVIF_ITEM_ALPHA]));
-            }
+        avifBool isAlphaItemInInput;
+        AVIF_CHECKRES(avifMetaFindAlphaItem(data->meta,
+                                            mainItems[AVIF_ITEM_COLOR],
+                                            &data->tileInfos[AVIF_ITEM_COLOR],
+                                            &mainItems[AVIF_ITEM_ALPHA],
+                                            &data->tileInfos[AVIF_ITEM_ALPHA],
+                                            &isAlphaItemInInput));
+        if (mainItems[AVIF_ITEM_ALPHA]) {
+            AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
+                                                      mainItems[AVIF_ITEM_ALPHA],
+                                                      isAlphaItemInInput,
+                                                      &data->tileInfos[AVIF_ITEM_ALPHA].grid,
+                                                      &codecType[AVIF_ITEM_ALPHA]));
         }
 
         // Section 10.2.6 of 23008-12:2024/AMD 1:2024(E):
@@ -6976,7 +6999,10 @@ static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, a
     }
 
     AVIF_CHECKRES(avifDecoderApplySampleTransformForPlanes(decoder, AVIF_PLANES_YUV, dstImage));
-    if (decoder->alphaPresent) {
+    // If decoder->data->tileInfos[AVIF_ITEM_ALPHA].tileCount == 0, it means
+    // decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_ALPHA was equal to 0.
+    // Only apply Sample Transforms for the alpha plane if there is an alpha item to apply it onto.
+    if (decoder->data->tileInfos[AVIF_ITEM_ALPHA].tileCount != 0) {
         AVIF_CHECKRES(avifDecoderApplySampleTransformForPlanes(decoder, AVIF_PLANES_A, dstImage));
     }
     return AVIF_RESULT_OK;

@@ -86,6 +86,55 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_NE(decoder->image->alphaPlane, nullptr);
+    EXPECT_GT(decoder->image->alphaRowBytes, 0);
+  }
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+            AVIF_RESULT_NO_IMAGES_REMAINING);
+}
+
+TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAlpha) {
+  const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_ALPHA;
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageCount, 5);
+  EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
+  EXPECT_EQ(decoder->image->exif.size, 1126);
+  EXPECT_EQ(decoder->image->xmp.size, 3898);
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_EQ(decoder->image->alphaPlane, nullptr);
+    EXPECT_EQ(decoder->image->alphaRowBytes, 0);
+  }
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+            AVIF_RESULT_NO_IMAGES_REMAINING);
+}
+
+TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAll) {
+  const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode = 0;
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageCount, 5);
+  EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
+  EXPECT_EQ(decoder->image->exif.size, 1126);
+  EXPECT_EQ(decoder->image->xmp.size, 3898);
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
 }
 
 TEST(AvifDecodeTest, AnimatedImageWithDepthAndMetadata) {
