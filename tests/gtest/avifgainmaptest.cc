@@ -581,8 +581,6 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << ": " << encoder->diag.error;
 
-  ImagePtr decoded(avifImageCreateEmpty());
-  ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   // Decode just the gain map.
@@ -604,9 +602,6 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   result = avifDecoderNextImage(decoder.get());
   ASSERT_EQ(result, AVIF_RESULT_OK)
       << avifResultToString(result) << ": " << decoder->diag.error;
-  result = avifImageCopy(decoded.get(), decoder->image, AVIF_PLANES_ALL);
-  ASSERT_EQ(result, AVIF_RESULT_OK)
-      << avifResultToString(result) << ": " << decoder->diag.error;
 
   // Main image metadata is available.
   EXPECT_EQ(decoder->image->width, 12u);
@@ -624,11 +619,12 @@ TEST(GainMapTest, IgnoreColorAndAlpha) {
   EXPECT_EQ(decoder->image->alphaPlane, nullptr);
   EXPECT_EQ(decoder->image->alphaRowBytes, 0u);
   // The gain map was decoded.
-  ASSERT_NE(decoded->gainMap, nullptr);
-  ASSERT_NE(decoded->gainMap->image, nullptr);
-  EXPECT_GT(testutil::GetPsnr(*image->gainMap->image, *decoded->gainMap->image),
+  ASSERT_NE(decoder->image->gainMap, nullptr);
+  ASSERT_NE(decoder->image->gainMap->image, nullptr);
+  EXPECT_GT(testutil::GetPsnr(*image->gainMap->image,
+                              *decoder->image->gainMap->image),
             40.0);
-  CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
+  CheckGainMapMetadataMatches(*decoder->image->gainMap, *image->gainMap);
 }
 
 TEST(GainMapTest, IgnoreAll) {
