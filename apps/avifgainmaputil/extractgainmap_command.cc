@@ -32,14 +32,7 @@ avifResult ExtractGainMapCommand::Run() {
     return result;
   }
 
-  ImagePtr image(avifImageCreateEmpty());
-  if (!image) {
-    return AVIF_RESULT_OUT_OF_MEMORY;
-  }
-  result = avifImageCreateView(image.get(), decoder->image);
-  if (result != AVIF_RESULT_OK) {
-    return result;
-  }
+  const avifImage* image = decoder->image;
 
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
     std::cerr << "Input image " << arg_input_filename_

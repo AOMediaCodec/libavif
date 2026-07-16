@@ -215,21 +215,12 @@ avifResult ReadImage(avifImage* image, const std::string& input_filename,
       return result;
     }
 
-    ImagePtr view(avifImageCreateEmpty());
-    if (!view) {
-      return AVIF_RESULT_OUT_OF_MEMORY;
-    }
-    result = avifImageCreateView(view.get(), decoder->image);
-    if (result != AVIF_RESULT_OK) {
-      return result;
-    }
-
     const avifColorPrimaries in_primaries = image->colorPrimaries;
     const avifTransferCharacteristics in_transfer =
         image->transferCharacteristics;
     const avifMatrixCoefficients in_matrix = image->matrixCoefficients;
 
-    result = avifImageCopy(image, view.get(), AVIF_PLANES_ALL);
+    result = avifImageCopy(image, decoder->image, AVIF_PLANES_ALL);
     if (result != AVIF_RESULT_OK) {
       return result;
     }
