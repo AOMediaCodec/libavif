@@ -86,6 +86,9 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip the rest of the test.";
+  }
   for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
     EXPECT_NE(decoder->image->alphaPlane, nullptr);
@@ -110,6 +113,9 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAlpha) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip the rest of the test.";
+  }
   for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
     EXPECT_EQ(decoder->image->alphaPlane, nullptr);
@@ -134,6 +140,9 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAll) {
   EXPECT_EQ(decoder->repetitionCount, AVIF_REPETITION_COUNT_INFINITE);
   EXPECT_EQ(decoder->image->exif.size, 1126);
   EXPECT_EQ(decoder->image->xmp.size, 3898);
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip the rest of the test.";
+  }
   EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_NO_CONTENT);
 }
 
