@@ -62,8 +62,8 @@ avifResult ConvertCommand::Run() {
   avifResult result =
       ReadImage(image.get(), arg_input_filename_.value(), pixel_format,
                 arg_image_read_.depth, arg_image_read_.ignore_profile,
-                arg_image_read_.ignore_alpha, arg_image_read_.ignore_exif,
-                arg_image_read_.ignore_xmp, /*ignore_gain_map=*/false,
+                arg_image_read_.ignore_exif, arg_image_read_.ignore_xmp,
+                arg_image_read_.ignore_alpha, /*ignore_gain_map=*/false,
                 arg_jobs_.jobs.value());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to decode image: " << arg_input_filename_;

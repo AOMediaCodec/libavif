@@ -191,8 +191,8 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile, bool ignore_alpha, bool ignore_exif,
-                     bool ignore_xmp, bool ignore_gain_map, int jobs) {
+                     bool ignore_profile, bool ignore_exif, bool ignore_xmp,
+                     bool ignore_alpha, bool ignore_gain_map, int jobs) {
   avifAppFileFormat input_format = avifGuessFileFormat(input_filename.c_str());
   if (input_format == AVIF_APP_FILE_FORMAT_UNKNOWN) {
     std::cerr << "Cannot determine input format: " << input_filename;

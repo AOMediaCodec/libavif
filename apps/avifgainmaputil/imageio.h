@@ -19,8 +19,8 @@ avifResult WriteImage(const avifImage* image, int grid_cols, int grid_rows,
 // Reads an image in any of the supported formats. Ignores any gain map.
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
-                     bool ignore_profile, bool ignore_alpha, bool ignore_exif,
-                     bool ignore_xmp, bool ignore_gain_map, int jobs);
+                     bool ignore_profile, bool ignore_exif, bool ignore_xmp,
+                     bool ignore_alpha, bool ignore_gain_map, int jobs);
 
 // Writes an image in avif format given a pre-configured encoder.
 avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
