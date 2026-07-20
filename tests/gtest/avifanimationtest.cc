@@ -129,7 +129,7 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAll) {
   const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
-  decoder->imageContentToDecode = 0;
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_NONE;
   ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
                                  (std::string(data_path) + file_name).c_str()),
             AVIF_RESULT_OK);
