@@ -232,8 +232,9 @@ typedef struct avifDecoderItem
     uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is an input of derived Item #{dimgForID}
     uint32_t dimgIdx; // If dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg.
-    avifBool hasDimgFrom; // whether there is a 'dimg' box with this item's id as 'fromID'
-    uint32_t premByID;    // if non-zero, this item is premultiplied by Item #{premByID}
+    uint32_t generatedAlphaForID; // if non-zero, this is a generated alpha grid for color Item #{generatedAlphaForID}
+    avifBool hasDimgFrom;         // whether there is a 'dimg' box with this item's id as 'fromID'
+    uint32_t premByID;            // if non-zero, this item is premultiplied by Item #{premByID}
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
@@ -1654,9 +1655,11 @@ static avifResult avifDecoderAdoptGridTileCodecType(avifDecoder * decoder,
                 avifDiagnosticsPrintf(&decoder->diag, "Grid image's first tile is missing an %s property", configPropName);
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
-            avifProperty * dstProp = (avifProperty *)avifArrayPush(&gridItem->properties);
-            AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-            *dstProp = *srcProp;
+            if (!avifPropertyArrayFind(&gridItem->properties, configPropName)) {
+                avifProperty * dstProp = (avifProperty *)avifArrayPush(&gridItem->properties);
+                AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                *dstProp = *srcProp;
+            }
 
         } else if (memcmp(item->type, firstTileItem->type, 4)) {
             // MIAF (ISO 23000-22:2019), Section 7.3.11.4.1:
@@ -5499,8 +5502,13 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
                                         avifTileInfo * alphaInfo,
                                         avifBool * isAlphaItemInInput)
 {
+    avifDecoderItem * generatedAlphaItem = NULL;
     for (uint32_t itemIndex = 0; itemIndex < meta->items.count; ++itemIndex) {
         avifDecoderItem * item = meta->items.item[itemIndex];
+        if (item->generatedAlphaForID == colorItem->id) {
+            generatedAlphaItem = item;
+            continue;
+        }
         if (avifDecoderItemShouldBeSkipped(item)) {
             continue;
         }
@@ -5509,6 +5517,12 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             *isAlphaItemInInput = AVIF_TRUE;
             return AVIF_RESULT_OK;
         }
+    }
+    if (generatedAlphaItem != NULL) {
+        *alphaItem = generatedAlphaItem;
+        *isAlphaItemInInput = AVIF_FALSE;
+        alphaInfo->grid = colorInfo->grid;
+        return AVIF_RESULT_OK;
     }
     if (memcmp(colorItem->type, "grid", 4)) {
         *alphaItem = NULL;
@@ -5601,6 +5615,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         alphaTileItem->dimgForID = (*alphaItem)->id;
         alphaTileItem->dimgIdx = dimgIdx;
     }
+    (*alphaItem)->generatedAlphaForID = colorItem->id;
     avifFree(dimgIdxToAlphaItemIdx);
     *isAlphaItemInInput = AVIF_FALSE;
     alphaInfo->grid = colorInfo->grid;
