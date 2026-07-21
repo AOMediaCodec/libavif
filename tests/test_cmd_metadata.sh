@@ -28,14 +28,14 @@ ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
 ENCODED_FILE_NO_METADATA="avif_test_cmd_metadata_encoded_no_metadata.avif"
 ENCODED_FILE_MORE_METADATA="avif_test_cmd_metadata_encoded_more_metadata.avif"
 DECODED_FILE="avif_test_cmd_metadata_decoded.png"
-DECODED_FILE_CHANGED_ICC="avif_test_cmd_metadata_decoded_changed_icc.png"
+DECODED_FILE_CHANGED_METADATA="avif_test_cmd_metadata_decoded_changed_icc.png"
 
 # Cleanup
 cleanup() {
   pushd ${TMP_DIR}
     rm -f -- "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" \
              "${ENCODED_FILE_MORE_METADATA}" \
-             "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}"
+             "${DECODED_FILE}" "${DECODED_FILE_CHANGED_METADATA}"
   popd
 }
 trap cleanup EXIT
@@ -56,10 +56,14 @@ pushd ${TMP_DIR}
     cmp "${ENCODED_FILE}" "${ENCODED_FILE_NO_METADATA}" && exit 1
 
     "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-    "${AVIFDEC}" "${ENCODED_FILE}" --ignore-icc "${DECODED_FILE_CHANGED_ICC}"
-    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}" && exit 1
-    "${AVIFDEC}" "${ENCODED_FILE}" --icc "${INPUT_ICC}" "${DECODED_FILE_CHANGED_ICC}"
-    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_ICC}" && exit 1
+    "${AVIFDEC}" "${ENCODED_FILE}" --ignore-icc "${DECODED_FILE_CHANGED_METADATA}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_METADATA}" && exit 1
+    "${AVIFDEC}" "${ENCODED_FILE}" --icc "${INPUT_ICC}" "${DECODED_FILE_CHANGED_METADATA}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_METADATA}" && exit 1
+    "${AVIFDEC}" "${ENCODED_FILE}" --ignore-exif "${DECODED_FILE_CHANGED_METADATA}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_METADATA}" && exit 1
+    "${AVIFDEC}" "${ENCODED_FILE}" --ignore-xmp "${DECODED_FILE_CHANGED_METADATA}"
+    cmp "${DECODED_FILE}" "${DECODED_FILE_CHANGED_METADATA}" && exit 1
 
     # As should adding metadata.
 

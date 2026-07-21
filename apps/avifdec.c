@@ -45,6 +45,8 @@ static void syntax(void)
     printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
     printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
     printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
+    printf("    --ignore-exif     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
+    printf("    --ignore-xmp      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
     printf("    --icc FILENAME    : Provide an ICC profile payload (implies --ignore-icc)\n");
     printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
     printf("    --size-limit C    : Maximum image size (in total pixels) that should be tolerated.\n");
@@ -97,6 +99,8 @@ int main(int argc, char * argv[])
     avifBool infoOnly = AVIF_FALSE;
     avifChromaUpsampling chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
     const char * iccOverrideFilename = NULL;
+    avifBool ignoreExif = AVIF_FALSE;
+    avifBool ignoreXMP = AVIF_FALSE;
     avifBool ignoreICC = AVIF_FALSE;
     avifBool rawColor = AVIF_FALSE;
     avifBool allowProgressive = AVIF_FALSE;
@@ -220,6 +224,10 @@ int main(int argc, char * argv[])
             strictFlags = AVIF_STRICT_DISABLED;
         } else if (!strcmp(arg, "-i") || !strcmp(arg, "--info")) {
             infoOnly = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-exif")) {
+            ignoreExif = AVIF_TRUE;
+        } else if (!strcmp(arg, "--ignore-xmp")) {
+            ignoreXMP = AVIF_TRUE;
         } else if (!strcmp(arg, "--icc")) {
             NEXTARG();
             iccOverrideFilename = arg;
@@ -321,6 +329,8 @@ int main(int argc, char * argv[])
     } else if (enableSampleTransforms) {
         decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
     }
+    decoder->ignoreExif = ignoreExif;
+    decoder->ignoreXMP = ignoreXMP;
     decoder->ignoreICC = ignoreICC;
 
     avifResult result = avifDecoderSetIOFile(decoder, inputFilename);
@@ -406,6 +416,8 @@ int main(int argc, char * argv[])
             }
         }
 
+        assert(!ignoreExif || decoder->image->exif.size == 0);
+        assert(!ignoreXMP || decoder->image->xmp.size == 0);
         assert(!ignoreICC || decoder->image->icc.size == 0);
         if (iccOverrideFilename) {
             imageView = avifImageCreateEmpty();
