@@ -28,7 +28,7 @@ ENCODED_FILE="avif_test_cmd_metadata_encoded.avif"
 ENCODED_FILE_NO_METADATA="avif_test_cmd_metadata_encoded_no_metadata.avif"
 ENCODED_FILE_MORE_METADATA="avif_test_cmd_metadata_encoded_more_metadata.avif"
 DECODED_FILE="avif_test_cmd_metadata_decoded.png"
-DECODED_FILE_CHANGED_METADATA="avif_test_cmd_metadata_decoded_changed_icc.png"
+DECODED_FILE_CHANGED_METADATA="avif_test_cmd_metadata_decoded_changed_metadata.png"
 
 # Cleanup
 cleanup() {
