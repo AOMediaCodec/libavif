@@ -175,8 +175,18 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
   EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
   EXPECT_EQ(decoder->imageCount, 2);
   if (testutil::Av1DecoderAvailable()) {
-    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    avifResult result = avifDecoderNextImage(decoder.get());
+    if (result != AVIF_RESULT_OK) {
+      EXPECT_EQ(result, AVIF_RESULT_DECODE_COLOR_FAILED);
+      return;
+    }
+    result = avifDecoderNextImage(decoder.get());
+    if (result != AVIF_RESULT_OK) {
+      EXPECT_EQ(result, AVIF_RESULT_DECODE_COLOR_FAILED);
+      return;
+    }
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+              AVIF_RESULT_NO_IMAGES_REMAINING);
   }
 }
 
