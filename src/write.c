@@ -3081,7 +3081,9 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             AVIF_CHECKRES(avifItemPropertyDedupFinish(dedup, s, &item->associations, /*essential=*/AVIF_FALSE));
 
             // We don't add an 'lsel' property since many decoders do not support it and will reject the image,
-            // see https://github.com/AOMediaCodec/libavif/pull/2429
+            // see https://github.com/AOMediaCodec/libavif/pull/2429.
+            // Firefox 155 or later will support an 'lsel' property whose layer_id is 0xFFFF,
+            // see https://bugzilla.mozilla.org/show_bug.cgi?id=2055813.
         }
 
         // Write out any opaque properties from avifImageAddOpaqueProperty() or avifImageAddUUIDProperty().
