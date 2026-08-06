@@ -1251,6 +1251,75 @@ TEST(ToneMapTest, ToneMapImageSameHeadroom) {
   }
 }
 
+// avifRGBImage::rowBytes only has to be at least width * pixelSize, so a base
+// image with row padding is a legal input. Check that the "nothing to tone map"
+// early exit honours the source stride instead of assuming it is tight.
+TEST(ToneMapTest, ToneMapRGBPaddedBaseStride) {
+  constexpr uint32_t kWidth = 8;
+  constexpr uint32_t kHeight = 8;
+
+  GainMapPtr gain_map(avifGainMapCreate());
+  ASSERT_NE(gain_map, nullptr);
+  for (int c = 0; c < 3; ++c) {
+    gain_map->gainMapMin[c] = {0, 1};
+    gain_map->gainMapMax[c] = {1, 1};
+    gain_map->gainMapGamma[c] = {1, 1};
+    gain_map->baseOffset[c] = {0, 64};
+    gain_map->alternateOffset[c] = {0, 64};
+  }
+  // baseHdrHeadroom 0 and a target headroom of 0 give a weight of 0, which is
+  // what makes the memcpy fast path eligible. The padded base stride below is
+  // what must keep it from being taken.
+  gain_map->baseHdrHeadroom = {0, 1};
+  gain_map->alternateHdrHeadroom = {1, 1};
+  gain_map->useBaseColorSpace = AVIF_TRUE;
+  gain_map->image =
+      avifImageCreate(kWidth, kHeight, 8, AVIF_PIXEL_FORMAT_YUV400);
+  ASSERT_NE(gain_map->image, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(gain_map->image, AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+
+  avifRGBImage base = {};
+  base.width = kWidth;
+  base.height = kHeight;
+  base.depth = 8;
+  base.format = AVIF_RGB_FORMAT_RGBA;
+  const uint32_t pixel_size = avifRGBImagePixelSize(&base);
+  // Padded stride, as produced by an Android Bitmap or a cropped GPU readback.
+  base.rowBytes = kWidth * pixel_size + 16;
+  std::vector<uint8_t> base_pixels((size_t)base.rowBytes * base.height, 0x41);
+  base.pixels = base_pixels.data();
+
+  // avifRGBImageApplyGainMap() allocates the output itself, so only the fields
+  // it does not set are needed here.
+  avifRGBImage tone_mapped = {};
+  tone_mapped.depth = 8;
+  tone_mapped.format = AVIF_RGB_FORMAT_RGBA;
+
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+  ASSERT_EQ(avifRGBImageApplyGainMap(
+                &base, AVIF_COLOR_PRIMARIES_BT709,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, gain_map.get(),
+                /*hdrHeadroom=*/0.0f, AVIF_COLOR_PRIMARIES_BT709,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, &tone_mapped,
+                /*clli=*/nullptr, &diag),
+            AVIF_RESULT_OK)
+      << diag.error;
+
+  // The gain map is a no-op here, so the output should equal the base image
+  // row by row, each row compared over its own stride.
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    EXPECT_EQ(memcmp(tone_mapped.pixels + (size_t)y * tone_mapped.rowBytes,
+                     base.pixels + (size_t)y * base.rowBytes,
+                     (size_t)kWidth * pixel_size),
+              0)
+        << "row " << y << " differs";
+  }
+
+  avifRGBImageFreePixels(&tone_mapped);
+}
+
 TEST(GainMapTest, OpaqueProperties) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
