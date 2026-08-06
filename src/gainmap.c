@@ -118,10 +118,9 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
     const float weight = avifGetGainMapWeight(hdrHeadroom, gainMap);
 
     // Early exit if the gain map does not need to be applied and the pixel format is the same.
-    if (weight == 0.0f && outputTransferCharacteristics == baseTransferCharacteristics &&
-        outputColorPrimaries == baseColorPrimaries && baseImage->format == toneMappedImage->format &&
-        baseImage->depth == toneMappedImage->depth && baseImage->isFloat == toneMappedImage->isFloat) {
-        assert(baseImage->rowBytes == toneMappedImage->rowBytes);
+    if (weight == 0.0f && outputTransferCharacteristics == baseTransferCharacteristics && outputColorPrimaries == baseColorPrimaries &&
+        baseImage->format == toneMappedImage->format && baseImage->depth == toneMappedImage->depth &&
+        baseImage->isFloat == toneMappedImage->isFloat && baseImage->rowBytes == toneMappedImage->rowBytes) {
         assert(baseImage->height == toneMappedImage->height);
         // Copy the base image.
         memcpy(toneMappedImage->pixels, baseImage->pixels, (size_t)baseImage->rowBytes * baseImage->height);
