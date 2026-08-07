@@ -1163,7 +1163,8 @@ avifResult avifRGBImageUnpremultiplyAlphaLibYUV(avifRGBImage * rgb)
 avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
 {
     // The width, height, and stride parameters of libyuv functions are all of the int type.
-    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX) {
+    if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX ||
+        ((uintptr_t)rgb->pixels % sizeof(uint16_t)) != 0 || (rgb->rowBytes % sizeof(uint16_t)) != 0) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
     const float scale = 1.0f / ((1 << rgb->depth) - 1);

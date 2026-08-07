@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#include <vector>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -84,6 +86,78 @@ TEST(AlphaMultiplyTest, AGrayImagePremultiplyAlpha) {
   memset(rgb.pixels, 1, (size_t)rgb.rowBytes * rgb.height);
   EXPECT_EQ(avifRGBImagePremultiplyAlpha(&rgb), AVIF_RESULT_OK);
   avifRGBImageFreePixels(&rgb);
+}
+
+TEST(AlphaMultiplyTest, HighDepthUnalignedOddStride) {
+  constexpr uint32_t kWidth = 1;
+  constexpr uint32_t kHeight = 3;
+  for (const avifRGBFormat format :
+       {AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_BGRA,
+        AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_GRAYA, AVIF_RGB_FORMAT_AGRAY}) {
+    SCOPED_TRACE(format);
+    avifRGBImage reference;
+    memset(&reference, 0, sizeof(reference));
+    reference.width = kWidth;
+    reference.height = kHeight;
+    reference.depth = 10;
+    reference.format = format;
+    ASSERT_EQ(avifRGBImageAllocatePixels(&reference), AVIF_RESULT_OK);
+
+    const uint32_t channel_count = avifRGBFormatChannelCount(format);
+    const uint32_t alpha_channel =
+        (format == AVIF_RGB_FORMAT_ARGB || format == AVIF_RGB_FORMAT_ABGR ||
+         format == AVIF_RGB_FORMAT_AGRAY)
+            ? 0
+            : channel_count - 1;
+    const uint16_t alpha[kHeight] = {0, 512, 1023};
+    for (uint32_t y = 0; y < kHeight; ++y) {
+      for (uint32_t channel = 0; channel < channel_count; ++channel) {
+        const uint16_t sample =
+            (channel == alpha_channel)
+                ? alpha[y]
+                : static_cast<uint16_t>(128 * (channel + y + 1));
+        memcpy(reference.pixels + static_cast<size_t>(y) * reference.rowBytes +
+                   channel * sizeof(sample),
+               &sample, sizeof(sample));
+      }
+    }
+
+    avifRGBImage padded = reference;
+    padded.rowBytes = reference.rowBytes + 1;
+    std::vector<uint8_t> pixels(
+        static_cast<size_t>(padded.rowBytes) * kHeight + 1, 0xa5);
+    padded.pixels = pixels.data() + 1;
+    for (uint32_t y = 0; y < kHeight; ++y) {
+      memcpy(padded.pixels + static_cast<size_t>(y) * padded.rowBytes,
+             reference.pixels + static_cast<size_t>(y) * reference.rowBytes,
+             reference.rowBytes);
+    }
+
+    ASSERT_EQ(avifRGBImagePremultiplyAlpha(&reference), AVIF_RESULT_OK);
+    ASSERT_EQ(avifRGBImagePremultiplyAlpha(&padded), AVIF_RESULT_OK);
+    for (uint32_t y = 0; y < kHeight; ++y) {
+      EXPECT_EQ(
+          memcmp(padded.pixels + static_cast<size_t>(y) * padded.rowBytes,
+                 reference.pixels + static_cast<size_t>(y) * reference.rowBytes,
+                 reference.rowBytes),
+          0);
+      EXPECT_EQ(padded.pixels[static_cast<size_t>(y + 1) * padded.rowBytes - 1],
+                0xa5);
+    }
+
+    ASSERT_EQ(avifRGBImageUnpremultiplyAlpha(&reference), AVIF_RESULT_OK);
+    ASSERT_EQ(avifRGBImageUnpremultiplyAlpha(&padded), AVIF_RESULT_OK);
+    for (uint32_t y = 0; y < kHeight; ++y) {
+      EXPECT_EQ(
+          memcmp(padded.pixels + static_cast<size_t>(y) * padded.rowBytes,
+                 reference.pixels + static_cast<size_t>(y) * reference.rowBytes,
+                 reference.rowBytes),
+          0);
+      EXPECT_EQ(padded.pixels[static_cast<size_t>(y + 1) * padded.rowBytes - 1],
+                0xa5);
+    }
+    avifRGBImageFreePixels(&reference);
+  }
 }
 
 //------------------------------------------------------------------------------

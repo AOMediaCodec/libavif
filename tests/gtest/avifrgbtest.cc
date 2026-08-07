@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <array>
+#include <cstring>
 #include <tuple>
+#include <vector>
 
 #include "avif/internal.h"
 #include "aviftest_helpers.h"
@@ -110,6 +112,96 @@ TEST_P(SetGetRGBATest, GradientTest) {
     }
   }
   EXPECT_TRUE(testutil::AreImagesEqual(input_rgb, output_rgb));
+}
+
+TEST(YuvToRgbTest, FloatOutputWithUnalignedOddPaddedStride) {
+  constexpr uint32_t kWidth = 1;
+  constexpr uint32_t kHeight = 4;
+  ImagePtr yuv = testutil::CreateImage(
+      kWidth, kHeight, /*depth=*/16, AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV);
+  ASSERT_NE(yuv, nullptr);
+
+  const uint16_t samples[kHeight] = {0x1000, 0x4000, 0x8000, 0xf000};
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    uint16_t* row = reinterpret_cast<uint16_t*>(
+        yuv->yuvPlanes[AVIF_CHAN_Y] +
+        static_cast<size_t>(y) * yuv->yuvRowBytes[AVIF_CHAN_Y]);
+    row[0] = samples[y];
+  }
+
+  testutil::AvifRgbImage tight(yuv.get(), /*depth=*/16, AVIF_RGB_FORMAT_RGBA);
+  tight.isFloat = true;
+  ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &tight), AVIF_RESULT_OK);
+
+  avifRGBImage padded;
+  avifRGBImageSetDefaults(&padded, yuv.get());
+  padded.depth = 16;
+  padded.format = AVIF_RGB_FORMAT_RGBA;
+  padded.isFloat = true;
+  padded.rowBytes = tight.rowBytes + 1;
+  std::vector<uint8_t> pixels(
+      static_cast<size_t>(padded.rowBytes) * kHeight + 1, 0xa5);
+  padded.pixels = pixels.data() + 1;
+
+  ASSERT_EQ(avifImageYUVToRGB(yuv.get(), &padded), AVIF_RESULT_OK);
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    EXPECT_EQ(
+        std::memcmp(padded.pixels + static_cast<size_t>(y) * padded.rowBytes,
+                    tight.pixels + static_cast<size_t>(y) * tight.rowBytes,
+                    tight.rowBytes),
+        0)
+        << "row " << y;
+    EXPECT_EQ(padded.pixels[static_cast<size_t>(y + 1) * padded.rowBytes - 1],
+              0xa5)
+        << "padding byte for row " << y;
+  }
+}
+
+TEST(RgbToYuvTest, InputWithUnalignedOddPaddedStride) {
+  constexpr uint32_t kWidth = 1;
+  constexpr uint32_t kHeight = 4;
+  ImagePtr tight_yuv(
+      avifImageCreate(kWidth, kHeight, /*depth=*/16, AVIF_PIXEL_FORMAT_YUV444));
+  ImagePtr padded_yuv(
+      avifImageCreate(kWidth, kHeight, /*depth=*/16, AVIF_PIXEL_FORMAT_YUV444));
+  ASSERT_NE(tight_yuv, nullptr);
+  ASSERT_NE(padded_yuv, nullptr);
+
+  testutil::AvifRgbImage tight(tight_yuv.get(), /*depth=*/16,
+                               AVIF_RGB_FORMAT_RGBA);
+  tight.avoidLibYUV = true;
+  avifRGBColorSpaceInfo color_space;
+  ASSERT_TRUE(avifGetRGBColorSpaceInfo(&tight, &color_space));
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    const std::array<float, 4> pixel = {
+        static_cast<float>(y + 1) / 8.0f, static_cast<float>(y + 2) / 8.0f,
+        static_cast<float>(y + 3) / 8.0f, static_cast<float>(y + 4) / 8.0f};
+    avifSetRGBAPixel(&tight, 0, y, &color_space, pixel.data());
+  }
+
+  avifRGBImage padded;
+  avifRGBImageSetDefaults(&padded, padded_yuv.get());
+  padded.depth = 16;
+  padded.format = AVIF_RGB_FORMAT_RGBA;
+  padded.avoidLibYUV = true;
+  padded.rowBytes = tight.rowBytes + 1;
+  std::vector<uint8_t> pixels(
+      static_cast<size_t>(padded.rowBytes) * kHeight + 1, 0xa5);
+  padded.pixels = pixels.data() + 1;
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    std::memcpy(padded.pixels + static_cast<size_t>(y) * padded.rowBytes,
+                tight.pixels + static_cast<size_t>(y) * tight.rowBytes,
+                tight.rowBytes);
+  }
+
+  ASSERT_EQ(avifImageRGBToYUV(tight_yuv.get(), &tight), AVIF_RESULT_OK);
+  ASSERT_EQ(avifImageRGBToYUV(padded_yuv.get(), &padded), AVIF_RESULT_OK);
+  EXPECT_TRUE(testutil::AreImagesEqual(*tight_yuv, *padded_yuv));
+  for (uint32_t y = 0; y < kHeight; ++y) {
+    EXPECT_EQ(padded.pixels[static_cast<size_t>(y + 1) * padded.rowBytes - 1],
+              0xa5)
+        << "padding byte for row " << y;
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(
