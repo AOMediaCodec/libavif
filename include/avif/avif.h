@@ -1721,6 +1721,8 @@ AVIF_NODISCARD AVIF_API avifBool avifPeekCompatibleFileType(const avifROData * i
 // Performs tone mapping on a base image using the provided gain map.
 // The HDR headroom is log2 of the ratio of HDR to SDR white brightness of the display to tone map for.
 // 'toneMappedImage' should have the 'format', 'depth', and 'isFloat' fields set to the desired values.
+// This function sets the 'width' and 'height' fields of 'toneMappedImage' to the width and height of
+// `baseImage`, and allocates the 'pixels' buffer and sets the 'rowBytes' field of 'toneMappedImage'.
 // If non NULL, 'clli' will be filled with the light level information of the tone mapped image.
 AVIF_API avifResult avifImageApplyGainMap(const avifImage * baseImage,
                                           const avifGainMap * gainMap,

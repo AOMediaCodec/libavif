@@ -1287,7 +1287,10 @@ TEST(ToneMapTest, ToneMapRGBPaddedBaseStride) {
   const uint32_t pixel_size = avifRGBImagePixelSize(&base);
   // Padded stride, as produced by an Android Bitmap or a cropped GPU readback.
   base.rowBytes = kWidth * pixel_size + 16;
-  std::vector<uint8_t> base_pixels((size_t)base.rowBytes * base.height, 0x41);
+  std::vector<uint8_t> base_pixels((size_t)base.rowBytes * base.height);
+  for (size_t i = 0; i < base_pixels.size(); ++i) {
+    base_pixels[i] = i & 0xff;
+  }
   base.pixels = base_pixels.data();
 
   // avifRGBImageApplyGainMap() allocates the output itself, so only the fields
