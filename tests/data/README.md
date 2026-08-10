@@ -116,6 +116,34 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: single white pixel encoded with libavif at default quality.
 
+### File [iref_count_past_box_end.avif](iref_count_past_box_end.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: written by hand. The file holds `ftyp` and `meta` only and has no
+image data, so there is nothing to preview.
+
+The `auxl` SingleItemTypeReferenceBox inside `iref` declares a size of 12
+bytes, which covers `from_item_ID` and `reference_count` but no
+`to_item_ID`. The two bytes that would hold the first `to_item_ID` follow
+the box.
+
+### File [pyramid_pymd.avif](pyramid_pymd.avif)
+
+![](pyramid_pymd.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: three gradient PNG layers of 128x128, 256x256 and 512x512 pixels
+encoded with libheif 1.21.2 built from source with
+`ENABLE_EXPERIMENTAL_FEATURES=ON`:
+`heif-enc --add-pyramid-group -A layer0.png layer1.png layer2.png`.
+
+The `grpl` box holds one `pymd` EntityToGroupBox. It carries the grouping
+type specific fields `tile_size_x` and `tile_size_y` and the per layer data
+after the entity_id array, so the child box is 22 bytes longer than the
+generic fields alone.
+
 ### Files `kodim*`
 
 #### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif)
