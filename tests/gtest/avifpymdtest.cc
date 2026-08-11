@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <string>
 
@@ -18,17 +20,16 @@ const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
 
-// Parses the given bytes. Strictness is disabled so that the files below can
-// only be rejected for the reason under test.
 avifResult Parse(const testutil::AvifRwData& encoded) {
   DecoderPtr decoder(avifDecoderCreate());
   if (decoder == nullptr) return AVIF_RESULT_UNKNOWN_ERROR;
-  decoder->strictFlags = AVIF_STRICT_DISABLED;
   const avifResult result =
       avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size);
   if (result != AVIF_RESULT_OK) return result;
   return avifDecoderParse(decoder.get());
 }
+
+//------------------------------------------------------------------------------
 
 // An EntityToGroupBox may carry grouping type specific data after the
 // entity_id array. The 'pymd' group of ISO/IEC 23008-12 does, the 'prsl' group
@@ -43,13 +44,68 @@ TEST(EntityToGroupTest, PyramidGroupWithGroupingTypeSpecificData) {
   EXPECT_EQ(Parse(encoded), AVIF_RESULT_OK);
 }
 
-// The mirror direction: a SingleItemTypeReferenceBox whose reference_count
-// asks for more to_item_ID values than its declared box size holds must not be
-// satisfied from the bytes that follow the box.
-TEST(ItemReferenceTest, ReferenceCountBeyondChildBoxSizeIsRejected) {
-  const testutil::AvifRwData encoded = testutil::ReadFile(
-      std::string(data_path) + "iref_count_past_box_end.avif");
+//------------------------------------------------------------------------------
+
+// The 'iref' box of color_grid_alpha_nogrid.avif holds three
+// SingleItemTypeReferenceBoxes. The first one is a 'dimg' box of 16 bytes: an
+// 8 byte header followed by from_item_ID, reference_count and two to_item_IDs.
+constexpr const char* kFileName = "color_grid_alpha_nogrid.avif";
+constexpr size_t kReferenceBoxOffset = 340;
+constexpr uint32_t kReferenceBoxSize = 16;
+
+uint32_t ReadBE32(const uint8_t* bytes) {
+  return (static_cast<uint32_t>(bytes[0]) << 24) |
+         (static_cast<uint32_t>(bytes[1]) << 16) |
+         (static_cast<uint32_t>(bytes[2]) << 8) |
+         static_cast<uint32_t>(bytes[3]);
+}
+
+void WriteBE32(uint32_t value, uint8_t* bytes) {
+  bytes[0] = static_cast<uint8_t>(value >> 24);
+  bytes[1] = static_cast<uint8_t>(value >> 16);
+  bytes[2] = static_cast<uint8_t>(value >> 8);
+  bytes[3] = static_cast<uint8_t>(value);
+}
+
+// Changes the declared size of the first SingleItemTypeReferenceBox by delta
+// bytes. Nothing else is touched, so the reference fields and every other box
+// keep the values of the valid file.
+void SetReferenceBoxSizeDelta(int delta, testutil::AvifRwData* encoded) {
+  ASSERT_GE(encoded->size, kReferenceBoxOffset + kReferenceBoxSize);
+  uint8_t* box = encoded->data + kReferenceBoxOffset;
+  // Sanity check: the fixture is the file this test was authored against.
+  ASSERT_EQ(std::memcmp(box + 4, "dimg", 4), 0);
+  ASSERT_EQ(ReadBE32(box), kReferenceBoxSize);
+  WriteBE32(static_cast<uint32_t>(static_cast<int>(kReferenceBoxSize) + delta),
+            box);
+}
+
+// Control for the two cases below: the file parses as it is, so a failure
+// there can only come from the one byte size change.
+TEST(ItemReferenceTest, ValidFileParses) {
+  const testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kFileName);
   ASSERT_NE(encoded.size, size_t{0});
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_OK);
+}
+
+// The declared size is one byte short of what the reference fields need. The
+// missing byte must not be taken from the next child box.
+TEST(ItemReferenceTest, ReferenceBoxSizeOneByteTooSmall) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kFileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetReferenceBoxSizeDelta(-1, &encoded));
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+// The declared size is one byte more than the reference fields occupy, so the
+// box claims the first byte of the next child box.
+TEST(ItemReferenceTest, ReferenceBoxSizeOneByteTooLarge) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kFileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetReferenceBoxSizeDelta(1, &encoded));
   EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
 }
 

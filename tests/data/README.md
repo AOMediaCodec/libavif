@@ -116,18 +116,6 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: single white pixel encoded with libavif at default quality.
 
-### File [iref_count_past_box_end.avif](iref_count_past_box_end.avif)
-
-License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
-
-Source: written by hand. The file holds `ftyp` and `meta` only and has no
-image data, so there is nothing to preview.
-
-The `auxl` SingleItemTypeReferenceBox inside `iref` declares a size of 12
-bytes, which covers `from_item_ID` and `reference_count` but no
-`to_item_ID`. The two bytes that would hold the first `to_item_ID` follow
-the box.
-
 ### File [pyramid_pymd.avif](pyramid_pymd.avif)
 
 ![](pyramid_pymd.avif)
