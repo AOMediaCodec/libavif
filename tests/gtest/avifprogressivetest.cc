@@ -85,7 +85,8 @@ TEST_F(ProgressiveTest, QualityChange) {
   encoder_->quality = 100;
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
-            AVIF_RESULT_OK);
+            AVIF_RESULT_OK)
+      << encoder_->diag.error;
 
   ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
 
@@ -199,7 +200,8 @@ TEST_F(ProgressiveTest, LayeredGrid) {
   encoder_->quality = 100;
   ASSERT_EQ(avifEncoderAddImageGrid(encoder_.get(), 2, 1, image_grid,
                                     AVIF_ADD_IMAGE_FLAG_NONE),
-            AVIF_RESULT_OK);
+            AVIF_RESULT_OK)
+      << encoder_->diag.error;
 
   ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
 

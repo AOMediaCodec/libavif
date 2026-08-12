@@ -984,17 +984,29 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         codec->internal->encoderInitialized = AVIF_TRUE;
 
         if ((cfg->rc_end_usage == AOM_CQ) || (cfg->rc_end_usage == AOM_Q)) {
-            aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, quantizer);
+            if (aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, quantizer) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AOME_SET_CQ_LEVEL)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         avifBool lossless = (quantizer == AVIF_QUANTIZER_LOSSLESS);
         if (lossless) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, 1) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_LOSSLESS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (tileRowsLog2 != 0) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_TILE_ROWS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (tileColsLog2 != 0) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_TILE_COLUMNS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (encoder->extraLayerCount > 0) {
             int layerCount = encoder->extraLayerCount + 1;
@@ -1014,7 +1026,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (alpha) {
             // AVIF specification, Section 4 "Auxiliary Image Items and Sequences":
             //   The color_range field in the Sequence Header OBU shall be set to 1.
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_COLOR_RANGE)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
 
             // Keep the default AOM_CSP_UNKNOWN value.
 
@@ -1032,23 +1047,41 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
             // aom_codec_control() only if the values are not the defaults.
             if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries) != AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_COLOR_PRIMARIES)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
             if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics) !=
+                    AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_TRANSFER_CHARACTERISTICS)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
             if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients) !=
+                    AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_MATRIX_COEFFICIENTS)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
             if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition) !=
+                    AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_CHROMA_SAMPLE_POSITION)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
 
             // AV1-ISOBMFF specification, Section 2.3.4:
             //   The value of full_range_flag in the 'colr' box SHALL match the color_range
             //   flag in the Sequence Header OBU.
             if (image->yuvRange != AVIF_RANGE_LIMITED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange);
+                if (aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_RANGE, (int)image->yuvRange) != AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_COLOR_RANGE)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
 
             // Section 2.3.4 of AV1-ISOBMFF says 'colr' with 'nclx' should be present and shall match CICP
@@ -1065,7 +1098,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (cfg->g_usage == AOM_USAGE_ALL_INTRA) {
             // Enable AV1E_SET_SKIP_POSTPROC_FILTERING for still-picture encoding, which is
             // disabled by default.
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_SKIP_POSTPROC_FILTERING, 1);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_SKIP_POSTPROC_FILTERING, 1) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_SKIP_POSTPROC_FILTERING)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
 #endif
 
@@ -1138,17 +1174,29 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             }
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_ROWS, tileRowsLog2) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_TILE_ROWS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_TILE_COLS_LOG2) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_TILE_COLUMNS, tileColsLog2) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_TILE_COLUMNS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (encoderChanges & qualityChangedBit) {
             if ((cfg->rc_end_usage == AOM_CQ) || (cfg->rc_end_usage == AOM_Q)) {
-                aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, quantizer);
+                if (aom_codec_control(&codec->internal->encoder, AOME_SET_CQ_LEVEL, quantizer) != AOM_CODEC_OK) {
+                    aomDiagPrintf(codec->diag, "aom_codec_control(AOME_SET_CQ_LEVEL)", &codec->internal->encoder);
+                    return AVIF_RESULT_UNKNOWN_ERROR;
+                }
             }
             avifBool lossless = (quantizer == AVIF_QUANTIZER_LOSSLESS);
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_LOSSLESS, lossless) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_LOSSLESS)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
         if (encoderChanges & AVIF_ENCODER_CHANGE_CODEC_SPECIFIC) {
             // Do not apply libavifDefaultTuneMetric even if useLibavifDefaultTuneMetric is true:
@@ -1167,7 +1215,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     if (encoder->extraLayerCount > 0) {
-        aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, codec->internal->currentLayer);
+        if (aom_codec_control(&codec->internal->encoder, AOME_SET_SPATIAL_LAYER_ID, codec->internal->currentLayer) != AOM_CODEC_OK) {
+            aomDiagPrintf(codec->diag, "aom_codec_control(AOME_SET_SPATIAL_LAYER_ID)", &codec->internal->encoder);
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
     }
 
     aom_scaling_mode_t aomScalingMode;
@@ -1179,7 +1230,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     }
     if ((aomScalingMode.h_scaling_mode != AOME_NORMAL) || (aomScalingMode.v_scaling_mode != AOME_NORMAL)) {
         // AOME_SET_SCALEMODE only applies to next frame (layer), so we have to set it every time.
-        aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &aomScalingMode);
+        if (aom_codec_control(&codec->internal->encoder, AOME_SET_SCALEMODE, &aomScalingMode) != AOM_CODEC_OK) {
+            aomDiagPrintf(codec->diag, "aom_codec_control(AOME_SET_SCALEMODE)", &codec->internal->encoder);
+            return AVIF_RESULT_UNKNOWN_ERROR;
+        }
 
         // Check if we need to avoid a multithreading crash in loop restoration
         // code in libaom < 3.13.3 when the first layer of a layered image is
@@ -1187,7 +1241,10 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         static const int aomVersion_3_13_3 = (3 << 16) | (13 << 8) | 3;
         if (aomVersion < aomVersion_3_13_3 && encoder->maxThreads > 1 && encoder->extraLayerCount > 0 &&
             codec->internal->currentLayer == 0) {
-            aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_RESTORATION, 0);
+            if (aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_RESTORATION, 0) != AOM_CODEC_OK) {
+                aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_ENABLE_RESTORATION)", &codec->internal->encoder);
+                return AVIF_RESULT_UNKNOWN_ERROR;
+            }
         }
     }
 
