@@ -3348,14 +3348,21 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
         avifBoxHeader irefHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &irefHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
 
+        // Each SingleItemTypeReferenceBox must be parsed within the bounds of its own declared box
+        // size, like every other child box loop in this file. Reading the reference fields directly
+        // from the parent stream ignores irefHeader.size and lets a reference_count that disagrees
+        // with the box size read into the following bytes.
+        BEGIN_STREAM(refStream, avifROStreamCurrent(&s), irefHeader.size, diag, "Box[iref] SingleItemTypeReference");
+        AVIF_CHECKERR(avifROStreamSkip(&s, irefHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+
         uint32_t fromID = 0;
         if (version == 0) {
             uint16_t tmp;
-            AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) from_item_ID;
+            AVIF_CHECKERR(avifROStreamReadU16(&refStream, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) from_item_ID;
             fromID = tmp;
         } else {
             // version == 1
-            AVIF_CHECKERR(avifROStreamReadU32(&s, &fromID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) from_item_ID;
+            AVIF_CHECKERR(avifROStreamReadU32(&refStream, &fromID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) from_item_ID;
         }
         // ISO 14496-12 section 8.11.12.1: "index values start at 1"
         AVIF_CHECKRES(avifCheckItemID("iref", fromID, diag));
@@ -3373,17 +3380,17 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
         }
 
         uint16_t referenceCount = 0;
-        AVIF_CHECKERR(avifROStreamReadU16(&s, &referenceCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) reference_count;
+        AVIF_CHECKERR(avifROStreamReadU16(&refStream, &referenceCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) reference_count;
 
         for (uint16_t refIndex = 0; refIndex < referenceCount; ++refIndex) {
             uint32_t toID = 0;
             if (version == 0) {
                 uint16_t tmp;
-                AVIF_CHECKERR(avifROStreamReadU16(&s, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) to_item_ID;
+                AVIF_CHECKERR(avifROStreamReadU16(&refStream, &tmp), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) to_item_ID;
                 toID = tmp;
             } else {
                 // version == 1
-                AVIF_CHECKERR(avifROStreamReadU32(&s, &toID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) to_item_ID;
+                AVIF_CHECKERR(avifROStreamReadU32(&refStream, &toID), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) to_item_ID;
             }
             AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
 
@@ -3423,25 +3430,30 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader groupHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &groupHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        // Each EntityToGroupBox must be parsed within the bounds of its own declared box size, like
+        // every other child box loop in this file. Reading the group fields directly from the parent
+        // stream ignores groupHeader.size and lets num_entities_in_group read into the following bytes.
+        BEGIN_STREAM(groupStream, avifROStreamCurrent(&s), groupHeader.size, diag, "Box[grpl] EntityToGroup");
+        AVIF_CHECKERR(avifROStreamSkip(&s, groupHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         // We don't check the flag or version as they depend on the grouping type (and for simplicity).
         // ISO/IEC 14496-12:2024 Section 8.15.3.2
         //   version shall be 0 unless defined otherwise for the grouping_type. Any values of flags such that
         //   (flags & 0x000FFF) is not equal to 0 are reserved. The values of flags shall be such that (flags
         //   & 0xFFF000) is equal to 0 unless defined otherwise for the grouping_type.
-        AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&s, NULL, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamReadVersionAndFlags(&groupStream, NULL, NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         avifEntityToGroup * group = avifArrayPush(&meta->entityToGroups);
         AVIF_CHECKERR(group != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         AVIF_CHECKERR(avifArrayCreate(&group->entityIDs, sizeof(uint32_t), 2), AVIF_RESULT_OUT_OF_MEMORY);
 
         memcpy(group->groupingType, groupHeader.type, 4);
-        AVIF_CHECKERR(avifROStreamReadU32(&s, &group->groupID), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamReadU32(&groupStream, &group->groupID), AVIF_RESULT_BMFF_PARSE_FAILED);
         uint32_t numEntitiesInGroup;
-        AVIF_CHECKERR(avifROStreamReadU32(&s, &numEntitiesInGroup), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamReadU32(&groupStream, &numEntitiesInGroup), AVIF_RESULT_BMFF_PARSE_FAILED);
         for (uint32_t i = 0; i < numEntitiesInGroup; ++i) {
             uint32_t * entityId = avifArrayPush(&group->entityIDs);
             AVIF_CHECKERR(entityId != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-            AVIF_CHECKERR(avifROStreamReadU32(&s, entityId), AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKERR(avifROStreamReadU32(&groupStream, entityId), AVIF_RESULT_BMFF_PARSE_FAILED);
         }
     }
 

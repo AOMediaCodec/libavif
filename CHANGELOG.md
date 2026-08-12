@@ -37,6 +37,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   ICC profile.
 * LocalLibXml2.cmake: Properly handle a libxml2 library compiled by
   ext/libxml2.cmd.
+* Parse the children of the 'iref' and 'grpl' boxes within their own
+  declared box size. Files with an EntityToGroupBox carrying grouping type
+  specific data after the entity_id array are no longer rejected.
 
 ## [1.4.2] - 2026-05-26
 
