@@ -3348,12 +3348,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
         avifBoxHeader irefHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &irefHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
 
-        // Each SingleItemTypeReferenceBox must be parsed within the bounds of its own declared box
-        // size, like every other child box loop in this file. Reading the reference fields directly
-        // from the parent stream ignores irefHeader.size and lets a reference_count that disagrees
-        // with the box size read into the following bytes.
         BEGIN_STREAM(refStream, avifROStreamCurrent(&s), irefHeader.size, diag, "Box[iref] SingleItemTypeReference");
-        AVIF_CHECKERR(avifROStreamSkip(&s, irefHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         uint32_t fromID = 0;
         if (version == 0) {
@@ -3418,6 +3413,8 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 item->premByID = toID;
             }
         }
+
+        AVIF_CHECKERR(avifROStreamSkip(&s, irefHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
     }
 
     return AVIF_RESULT_OK;
@@ -3430,11 +3427,7 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader groupHeader;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &groupHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
-        // Each EntityToGroupBox must be parsed within the bounds of its own declared box size, like
-        // every other child box loop in this file. Reading the group fields directly from the parent
-        // stream ignores groupHeader.size and lets num_entities_in_group read into the following bytes.
         BEGIN_STREAM(groupStream, avifROStreamCurrent(&s), groupHeader.size, diag, "Box[grpl] EntityToGroup");
-        AVIF_CHECKERR(avifROStreamSkip(&s, groupHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         // We don't check the flag or version as they depend on the grouping type (and for simplicity).
         // ISO/IEC 14496-12:2024 Section 8.15.3.2
         //   version shall be 0 unless defined otherwise for the grouping_type. Any values of flags such that
@@ -3455,6 +3448,8 @@ static avifResult avifParseGroupsListBox(avifMeta * meta, const uint8_t * raw, s
             AVIF_CHECKERR(entityId != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             AVIF_CHECKERR(avifROStreamReadU32(&groupStream, entityId), AVIF_RESULT_BMFF_PARSE_FAILED);
         }
+
+        AVIF_CHECKERR(avifROStreamSkip(&s, groupHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
     }
 
     return AVIF_RESULT_OK;
@@ -3867,11 +3862,13 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
         AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "auxl", 4)) {
+            AVIF_CHECK(header.size >= sizeof(uint32_t));
             uint32_t toID;
             AVIF_CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[];
             AVIF_CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
             track->auxForID = toID;
         } else if (!memcmp(header.type, "prem", 4)) {
+            AVIF_CHECK(header.size >= sizeof(uint32_t));
             uint32_t byID;
             AVIF_CHECK(avifROStreamReadU32(&s, &byID));                       // unsigned int(32) track_IDs[];
             AVIF_CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
