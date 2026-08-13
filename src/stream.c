@@ -297,7 +297,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
 avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
 {
     AVIF_CHECK(avifROStreamReadBoxHeaderPartial(stream, header, /*topLevel=*/AVIF_FALSE));
-    if (header->size > avifROStreamRemainingBytes(stream)) {
+    if (!avifROStreamHasBytesLeft(stream, header->size)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Child box too large, possibly truncated data", stream->diagContext);
         return AVIF_FALSE;
     }
