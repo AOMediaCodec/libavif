@@ -40,7 +40,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup Developer Command Prompt for Microsoft Visual C++
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run: pip install meson
@@ -52,27 +52,27 @@ runs:
       shell: bash
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} dav1d" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} dav1d" >> "$GITHUB_ENV"
       shell: bash
     - name: Install SVT-AV1 library
       if: ${{ inputs.codec-svt == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} svt-av1" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} svt-av1" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libjpeg-turbo library
       if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libjpeg-turbo" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} libjpeg-turbo" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libxml2 library
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} libxml2" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libyuv library
       if: ${{ inputs.libyuv == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libyuv" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} libyuv" >> "$GITHUB_ENV"
       shell: bash
     - name: Install zlibpng library
       if: ${{ inputs.zlibpng == 'SYSTEM' }}
-      run: echo "AVIF_WIN_LIBRARIES=${{ env.AVIF_WIN_LIBRARIES }} libpng zlib" >> "$GITHUB_ENV"
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} libpng zlib" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install libraries
