@@ -73,6 +73,28 @@ TEST(AltrTest, SampleTransformDepthParseNextEqual) {
   EXPECT_EQ(decoder->image->depth, depth);
 }
 
+TEST(AltrTest, SampleTransformDecoderReset) {
+  const testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + "weld_sato_12B_8B_q0.avif");
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->image->depth, 16u);
+
+  // avifDecoderSetSource() automatically resets an already parsed decoder.
+  ASSERT_EQ(avifDecoderSetSource(decoder.get(), AVIF_DECODER_SOURCE_AUTO),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->image->depth, 16u);
+}
+
 // Verifies the fix for https://github.com/AOMediaCodec/libavif/issues/2979.
 TEST(AltrTest, ZeroImageContentToDecode) {
   const std::string file_path =
