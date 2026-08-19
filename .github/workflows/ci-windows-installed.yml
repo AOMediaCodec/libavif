@@ -50,8 +50,6 @@ jobs:
           echo "AVIF_CMAKE_CXX_COMPILER=-DCMAKE_CXX_COMPILER=clang-cl" >> $env:GITHUB_ENV
 
       - name: Prepare libavif (cmake)
-        env:
-          STEPS_SETUP_OUTPUTS_VCPKG_CMAKE_CONFIG: ${{ steps.setup.outputs.vcpkg-cmake-config }}
         run: >
           cmake $env:STEPS_SETUP_OUTPUTS_VCPKG_CMAKE_CONFIG -G Ninja -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
@@ -64,6 +62,8 @@ jobs:
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON $env:AVIF_CMAKE_C_COMPILER $env:AVIF_CMAKE_CXX_COMPILER
+        env:
+          STEPS_SETUP_OUTPUTS_VCPKG_CMAKE_CONFIG: ${{ steps.setup.outputs.vcpkg-cmake-config }}
       - name: Build libavif
         run: cmake --build build --config Release --parallel 4
       - name: Run AVIF Tests
