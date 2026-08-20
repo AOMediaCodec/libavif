@@ -40,6 +40,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Parse the children of the 'iref' and 'grpl' boxes within their own
   declared box size. Files with an EntityToGroupBox carrying grouping type
   specific data after the entity_id array are no longer rejected.
+* Reset Sample Transform decoder state in avifDecoderReset() so repeated resets
+  and avifDecoderSetSource() calls do not fail.
 
 ## [1.4.2] - 2026-05-26
 
