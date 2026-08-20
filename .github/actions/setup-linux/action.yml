@@ -52,53 +52,53 @@ runs:
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} meson" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} meson" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libdav1d-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libdav1d-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install rav1e library
       if: ${{ inputs.codec-rav1e == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} librav1e-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} librav1e-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install SVT-AV1 library
       if: ${{ inputs.codec-svt == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libsvtav1enc-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libsvtav1enc-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up tests
       if: ${{ inputs.gtest != 'OFF' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} imagemagick" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} imagemagick" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up gtest
       if: ${{ inputs.gtest == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libgtest-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libgtest-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libjpeg-turbo library
       if: ${{ inputs.libjpeg-turbo == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libjpeg-turbo8-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libjpeg-turbo8-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libxml2 library
       if: ${{ inputs.libxml2 == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libxml2" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libxml2" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libyuv library
       if: ${{ inputs.libyuv == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libyuv-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libyuv-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Install nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-avm == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} nasm" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} nasm" >> "$GITHUB_ENV"
       shell: bash
     - name: Install zlibpng library
       if: ${{ inputs.zlibpng == 'SYSTEM' }}
-      run: echo "AVIF_UNIX_LIBRARIES=${{ env.AVIF_UNIX_LIBRARIES }} libpng-dev" >> "$GITHUB_ENV"
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libpng-dev" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install libraries
       run: |
         sudo apt update -y
-        sudo apt install -y ${{ env.AVIF_UNIX_LIBRARIES }}
+        sudo apt install -y ${AVIF_UNIX_LIBRARIES}
       shell: bash
 
     - uses: ./.github/actions/cache
@@ -117,5 +117,7 @@ runs:
 
     - name: Set GCC & G++ compiler
       if: ${{ inputs.gcc-version != '' }}
-      run: echo "CC=gcc-${{ inputs.gcc-version }}" >> $GITHUB_ENV && echo "CXX=g++-${{ inputs.gcc-version }}" >> $GITHUB_ENV
+      run: echo "CC=gcc-${INPUTS_GCC_VERSION}" >> $GITHUB_ENV && echo "CXX=g++-${INPUTS_GCC_VERSION}" >> $GITHUB_ENV
       shell: bash
+      env:
+        INPUTS_GCC_VERSION: ${{ inputs.gcc-version }}
