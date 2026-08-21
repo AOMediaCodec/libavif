@@ -45,6 +45,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Support a 'thmb', 'auxl', 'cdsc' or 'prem' item reference that links one item
   to several items. Only the target parsed last used to be kept, silently
   dropping the others.
+* Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
+  alpha_is_premultiplied value was stored in a field compared against the alpha
+  item ID, so such an image used to decode as straight alpha.
 
 ## [1.4.2] - 2026-05-26
 

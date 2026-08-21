@@ -4582,8 +4582,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         // Property with fixed index 7.
         AVIF_CHECKRES(avifDecoderItemAddReference(alphaItem, "auxl", colorItem->id));
         if (alphaIsPremultiplied) {
-            // Unchanged behaviour: this used to store the one bit flag itself, not an item ID.
-            AVIF_CHECKRES(avifDecoderItemAddReference(colorItem, "prem", alphaIsPremultiplied));
+            AVIF_CHECKRES(avifDecoderItemAddReference(colorItem, "prem", alphaItem->id));
         }
         avifProperty * alphaAuxProp = avifMetaCreateProperty(meta, "auxC");
         AVIF_CHECKERR(alphaAuxProp, AVIF_RESULT_OUT_OF_MEMORY);

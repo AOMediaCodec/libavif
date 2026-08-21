@@ -129,6 +129,54 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   }
 }
 
+// The parameterized test above compares a MinimizedImageBox against a regular
+// MetaBox for the same image, and AreImagesEqual() compares alphaPremultiplied.
+// No parameter set marks the alpha as premultiplied though, so the flag was
+// never exercised: the MinimizedImageBox path stored the one bit
+// alpha_is_premultiplied value in a field the decoder compares against the
+// alpha item ID, and a premultiplied image silently decoded as straight alpha.
+TEST(MinimizedImageBoxPremultipliedTest, SurvivesTheRoundTrip) {
+  ImagePtr image = testutil::CreateImage(/*width=*/12, /*height=*/34,
+                                         /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
+                                         AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  image->alphaPremultiplied = AVIF_TRUE;
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->headerFormat = AVIF_HEADER_MINI;
+  testutil::AvifRwData encoded_mini;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
+            AVIF_RESULT_OK);
+
+  ImagePtr decoded_mini(avifImageCreateEmpty());
+  ASSERT_NE(decoded_mini, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded_mini.get(),
+                                  encoded_mini.data, encoded_mini.size),
+            AVIF_RESULT_OK);
+  EXPECT_TRUE(decoded_mini->alphaPremultiplied);
+
+  // Control: the same image in a regular MetaBox keeps the flag, so a failure
+  // above is specific to the MinimizedImageBox path.
+  testutil::AvifRwData encoded_meta =
+      testutil::Encode(image.get(), encoder->speed);
+  ASSERT_NE(encoded_meta.data, nullptr);
+  ImagePtr decoded_meta(avifImageCreateEmpty());
+  ASSERT_NE(decoded_meta, nullptr);
+  DecoderPtr decoder_meta(avifDecoderCreate());
+  ASSERT_NE(decoder_meta, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
+                                  encoded_meta.data, encoded_meta.size),
+            AVIF_RESULT_OK);
+  EXPECT_TRUE(decoded_meta->alphaPremultiplied);
+}
+
+//------------------------------------------------------------------------------
+
 INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
