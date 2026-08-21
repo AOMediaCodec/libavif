@@ -6093,6 +6093,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         memset(&data->tileInfos[c].grid, 0, sizeof(data->tileInfos[c].grid));
     }
     avifDecoderDataClearTiles(data);
+    data->sampleTransformNumInputImageItems = 0;
+    avifArrayDestroy(&data->meta->sampleTransformExpression);
 
     // Prepare / cleanup decoded image state
     if (decoder->image) {
