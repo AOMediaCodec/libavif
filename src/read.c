@@ -6095,6 +6095,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     avifDecoderDataClearTiles(data);
     data->sampleTransformNumInputImageItems = 0;
     avifArrayDestroy(&data->meta->sampleTransformExpression);
+    data->meta->sampleTransformDepth = 0;
 
     // Prepare / cleanup decoded image state
     if (decoder->image) {
