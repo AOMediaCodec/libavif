@@ -468,6 +468,50 @@ TEST(MetadataTest, XMPWithTrailingNullCharacter) {
 }
 
 //------------------------------------------------------------------------------
+// Multiple targets in a single item type reference box
+
+// Section 8.11.12.1 of ISO/IEC 14496-12 represents the targets of a
+// SingleItemTypeReferenceBox as an array of to_item_IDs. libavif used to keep
+// one target per item, so the target parsed last silently won.
+// In circle_cdsc_two_targets.avif the Exif item describes items [1, 2]. The
+// Exif metadata used to disappear without any error, exit code or diagnostic;
+// swapping the two IDs made it reappear. It must survive either way.
+TEST(MetadataTest, CdscWithMultipleTargets) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "circle_cdsc_two_targets.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_OK);
+  EXPECT_NE(decoded->exif.size, 0u);
+  EXPECT_NE(decoded->exif.data, nullptr);
+}
+
+// Same for the auxiliary item relation. The consequence is heavier than for
+// cdsc: in circle_auxl_two_targets.avif the alpha item is declared auxiliary
+// for items [1, 3], so the alpha plane used to be dropped and a transparent
+// image decoded as opaque, with no error, no diagnostic and an exit code of
+// zero.
+TEST(MetadataTest, AuxlWithMultipleTargets) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "circle_auxl_two_targets.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_OK);
+  ASSERT_NE(decoded->alphaPlane, nullptr);
+  EXPECT_NE(decoded->alphaRowBytes, 0u);
+}
+
+//------------------------------------------------------------------------------
 
 }  // namespace
 }  // namespace avif

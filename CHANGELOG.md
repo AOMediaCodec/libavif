@@ -42,6 +42,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   specific data after the entity_id array are no longer rejected.
 * Reset Sample Transform decoder state in avifDecoderReset() so repeated resets
   and avifDecoderSetSource() calls do not fail.
+* Support a 'thmb', 'auxl', 'cdsc' or 'prem' item reference that links one item
+  to several items. Only the target parsed last used to be kept, silently
+  dropping the others.
 
 ## [1.4.2] - 2026-05-26
 
