@@ -2033,13 +2033,15 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
+        // Version 0 has no construction_method field; the data is located by file offsets,
+        // matching construction method 0.
+        uint8_t constructionMethod = 0;
         if (version == 1 || version == 2) {
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &reserved, /*bitCount=*/12), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(12) reserved = 0;
             if (reserved) {
                 avifDiagnosticsPrintf(diag, "Box[iloc] has a non null reserved field [%u]", reserved);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            uint8_t constructionMethod;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &constructionMethod, /*bitCount=*/4),
                           AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(4) construction_method;
             if (constructionMethod != 0 /* file offset */ && constructionMethod != 1 /* idat offset */) {
@@ -2054,6 +2056,10 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 
         uint16_t dataReferenceIndex;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &dataReferenceIndex), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) data_reference_index;
+        if (constructionMethod == 0 /* file offset */ && dataReferenceIndex != 0) {
+            avifDiagnosticsPrintf(diag, "Item ID [%u] contains an unsupported data reference index [%u]", itemID, dataReferenceIndex);
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
         uint64_t baseOffset;
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
