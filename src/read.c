@@ -209,6 +209,16 @@ static const avifProperty * avifPropertyArrayFind(const avifPropertyArray * prop
 
 AVIF_ARRAY_DECLARE(avifExtentArray, avifExtent, extent);
 
+// One entry of a SingleItemTypeReferenceBox: "this item is a {type} for item #{toID}".
+// ISO/IEC 14496-12 section 8.11.12.1 allows an array of to_item_IDs per box, and several
+// boxes of the same type may share a from_item_ID, so one item can hold several of these.
+typedef struct avifItemReference
+{
+    uint8_t type[4];
+    uint32_t toID;
+} avifItemReference;
+AVIF_ARRAY_DECLARE(avifItemReferenceArray, avifItemReference, ref);
+
 // one "item" worth for decoding (all iref, iloc, iprp, etc refer to one of these)
 typedef struct avifDecoderItem
 {
@@ -227,13 +237,11 @@ typedef struct avifDecoderItem
                                    // If false, mergedExtents is used as an avifROData and points to a
                                    // buffer it doesn't own.
     avifBool partialMergedExtents; // If true, mergedExtents doesn't have all of the item data yet
-    uint32_t thumbnailForID;       // if non-zero, this item is a thumbnail for Item #{thumbnailForID}
-    uint32_t auxForID;             // if non-zero, this item is an auxC plane for Item #{auxForID}
-    uint32_t descForID;            // if non-zero, this item is a content description for Item #{descForID}
     uint32_t dimgForID;            // if non-zero, this item is an input of derived Item #{dimgForID}
     uint32_t dimgIdx; // If dimgForId is non-zero, this is the zero-based index of this item in the list of Item #{dimgForID}'s dimg.
     avifBool hasDimgFrom; // whether there is a 'dimg' box with this item's id as 'fromID'
-    uint32_t premByID;    // if non-zero, this item is premultiplied by Item #{premByID}
+    // The 'thmb', 'auxl', 'cdsc' and 'prem' references from this item, in file order.
+    avifItemReferenceArray references;
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
     avifBool ipmaSeen;    // if true, this item already received a property association
     avifBool progressive; // if true, this item has progressive layers (a1lx), but does not select a specific layer (the layer_id value in lsel is set to 0xFFFF)
@@ -243,6 +251,39 @@ typedef struct avifDecoderItem
 #endif
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
+
+// Records "this item is a {type} for item #{toID}".
+static avifResult avifDecoderItemAddReference(avifDecoderItem * item, const char * type, uint32_t toID)
+{
+    avifItemReference * reference = (avifItemReference *)avifArrayPush(&item->references);
+    AVIF_CHECKERR(reference != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    memcpy(reference->type, type, 4);
+    reference->toID = toID;
+    return AVIF_RESULT_OK;
+}
+
+// Returns AVIF_TRUE if this item is a {type} for item #{toID}.
+static avifBool avifDecoderItemReferences(const avifDecoderItem * item, const char * type, uint32_t toID)
+{
+    for (uint32_t i = 0; i < item->references.count; ++i) {
+        const avifItemReference * reference = &item->references.ref[i];
+        if (!memcmp(reference->type, type, 4) && reference->toID == toID) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
+}
+
+// Returns AVIF_TRUE if this item is a {type} for at least one item.
+static avifBool avifDecoderItemHasReference(const avifDecoderItem * item, const char * type)
+{
+    for (uint32_t i = 0; i < item->references.count; ++i) {
+        if (!memcmp(item->references.ref[i].type, type, 4)) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
+}
 
 // grid storage
 typedef struct avifImageGrid
@@ -870,6 +911,7 @@ static void avifMetaDestroy(avifMeta * meta)
         avifDecoderItem * item = meta->items.item[i];
         avifPropertyArrayDestroy(&item->properties);
         avifArrayDestroy(&item->extents);
+        avifArrayDestroy(&item->references);
         if (item->ownsMergedExtents) {
             avifRWDataFree(&item->mergedExtents);
         }
@@ -932,6 +974,14 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     if (!avifArrayCreate(&(*item)->extents, sizeof(avifExtent), 1)) {
+        avifPropertyArrayDestroy(&(*item)->properties);
+        avifFree(*item);
+        *item = NULL;
+        avifArrayPop(&meta->items);
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (!avifArrayCreate(&(*item)->references, sizeof(avifItemReference), 1)) {
+        avifArrayDestroy(&(*item)->extents);
         avifPropertyArrayDestroy(&(*item)->properties);
         avifFree(*item);
         *item = NULL;
@@ -1897,7 +1947,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             continue;
         }
 
-        if ((colorId > 0) && (item->descForID != colorId)) {
+        if ((colorId > 0) && !avifDecoderItemReferences(item, "cdsc", colorId)) {
             // Not a content description (metadata) for the colorOBU, skip it
             continue;
         }
@@ -3390,12 +3440,12 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             AVIF_CHECKRES(avifCheckItemID("iref", toID, diag));
 
             // Read this reference as "{fromID} is a {irefType} for {toID}"
-            if (!memcmp(irefHeader.type, "thmb", 4)) {
-                item->thumbnailForID = toID;
-            } else if (!memcmp(irefHeader.type, "auxl", 4)) {
-                item->auxForID = toID;
-            } else if (!memcmp(irefHeader.type, "cdsc", 4)) {
-                item->descForID = toID;
+            if (!memcmp(irefHeader.type, "thmb", 4) || !memcmp(irefHeader.type, "auxl", 4) ||
+                !memcmp(irefHeader.type, "cdsc", 4) || !memcmp(irefHeader.type, "prem", 4)) {
+                // Section 8.11.12.1 of ISO/IEC 14496-12 represents the items linked to as an array
+                // of to_item_IDs, and several boxes of the same type may share a from_item_ID, so
+                // keep every target instead of only the one parsed last.
+                AVIF_CHECKRES(avifDecoderItemAddReference(item, (const char *)irefHeader.type, toID));
             } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                 // derived images refer in the opposite direction
                 avifDecoderItem * dimg;
@@ -3409,8 +3459,6 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 AVIF_CHECKERR(dimg->dimgForID == 0, AVIF_RESULT_NOT_IMPLEMENTED);
                 dimg->dimgForID = fromID;
                 dimg->dimgIdx = refIndex;
-            } else if (!memcmp(irefHeader.type, "prem", 4)) {
-                item->premByID = toID;
             }
         }
 
@@ -4532,8 +4580,10 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
 
     if (hasAlpha) {
         // Property with fixed index 7.
-        alphaItem->auxForID = colorItem->id;
-        colorItem->premByID = alphaIsPremultiplied;
+        AVIF_CHECKRES(avifDecoderItemAddReference(alphaItem, "auxl", colorItem->id));
+        if (alphaIsPremultiplied) {
+            AVIF_CHECKRES(avifDecoderItemAddReference(colorItem, "prem", alphaItem->id));
+        }
         avifProperty * alphaAuxProp = avifMetaCreateProperty(meta, "auxC");
         AVIF_CHECKERR(alphaAuxProp, AVIF_RESULT_OUT_OF_MEMORY);
         static_assert(sizeof(alphaAuxProp->u.auxC.auxType) >= sizeof(AVIF_URN_ALPHA0), "");
@@ -4757,7 +4807,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifDecoderItem * exifItem;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/6, &exifItem));
         memcpy(exifItem->type, "Exif", 4);
-        exifItem->descForID = colorItem->id; // 'cdsc'
+        AVIF_CHECKRES(avifDecoderItemAddReference(exifItem, "cdsc", colorItem->id));
 
         avifExtent * exifExtent = (avifExtent *)avifArrayPush(&exifItem->extents);
         AVIF_CHECKERR(exifExtent, AVIF_RESULT_OUT_OF_MEMORY);
@@ -4772,7 +4822,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/7, &xmpItem));
         memcpy(xmpItem->type, "mime", 4);
         memcpy(xmpItem->contentType.contentType, AVIF_CONTENT_TYPE_XMP, sizeof(AVIF_CONTENT_TYPE_XMP));
-        xmpItem->descForID = colorItem->id; // 'cdsc'
+        AVIF_CHECKRES(avifDecoderItemAddReference(xmpItem, "cdsc", colorItem->id));
 
         avifExtent * xmpExtent = (avifExtent *)avifArrayPush(&xmpItem->extents);
         AVIF_CHECKERR(xmpExtent, AVIF_RESULT_OUT_OF_MEMORY);
@@ -5291,7 +5341,8 @@ static avifResult avifDecoderPrepareSample(avifDecoder * decoder, avifDecodeSamp
 static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 {
     return !item->size || item->hasUnsupportedEssentialProperty ||
-           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) || item->thumbnailForID != 0;
+           (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) ||
+           avifDecoderItemHasReference(item, "thmb");
 }
 
 avifResult avifDecoderParse(avifDecoder * decoder)
@@ -5489,7 +5540,7 @@ static avifDecoderItem * avifMetaFindColorItem(avifMeta * meta)
 // item.
 static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t colorItemId)
 {
-    if (item->auxForID != colorItemId)
+    if (!avifDecoderItemReferences(item, "auxl", colorItemId))
         return AVIF_FALSE;
     const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
     return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
@@ -5703,7 +5754,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
-        if (!item->size || item->hasUnsupportedEssentialProperty || item->thumbnailForID != 0) {
+        if (!item->size || item->hasUnsupportedEssentialProperty || avifDecoderItemHasReference(item, "thmb")) {
             continue;
         }
         if (!memcmp(item->type, "tmap", 4)) {
@@ -6012,7 +6063,7 @@ static avifDecoderItem * avifDecoderDataFindSampleTransformImageItem(avifDecoder
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (!memcmp(item->type, "sato", 4) && item->id != data->meta->primaryItemID && item->size != 0 &&
-            !item->hasUnsupportedEssentialProperty && item->thumbnailForID == 0 &&
+            !item->hasUnsupportedEssentialProperty && !avifDecoderItemHasReference(item, "thmb") &&
             avifIsPreferredAlternativeTo(data, item->id, data->meta->primaryItemID)) {
             return item;
         }
@@ -6450,8 +6501,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 AVIF_CHECKERR(!mainItems[alphaCategory] == !mainItems[AVIF_ITEM_ALPHA], AVIF_RESULT_NOT_IMPLEMENTED);
                 if (mainItems[alphaCategory] != NULL) {
                     AVIF_CHECKERR(isAlphaInputImageItemInInput == isAlphaItemInInput, AVIF_RESULT_NOT_IMPLEMENTED);
-                    AVIF_CHECKERR((mainItems[*category]->premByID == mainItems[alphaCategory]->id) ==
-                                      (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id),
+                    AVIF_CHECKERR(avifDecoderItemReferences(mainItems[*category], "prem", mainItems[alphaCategory]->id) ==
+                                      avifDecoderItemReferences(mainItems[AVIF_ITEM_COLOR], "prem", mainItems[AVIF_ITEM_ALPHA]->id),
                                   AVIF_RESULT_NOT_IMPLEMENTED);
                     AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
                                                               mainItems[alphaCategory],
@@ -6551,8 +6602,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->width = mainItems[AVIF_ITEM_COLOR]->width;
         decoder->image->height = mainItems[AVIF_ITEM_COLOR]->height;
         decoder->alphaPresent = (mainItems[AVIF_ITEM_ALPHA] != NULL);
-        decoder->image->alphaPremultiplied = decoder->alphaPresent &&
-                                             (mainItems[AVIF_ITEM_COLOR]->premByID == mainItems[AVIF_ITEM_ALPHA]->id);
+        decoder->image->alphaPremultiplied =
+            decoder->alphaPresent && avifDecoderItemReferences(mainItems[AVIF_ITEM_COLOR], "prem", mainItems[AVIF_ITEM_ALPHA]->id);
 
         if (mainItems[AVIF_ITEM_ALPHA]) {
             alphaProperties = &mainItems[AVIF_ITEM_ALPHA]->properties;
