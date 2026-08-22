@@ -19,6 +19,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.4.2
 
+* Add an AArch64 NEON path for avifFillAlpha/avifReformatAlpha (same-depth copy)
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.4
 * Update LocalAvm.cmake: v1.0.0
 * Update libyuv.cmd/LocalLibyuv.cmake: 5d03bf9ba (1949)
