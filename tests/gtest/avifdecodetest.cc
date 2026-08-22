@@ -27,11 +27,16 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
                                  (std::string(data_path) + file_name).c_str()),
             AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
-  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
-  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
-  EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-  EXPECT_NE(decoder->image->alphaPlane, nullptr);
-  EXPECT_GT(decoder->image->alphaRowBytes, 0u);
+  for (int pass = 0; pass < 3; ++pass) {
+    EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+    EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_FALSE);
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_NE(decoder->image->alphaPlane, nullptr);
+    EXPECT_GT(decoder->image->alphaRowBytes, 0u);
+    if (pass < 2) {
+      ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
+    }
+  }
 }
 
 TEST(AvifDecodeTest, ImageContentToDecodeNone) {
