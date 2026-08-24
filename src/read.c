@@ -3442,9 +3442,10 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
             // Read this reference as "{fromID} is a {irefType} for {toID}"
             if (!memcmp(irefHeader.type, "thmb", 4) || !memcmp(irefHeader.type, "auxl", 4) ||
                 !memcmp(irefHeader.type, "cdsc", 4) || !memcmp(irefHeader.type, "prem", 4)) {
-                // Section 8.11.12.1 of ISO/IEC 14496-12 represents the items linked to as an array
-                // of to_item_IDs, and several boxes of the same type may share a from_item_ID, so
-                // keep every target instead of only the one parsed last.
+                // Section 8.11.12.1 of ISO/IEC 14496-12:
+                //   The items linked to are then represented by an array of to_item_IDs.
+                // Several boxes of the same type may also share a from_item_ID, so an item can
+                // be the source of more than one reference of a given type. Every target is kept.
                 AVIF_CHECKRES(avifDecoderItemAddReference(item, (const char *)irefHeader.type, toID));
             } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                 // derived images refer in the opposite direction

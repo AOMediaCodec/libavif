@@ -17,7 +17,8 @@ class AvifMinimizedImageBoxTest
     : public testing::TestWithParam<std::tuple<
           /*width=*/int, /*height=*/int, /*depth=*/int, avifPixelFormat,
           avifPlanesFlags, avifRange, /*create_icc=*/bool, /*create_exif=*/bool,
-          /*create_xmp=*/bool, avifTransformFlags, /*create_hdr=*/bool>> {};
+          /*create_xmp=*/bool, avifTransformFlags, /*create_hdr=*/bool,
+          /*create_premul=*/bool>> {};
 
 TEST_P(AvifMinimizedImageBoxTest, All) {
   const int width = std::get<0>(GetParam());
@@ -31,11 +32,13 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   const bool create_xmp = std::get<8>(GetParam());
   const avifTransformFlags create_transform_flags = std::get<9>(GetParam());
   const bool create_hdr = std::get<10>(GetParam());
+  const bool create_premul = std::get<11>(GetParam());
 
   ImagePtr image =
       testutil::CreateImage(width, height, depth, format, planes, range);
   ASSERT_NE(image, nullptr);
   testutil::FillImageGradient(image.get());  // The pixels do not matter.
+  image->alphaPremultiplied = create_premul ? AVIF_TRUE : AVIF_FALSE;
   if (create_icc) {
     ASSERT_EQ(avifImageSetProfileICC(image.get(), testutil::kSampleIcc.data(),
                                      testutil::kSampleIcc.size()),
@@ -119,6 +122,12 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
   EXPECT_TRUE(
       testutil::AreImagesEqual(*decoded_meta.get(), *decoded_mini.get()));
   EXPECT_EQ(decoded_meta->gainMap != nullptr, decoded_mini->gainMap != nullptr);
+  // AreImagesEqual() only compares alphaPremultiplied when an alpha plane is
+  // present and the image is not opaque, so assert the flag on its own too.
+  EXPECT_EQ(decoded_mini->alphaPremultiplied, decoded_meta->alphaPremultiplied);
+  if (create_premul && (planes & AVIF_PLANES_A)) {
+    EXPECT_TRUE(decoded_mini->alphaPremultiplied);
+  }
   if (create_hdr) {
     ASSERT_NE(decoded_meta->gainMap, nullptr);
     ASSERT_NE(decoded_mini->gainMap, nullptr);
@@ -127,52 +136,6 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
     EXPECT_TRUE(testutil::AreImagesEqual(*decoded_meta->gainMap->image,
                                          *decoded_mini->gainMap->image));
   }
-}
-
-// The parameterized test above compares a MinimizedImageBox against a regular
-// MetaBox for the same image, and AreImagesEqual() compares alphaPremultiplied.
-// No parameter set marks the alpha as premultiplied though, so the flag was
-// never exercised: the MinimizedImageBox path stored the one bit
-// alpha_is_premultiplied value in a field the decoder compares against the
-// alpha item ID, and a premultiplied image silently decoded as straight alpha.
-TEST(MinimizedImageBoxPremultipliedTest, SurvivesTheRoundTrip) {
-  ImagePtr image = testutil::CreateImage(/*width=*/12, /*height=*/34,
-                                         /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
-                                         AVIF_PLANES_ALL, AVIF_RANGE_FULL);
-  ASSERT_NE(image, nullptr);
-  testutil::FillImageGradient(image.get());
-  image->alphaPremultiplied = AVIF_TRUE;
-
-  EncoderPtr encoder(avifEncoderCreate());
-  ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->headerFormat = AVIF_HEADER_MINI;
-  testutil::AvifRwData encoded_mini;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded_mini),
-            AVIF_RESULT_OK);
-
-  ImagePtr decoded_mini(avifImageCreateEmpty());
-  ASSERT_NE(decoded_mini, nullptr);
-  DecoderPtr decoder(avifDecoderCreate());
-  ASSERT_NE(decoder, nullptr);
-  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded_mini.get(),
-                                  encoded_mini.data, encoded_mini.size),
-            AVIF_RESULT_OK);
-  EXPECT_TRUE(decoded_mini->alphaPremultiplied);
-
-  // Control: the same image in a regular MetaBox keeps the flag, so a failure
-  // above is specific to the MinimizedImageBox path.
-  testutil::AvifRwData encoded_meta =
-      testutil::Encode(image.get(), encoder->speed);
-  ASSERT_NE(encoded_meta.data, nullptr);
-  ImagePtr decoded_meta(avifImageCreateEmpty());
-  ASSERT_NE(decoded_meta, nullptr);
-  DecoderPtr decoder_meta(avifDecoderCreate());
-  ASSERT_NE(decoder_meta, nullptr);
-  ASSERT_EQ(avifDecoderReadMemory(decoder_meta.get(), decoded_meta.get(),
-                                  encoded_meta.data, encoded_meta.size),
-            AVIF_RESULT_OK);
-  EXPECT_TRUE(decoded_meta->alphaPremultiplied);
 }
 
 //------------------------------------------------------------------------------
@@ -187,7 +150,8 @@ INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                                  /*create_exif=*/Values(false, true),
                                  /*create_xmp=*/Values(false, true),
                                  Values(AVIF_TRANSFORM_NONE),
-                                 /*create_hdr=*/Values(false)));
+                                 /*create_hdr=*/Values(false),
+                                 /*create_premul=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     DepthsSubsamplings, AvifMinimizedImageBoxTest,
@@ -198,7 +162,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
             /*create_icc=*/Values(false), /*create_exif=*/Values(false),
             /*create_xmp=*/Values(false), Values(AVIF_TRANSFORM_NONE),
-            /*create_hdr=*/Values(false)));
+            /*create_hdr=*/Values(false), /*create_premul=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Dimensions, AvifMinimizedImageBoxTest,
@@ -206,7 +170,8 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PIXEL_FORMAT_YUV444), Values(AVIF_PLANES_ALL),
             Values(AVIF_RANGE_FULL), /*create_icc=*/Values(true),
             /*create_exif=*/Values(true), /*create_xmp=*/Values(true),
-            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(false)));
+            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(false),
+            /*create_premul=*/Values(false, true)));
 
 INSTANTIATE_TEST_SUITE_P(
     Orientation, AvifMinimizedImageBoxTest,
@@ -217,7 +182,7 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_TRANSFORM_NONE, AVIF_TRANSFORM_IROT,
                    AVIF_TRANSFORM_IMIR,
                    AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
-            /*create_hdr=*/Values(false)));
+            /*create_hdr=*/Values(false), /*create_premul=*/Values(false)));
 
 INSTANTIATE_TEST_SUITE_P(
     Hdr, AvifMinimizedImageBoxTest,
@@ -226,7 +191,8 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PLANES_YUV, AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
             /*create_icc=*/Values(false),
             /*create_exif=*/Values(false), /*create_xmp=*/Values(false),
-            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(true)));
+            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(true),
+            /*create_premul=*/Values(false)));
 
 //------------------------------------------------------------------------------
 

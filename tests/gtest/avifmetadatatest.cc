@@ -477,15 +477,14 @@ TEST(MetadataTest, XMPWithTrailingNullCharacter) {
 // Exif metadata used to disappear without any error, exit code or diagnostic;
 // swapping the two IDs made it reappear. It must survive either way.
 TEST(MetadataTest, CdscWithMultipleTargets) {
-  testutil::AvifRwData avif = testutil::ReadFile(
-      std::string(data_path) + "circle_cdsc_two_targets.avif");
-  ASSERT_NE(avif.size, 0u);
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(
-      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      avifDecoderReadFile(
+          decoder.get(), decoded.get(),
+          (std::string(data_path) + "circle_cdsc_two_targets.avif").c_str()),
       AVIF_RESULT_OK);
   EXPECT_NE(decoded->exif.size, 0u);
   EXPECT_NE(decoded->exif.data, nullptr);
@@ -497,15 +496,14 @@ TEST(MetadataTest, CdscWithMultipleTargets) {
 // image decoded as opaque, with no error, no diagnostic and an exit code of
 // zero.
 TEST(MetadataTest, AuxlWithMultipleTargets) {
-  testutil::AvifRwData avif = testutil::ReadFile(
-      std::string(data_path) + "circle_auxl_two_targets.avif");
-  ASSERT_NE(avif.size, 0u);
   ImagePtr decoded(avifImageCreateEmpty());
   ASSERT_NE(decoded, nullptr);
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(
-      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      avifDecoderReadFile(
+          decoder.get(), decoded.get(),
+          (std::string(data_path) + "circle_auxl_two_targets.avif").c_str()),
       AVIF_RESULT_OK);
   ASSERT_NE(decoded->alphaPlane, nullptr);
   EXPECT_NE(decoded->alphaRowBytes, 0u);
