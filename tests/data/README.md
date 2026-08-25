@@ -54,6 +54,27 @@ follow the PLTE chunk, if any", libpng 1.6.46 or older considers the tRNS chunk
 as invalid and ignores it. The behavior changed starting with libpng 1.6.47.
 See https://github.com/pnggroup/libpng/blob/libpng16/CHANGES#L6243-L6246.
 
+### File [circle_auxl_two_targets.avif](circle_auxl_two_targets.avif)
+
+![](circle_auxl_two_targets.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: `avifenc -q 60 -y 420 --exif exif.bin circle-trns-after-plte.png`, where
+exif.bin is a minimal 14-byte TIFF header, with the `auxl` reference from the
+alpha item 2 manually edited to list the two targets 1,3 instead of the single
+target 1. Item 1 is the primary color item and item 3 is the Exif item.
+
+### File [circle_cdsc_two_targets.avif](circle_cdsc_two_targets.avif)
+
+![](circle_cdsc_two_targets.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as `circle_auxl_two_targets.avif`, with the `cdsc` reference from
+the Exif item 3 manually edited to list the two targets 1,2 instead of the
+single target 1. Item 2 is the alpha item.
+
 ### File [circle_custom_properties.avif](circle_custom_properties.avif)
 
 ![](circle_custom_properties.avif)
