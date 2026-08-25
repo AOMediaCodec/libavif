@@ -19,6 +19,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.4.2
 
+* Update aom.cmd/LocalAom.cmake: v3.15.0
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.4
 * Update LocalAvm.cmake: v1.0.0
 * Update libyuv.cmd/LocalLibyuv.cmake: 26e56be0f (1960)
