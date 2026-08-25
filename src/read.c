@@ -252,21 +252,21 @@ typedef struct avifDecoderItem
 } avifDecoderItem;
 AVIF_ARRAY_DECLARE(avifDecoderItemArray, avifDecoderItem *, item);
 
-// Records "this item is a {type} for item #{toID}".
-static avifResult avifDecoderItemAddReference(avifDecoderItem * item, const char * type, uint32_t toID)
+// Records "this item or track is a {type} for #{toID}".
+static avifResult avifAddReference(avifItemReferenceArray * references, const char * type, uint32_t toID)
 {
-    avifItemReference * reference = (avifItemReference *)avifArrayPush(&item->references);
+    avifItemReference * reference = (avifItemReference *)avifArrayPush(references);
     AVIF_CHECKERR(reference != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     memcpy(reference->type, type, 4);
     reference->toID = toID;
     return AVIF_RESULT_OK;
 }
 
-// Returns AVIF_TRUE if this item is a {type} for item #{toID}.
-static avifBool avifDecoderItemReferences(const avifDecoderItem * item, const char * type, uint32_t toID)
+// Returns AVIF_TRUE if this item or track is a {type} for #{toID}.
+static avifBool avifReferences(const avifItemReferenceArray * references, const char * type, uint32_t toID)
 {
-    for (uint32_t i = 0; i < item->references.count; ++i) {
-        const avifItemReference * reference = &item->references.ref[i];
+    for (uint32_t i = 0; i < references->count; ++i) {
+        const avifItemReference * reference = &references->ref[i];
         if (!memcmp(reference->type, type, 4) && reference->toID == toID) {
             return AVIF_TRUE;
         }
@@ -274,11 +274,11 @@ static avifBool avifDecoderItemReferences(const avifDecoderItem * item, const ch
     return AVIF_FALSE;
 }
 
-// Returns AVIF_TRUE if this item is a {type} for at least one item.
-static avifBool avifDecoderItemHasReference(const avifDecoderItem * item, const char * type)
+// Returns AVIF_TRUE if this item or track is a {type} for at least one item or track.
+static avifBool avifHasReference(const avifItemReferenceArray * references, const char * type)
 {
-    for (uint32_t i = 0; i < item->references.count; ++i) {
-        if (!memcmp(item->references.ref[i].type, type, 4)) {
+    for (uint32_t i = 0; i < references->count; ++i) {
+        if (!memcmp(references->ref[i].type, type, 4)) {
             return AVIF_TRUE;
         }
     }
@@ -501,8 +501,10 @@ typedef struct avifTrack
 {
     uint32_t id;
     uint8_t handlerType[4];
-    uint32_t auxForID; // if non-zero, this track is an auxC plane for Track #{auxForID}
-    uint32_t premByID; // if non-zero, this track is premultiplied by Track #{premByID}
+    // The 'auxl' and 'prem' references from this track. Section 8.3.3.2 of ISO/IEC 14496-12
+    // allows an array of track_IDs per box, and nothing stops a 'tref' from holding several
+    // boxes of the same type, so one track can hold several of these.
+    avifItemReferenceArray references;
     uint32_t mediaTimescale;
     uint64_t mediaDuration;
     uint64_t trackDuration;
@@ -1128,6 +1130,11 @@ static avifTrack * avifDecoderDataCreateTrack(avifDecoderData * data)
         avifArrayPop(&data->tracks);
         return NULL;
     }
+    if (!avifArrayCreate(&track->references, sizeof(avifItemReference), 1)) {
+        avifMetaDestroy(track->meta);
+        avifArrayPop(&data->tracks);
+        return NULL;
+    }
     return track;
 }
 
@@ -1179,6 +1186,7 @@ static void avifDecoderDataDestroy(avifDecoderData * data)
         if (track->meta) {
             avifMetaDestroy(track->meta);
         }
+        avifArrayDestroy(&track->references);
     }
     avifArrayDestroy(&data->tracks);
     avifDecoderDataClearTiles(data);
@@ -1947,7 +1955,7 @@ static avifResult avifDecoderFindMetadata(avifDecoder * decoder, avifMeta * meta
             continue;
         }
 
-        if ((colorId > 0) && !avifDecoderItemReferences(item, "cdsc", colorId)) {
+        if ((colorId > 0) && !avifReferences(&item->references, "cdsc", colorId)) {
             // Not a content description (metadata) for the colorOBU, skip it
             continue;
         }
@@ -3446,7 +3454,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 //   The items linked to are then represented by an array of to_item_IDs.
                 // Several boxes of the same type may also share a from_item_ID, so an item can
                 // be the source of more than one reference of a given type. Every target is kept.
-                AVIF_CHECKRES(avifDecoderItemAddReference(item, (const char *)irefHeader.type, toID));
+                AVIF_CHECKRES(avifAddReference(&item->references, (const char *)irefHeader.type, toID));
             } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                 // derived images refer in the opposite direction
                 avifDecoderItem * dimg;
@@ -3910,18 +3918,28 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
         avifBoxHeader header;
         AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));
 
-        if (!memcmp(header.type, "auxl", 4)) {
+        if (!memcmp(header.type, "auxl", 4) || !memcmp(header.type, "prem", 4)) {
+            // Keep refusing a box that holds no track_ID at all, as added in #3324.
             AVIF_CHECK(header.size >= sizeof(uint32_t));
-            uint32_t toID;
-            AVIF_CHECK(avifROStreamReadU32(&s, &toID));                       // unsigned int(32) track_IDs[];
-            AVIF_CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
-            track->auxForID = toID;
-        } else if (!memcmp(header.type, "prem", 4)) {
-            AVIF_CHECK(header.size >= sizeof(uint32_t));
-            uint32_t byID;
-            AVIF_CHECK(avifROStreamReadU32(&s, &byID));                       // unsigned int(32) track_IDs[];
-            AVIF_CHECK(avifROStreamSkip(&s, header.size - sizeof(uint32_t))); // just take the first one
-            track->premByID = byID;
+            // Section 8.3.3.2 of ISO/IEC 14496-12:
+            //   unsigned int(32) track_IDs[];
+            // There is no count field: the number of track_IDs follows from the box size. Every
+            // target is kept. Bytes that do not make up a whole track_ID are skipped as before,
+            // so this does not refuse a file that used to be read.
+            const size_t numTrackIDs = header.size / sizeof(uint32_t);
+            for (size_t i = 0; i < numTrackIDs; ++i) {
+                uint32_t toID;
+                AVIF_CHECK(avifROStreamReadU32(&s, &toID));
+                if (toID == 0) {
+                    // auxForID and premByID used to be plain IDs where 0 meant "no reference", so a
+                    // track_ID of 0 was the same as no reference at all. ISO/IEC 14496-12 does not
+                    // allow a track_ID of 0 anyway. Skipping it keeps that behaviour instead of
+                    // turning such a file into a track that suddenly declares itself auxiliary.
+                    continue;
+                }
+                AVIF_CHECK(avifAddReference(&track->references, (const char *)header.type, toID) == AVIF_RESULT_OK);
+            }
+            AVIF_CHECK(avifROStreamSkip(&s, header.size - numTrackIDs * sizeof(uint32_t)));
         } else {
             AVIF_CHECK(avifROStreamSkip(&s, header.size));
         }
@@ -4581,9 +4599,9 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
 
     if (hasAlpha) {
         // Property with fixed index 7.
-        AVIF_CHECKRES(avifDecoderItemAddReference(alphaItem, "auxl", colorItem->id));
+        AVIF_CHECKRES(avifAddReference(&alphaItem->references, "auxl", colorItem->id));
         if (alphaIsPremultiplied) {
-            AVIF_CHECKRES(avifDecoderItemAddReference(colorItem, "prem", alphaItem->id));
+            AVIF_CHECKRES(avifAddReference(&colorItem->references, "prem", alphaItem->id));
         }
         avifProperty * alphaAuxProp = avifMetaCreateProperty(meta, "auxC");
         AVIF_CHECKERR(alphaAuxProp, AVIF_RESULT_OUT_OF_MEMORY);
@@ -4808,7 +4826,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         avifDecoderItem * exifItem;
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/6, &exifItem));
         memcpy(exifItem->type, "Exif", 4);
-        AVIF_CHECKRES(avifDecoderItemAddReference(exifItem, "cdsc", colorItem->id));
+        AVIF_CHECKRES(avifAddReference(&exifItem->references, "cdsc", colorItem->id));
 
         avifExtent * exifExtent = (avifExtent *)avifArrayPush(&exifItem->extents);
         AVIF_CHECKERR(exifExtent, AVIF_RESULT_OUT_OF_MEMORY);
@@ -4823,7 +4841,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, /*itemID=*/7, &xmpItem));
         memcpy(xmpItem->type, "mime", 4);
         memcpy(xmpItem->contentType.contentType, AVIF_CONTENT_TYPE_XMP, sizeof(AVIF_CONTENT_TYPE_XMP));
-        AVIF_CHECKRES(avifDecoderItemAddReference(xmpItem, "cdsc", colorItem->id));
+        AVIF_CHECKRES(avifAddReference(&xmpItem->references, "cdsc", colorItem->id));
 
         avifExtent * xmpExtent = (avifExtent *)avifArrayPush(&xmpItem->extents);
         AVIF_CHECKERR(xmpExtent, AVIF_RESULT_OUT_OF_MEMORY);
@@ -5343,7 +5361,7 @@ static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 {
     return !item->size || item->hasUnsupportedEssentialProperty ||
            (avifGetCodecType(item->type) == AVIF_CODEC_TYPE_UNKNOWN && memcmp(item->type, "grid", 4)) ||
-           avifDecoderItemHasReference(item, "thmb");
+           avifHasReference(&item->references, "thmb");
 }
 
 avifResult avifDecoderParse(avifDecoder * decoder)
@@ -5541,7 +5559,7 @@ static avifDecoderItem * avifMetaFindColorItem(avifMeta * meta)
 // item.
 static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t colorItemId)
 {
-    if (!avifDecoderItemReferences(item, "auxl", colorItemId))
+    if (!avifReferences(&item->references, "auxl", colorItemId))
         return AVIF_FALSE;
     const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
     return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
@@ -5755,7 +5773,7 @@ static avifResult avifDecoderDataFindToneMappedImageItem(const avifDecoderData *
 {
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
-        if (!item->size || item->hasUnsupportedEssentialProperty || avifDecoderItemHasReference(item, "thmb")) {
+        if (!item->size || item->hasUnsupportedEssentialProperty || avifHasReference(&item->references, "thmb")) {
             continue;
         }
         if (!memcmp(item->type, "tmap", 4)) {
@@ -6064,7 +6082,7 @@ static avifDecoderItem * avifDecoderDataFindSampleTransformImageItem(avifDecoder
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
         avifDecoderItem * item = data->meta->items.item[itemIndex];
         if (!memcmp(item->type, "sato", 4) && item->id != data->meta->primaryItemID && item->size != 0 &&
-            !item->hasUnsupportedEssentialProperty && !avifDecoderItemHasReference(item, "thmb") &&
+            !item->hasUnsupportedEssentialProperty && !avifHasReference(&item->references, "thmb") &&
             avifIsPreferredAlternativeTo(data, item->id, data->meta->primaryItemID)) {
             return item;
         }
@@ -6210,7 +6228,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             if (colorCodecType == AVIF_CODEC_TYPE_UNKNOWN) {
                 continue;
             }
-            if (track->auxForID != 0) {
+            if (avifHasReference(&track->references, "auxl")) {
                 continue;
             }
             // HEIF (ISO/IEC 23008-12:2022), Section 7.1:
@@ -6272,7 +6290,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // HEIF (ISO/IEC 23008-12:2022), Section 7.5.3.1, but old versions of libavif used to write
             // "pict" instead. See https://github.com/AOMediaCodec/libavif/commit/65d0af9
 
-            if (track->auxForID == colorTrack->id) {
+            if (avifReferences(&track->references, "auxl", colorTrack->id)) {
                 // Found it!
                 alphaProperties = properties;
                 break;
@@ -6353,7 +6371,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->width = colorTrack->width;
         decoder->image->height = colorTrack->height;
         decoder->alphaPresent = (alphaTrack != NULL);
-        decoder->image->alphaPremultiplied = decoder->alphaPresent && (colorTrack->premByID == alphaTrack->id);
+        decoder->image->alphaPremultiplied = decoder->alphaPresent && avifReferences(&colorTrack->references, "prem", alphaTrack->id);
     } else {
         // Create from items
 
@@ -6502,8 +6520,8 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 AVIF_CHECKERR(!mainItems[alphaCategory] == !mainItems[AVIF_ITEM_ALPHA], AVIF_RESULT_NOT_IMPLEMENTED);
                 if (mainItems[alphaCategory] != NULL) {
                     AVIF_CHECKERR(isAlphaInputImageItemInInput == isAlphaItemInInput, AVIF_RESULT_NOT_IMPLEMENTED);
-                    AVIF_CHECKERR(avifDecoderItemReferences(mainItems[*category], "prem", mainItems[alphaCategory]->id) ==
-                                      avifDecoderItemReferences(mainItems[AVIF_ITEM_COLOR], "prem", mainItems[AVIF_ITEM_ALPHA]->id),
+                    AVIF_CHECKERR(avifReferences(&mainItems[*category]->references, "prem", mainItems[alphaCategory]->id) ==
+                                      avifReferences(&mainItems[AVIF_ITEM_COLOR]->references, "prem", mainItems[AVIF_ITEM_ALPHA]->id),
                                   AVIF_RESULT_NOT_IMPLEMENTED);
                     AVIF_CHECKRES(avifDecoderItemReadAndParse(decoder,
                                                               mainItems[alphaCategory],
@@ -6604,7 +6622,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         decoder->image->height = mainItems[AVIF_ITEM_COLOR]->height;
         decoder->alphaPresent = (mainItems[AVIF_ITEM_ALPHA] != NULL);
         decoder->image->alphaPremultiplied =
-            decoder->alphaPresent && avifDecoderItemReferences(mainItems[AVIF_ITEM_COLOR], "prem", mainItems[AVIF_ITEM_ALPHA]->id);
+            decoder->alphaPresent && avifReferences(&mainItems[AVIF_ITEM_COLOR]->references, "prem", mainItems[AVIF_ITEM_ALPHA]->id);
 
         if (mainItems[AVIF_ITEM_ALPHA]) {
             alphaProperties = &mainItems[AVIF_ITEM_ALPHA]->properties;

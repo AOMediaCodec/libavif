@@ -45,6 +45,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Support a 'thmb', 'auxl', 'cdsc' or 'prem' item reference that links one item
   to several items. Only the target parsed last used to be kept, silently
   dropping the others.
+* Support a track 'auxl' or 'prem' reference that names several tracks, and
+  several such boxes in one 'tref'. Only the first track_ID of a box was read,
+  and a later box overwrote what an earlier one recorded, so the alpha track of
+  an image sequence could be dropped without a diagnostic.
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
