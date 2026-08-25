@@ -64,8 +64,6 @@ Source: `avifenc -q 60 -y 420 --exif exif.bin circle-trns-after-plte.png`, where
 exif.bin is a minimal 14-byte TIFF header, with the `auxl` reference from the
 alpha item 2 manually edited to list the two targets 1,3 instead of the single
 target 1. Item 1 is the primary color item and item 3 is the Exif item.
-Section 8.11.12.1 of ISO/IEC 14496-12 represents the items linked to as an
-array of to_item_IDs, so the file is valid.
 
 ### File [circle_cdsc_two_targets.avif](circle_cdsc_two_targets.avif)
 
