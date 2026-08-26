@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <vector>
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
@@ -97,6 +100,121 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
   EXPECT_EQ(avifDecoderNextImage(decoder.get()),
             AVIF_RESULT_NO_IMAGES_REMAINING);
 }
+
+//------------------------------------------------------------------------------
+// The alpha track of colors-animated-8bpc-alpha-exif-xmp.avif holds a 20 byte
+// 'tref' box at offset 1586, with a single 'auxl' box naming track 1, directly
+// followed by a 44 byte 'edts' box. Section 8.3.3.2 of ISO/IEC 14496-12 gives
+// TrackReferenceTypeBox an array of track_IDs, and nothing limits a 'tref' to
+// one box of a given type. The cases below rewrite those 64 bytes in place and
+// pad with a 'free' box, so the file size and every absolute offset in the file
+// keep the values of the valid file.
+
+constexpr const char* kAlphaTrackFileName =
+    "colors-animated-8bpc-alpha-exif-xmp.avif";
+constexpr size_t kTrefOffset = 1586;
+constexpr size_t kTrefSize = 20;
+constexpr size_t kTrefAndEdtsSize = 64;
+
+void WriteBE32(uint32_t value, uint8_t* bytes) {
+  bytes[0] = static_cast<uint8_t>(value >> 24);
+  bytes[1] = static_cast<uint8_t>(value >> 16);
+  bytes[2] = static_cast<uint8_t>(value >> 8);
+  bytes[3] = static_cast<uint8_t>(value);
+}
+
+void AppendTrackReferenceTypeBox(const char* type,
+                                 const std::vector<uint32_t>& track_ids,
+                                 std::vector<uint8_t>* bytes) {
+  const size_t size = 8 + 4 * track_ids.size();
+  const size_t offset = bytes->size();
+  bytes->resize(offset + size);
+  WriteBE32(static_cast<uint32_t>(size), bytes->data() + offset);
+  std::memcpy(bytes->data() + offset + 4, type, 4);
+  for (size_t i = 0; i < track_ids.size(); ++i) {
+    WriteBE32(track_ids[i], bytes->data() + offset + 8 + 4 * i);
+  }
+}
+
+// Overwrites the 'tref' and 'edts' boxes of the alpha track with |boxes| and
+// fills the rest of the 64 bytes with a 'free' box.
+void ReplaceTrefAndEdts(const std::vector<uint8_t>& boxes,
+                        testutil::AvifRwData* encoded) {
+  ASSERT_GE(encoded->size, kTrefOffset + kTrefAndEdtsSize);
+  uint8_t* p = encoded->data + kTrefOffset;
+  // Sanity check: the fixture is the file these tests were authored against.
+  ASSERT_EQ(std::memcmp(p + 4, "tref", 4), 0);
+  ASSERT_EQ(std::memcmp(p + kTrefSize + 4, "edts", 4), 0);
+  ASSERT_LE(boxes.size() + 8, kTrefAndEdtsSize);
+  std::copy(boxes.begin(), boxes.end(), p);
+  uint8_t* free_box = p + boxes.size();
+  const size_t free_size = kTrefAndEdtsSize - boxes.size();
+  WriteBE32(static_cast<uint32_t>(free_size), free_box);
+  std::memcpy(free_box + 4, "free", 4);
+  std::memset(free_box + 8, 0, free_size - 8);
+}
+
+void ExpectAlphaTrackIsFound(const testutil::AvifRwData& encoded) {
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  EXPECT_EQ(decoder->imageCount, 5);
+}
+
+// Control for the two cases below. The alpha track keeps its single reference,
+// only its 'edts' box is replaced by a 'free' box. Dropping it leaves that
+// track's repetition count unknown, which the decoder takes from the color
+// track anyway, so the alpha track still has to be found.
+TEST(AvifDecodeTest, AlphaTrackWithoutEdts) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  std::vector<uint8_t> tref;
+  AppendTrackReferenceTypeBox("auxl", {1}, &tref);
+  std::vector<uint8_t> boxes;
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
+  WriteBE32(static_cast<uint32_t>(8 + tref.size()), boxes.data());
+  boxes.insert(boxes.end(), tref.begin(), tref.end());
+  ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
+  ExpectAlphaTrackIsFound(encoded);
+}
+
+// The 'tref' box holds two 'auxl' boxes. Check that both are read.
+TEST(AvifDecodeTest, AlphaTrackWithTwoAuxlBoxes) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  std::vector<uint8_t> children;
+  AppendTrackReferenceTypeBox("auxl", {1}, &children);
+  AppendTrackReferenceTypeBox("auxl", {99}, &children);
+  std::vector<uint8_t> boxes;
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
+  WriteBE32(static_cast<uint32_t>(8 + children.size()), boxes.data());
+  boxes.insert(boxes.end(), children.begin(), children.end());
+  ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
+  ExpectAlphaTrackIsFound(encoded);
+}
+
+// One 'auxl' box names two tracks. Check that both are read.
+TEST(AvifDecodeTest, AlphaTrackWithTwoTrackIds) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  std::vector<uint8_t> children;
+  AppendTrackReferenceTypeBox("auxl", {99, 1}, &children);
+  std::vector<uint8_t> boxes;
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
+  WriteBE32(static_cast<uint32_t>(8 + children.size()), boxes.data());
+  boxes.insert(boxes.end(), children.begin(), children.end());
+  ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
+  ExpectAlphaTrackIsFound(encoded);
+}
+
+//------------------------------------------------------------------------------
 
 TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAlpha) {
   const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
