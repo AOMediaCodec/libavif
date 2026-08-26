@@ -1593,6 +1593,32 @@ TEST(GainMapTest, CreateGainMapConstantFactor) {
       << avifResultToString(result) << " " << diag.error;
 }
 
+// avifRGBImageComputeGainMap() should free all its intermediate buffers when
+// it fails, in particular when the gain map depth is only rejected after the
+// allocations happened.
+TEST(GainMapTest, ComputeGainMapUnsupportedDepth) {
+  // Used only to initialize rgb images.
+  ImagePtr yuv(avifImageCreate(10, 10, 8, AVIF_PIXEL_FORMAT_YUV444));
+  testutil::AvifRgbImage base_image(yuv.get(), 8, AVIF_RGB_FORMAT_RGB);
+  testutil::AvifRgbImage alt_image(yuv.get(), 8, AVIF_RGB_FORMAT_RGB);
+  for (uint32_t i = 0; i < base_image.width * base_image.height * 3; ++i) {
+    base_image.pixels[i] = 10;
+    alt_image.pixels[i] = 200;
+  }
+  GainMapPtr gain_map(avifGainMapCreate());
+  gain_map->image = avifImageCreate(5, 5, 9, AVIF_PIXEL_FORMAT_YUV444);
+  avifDiagnostics diag;
+  avifResult result = avifRGBImageComputeGainMap(
+      &base_image, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_SRGB, &alt_image, AVIF_COLOR_PRIMARIES_SRGB,
+      AVIF_TRANSFER_CHARACTERISTICS_SRGB, gain_map.get(), &diag);
+
+  EXPECT_EQ(result, AVIF_RESULT_NOT_IMPLEMENTED)
+      << avifResultToString(result) << " " << diag.error;
+  // The planes are freed on error, per the cleanup contract.
+  EXPECT_EQ(gain_map->image->yuvPlanes[0], nullptr);
+}
+
 TEST(FindMinMaxWithoutOutliers, AllSame) {
   constexpr int kNumValues = 10000;
 

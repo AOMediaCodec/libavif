@@ -804,7 +804,8 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifRGBColorSpaceInfo gainMapRGBInfo;
     if (!avifGetRGBColorSpaceInfo(&gainMapRGB, &gainMapRGBInfo)) {
         avifDiagnosticsPrintf(diag, "Unsupported RGB color space");
-        return AVIF_RESULT_NOT_IMPLEMENTED;
+        res = AVIF_RESULT_NOT_IMPLEMENTED;
+        goto cleanup;
     }
     for (uint32_t j = 0; j < height; ++j) {
         for (uint32_t i = 0; i < width; ++i) {
@@ -825,7 +826,10 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     // Scale down the gain map if requested.
     // Another way would be to scale the source images, but it seems to perform worse.
     if (requestedWidth != gainMapImage->width || requestedHeight != gainMapImage->height) {
-        AVIF_CHECKRES(avifImageScale(gainMap->image, requestedWidth, requestedHeight, diag));
+        res = avifImageScale(gainMap->image, requestedWidth, requestedHeight, diag);
+        if (res != AVIF_RESULT_OK) {
+            goto cleanup;
+        }
     }
 
 cleanup:
