@@ -501,9 +501,9 @@ typedef struct avifTrack
 {
     uint32_t id;
     uint8_t handlerType[4];
-    // The 'auxl' and 'prem' references from this track. Section 8.3.3.2 of ISO/IEC 14496-12
-    // allows an array of track_IDs per box, and nothing stops a 'tref' from holding several
-    // boxes of the same type, so one track can hold several of these.
+    // The 'auxl' and 'prem' references from this track. Section 8.3.3.1 of ISO/IEC 14496-12
+    // says each reference type shall occur at most once, but that is not enforced for backward
+    // compatibility, and a box can name several track_IDs, so one track can hold several of these.
     avifItemReferenceArray references;
     uint32_t mediaTimescale;
     uint64_t mediaDuration;
@@ -3919,22 +3919,20 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
         AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "auxl", 4) || !memcmp(header.type, "prem", 4)) {
-            // Keep refusing a box that holds no track_ID at all, as added in #3324.
+            // Refuse a box that holds no track_ID at all.
             AVIF_CHECK(header.size >= sizeof(uint32_t));
             // Section 8.3.3.2 of ISO/IEC 14496-12:
             //   unsigned int(32) track_IDs[];
-            // There is no count field: the number of track_IDs follows from the box size. Every
-            // target is kept. Bytes that do not make up a whole track_ID are skipped as before,
-            // so this does not refuse a file that used to be read.
+            // There is no count field: the number of track_IDs follows from the box size.
+            // Bytes that do not make up a whole track_ID are skipped.
             const size_t numTrackIDs = header.size / sizeof(uint32_t);
             for (size_t i = 0; i < numTrackIDs; ++i) {
                 uint32_t toID;
                 AVIF_CHECK(avifROStreamReadU32(&s, &toID));
                 if (toID == 0) {
-                    // auxForID and premByID used to be plain IDs where 0 meant "no reference", so a
-                    // track_ID of 0 was the same as no reference at all. ISO/IEC 14496-12 does not
-                    // allow a track_ID of 0 anyway. Skipping it keeps that behaviour instead of
-                    // turning such a file into a track that suddenly declares itself auxiliary.
+                    // Section 8.3.3.3 of ISO/IEC 14496-12:
+                    //   The value 0 shall not be present.
+                    // Skip it instead of rejecting for backward compatibility.
                     continue;
                 }
                 AVIF_CHECK(avifAddReference(&track->references, (const char *)header.type, toID) == AVIF_RESULT_OK);

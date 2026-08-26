@@ -123,8 +123,9 @@ void WriteBE32(uint32_t value, uint8_t* bytes) {
   bytes[3] = static_cast<uint8_t>(value);
 }
 
-void AppendBox(const char* type, const std::vector<uint32_t>& track_ids,
-               std::vector<uint8_t>* bytes) {
+void AppendTrackReferenceTypeBox(const char* type,
+                                 const std::vector<uint32_t>& track_ids,
+                                 std::vector<uint8_t>* bytes) {
   const size_t size = 8 + 4 * track_ids.size();
   const size_t offset = bytes->size();
   bytes->resize(offset + size);
@@ -173,42 +174,40 @@ TEST(AvifDecodeTest, AlphaTrackWithoutEdts) {
       testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
   ASSERT_NE(encoded.size, size_t{0});
   std::vector<uint8_t> tref;
-  AppendBox("auxl", {1}, &tref);
+  AppendTrackReferenceTypeBox("auxl", {1}, &tref);
   std::vector<uint8_t> boxes;
-  AppendBox("tref", {}, &boxes);
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
   WriteBE32(static_cast<uint32_t>(8 + tref.size()), boxes.data());
   boxes.insert(boxes.end(), tref.begin(), tref.end());
   ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
   ExpectAlphaTrackIsFound(encoded);
 }
 
-// The 'tref' box holds two 'auxl' boxes. The second one used to overwrite the
-// track_ID read from the first, so the alpha track was no longer found.
+// The 'tref' box holds two 'auxl' boxes. Check that both are read.
 TEST(AvifDecodeTest, AlphaTrackWithTwoAuxlBoxes) {
   testutil::AvifRwData encoded =
       testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
   ASSERT_NE(encoded.size, size_t{0});
   std::vector<uint8_t> children;
-  AppendBox("auxl", {1}, &children);
-  AppendBox("auxl", {99}, &children);
+  AppendTrackReferenceTypeBox("auxl", {1}, &children);
+  AppendTrackReferenceTypeBox("auxl", {99}, &children);
   std::vector<uint8_t> boxes;
-  AppendBox("tref", {}, &boxes);
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
   WriteBE32(static_cast<uint32_t>(8 + children.size()), boxes.data());
   boxes.insert(boxes.end(), children.begin(), children.end());
   ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
   ExpectAlphaTrackIsFound(encoded);
 }
 
-// One 'auxl' box names two tracks. Every track_ID after the first one used to
-// be skipped, so naming the color track second lost it.
+// One 'auxl' box names two tracks. Check that both are read.
 TEST(AvifDecodeTest, AlphaTrackWithTwoTrackIds) {
   testutil::AvifRwData encoded =
       testutil::ReadFile(std::string(data_path) + kAlphaTrackFileName);
   ASSERT_NE(encoded.size, size_t{0});
   std::vector<uint8_t> children;
-  AppendBox("auxl", {99, 1}, &children);
+  AppendTrackReferenceTypeBox("auxl", {99, 1}, &children);
   std::vector<uint8_t> boxes;
-  AppendBox("tref", {}, &boxes);
+  AppendTrackReferenceTypeBox("tref", {}, &boxes);
   WriteBE32(static_cast<uint32_t>(8 + children.size()), boxes.data());
   boxes.insert(boxes.end(), children.begin(), children.end());
   ASSERT_NO_FATAL_FAILURE(ReplaceTrefAndEdts(boxes, &encoded));
