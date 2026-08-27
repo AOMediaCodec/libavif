@@ -274,20 +274,6 @@ static avifBool avifReferences(const avifItemReferenceArray * references, const 
     return AVIF_FALSE;
 }
 
-// Bug oss-fuzz:553221196: The same as avifReferences() except that it emulates
-// the old behavior before commit 2f8eb91 and considers only the last reference.
-static avifBool avifReferencesOld(const avifItemReferenceArray * references, const char * type, uint32_t toID)
-{
-    for (uint32_t i = references->count; i > 0;) {
-        --i;
-        const avifItemReference * reference = &references->ref[i];
-        if (!memcmp(reference->type, type, 4)) {
-            return reference->toID == toID;
-        }
-    }
-    return AVIF_FALSE;
-}
-
 // Returns AVIF_TRUE if this item or track is a {type} for at least one item or track.
 static avifBool avifHasReference(const avifItemReferenceArray * references, const char * type)
 {
@@ -5577,17 +5563,6 @@ static avifBool avifDecoderItemIsAlphaAux(const avifDecoderItem * item, uint32_t
     return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
 }
 
-// Bug oss-fuzz:553221196: The same as avifDecoderItemIsAlphaAux() except that
-// it calls avifReferencesOld() instead of avifReferences() to emulate the old
-// behavior before commit 2f8eb91.
-static avifBool avifDecoderItemIsAlphaAuxOld(const avifDecoderItem * item, uint32_t colorItemId)
-{
-    if (!avifReferencesOld(&item->references, "auxl", colorItemId))
-        return AVIF_FALSE;
-    const avifProperty * auxCProp = avifPropertyArrayFind(&item->properties, "auxC");
-    return auxCProp && isAlphaURN(auxCProp->u.auxC.auxType);
-}
-
 // Finds the alpha item whose parent item is colorItem and sets it in the alphaItem output parameter. Returns AVIF_RESULT_OK on
 // success. Note that *alphaItem can be NULL even if the return value is AVIF_RESULT_OK. If the colorItem is a grid and the alpha
 // item is represented as a set of auxl items to each color tile, then a fake item will be created and *isAlphaItemInInput will be
@@ -5638,14 +5613,24 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             avifBool seenAlphaForCurrentItem = AVIF_FALSE;
             for (uint32_t j = 0; j < meta->items.count; ++j) {
                 avifDecoderItem * auxlItem = meta->items.item[j];
-                if (avifDecoderItemIsAlphaAuxOld(auxlItem, item->id)) {
+                if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
+                    avifBool alphaItemAlreadyUsed = AVIF_FALSE;
+                    for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
+                        if (dimgIdxToAlphaItemIdx[dimgIdx] == j) {
+                            alphaItemAlreadyUsed = AVIF_TRUE;
+                            break;
+                        }
+                    }
                     if (seenAlphaForCurrentItem || auxlItem->dimgForID != 0 || item->dimgIdx >= tileCount ||
-                        dimgIdxToAlphaItemIdx[item->dimgIdx] != itemIndexNotSet) {
+                        dimgIdxToAlphaItemIdx[item->dimgIdx] != itemIndexNotSet || alphaItemAlreadyUsed) {
                         // One of the following invalid cases:
                         // * Multiple items are claiming to be the alpha auxiliary of the current item.
                         // * Alpha auxiliary is dimg for another item.
                         // * There are too many items in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
                         // * There is a repetition in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
+                        // * One item is the alpha auxiliary of several tiles. Each alpha tile is given its own
+                        //   dimg index below, so a second assignment would overwrite the first and leave the
+                        //   alpha grid with fewer tiles than it declares.
                         avifFree(dimgIdxToAlphaItemIdx);
                         return AVIF_RESULT_INVALID_IMAGE_GRID;
                     }

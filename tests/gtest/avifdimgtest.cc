@@ -47,6 +47,24 @@ TEST(DimgTest, ItemShared) {
 
 //------------------------------------------------------------------------------
 
+// One item is the alpha auxiliary of several tiles of the same color grid.
+// The alpha grid is built from those items, and each of them is given its own
+// dimg index, so a shared item cannot fill more than one cell.
+TEST(DimgTest, AlphaItemSharedBetweenTiles) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "color_grid_alpha_item_shared_in_auxl.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(DimgTest, ItemOutOfOrder) {
   testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");
