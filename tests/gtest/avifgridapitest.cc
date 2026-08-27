@@ -277,5 +277,74 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
       AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
+TEST(GridApiTest, CellsTooManyForDimgReferenceCount) {
+  // Section 8.11.12.1 of ISO/IEC 14496-12 requires all the references from one
+  // item to be collected into a single item type reference box, whose
+  // reference_count field is unsigned int(16) whatever the 'iref' version
+  // (Section 8.11.12.2). ISO/IEC 23008-12 (HEIF) Section 6.6.1 additionally
+  // forbids more than one 'dimg' box with the same from_item_ID. A grid item
+  // therefore cannot have more than 65535 cells, so a 256x256-cell grid is
+  // rejected upfront instead of silently generating a broken file.
+  ImagePtr cell = testutil::CreateImage(
+      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(cell, nullptr);
+  testutil::FillImageGradient(cell.get());
+  const std::vector<avifImage*> cell_image_ptrs(256 * 256, cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/256,
+                                    /*gridRows=*/256, cell_image_ptrs.data(),
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
+TEST(GridApiTest, ColorAlphaGridExceeding16BitItemIDs) {
+  // A color grid and an alpha grid of 128x256 cells each contain 32768 cells,
+  // so encoding them requires 65538 distinct item IDs (2 grid items + 2 x 32768
+  // cell items), which does not fit in the 16-bit item ID space. Such a file is
+  // conformant though, so the encoder relies on 32-bit item IDs, switching to
+  // the 'infe' version 3, 'iloc' version 2, 'iref' version 1 and 'ipma' version
+  // 1 boxes, rather than overflowing the item IDs. The cells are 64x64 because
+  // it is the smallest size allowed by [MIAF].
+  ImagePtr cell = testutil::CreateImage(
+      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_ALL /* alpha channel needed */);
+  ASSERT_NE(cell, nullptr);
+  // The pixels do not matter but avoid use-of-uninitialized-value errors.
+  testutil::FillImageGradient(cell.get());
+  const std::vector<avifImage*> cell_image_ptrs(128 * 256, cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  // Worst quality to keep the encoding of the 65536 cells fast.
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->minQuantizer = 63;
+  encoder->maxQuantizer = 63;
+  encoder->minQuantizerAlpha = 63;
+  encoder->maxQuantizerAlpha = 63;
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/128,
+                                    /*gridRows=*/256, cell_image_ptrs.data(),
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_OK);
+  testutil::AvifRwData encoded_avif;
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif), AVIF_RESULT_OK);
+
+  // Decoding all 65536 cells would take too long for a test, so only parse the
+  // file, which still walks the whole 'iinf', 'iloc', 'iref' and 'ipma' boxes
+  // and verifies that all 65538 item IDs are valid and unique.
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded_avif.data,
+                                   encoded_avif.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->image->width, 64 * 128);
+  EXPECT_EQ(decoder->image->height, 64 * 256);
+  EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+}
+
 }  // namespace
 }  // namespace avif
