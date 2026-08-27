@@ -473,11 +473,8 @@ static avifBool avifEncoderUsesRenderedSizeOverride(const avifEncoder * encoder)
 
 static avifBool avifScalingModeIsNoScaling(const avifScalingMode * scalingMode)
 {
-    avifFraction horizontal = scalingMode->horizontal;
-    avifFraction vertical = scalingMode->vertical;
-    avifFractionSimplify(&horizontal);
-    avifFractionSimplify(&vertical);
-    return (horizontal.n == 1) && (horizontal.d == 1) && (vertical.n == 1) && (vertical.d == 1);
+    return (scalingMode->horizontal.n == scalingMode->horizontal.d) &&
+           (scalingMode->vertical.n == scalingMode->vertical.d);
 }
 
 static avifBool avifImageHasEquivalentTransformProperties(const avifImage * lhs, const avifImage * rhs)
@@ -2271,10 +2268,6 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
-    if (avifEncoderUsesRenderedSizeOverride(encoder)) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported with avifEncoderAddImageGrid()");
-        return AVIF_RESULT_NOT_IMPLEMENTED;
-    }
     if (encoder->extraLayerCount == 0) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // image grids cannot be image sequences
     }
@@ -3335,9 +3328,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 #endif // AVIF_ENABLE_EXPERIMENTAL_MINI
 
     const avifImage * imageMetadata = encoder->data->imageMetadata;
-    const uint32_t imageWidth = encoder->width ? encoder->width : imageMetadata->width;
-    const uint32_t imageHeight = encoder->height ? encoder->height : imageMetadata->height;
-
     uint64_t now = (uint64_t)time(NULL);
     uint64_t modificationTime = (encoder->modificationTime != 0) ? encoder->modificationTime : now;
     uint64_t creationTime = (encoder->creationTime != 0) ? encoder->creationTime : modificationTime;
@@ -3752,8 +3742,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0)); // template int(16) volume = {if track_is_audio 0x0100 else 0};
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0)); // const unsigned int(16) reserved = 0;
             AVIF_CHECKRES(avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix))); // template int(32)[9] matrix= // { 0x00010000,0,0,0,0x00010000,0,0,0,0x40000000 };
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageWidth << 16));  // unsigned int(32) width;
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageHeight << 16)); // unsigned int(32) height;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageMetadata->width << 16));  // unsigned int(32) width;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, imageMetadata->height << 16)); // unsigned int(32) height;
             AVIF_CHECKRES(avifRWStreamFinishBox(&s, tkhd));
 
             if (item->irefToID != 0) {
@@ -3829,16 +3819,16 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, 1)); // unsigned int(32) entry_count;
             avifBoxMarker imageItem;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, encoder->data->imageItemType, AVIF_BOX_SIZE_TBD, &imageItem));
-            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 6));                    // const unsigned int(8)[6] reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                      // unsigned int(16) data_reference_index;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                      // unsigned int(16) pre_defined = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                      // const unsigned int(16) reserved = 0;
-            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, sizeof(uint32_t) * 3)); // unsigned int(32)[3] pre_defined = 0;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageWidth));   // unsigned int(16) width;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageHeight));  // unsigned int(16) height;
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));             // template unsigned int(32) horizresolution
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));             // template unsigned int(32) vertresolution
-            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));                      // const unsigned int(32) reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 6));                             // const unsigned int(8)[6] reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                               // unsigned int(16) data_reference_index;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                               // unsigned int(16) pre_defined = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                               // const unsigned int(16) reserved = 0;
+            AVIF_CHECKRES(avifRWStreamWriteZeros(&s, sizeof(uint32_t) * 3));          // unsigned int(32)[3] pre_defined = 0;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->width));  // unsigned int(16) width;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)imageMetadata->height)); // unsigned int(16) height;
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));                      // template unsigned int(32) horizresolution
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0x00480000));                      // template unsigned int(32) vertresolution
+            AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0));                               // const unsigned int(32) reserved = 0;
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                      // template unsigned int(16) frame_count = 1;
             AVIF_CHECKRES(avifRWStreamWriteChars(&s, "\012AOM Coding", 11)); // string[32] compressorname;
             AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 32 - 11));              //

@@ -170,8 +170,6 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
 #endif
         svt_config->source_width = image->width;
         svt_config->source_height = image->height;
-        svt_config->forced_max_frame_width = encoder->width;
-        svt_config->forced_max_frame_height = encoder->height;
 #if SVT_AV1_CHECK_VERSION(3, 0, 0)
         svt_config->level_of_parallelism = encoder->maxThreads;
 #else
