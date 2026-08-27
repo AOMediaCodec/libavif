@@ -1652,7 +1652,7 @@ static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, uin
         }
     }
     // The number of tiles has been verified in avifDecoderItemReadAndParse().
-    AVIF_ASSERT_OR_RETURN(numTiles == numExpectedTiles);
+    AVIF_ASSERT_OR_RETURN(numTiles <= numExpectedTiles);
     return AVIF_RESULT_OK;
 }
 
@@ -1663,9 +1663,13 @@ static avifResult avifDecoderAdoptGridTileCodecType(avifDecoder * decoder,
                                                     const uint32_t * dimgIdxToItemIdx,
                                                     uint32_t numTiles)
 {
+    const uint32_t itemIndexNotSet = UINT32_MAX;
     avifDecoderItem * firstTileItem = NULL;
     for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
         const uint32_t itemIdx = dimgIdxToItemIdx[dimgIdx];
+        if (itemIdx == itemIndexNotSet) {
+            continue;
+        }
         AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
         avifDecoderItem * item = gridItem->meta->items.item[itemIdx];
 
@@ -1757,9 +1761,13 @@ static avifResult avifDecoderGenerateImageGridTiles(avifDecoder * decoder,
                                                     const uint32_t * dimgIdxToItemIdx,
                                                     uint32_t numTiles)
 {
+    const uint32_t itemIndexNotSet = UINT32_MAX;
     avifBool progressive = AVIF_TRUE;
     for (uint32_t dimgIdx = 0; dimgIdx < numTiles; ++dimgIdx) {
         const uint32_t itemIdx = dimgIdxToItemIdx[dimgIdx];
+        if (itemIdx == itemIndexNotSet) {
+            continue;
+        }
         AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
         avifDecoderItem * item = gridItem->meta->items.item[itemIdx];
 
@@ -5638,7 +5646,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             }
         }
     }
-    if (alphaItemCount != tileCount) {
+    if (alphaItemCount > tileCount) {
         avifFree(dimgIdxToAlphaItemIdx);
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
@@ -5670,11 +5678,15 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
     (*alphaItem)->width = colorItem->width;
     (*alphaItem)->height = colorItem->height;
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
-        if (dimgIdxToAlphaItemIdx[dimgIdx] >= meta->items.count) {
+        const uint32_t alphaItemIdx = dimgIdxToAlphaItemIdx[dimgIdx];
+        if (alphaItemIdx == itemIndexNotSet) {
+            continue;
+        }
+        if (alphaItemIdx >= meta->items.count) {
             avifFree(dimgIdxToAlphaItemIdx);
             AVIF_ASSERT_NOT_REACHED_OR_RETURN;
         }
-        avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
+        avifDecoderItem * alphaTileItem = meta->items.item[alphaItemIdx];
         alphaTileItem->dimgForID = (*alphaItem)->id;
         alphaTileItem->dimgIdx = dimgIdx;
     }
