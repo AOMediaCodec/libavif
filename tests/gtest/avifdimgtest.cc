@@ -47,6 +47,58 @@ TEST(DimgTest, ItemShared) {
 
 //------------------------------------------------------------------------------
 
+// One item is the alpha auxiliary of both tiles of a color grid. The synthetic
+// alpha grid then holds that item in both cells, which the ordered dimg input
+// list can express. Every cell carries the same alpha, so the two halves of the
+// alpha plane match each other while they differ in the file this one is
+// derived from.
+TEST(DimgTest, AlphaItemSharedBetweenTiles) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "color_grid_alpha_item_shared_in_auxl.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_OK);
+  ASSERT_NE(decoded->alphaPlane, nullptr);
+
+  // The grid is two cells tall, so a row in the second cell repeats a row of
+  // the first one. The cell height is the tile height, not half the output
+  // height.
+  testutil::AvifRwData reference = testutil::ReadFile(
+      std::string(data_path) + "color_grid_alpha_nogrid.avif");
+  ASSERT_NE(reference.size, 0u);
+  ImagePtr referenceDecoded(avifImageCreateEmpty());
+  ASSERT_NE(referenceDecoded, nullptr);
+  DecoderPtr referenceDecoder(avifDecoderCreate());
+  ASSERT_NE(referenceDecoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(referenceDecoder.get(), referenceDecoded.get(),
+                            reference.data, reference.size),
+      AVIF_RESULT_OK);
+  ASSERT_NE(referenceDecoded->alphaPlane, nullptr);
+  ASSERT_EQ(decoded->width, referenceDecoded->width);
+  ASSERT_EQ(decoded->height, referenceDecoded->height);
+
+  // The first cell is unchanged, and the second one now repeats it instead of
+  // carrying the alpha of the item that no longer claims that tile.
+  const uint32_t width = decoded->width;
+  EXPECT_EQ(memcmp(decoded->alphaPlane, referenceDecoded->alphaPlane, width),
+            0);
+  const uint8_t* lastRow =
+      decoded->alphaPlane +
+      (size_t)decoded->alphaRowBytes * (decoded->height - 1);
+  const uint8_t* referenceLastRow =
+      referenceDecoded->alphaPlane +
+      (size_t)referenceDecoded->alphaRowBytes * (referenceDecoded->height - 1);
+  EXPECT_NE(memcmp(lastRow, referenceLastRow, width), 0);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(DimgTest, ItemOutOfOrder) {
   testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) + "sofa_grid1x5_420.avif");

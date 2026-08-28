@@ -556,6 +556,17 @@ The color and alpha planes are arranged as 2x2 grid items. The color `dimg`
 associations are manually edited from 2,3,4,5 to 2,3,4,A. The item with ID 0xA
 is an item used in two grids.
 
+### File [color_grid_alpha_item_shared_in_auxl.avif](color_grid_alpha_item_shared_in_auxl.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as `color_grid_alpha_nogrid.avif`
+
+The color plane is a grid of two tiles and each tile has its own alpha auxiliary
+item. The `from_item_ID` of the second `auxl` box is manually edited from 6 to 5, so
+item 5 is the alpha auxiliary of both tiles and item 6 of neither. Only that one
+field differs from the source file.
+
 ### File [alpha_noispe.avif](alpha_noispe.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
