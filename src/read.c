@@ -5722,16 +5722,14 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             AVIF_ASSERT_NOT_REACHED_OR_RETURN;
         }
         avifDecoderItem * alphaTileItem = meta->items.item[dimgIdxToAlphaItemIdx[dimgIdx]];
-        alphaTileItem->isDimgInput = AVIF_TRUE;
         // The alpha grid is synthesized here rather than read from a file, so one item
         // may stand in for several cells: an auxiliary item can be the alpha of more
         // than one color tile.
-        uint32_t * alphaInput = (uint32_t *)avifArrayPush(&(*alphaItem)->dimgInputs);
-        if (alphaInput == NULL) {
+        const avifResult addResult = avifAddDimgInput(*alphaItem, alphaTileItem);
+        if (addResult != AVIF_RESULT_OK) {
             avifFree(dimgIdxToAlphaItemIdx);
-            return AVIF_RESULT_OUT_OF_MEMORY;
+            return addResult;
         }
-        *alphaInput = alphaTileItem->id;
     }
     avifFree(dimgIdxToAlphaItemIdx);
     *isAlphaItemInInput = AVIF_FALSE;
