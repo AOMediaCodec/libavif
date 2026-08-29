@@ -3506,16 +3506,16 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 AVIF_CHECKRES(avifAddReference(&item->references, (const char *)irefHeader.type, toID));
             } else if (!memcmp(irefHeader.type, "dimg", 4)) {
                 // derived images refer in the opposite direction
-                avifDecoderItem * dimg;
-                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimg));
+                avifDecoderItem * dimgInput;
+                AVIF_CHECKRES(avifMetaFindOrCreateItem(meta, toID, &dimgInput));
 
                 // Section 8.11.12.1 of ISO/IEC 14496-12:
                 //   The items linked to are then represented by an array of to_item_IDs;
                 //   within a given array, a given value shall occur at most once.
                 AVIF_CHECKERR(!avifIsDimgInput(item, toID), AVIF_RESULT_INVALID_IMAGE_GRID);
                 // A given value may occur within multiple arrays but this is not supported by libavif.
-                AVIF_CHECKERR(!dimg->isDimgInput, AVIF_RESULT_NOT_IMPLEMENTED);
-                AVIF_CHECKRES(avifAddDimgInput(item, dimg));
+                AVIF_CHECKERR(!dimgInput->isDimgInput, AVIF_RESULT_NOT_IMPLEMENTED);
+                AVIF_CHECKRES(avifAddDimgInput(item, dimgInput));
             }
         }
 
