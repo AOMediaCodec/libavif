@@ -219,10 +219,8 @@ typedef struct avifItemReference
 } avifItemReference;
 AVIF_ARRAY_DECLARE(avifItemReferenceArray, avifItemReference, ref);
 
-// The ordered list of input item IDs of a derived image item, in the order given by its
-// 'dimg' box. Section 8.11.12.1 of ISO/IEC 14496-12 allows a given item to occur in the
-// arrays of several derived items, so the list belongs to the derived item rather than
-// to its inputs.
+// The ordered list of input item IDs (to_item_ID) of a derived image item, in the
+// order given by its 'dimg' box.
 AVIF_ARRAY_DECLARE(avifItemIDArray, uint32_t, id);
 
 // one "item" worth for decoding (all iref, iloc, iprp, etc refer to one of these)
