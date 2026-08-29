@@ -17,24 +17,6 @@ void * avifAlloc(size_t size)
     return malloc(size);
 }
 
-void * avifAllocArray(size_t count, size_t elemSize)
-{
-    // Explicitly reject count == 0 or elemSize == 0 so callers cannot
-    // accidentally request a zero-size allocation (avifAlloc() returns NULL
-    // for those anyway, but rejecting them here makes the intent clearer).
-    if (count == 0 || elemSize == 0) {
-        return NULL;
-    }
-    // Reject products that would overflow size_t on 32-bit targets. Without
-    // this check, a small `count` and a large `elemSize` (or vice versa) can
-    // silently wrap to a tiny value, causing the subsequent writes to go far
-    // past the end of the returned allocation.
-    if (count > SIZE_MAX / elemSize) {
-        return NULL;
-    }
-    return avifAlloc(count * elemSize);
-}
-
 void * avifCalloc(size_t count, size_t size)
 {
     return calloc(count, size);
