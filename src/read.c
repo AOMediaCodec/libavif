@@ -1752,7 +1752,9 @@ static avifResult avifDecoderAdoptGridTileCodecTypeIfNeeded(avifDecoder * decode
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
         const uint32_t numTiles = info->grid.rows * info->grid.columns;
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
+        // calloc() verifies that numTiles * sizeof() does not overflow size_t
+        // before computing the product, so this is safe even on 32-bit targets.
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifCalloc(numTiles, sizeof(uint32_t));
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {
@@ -5625,7 +5627,9 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         return AVIF_RESULT_OK;
     }
     // Keep the same 'dimg' order as it defines where each tile is located in the reconstructed image.
-    uint32_t * dimgIdxToAlphaItemIdx = (uint32_t *)avifAlloc(tileCount * sizeof(uint32_t));
+    // calloc() verifies that tileCount * sizeof() does not overflow size_t
+    // before computing the product, so this is safe even on 32-bit targets.
+    uint32_t * dimgIdxToAlphaItemIdx = (uint32_t *)avifCalloc(tileCount, sizeof(uint32_t));
     AVIF_CHECKERR(dimgIdxToAlphaItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     const uint32_t itemIndexNotSet = UINT32_MAX;
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
@@ -6119,7 +6123,9 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
         const uint32_t numTiles = info->grid.rows * info->grid.columns;
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
+        // calloc() verifies that numTiles * sizeof() does not overflow size_t
+        // before computing the product, so this is safe even on 32-bit targets.
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifCalloc(numTiles, sizeof(uint32_t));
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {

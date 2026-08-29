@@ -918,9 +918,10 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             if (!avmImageAllocated) {
                 uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
                 uint32_t monoUVRowBytes = channelSize * monoUVWidth;
-                size_t monoUVSize = (size_t)monoUVHeight * monoUVRowBytes;
 
-                monoUVPlane = avifAlloc(monoUVSize);
+                // calloc() verifies that the product does not overflow size_t
+                // before computing it, so this is safe even on 32-bit targets.
+                monoUVPlane = avifCalloc(monoUVHeight, monoUVRowBytes);
                 AVIF_CHECKERR(monoUVPlane != NULL, AVIF_RESULT_OUT_OF_MEMORY); // No need for avm_img_free() because !avmImageAllocated
                 avmImage.planes[1] = monoUVPlane;
                 avmImage.stride[1] = monoUVRowBytes;

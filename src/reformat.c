@@ -577,7 +577,9 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
     const size_t cpCount = (size_t)1 << depth;
 
     assert(unormFloatTableY);
-    *unormFloatTableY = (float *)avifAlloc(cpCount * sizeof(float));
+    // calloc() verifies that cpCount * sizeof() does not overflow size_t
+    // before computing the product, so this is safe even on 32-bit targets.
+    *unormFloatTableY = (float *)avifCalloc(cpCount, sizeof(float));
     AVIF_CHECK(*unormFloatTableY);
     for (uint32_t cp = 0; cp < cpCount; ++cp) {
         (*unormFloatTableY)[cp] = ((float)cp - state->yuv.biasY) / state->yuv.rangeY;
@@ -588,7 +590,9 @@ static avifBool avifCreateYUVToRGBLookUpTables(float ** unormFloatTableY, float 
             // Just reuse the luma table since the chroma values are the same.
             *unormFloatTableUV = *unormFloatTableY;
         } else {
-            *unormFloatTableUV = (float *)avifAlloc(cpCount * sizeof(float));
+            // calloc() verifies that cpCount * sizeof() does not overflow size_t
+            // before computing the product, so this is safe even on 32-bit targets.
+            *unormFloatTableUV = (float *)avifCalloc(cpCount, sizeof(float));
             if (!*unormFloatTableUV) {
                 avifFree(*unormFloatTableY);
                 *unormFloatTableY = NULL;

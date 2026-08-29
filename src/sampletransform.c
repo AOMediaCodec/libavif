@@ -378,7 +378,10 @@ avifResult avifImageApplyExpression(avifImage * dstImage,
     // Then apply it. This part should not fail except for memory shortage reasons.
     if (bitDepth == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32) {
         uint32_t stackCapacity = expression->count / 2 + 1;
-        int32_t * stack = avifAlloc(stackCapacity * sizeof(int32_t));
+        // calloc() verifies that stackCapacity * sizeof() does not overflow
+        // size_t before computing the product, so this is safe even on 32-bit
+        // targets.
+        int32_t * stack = avifCalloc(stackCapacity, sizeof(int32_t));
         AVIF_CHECKERR(stack != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         const avifResult result = avifImageApplyExpression32b(dstImage, expression, inputImageItems, planes, stack, stackCapacity);
         avifFree(stack);
