@@ -241,7 +241,7 @@ TEST(ChangeSettingTest, UnchangeableImageChromaSamplePosition) {
             AVIF_RESULT_INCOMPATIBLE_IMAGE);
 }
 
-TEST(ChangeSettingTest, UnchangeableRenderedSizeOverride) {
+TEST(ChangeSettingTest, UnchangeableDisplaySizeOverride) {
   if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
       nullptr) {
     GTEST_SKIP() << "Codec unavailable, skip test.";

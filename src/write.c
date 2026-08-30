@@ -466,15 +466,14 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup,
 
 static const avifScalingMode noScaling = { { 1, 1 }, { 1, 1 } };
 
-static avifBool avifEncoderUsesRenderedSizeOverride(const avifEncoder * encoder)
+static avifBool avifEncoderUsesDisplaySizeOverride(const avifEncoder * encoder)
 {
     return (encoder->width != 0) || (encoder->height != 0);
 }
 
 static avifBool avifScalingModeIsNoScaling(const avifScalingMode * scalingMode)
 {
-    return (scalingMode->horizontal.n == scalingMode->horizontal.d) &&
-           (scalingMode->vertical.n == scalingMode->vertical.d);
+    return (scalingMode->horizontal.n == scalingMode->horizontal.d) && (scalingMode->vertical.n == scalingMode->vertical.d);
 }
 
 static avifBool avifImageHasEquivalentTransformProperties(const avifImage * lhs, const avifImage * rhs)
@@ -1599,46 +1598,46 @@ static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
     return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
 }
 
-static avifResult avifEncoderValidateRenderedSizeOverride(avifEncoder * encoder, uint32_t gridCols, uint32_t gridRows, const avifImage * firstCell)
+static avifResult avifEncoderValidateDisplaySizeOverride(avifEncoder * encoder, uint32_t gridCols, uint32_t gridRows, const avifImage * firstCell)
 {
-    if (!avifEncoderUsesRenderedSizeOverride(encoder)) {
+    if (!avifEncoderUsesDisplaySizeOverride(encoder)) {
         return AVIF_RESULT_OK;
     }
 
     if ((encoder->width == 0) || (encoder->height == 0)) {
         avifDiagnosticsPrintf(&encoder->diag,
-                              "rendered-size override requires both avifEncoder.width and avifEncoder.height to be non-zero");
+                              "display-size override requires both avifEncoder.width and avifEncoder.height to be non-zero");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
     if ((gridCols > 1) || (gridRows > 1)) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported with grid images");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with grid images");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if (!avifScalingModeIsNoScaling(&encoder->scalingMode)) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported with encoder->scalingMode");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with encoder->scalingMode");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if (encoder->sampleTransformRecipe != AVIF_SAMPLE_TRANSFORM_NONE) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported with sample transforms");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with sample transforms");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if (firstCell->gainMap && firstCell->gainMap->image) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported with gain maps");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with gain maps");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if ((encoder->data->items.count > 0) && (encoder->extraLayerCount == 0)) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override is not supported for image sequences");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported for image sequences");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
     if ((encoder->width < firstCell->width) || (encoder->height < firstCell->height)) {
         avifDiagnosticsPrintf(&encoder->diag,
-                              "rendered-size override %ux%u must be at least the coded image size %ux%u",
+                              "display-size override %ux%u must be at least the coded image size %ux%u",
                               encoder->width,
                               encoder->height,
                               firstCell->width,
@@ -1655,7 +1654,7 @@ static avifResult avifEncoderValidateRenderedSizeOverride(avifEncoder * encoder,
 
     if ((encoder->data->items.count > 0) && (encoder->extraLayerCount > 0) &&
         !avifImageHasEquivalentTransformProperties(firstCell, encoder->data->imageMetadata)) {
-        avifDiagnosticsPrintf(&encoder->diag, "rendered-size override requires 'pasp', 'clap', 'irot' and 'imir' to match across layers");
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override requires 'pasp', 'clap', 'irot' and 'imir' to match across layers");
         return AVIF_RESULT_INCOMPATIBLE_IMAGE;
     }
 
@@ -1844,7 +1843,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CONTENT;
     }
 
-    AVIF_CHECKRES(avifEncoderValidateRenderedSizeOverride(encoder, gridCols, gridRows, firstCell));
+    AVIF_CHECKRES(avifEncoderValidateDisplaySizeOverride(encoder, gridCols, gridRows, firstCell));
 
     AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_FALSE, &encoder->diag));
 
@@ -1976,7 +1975,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (encoder->data->items.count == 0) {
         // Make a copy of the first image's metadata (sans pixels) for future writing/validation
         AVIF_CHECKRES(avifImageCopy(encoder->data->imageMetadata, firstCell, 0));
-        if (avifEncoderUsesRenderedSizeOverride(encoder)) {
+        if (avifEncoderUsesDisplaySizeOverride(encoder)) {
             encoder->data->imageMetadata->width = encoder->width;
             encoder->data->imageMetadata->height = encoder->height;
         }

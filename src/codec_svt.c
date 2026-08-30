@@ -84,7 +84,7 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     (void)disableLaggedOutput;
 
     if (encoder->width || encoder->height) {
-        avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support rendered-size override");
+        avifDiagnosticsPrintf(codec->diag, "SVT-AV1 does not support display-size override");
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 

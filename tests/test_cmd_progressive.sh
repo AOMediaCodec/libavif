@@ -47,16 +47,16 @@ pushd ${TMP_DIR}
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
 
-  echo "Testing manual layered encoding with rendered-size override and mixed input sizes"
-  "${AVIFENC}" -s 8 --layered --render-size 768x512 \
+  echo "Testing manual layered encoding with display-size override and mixed input sizes"
+  "${AVIFENC}" -s 8 --layered --display-size 768x512 \
     "${INPUT_SMALL_Y4M}" "${INPUT_Y4M}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" --info "${ENCODED_FILE}" > "${INFO_FILE}"
   grep -F "[768x512]" "${INFO_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
   "${AVIFDEC}" --progressive "${ENCODED_FILE}" "${DECODED_FILE}"
 
-  echo "Testing rendered-size override smaller than an input layer"
-  "${AVIFENC}" -s 8 --layered --render-size 384x256 \
+  echo "Testing display-size override smaller than an input layer"
+  "${AVIFENC}" -s 8 --layered --display-size 384x256 \
     "${INPUT_SMALL_Y4M}" "${INPUT_Y4M}" -o "${ENCODED_FILE}" && exit 1
 
   # libavif relies on libyuv to do scaling

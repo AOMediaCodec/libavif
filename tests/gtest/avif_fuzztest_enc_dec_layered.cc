@@ -109,7 +109,7 @@ void EncodeDecodeLayered(
     std::vector<ImagePtr> layers,
     const std::array<avifScalingMode, kLayerCount>& scaling_modes,
     uint32_t expected_width, uint32_t expected_height,
-    bool use_rendered_size_override, EncoderPtr encoder, DecoderPtr decoder) {
+    bool use_display_size_override, EncoderPtr encoder, DecoderPtr decoder) {
   ASSERT_EQ(layers.size(), kLayerCount);
   ASSERT_NE(encoder, nullptr);
   ASSERT_NE(decoder, nullptr);
@@ -127,7 +127,7 @@ void EncodeDecodeLayered(
 
   encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
   encoder->extraLayerCount = static_cast<uint32_t>(layers.size() - 1);
-  if (use_rendered_size_override) {
+  if (use_display_size_override) {
     encoder->width = expected_width;
     encoder->height = expected_height;
   }
@@ -193,7 +193,7 @@ void EncodeDecodeDimensionChange(
   EncodeDecodeLayered(std::move(layers), scaling_modes,
                       /*expected_width=*/expected_width,
                       /*expected_height=*/expected_height,
-                      /*use_rendered_size_override=*/false, std::move(encoder),
+                      /*use_display_size_override=*/false, std::move(encoder),
                       std::move(decoder));
 }
 
@@ -207,7 +207,7 @@ void EncodeDecodeDimensionChangeExternal(std::vector<ImagePtr> layers,
   EncodeDecodeLayered(std::move(layers), kNoScalingModes,
                       /*expected_width=*/expected_width,
                       /*expected_height=*/expected_height,
-                      /*use_rendered_size_override=*/true, std::move(encoder),
+                      /*use_display_size_override=*/true, std::move(encoder),
                       std::move(decoder));
 }
 

@@ -897,8 +897,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // Set the maximum number of frames to encode to 1. This instructs
             // libaom to set still_picture and reduced_still_picture_header to
             // 1 in AV1 sequence headers.
-            // Still picture header requires image size and render size to match
-            // or the produced file is not decodable.
+            // Still picture header requires frame size to match
+            // max_frame_width and max_frame_height,
+            // so we can't use it if frame can have a different size.
             cfg->g_limit = 1;
         }
         if (useAllIntra) {

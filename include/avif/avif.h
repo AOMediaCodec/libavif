@@ -821,6 +821,11 @@ typedef struct avifImage
     // To encode any of these boxes, set the values in the associated box, then enable the flag in
     // transformFlags. On decode, only honor the values in boxes with the associated transform flag set.
     // These also apply to gainMap->image, if any.
+    //
+    // When encoding with avifEncoder.width/height set (see its comment), these values are interpreted
+    // relative to that overridden display size rather than to this avifImage's own width/height.
+    // No special handling is needed during decode: the decoded avifImage is automatically scaled to
+    // the display size, so these values are relative to its width/height as usual.
     avifTransformFlags transformFlags;
     avifPixelAspectRatioBox pasp;
     avifCleanApertureBox clap;
@@ -1630,10 +1635,35 @@ typedef struct avifEncoder
     // Version 1.4.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
 
-    // Override the rendered size of the encoded image.
-    // Defaults to 0. When set to 0, libavif uses the width and height of the first added image.
-    // Typical use case is layered image, where these are set to the size of the last layer,
-    // while encoding smaller images as the previous layers.
+    // Overrides the image's display size (the width and height AVIF declares this image is meant
+    // to be shown at) independent of the pixel dimensions actually encoded. Any image passed to
+    // avifEncoderAddImage()/avifEncoderAddImageGrid() that is encoded smaller than the display size
+    // is upscaled to it on decode.
+    //
+    // Defaults to 0 (disabled). When 0, the display size is the size of the first added image.
+    // When set, both width and height must be nonzero, and neither can be smaller than the coded
+    // dimensions of any image passed to avifEncoderAddImage()/avifEncoderAddImageGrid().
+    //
+    // Not supported together with image sequences, image grids, scalingMode, sample
+    // transforms, or gain maps. Cannot be changed once encoding has started (i.e. after the first
+    // call to avifEncoderAddImage()/avifEncoderAddImageGrid()).
+    //
+    // The main use case is a layered image (see extraLayerCount above) where earlier layers'
+    // pixel data is already available at a smaller size, so encoding them directly at that size
+    // avoids the wasted round trip of upscaling to the display size only for the encoder to scale
+    // it back down, and allows scale ratios that scalingMode cannot express for the encoder in use.
+    //
+    // avifImage properties that are relative to image dimensions (clap, irot, imir, pasp; see the
+    // "Transformations" comment above) are interpreted relative to the display size when set, rather
+    // than to the coded size of whichever layer they came from.
+    //
+    // Implementation note: the display size is stored as the ispe box, the dimensions an AVIF
+    // decoder is required to honor; a coded image smaller than it is upscaled by the decoder to
+    // match. Separately, an AV1 encoder session declares a maximum frame size once, up front, and
+    // every later frame must fit within it; by default that maximum is simply the size of the first
+    // frame encoded. Setting width/height also declares that AV1-level maximum explicitly, in
+    // addition to the ispe box, so that later, larger layers stay within it. This is why it must be
+    // at least as large as every layer's coded size.
     uint32_t width;
     uint32_t height;
 } avifEncoder;
