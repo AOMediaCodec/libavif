@@ -12,6 +12,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+#define AVIF_HAVE_MEMORY_SANITIZER 1
+#endif
+#endif
+
+#if defined(AVIF_HAVE_MEMORY_SANITIZER)
+#include <sanitizer/msan_interface.h>
+#endif
+
 #define AUXTYPE_SIZE 64
 #define CONTENTTYPE_SIZE 64
 
@@ -6187,6 +6197,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
     }
     avifDecoderDataClearTiles(data);
     data->sampleTransformNumInputImageItems = 0;
+#if defined(AVIF_HAVE_MEMORY_SANITIZER)
+    __msan_poison(data->sampleTransformInputImageItems, sizeof(data->sampleTransformInputImageItems));
+#endif
     avifArrayDestroy(&data->meta->sampleTransformExpression);
     data->meta->sampleTransformDepth = 0;
 
@@ -6490,6 +6503,12 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             AVIF_CHECKERR(data->sampleTransformNumInputImageItems <= AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS,
                           AVIF_RESULT_NOT_IMPLEMENTED);
 
+            // Check if we see duplicate inputImageItem->dimgIdx.
+            avifBool dimgIdxSeen[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
+            for (uint32_t dimgIdx = 0; dimgIdx < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS; ++dimgIdx) {
+                dimgIdxSeen[dimgIdx] = AVIF_FALSE;
+            }
+
             uint32_t numExtraInputImageItems = 0;
             for (uint32_t i = 0; i < data->meta->items.count; ++i) {
                 avifDecoderItem * inputImageItem = data->meta->items.item[i];
@@ -6502,6 +6521,10 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 }
 
                 AVIF_ASSERT_OR_RETURN(inputImageItem->dimgIdx < AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS);
+                AVIF_ASSERT_OR_RETURN(!dimgIdxSeen[inputImageItem->dimgIdx]);
+                dimgIdxSeen[inputImageItem->dimgIdx] = AVIF_TRUE;
+                // The for loop index variable in avifDecoderApplySampleTransformForPlanesImpl() assumes this.
+                AVIF_ASSERT_OR_RETURN(inputImageItem->dimgIdx < data->sampleTransformNumInputImageItems);
                 avifItemCategory * category = &data->sampleTransformInputImageItems[inputImageItem->dimgIdx];
                 avifBool foundItem = AVIF_FALSE;
                 for (int c = AVIF_ITEM_COLOR; c < AVIF_ITEM_CATEGORY_COUNT; ++c) {
