@@ -78,6 +78,16 @@ pushd ${TMP_DIR}
   grep "XMP Metadata   : Absent" "${OUT_MSG}"
   grep "Exif Metadata  : Absent" "${OUT_MSG}"
 
+  # Test 444/420 downsampling and upsampling on AVIF source files.
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --yuv 420 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep "Format         : YUV420" "${OUT_MSG}"
+  "${AVIFGAINMAPUTIL}" combine "${AVIF_OUTPUT}" "${AVIF_OUTPUT}" "${AVIF_OUTPUT}.444.avif" \
+      -q 50 --yuv 444 > "${OUT_MSG}"
+  cat "${OUT_MSG}"
+  grep "Format         : YUV444" "${OUT_MSG}"
+
   # Test combine with overridden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \
       -q 100 --qgain-map 100 --cicp-base 1/13/0 --ignore-profile
