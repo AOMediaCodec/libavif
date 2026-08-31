@@ -241,9 +241,10 @@ typedef struct avifDecoderItem
                                    // If false, mergedExtents is used as an avifROData and points to a
                                    // buffer it doesn't own.
     avifBool partialMergedExtents; // If true, mergedExtents doesn't have all of the item data yet
+    avifBool hasDimgFrom;          // whether there is a 'dimg' box with this item's id as 'from_item_ID',
+                                   // even if reference_count is zero
     avifItemIDArray dimgInputs;    // if this item is derived, its input items in 'dimg' order
     avifBool isDimgInput;          // whether this item is an input of some derived item
-    avifBool hasDimgFrom;          // whether there is a 'dimg' box with this item's id as 'fromID'
     // The 'thmb', 'auxl', 'cdsc' and 'prem' references from this item, in file order.
     avifItemReferenceArray references;
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
