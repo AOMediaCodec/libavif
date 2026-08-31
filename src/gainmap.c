@@ -310,6 +310,9 @@ cleanup:
     if (rescaledGainMap != NULL) {
         avifImageDestroy(rescaledGainMap);
     }
+    if (res != AVIF_RESULT_OK) {
+        avifRGBImageFreePixels(toneMappedImage);
+    }
 
     return res;
 }

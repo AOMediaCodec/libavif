@@ -1801,6 +1801,8 @@ TEST(GainMapTest, ApplyGainMapNaN) {
 
   EXPECT_EQ(result, AVIF_RESULT_INVALID_TONE_MAPPED_IMAGE)
       << avifResultToString(result) << " (" << diag.error << ")";
+  EXPECT_EQ(toneMap.pixels, nullptr);
+  EXPECT_EQ(toneMap.rowBytes, 0u);
 
   avifRGBImageFreePixels(&toneMap);
 }
