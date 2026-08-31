@@ -277,7 +277,7 @@ static avifResult avifAddDimgInput(avifDecoderItem * derivedItem, avifDecoderIte
     return AVIF_RESULT_OK;
 }
 
-// Returns the position of inputItemID among derivedItem's 'dimg' inputs, or UINT32_MAX.
+// Returns the 0-based position of inputItemID among derivedItem's 'dimg' inputs, or UINT32_MAX.
 // A given value occurs at most once in a 'dimg' array, so the first match is the only one.
 static uint32_t avifDimgInputIndex(const avifDecoderItem * derivedItem, uint32_t inputItemID)
 {
