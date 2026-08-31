@@ -1685,8 +1685,7 @@ static avifCodecType avifDecoderItemGetGridCodecType(const avifDecoderItem * gri
 static avifResult avifFillDimgIdxToItemIdxArray(uint32_t * dimgIdxToItemIdx, uint32_t numExpectedTiles, const avifDecoderItem * gridItem)
 {
     // The input items of a derived item are kept in 'dimg' order, so a cell index is a
-    // position in that list. Nothing has to be reconstructed and one input can stand in
-    // for several cells.
+    // position in that list.
     AVIF_CHECKERR(gridItem->dimgInputs.count == numExpectedTiles, AVIF_RESULT_INVALID_IMAGE_GRID);
     for (uint32_t dimgIdx = 0; dimgIdx < numExpectedTiles; ++dimgIdx) {
         const uint32_t inputItemID = gridItem->dimgInputs.id[dimgIdx];
