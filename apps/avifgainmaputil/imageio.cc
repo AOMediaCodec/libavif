@@ -24,7 +24,7 @@ namespace avif {
 
 static avifResult UpsampleYUV420To444(avifImage* image) {
   if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV420) {
-    return AVIF_RESULT_NOT_IMPLEMENTED;
+    return AVIF_RESULT_INVALID_ARGUMENT;
   }
   if (!image->imageOwnsYUVPlanes) {
     // We need to replace the U and V planes with new, owned planes. Y has to
@@ -36,20 +36,26 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
 
   const uint32_t new_uv_width = image->width;
   const uint32_t new_uv_height = image->height;
-  const uint32_t old_uv_width = (image->width + 1) / 2;
-  const uint32_t old_uv_height = (image->height + 1) / 2;
+  const uint32_t old_uv_width = (uint32_t)(((uint64_t)image->width + 1) / 2);
+  const uint32_t old_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
-  uint8_t* new_u =
-      (uint8_t*)avifAlloc(new_uv_width * new_uv_height * bytes_per_pixel);
-  uint8_t* new_v =
-      (uint8_t*)avifAlloc(new_uv_width * new_uv_height * bytes_per_pixel);
+  const uint64_t uv_byte_size =
+      (uint64_t)new_uv_width * new_uv_height * bytes_per_pixel;
+  if (uv_byte_size > SIZE_MAX) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+  uint8_t* new_u = (uint8_t*)avifAlloc((size_t)uv_byte_size);
+  uint8_t* new_v = (uint8_t*)avifAlloc((size_t)uv_byte_size);
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
 
+  if (UINT32_MAX / bytes_per_pixel < new_uv_width) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
   const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
   const uint32_t new_stride_v = new_uv_width * bytes_per_pixel;
 
@@ -129,7 +135,7 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
 
 static avifResult DownsampleYUV444To420(avifImage* image) {
   if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
-    return AVIF_RESULT_NOT_IMPLEMENTED;
+    return AVIF_RESULT_INVALID_ARGUMENT;
   }
   if (!image->imageOwnsYUVPlanes) {
     // We need to replace the U and V planes with new, owned planes. Y has to
@@ -139,14 +145,17 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
     return AVIF_RESULT_NOT_IMPLEMENTED;
   }
 
-  const uint32_t new_uv_width = (image->width + 1) / 2;
-  const uint32_t new_uv_height = (image->height + 1) / 2;
+  const uint32_t new_uv_width = (uint32_t)(((uint64_t)image->width + 1) / 2);
+  const uint32_t new_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
-  uint8_t* new_u =
-      (uint8_t*)avifAlloc(new_uv_width * new_uv_height * bytes_per_pixel);
-  uint8_t* new_v =
-      (uint8_t*)avifAlloc(new_uv_width * new_uv_height * bytes_per_pixel);
+  const uint64_t uv_byte_size =
+      (uint64_t)new_uv_width * new_uv_height * bytes_per_pixel;
+  if (uv_byte_size > SIZE_MAX) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+  uint8_t* new_u = (uint8_t*)avifAlloc((size_t)uv_byte_size);
+  uint8_t* new_v = (uint8_t*)avifAlloc((size_t)uv_byte_size);
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
