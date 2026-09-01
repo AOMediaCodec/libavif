@@ -51,6 +51,26 @@ TEST(DimgTest, ItemShared) {
 
 //------------------------------------------------------------------------------
 
+// The color grid and the alpha grid are built from the same four cells, so each
+// of the items 2 to 5 is an input of two derived items. The ordered 'dimg' list
+// can express that, and the tiles stay consistent because both grids use the
+// same ones.
+TEST(DimgTest, TilesSharedBetweenGrids) {
+  testutil::AvifRwData avif = testutil::ReadFile(
+      std::string(data_path) + "color_grid_alpha_grid_shared_tiles.avif");
+  ASSERT_NE(avif.size, 0u);
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(
+      avifDecoderReadMemory(decoder.get(), decoded.get(), avif.data, avif.size),
+      AVIF_RESULT_OK);
+  ASSERT_NE(decoded->alphaPlane, nullptr);
+}
+
+//------------------------------------------------------------------------------
+
 // One item is the alpha auxiliary of both tiles of a color grid. The synthetic
 // alpha grid then holds that item in both cells, which the ordered dimg input
 // list can express. Every cell carries the same alpha, so the two halves of the

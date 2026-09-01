@@ -567,6 +567,17 @@ item. The `from_item_ID` of the second `auxl` box is manually edited from 6 to 5
 item 5 is the alpha auxiliary of both tiles and item 6 of neither. Only that one
 field differs from the source file.
 
+### File [color_grid_alpha_grid_shared_tiles.avif](color_grid_alpha_grid_shared_tiles.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as `color_grid_alpha_grid_tile_shared_in_dimg.avif`
+
+The `dimg` associations are manually edited so that both grids list the same
+cells: the color grid from 2,3,4,A to 2,3,4,5 and the alpha grid from 7,8,9,A to
+2,3,4,5. Each of the items 2 to 5 is then an input of two derived items. Five
+bytes differ from the source file.
+
 ### File [alpha_noispe.avif](alpha_noispe.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
