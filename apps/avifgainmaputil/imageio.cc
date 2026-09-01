@@ -40,24 +40,23 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
   const uint32_t old_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
-  const uint64_t uv_byte_size =
-      (uint64_t)new_uv_width * new_uv_height * bytes_per_pixel;
-  if (uv_byte_size > SIZE_MAX) {
+  if (new_uv_width > UINT32_MAX / bytes_per_pixel) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
-  uint8_t* new_u = (uint8_t*)avifAlloc((size_t)uv_byte_size);
-  uint8_t* new_v = (uint8_t*)avifAlloc((size_t)uv_byte_size);
+  const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
+  const uint32_t new_stride_v = new_stride_u;
+
+  if (new_stride_u != 0 && new_uv_height > SIZE_MAX / new_stride_u) {
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+  const size_t uv_byte_size = (size_t)new_stride_u * new_uv_height;
+  uint8_t* new_u = (uint8_t*)avifAlloc(uv_byte_size);
+  uint8_t* new_v = (uint8_t*)avifAlloc(uv_byte_size);
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-
-  if (UINT32_MAX / bytes_per_pixel < new_uv_width) {
-    return AVIF_RESULT_INVALID_ARGUMENT;
-  }
-  const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
-  const uint32_t new_stride_v = new_uv_width * bytes_per_pixel;
 
 #if defined(AVIF_LIBYUV_ENABLED)
   if (image->depth == 8) {
@@ -98,20 +97,20 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
   // bilinear filter).
   for (uint32_t y = 0; y < new_uv_height; ++y) {
     for (uint32_t x = 0; x < new_uv_width; ++x) {
-      uint32_t src_y = y / 2;
-      uint32_t src_x = x / 2;
+      size_t src_y = (size_t)y / 2;
+      size_t src_x = (size_t)x / 2;
       if (image->depth == 8) {
-        new_u[y * new_stride_u + x] =
+        new_u[(size_t)y * new_stride_u + x] =
             image->yuvPlanes[AVIF_CHAN_U]
                             [src_y * image->yuvRowBytes[AVIF_CHAN_U] + src_x];
-        new_v[y * new_stride_v + x] =
+        new_v[(size_t)y * new_stride_v + x] =
             image->yuvPlanes[AVIF_CHAN_V]
                             [src_y * image->yuvRowBytes[AVIF_CHAN_V] + src_x];
       } else {
-        ((uint16_t*)new_u)[y * (new_stride_u / 2) + x] =
+        ((uint16_t*)new_u)[(size_t)y * (new_stride_u / 2) + x] =
             ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U])
                 [src_y * (image->yuvRowBytes[AVIF_CHAN_U] / 2) + src_x];
-        ((uint16_t*)new_v)[y * (new_stride_v / 2) + x] =
+        ((uint16_t*)new_v)[(size_t)y * (new_stride_v / 2) + x] =
             ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V])
                 [src_y * (image->yuvRowBytes[AVIF_CHAN_V] / 2) + src_x];
       }
@@ -149,21 +148,17 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
   const uint32_t new_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
-  const uint64_t uv_byte_size =
-      (uint64_t)new_uv_width * new_uv_height * bytes_per_pixel;
-  if (uv_byte_size > SIZE_MAX) {
-    return AVIF_RESULT_INVALID_ARGUMENT;
-  }
-  uint8_t* new_u = (uint8_t*)avifAlloc((size_t)uv_byte_size);
-  uint8_t* new_v = (uint8_t*)avifAlloc((size_t)uv_byte_size);
+  const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
+  const uint32_t new_stride_v = new_stride_u;
+
+  const size_t uv_byte_size = (size_t)new_stride_u * new_uv_height;
+  uint8_t* new_u = (uint8_t*)avifAlloc(uv_byte_size);
+  uint8_t* new_v = (uint8_t*)avifAlloc(uv_byte_size);
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-
-  const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
-  const uint32_t new_stride_v = new_uv_width * bytes_per_pixel;
 
 #if defined(AVIF_LIBYUV_ENABLED)
   if (image->depth == 8) {
@@ -205,8 +200,8 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
       uint32_t sum_v = 0;
       for (uint32_t dy = 0; dy < 2; ++dy) {
         for (uint32_t dx = 0; dx < 2; ++dx) {
-          uint32_t src_y = y * 2 + dy;
-          uint32_t src_x = x * 2 + dx;
+          size_t src_y = (size_t)y * 2 + dy;
+          size_t src_x = (size_t)x * 2 + dx;
           if (src_y < image->height && src_x < image->width) {
             if (image->depth == 8) {
               sum_u +=
@@ -228,12 +223,12 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
         }
       }
       if (image->depth == 8) {
-        new_u[y * new_stride_u + x] = (sum_u + count / 2) / count;
-        new_v[y * new_stride_v + x] = (sum_v + count / 2) / count;
+        new_u[(size_t)y * new_stride_u + x] = (sum_u + count / 2) / count;
+        new_v[(size_t)y * new_stride_v + x] = (sum_v + count / 2) / count;
       } else {
-        ((uint16_t*)new_u)[y * (new_stride_u / 2) + x] =
+        ((uint16_t*)new_u)[(size_t)y * (new_stride_u / 2) + x] =
             (sum_u + count / 2) / count;
-        ((uint16_t*)new_v)[y * (new_stride_v / 2) + x] =
+        ((uint16_t*)new_v)[(size_t)y * (new_stride_v / 2) + x] =
             (sum_v + count / 2) / count;
       }
     }
