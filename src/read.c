@@ -244,7 +244,6 @@ typedef struct avifDecoderItem
     avifBool hasDimgFrom;          // whether there is a 'dimg' box with this item's id as 'from_item_ID',
                                    // even if reference_count is zero
     avifItemIDArray dimgInputs;    // if this item is derived, its input items in 'dimg' order
-    avifBool isDimgInput;          // whether this item is an input of some derived item
     // The 'thmb', 'auxl', 'cdsc' and 'prem' references from this item, in file order.
     avifItemReferenceArray references;
     avifBool hasUnsupportedEssentialProperty; // If true, this item cites a property flagged as 'essential' that libavif doesn't support (yet). Ignore the item, if so.
@@ -279,7 +278,6 @@ static avifResult avifAddDimgInput(avifDecoderItem * derivedItem, avifDecoderIte
     uint32_t * dimgInput = (uint32_t *)avifArrayPush(&derivedItem->dimgInputs);
     AVIF_CHECKERR(dimgInput != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     *dimgInput = inputItem->id;
-    inputItem->isDimgInput = AVIF_TRUE;
     return AVIF_RESULT_OK;
 }
 
@@ -3506,8 +3504,6 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
                 //   The items linked to are then represented by an array of to_item_IDs;
                 //   within a given array, a given value shall occur at most once.
                 AVIF_CHECKERR(!avifIsDimgInput(item, toID, NULL), AVIF_RESULT_INVALID_IMAGE_GRID);
-                // A given value may occur within multiple arrays but this is not supported by libavif.
-                AVIF_CHECKERR(!dimgInput->isDimgInput, AVIF_RESULT_NOT_IMPLEMENTED);
                 AVIF_CHECKRES(avifAddDimgInput(item, dimgInput));
             }
         }
@@ -5654,11 +5650,9 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
             for (uint32_t j = 0; j < meta->items.count; ++j) {
                 avifDecoderItem * auxlItem = meta->items.item[j];
                 if (avifDecoderItemIsAlphaAux(auxlItem, item->id)) {
-                    if (seenAlphaForCurrentItem || auxlItem->isDimgInput || colorTileIdx >= tileCount ||
-                        dimgIdxToAlphaItemIdx[colorTileIdx] != itemIndexNotSet) {
+                    if (seenAlphaForCurrentItem || colorTileIdx >= tileCount || dimgIdxToAlphaItemIdx[colorTileIdx] != itemIndexNotSet) {
                         // One of the following invalid cases:
                         // * Multiple items are claiming to be the alpha auxiliary of the current item.
-                        // * Alpha auxiliary is dimg for another item.
                         // * There are too many items in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
                         // * There is a repetition in the dimg array (also checked later in avifFillDimgIdxToItemIdxArray()).
                         avifFree(dimgIdxToAlphaItemIdx);

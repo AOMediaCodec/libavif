@@ -31,6 +31,10 @@ TEST(DimgTest, IrefRepetition) {
             AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
+// Item 10 is a cell of both the color grid and the alpha grid. Sharing a cell
+// between two derived items is allowed, so this file now reaches the tile
+// consistency check and is refused there: the av1C of a color tile cannot match
+// the av1C of the alpha tiles it stands among.
 TEST(DimgTest, ItemShared) {
   testutil::AvifRwData avif =
       testutil::ReadFile(std::string(data_path) +
@@ -42,7 +46,7 @@ TEST(DimgTest, ItemShared) {
   ASSERT_NE(decoder, nullptr);
   ASSERT_EQ(avifDecoderReadMemory(decoder.get(), reference.get(), avif.data,
                                   avif.size),
-            AVIF_RESULT_NOT_IMPLEMENTED);
+            AVIF_RESULT_BMFF_PARSE_FAILED);
 }
 
 //------------------------------------------------------------------------------
