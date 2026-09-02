@@ -22,7 +22,9 @@
 
 namespace avif {
 
-static avifResult UpsampleYUV420To444(avifImage* image) {
+namespace {
+
+avifResult UpsampleYUV420To444(avifImage* image) {
   if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV420) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
@@ -36,8 +38,10 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
 
   const uint32_t new_uv_width = image->width;
   const uint32_t new_uv_height = image->height;
-  const uint32_t old_uv_width = (uint32_t)(((uint64_t)image->width + 1) / 2);
-  const uint32_t old_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
+  const uint32_t old_uv_width =
+      static_cast<uint32_t>((static_cast<uint64_t>(image->width) + 1) / 2);
+  const uint32_t old_uv_height =
+      static_cast<uint32_t>((static_cast<uint64_t>(image->height) + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
   if (new_uv_width > UINT32_MAX / bytes_per_pixel) {
@@ -49,9 +53,9 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
   if (new_stride_u != 0 && new_uv_height > SIZE_MAX / new_stride_u) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
-  const size_t uv_byte_size = (size_t)new_stride_u * new_uv_height;
-  uint8_t* new_u = (uint8_t*)avifAlloc(uv_byte_size);
-  uint8_t* new_v = (uint8_t*)avifAlloc(uv_byte_size);
+  const size_t uv_byte_size = static_cast<size_t>(new_stride_u) * new_uv_height;
+  uint8_t* new_u = static_cast<uint8_t*>(avifAlloc(uv_byte_size));
+  uint8_t* new_v = static_cast<uint8_t*>(avifAlloc(uv_byte_size));
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
@@ -70,23 +74,27 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
                        new_uv_height, libyuv::kFilterBilinear);
   } else {
 #if LIBYUV_VERSION >= 1774
-    libyuv::ScalePlane_12((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U],
-                          image->yuvRowBytes[AVIF_CHAN_U] / 2, old_uv_width,
-                          old_uv_height, (uint16_t*)new_u, new_stride_u / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBilinear);
-    libyuv::ScalePlane_12((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V],
-                          image->yuvRowBytes[AVIF_CHAN_V] / 2, old_uv_width,
-                          old_uv_height, (uint16_t*)new_v, new_stride_v / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBilinear);
+    libyuv::ScalePlane_12(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_U]),
+        image->yuvRowBytes[AVIF_CHAN_U] / 2, old_uv_width, old_uv_height,
+        reinterpret_cast<uint16_t*>(new_u), new_stride_u / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBilinear);
+    libyuv::ScalePlane_12(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_V]),
+        image->yuvRowBytes[AVIF_CHAN_V] / 2, old_uv_width, old_uv_height,
+        reinterpret_cast<uint16_t*>(new_v), new_stride_v / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBilinear);
 #else
-    libyuv::ScalePlane_16((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U],
-                          image->yuvRowBytes[AVIF_CHAN_U] / 2, old_uv_width,
-                          old_uv_height, (uint16_t*)new_u, new_stride_u / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBilinear);
-    libyuv::ScalePlane_16((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V],
-                          image->yuvRowBytes[AVIF_CHAN_V] / 2, old_uv_width,
-                          old_uv_height, (uint16_t*)new_v, new_stride_v / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBilinear);
+    libyuv::ScalePlane_16(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_U]),
+        image->yuvRowBytes[AVIF_CHAN_U] / 2, old_uv_width, old_uv_height,
+        reinterpret_cast<uint16_t*>(new_u), new_stride_u / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBilinear);
+    libyuv::ScalePlane_16(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_V]),
+        image->yuvRowBytes[AVIF_CHAN_V] / 2, old_uv_width, old_uv_height,
+        reinterpret_cast<uint16_t*>(new_v), new_stride_v / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBilinear);
 #endif
   }
 #else
@@ -97,42 +105,41 @@ static avifResult UpsampleYUV420To444(avifImage* image) {
   // bilinear filter).
   for (uint32_t y = 0; y < new_uv_height; ++y) {
     for (uint32_t x = 0; x < new_uv_width; ++x) {
-      size_t src_y = (size_t)y / 2;
-      size_t src_x = (size_t)x / 2;
+      size_t src_y = static_cast<size_t>(y) / 2;
+      size_t src_x = static_cast<size_t>(x) / 2;
       if (image->depth == 8) {
-        new_u[(size_t)y * new_stride_u + x] =
+        new_u[static_cast<size_t>(y) * new_stride_u + x] =
             image->yuvPlanes[AVIF_CHAN_U]
                             [src_y * image->yuvRowBytes[AVIF_CHAN_U] + src_x];
-        new_v[(size_t)y * new_stride_v + x] =
+        new_v[static_cast<size_t>(y) * new_stride_v + x] =
             image->yuvPlanes[AVIF_CHAN_V]
                             [src_y * image->yuvRowBytes[AVIF_CHAN_V] + src_x];
       } else {
-        ((uint16_t*)new_u)[(size_t)y * (new_stride_u / 2) + x] =
-            ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U])
+        reinterpret_cast<uint16_t*>(
+            new_u)[static_cast<size_t>(y) * (new_stride_u / 2) + x] =
+            reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_U])
                 [src_y * (image->yuvRowBytes[AVIF_CHAN_U] / 2) + src_x];
-        ((uint16_t*)new_v)[(size_t)y * (new_stride_v / 2) + x] =
-            ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V])
+        reinterpret_cast<uint16_t*>(
+            new_v)[static_cast<size_t>(y) * (new_stride_v / 2) + x] =
+            reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_V])
                 [src_y * (image->yuvRowBytes[AVIF_CHAN_V] / 2) + src_x];
       }
     }
   }
 #endif
 
-  if (image->imageOwnsYUVPlanes) {
-    avifFree(image->yuvPlanes[AVIF_CHAN_U]);
-    avifFree(image->yuvPlanes[AVIF_CHAN_V]);
-  }
+  avifFree(image->yuvPlanes[AVIF_CHAN_U]);
+  avifFree(image->yuvPlanes[AVIF_CHAN_V]);
   image->yuvPlanes[AVIF_CHAN_U] = new_u;
   image->yuvPlanes[AVIF_CHAN_V] = new_v;
   image->yuvRowBytes[AVIF_CHAN_U] = new_stride_u;
   image->yuvRowBytes[AVIF_CHAN_V] = new_stride_v;
   image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
-  image->imageOwnsYUVPlanes = AVIF_TRUE;
 
   return AVIF_RESULT_OK;
 }
 
-static avifResult DownsampleYUV444To420(avifImage* image) {
+avifResult DownsampleYUV444To420(avifImage* image) {
   if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
@@ -144,16 +151,18 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
     return AVIF_RESULT_NOT_IMPLEMENTED;
   }
 
-  const uint32_t new_uv_width = (uint32_t)(((uint64_t)image->width + 1) / 2);
-  const uint32_t new_uv_height = (uint32_t)(((uint64_t)image->height + 1) / 2);
+  const uint32_t new_uv_width =
+      static_cast<uint32_t>((static_cast<uint64_t>(image->width) + 1) / 2);
+  const uint32_t new_uv_height =
+      static_cast<uint32_t>((static_cast<uint64_t>(image->height) + 1) / 2);
   const uint32_t bytes_per_pixel = (image->depth > 8) ? 2 : 1;
 
   const uint32_t new_stride_u = new_uv_width * bytes_per_pixel;
   const uint32_t new_stride_v = new_stride_u;
 
-  const size_t uv_byte_size = (size_t)new_stride_u * new_uv_height;
-  uint8_t* new_u = (uint8_t*)avifAlloc(uv_byte_size);
-  uint8_t* new_v = (uint8_t*)avifAlloc(uv_byte_size);
+  const size_t uv_byte_size = static_cast<size_t>(new_stride_u) * new_uv_height;
+  uint8_t* new_u = static_cast<uint8_t*>(avifAlloc(uv_byte_size));
+  uint8_t* new_v = static_cast<uint8_t*>(avifAlloc(uv_byte_size));
   if (!new_u || !new_v) {
     avifFree(new_u);
     avifFree(new_v);
@@ -172,23 +181,27 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
                        new_uv_height, libyuv::kFilterBox);
   } else {
 #if LIBYUV_VERSION >= 1774
-    libyuv::ScalePlane_12((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U],
-                          image->yuvRowBytes[AVIF_CHAN_U] / 2, image->width,
-                          image->height, (uint16_t*)new_u, new_stride_u / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBox);
-    libyuv::ScalePlane_12((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V],
-                          image->yuvRowBytes[AVIF_CHAN_V] / 2, image->width,
-                          image->height, (uint16_t*)new_v, new_stride_v / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBox);
+    libyuv::ScalePlane_12(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_U]),
+        image->yuvRowBytes[AVIF_CHAN_U] / 2, image->width, image->height,
+        reinterpret_cast<uint16_t*>(new_u), new_stride_u / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBox);
+    libyuv::ScalePlane_12(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_V]),
+        image->yuvRowBytes[AVIF_CHAN_V] / 2, image->width, image->height,
+        reinterpret_cast<uint16_t*>(new_v), new_stride_v / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBox);
 #else
-    libyuv::ScalePlane_16((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U],
-                          image->yuvRowBytes[AVIF_CHAN_U] / 2, image->width,
-                          image->height, (uint16_t*)new_u, new_stride_u / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBox);
-    libyuv::ScalePlane_16((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V],
-                          image->yuvRowBytes[AVIF_CHAN_V] / 2, image->width,
-                          image->height, (uint16_t*)new_v, new_stride_v / 2,
-                          new_uv_width, new_uv_height, libyuv::kFilterBox);
+    libyuv::ScalePlane_16(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_U]),
+        image->yuvRowBytes[AVIF_CHAN_U] / 2, image->width, image->height,
+        reinterpret_cast<uint16_t*>(new_u), new_stride_u / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBox);
+    libyuv::ScalePlane_16(
+        reinterpret_cast<const uint16_t*>(image->yuvPlanes[AVIF_CHAN_V]),
+        image->yuvRowBytes[AVIF_CHAN_V] / 2, image->width, image->height,
+        reinterpret_cast<uint16_t*>(new_v), new_stride_v / 2, new_uv_width,
+        new_uv_height, libyuv::kFilterBox);
 #endif
   }
 #else
@@ -200,8 +213,8 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
       uint32_t sum_v = 0;
       for (uint32_t dy = 0; dy < 2; ++dy) {
         for (uint32_t dx = 0; dx < 2; ++dx) {
-          size_t src_y = (size_t)y * 2 + dy;
-          size_t src_x = (size_t)x * 2 + dx;
+          size_t src_y = static_cast<size_t>(y) * 2 + dy;
+          size_t src_x = static_cast<size_t>(x) * 2 + dx;
           if (src_y < image->height && src_x < image->width) {
             if (image->depth == 8) {
               sum_u +=
@@ -213,9 +226,11 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
                                   [src_y * image->yuvRowBytes[AVIF_CHAN_V] +
                                    src_x];
             } else {
-              sum_u += ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_U])
+              sum_u += reinterpret_cast<const uint16_t*>(
+                  image->yuvPlanes[AVIF_CHAN_U])
                   [src_y * (image->yuvRowBytes[AVIF_CHAN_U] / 2) + src_x];
-              sum_v += ((const uint16_t*)image->yuvPlanes[AVIF_CHAN_V])
+              sum_v += reinterpret_cast<const uint16_t*>(
+                  image->yuvPlanes[AVIF_CHAN_V])
                   [src_y * (image->yuvRowBytes[AVIF_CHAN_V] / 2) + src_x];
             }
             count++;
@@ -223,32 +238,34 @@ static avifResult DownsampleYUV444To420(avifImage* image) {
         }
       }
       if (image->depth == 8) {
-        new_u[(size_t)y * new_stride_u + x] = (sum_u + count / 2) / count;
-        new_v[(size_t)y * new_stride_v + x] = (sum_v + count / 2) / count;
-      } else {
-        ((uint16_t*)new_u)[(size_t)y * (new_stride_u / 2) + x] =
+        new_u[static_cast<size_t>(y) * new_stride_u + x] =
             (sum_u + count / 2) / count;
-        ((uint16_t*)new_v)[(size_t)y * (new_stride_v / 2) + x] =
+        new_v[static_cast<size_t>(y) * new_stride_v + x] =
+            (sum_v + count / 2) / count;
+      } else {
+        reinterpret_cast<uint16_t*>(
+            new_u)[static_cast<size_t>(y) * (new_stride_u / 2) + x] =
+            (sum_u + count / 2) / count;
+        reinterpret_cast<uint16_t*>(
+            new_v)[static_cast<size_t>(y) * (new_stride_v / 2) + x] =
             (sum_v + count / 2) / count;
       }
     }
   }
 #endif
 
-  if (image->imageOwnsYUVPlanes) {
-    avifFree(image->yuvPlanes[AVIF_CHAN_U]);
-    avifFree(image->yuvPlanes[AVIF_CHAN_V]);
-  }
+  avifFree(image->yuvPlanes[AVIF_CHAN_U]);
+  avifFree(image->yuvPlanes[AVIF_CHAN_V]);
   image->yuvPlanes[AVIF_CHAN_U] = new_u;
   image->yuvPlanes[AVIF_CHAN_V] = new_v;
   image->yuvRowBytes[AVIF_CHAN_U] = new_stride_u;
   image->yuvRowBytes[AVIF_CHAN_V] = new_stride_v;
   image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
-  // Make sure imageOwnsYUVPlanes is set so they get freed later.
-  image->imageOwnsYUVPlanes = AVIF_TRUE;
 
   return AVIF_RESULT_OK;
 }
+
+}  // namespace
 
 template <typename T>
 inline T Clamp(T x, T low, T high) {  // Only exists in C++17.
@@ -421,6 +438,7 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
   return AVIF_RESULT_OK;
 }
 
+namespace {
 std::string PixelFormatToString(avifPixelFormat format) {
   switch (format) {
     case AVIF_PIXEL_FORMAT_YUV444:
@@ -435,6 +453,7 @@ std::string PixelFormatToString(avifPixelFormat format) {
       return "unknown";
   }
 }
+}  // namespace
 
 avifResult ReadImage(avifImage* image, const std::string& input_filename,
                      avifPixelFormat requested_format, uint32_t requested_depth,
