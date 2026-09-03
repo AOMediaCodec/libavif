@@ -466,6 +466,45 @@ static avifResult avifItemPropertyDedupFinish(avifItemPropertyDedup * dedup,
 
 static const avifScalingMode noScaling = { { 1, 1 }, { 1, 1 } };
 
+static avifBool avifEncoderUsesDisplaySizeOverride(const avifEncoder * encoder)
+{
+    return (encoder->width != 0) || (encoder->height != 0);
+}
+
+static avifBool avifScalingModeIsNoScaling(const avifScalingMode * scalingMode)
+{
+    return (scalingMode->horizontal.n == scalingMode->horizontal.d) && (scalingMode->vertical.n == scalingMode->vertical.d);
+}
+
+static avifBool avifImageHasEquivalentTransformProperties(const avifImage * lhs, const avifImage * rhs)
+{
+    const uint32_t lhsTransformFlags = lhs->transformFlags &
+                                       (AVIF_TRANSFORM_PASP | AVIF_TRANSFORM_CLAP | AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
+    const uint32_t rhsTransformFlags = rhs->transformFlags &
+                                       (AVIF_TRANSFORM_PASP | AVIF_TRANSFORM_CLAP | AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR);
+    if (lhsTransformFlags != rhsTransformFlags) {
+        return AVIF_FALSE;
+    }
+    if ((lhsTransformFlags & AVIF_TRANSFORM_PASP) &&
+        ((lhs->pasp.hSpacing != rhs->pasp.hSpacing) || (lhs->pasp.vSpacing != rhs->pasp.vSpacing))) {
+        return AVIF_FALSE;
+    }
+    if ((lhsTransformFlags & AVIF_TRANSFORM_CLAP) &&
+        ((lhs->clap.widthN != rhs->clap.widthN) || (lhs->clap.widthD != rhs->clap.widthD) ||
+         (lhs->clap.heightN != rhs->clap.heightN) || (lhs->clap.heightD != rhs->clap.heightD) ||
+         (lhs->clap.horizOffN != rhs->clap.horizOffN) || (lhs->clap.horizOffD != rhs->clap.horizOffD) ||
+         (lhs->clap.vertOffN != rhs->clap.vertOffN) || (lhs->clap.vertOffD != rhs->clap.vertOffD))) {
+        return AVIF_FALSE;
+    }
+    if ((lhsTransformFlags & AVIF_TRANSFORM_IROT) && (lhs->irot.angle != rhs->irot.angle)) {
+        return AVIF_FALSE;
+    }
+    if ((lhsTransformFlags & AVIF_TRANSFORM_IMIR) && (lhs->imir.axis != rhs->imir.axis)) {
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
 avifEncoder * avifEncoderCreate(void)
 {
     avifEncoder * encoder = (avifEncoder *)avifAlloc(sizeof(avifEncoder));
@@ -486,6 +525,8 @@ avifEncoder * avifEncoderCreate(void)
     encoder->maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
     encoder->minQuantizerAlpha = AVIF_QUANTIZER_BEST_QUALITY;
     encoder->maxQuantizerAlpha = AVIF_QUANTIZER_WORST_QUALITY;
+    encoder->width = 0;
+    encoder->height = 0;
     encoder->tileRowsLog2 = 0;
     encoder->tileColsLog2 = 0;
     encoder->autoTiling = AVIF_FALSE;
@@ -533,6 +574,8 @@ static void avifEncoderBackupSettings(avifEncoder * encoder)
     lastEncoder->timescale = encoder->timescale;
     lastEncoder->repetitionCount = encoder->repetitionCount;
     lastEncoder->extraLayerCount = encoder->extraLayerCount;
+    lastEncoder->width = encoder->width;
+    lastEncoder->height = encoder->height;
     lastEncoder->minQuantizer = encoder->minQuantizer;
     lastEncoder->maxQuantizer = encoder->maxQuantizer;
     lastEncoder->minQuantizerAlpha = encoder->minQuantizerAlpha;
@@ -561,7 +604,8 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     if ((lastEncoder->codecChoice != encoder->codecChoice) || (lastEncoder->maxThreads != encoder->maxThreads) ||
         (lastEncoder->speed != encoder->speed) || (lastEncoder->keyframeInterval != encoder->keyframeInterval) ||
         (lastEncoder->timescale != encoder->timescale) || (lastEncoder->repetitionCount != encoder->repetitionCount) ||
-        (lastEncoder->extraLayerCount != encoder->extraLayerCount)) {
+        (lastEncoder->extraLayerCount != encoder->extraLayerCount) || (lastEncoder->width != encoder->width) ||
+        (lastEncoder->height != encoder->height)) {
         return AVIF_FALSE;
     }
 
@@ -1554,6 +1598,69 @@ static avifCodecType avifEncoderGetCodecType(const avifEncoder * encoder)
     return avifCodecTypeFromChoice(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
 }
 
+static avifResult avifEncoderValidateDisplaySizeOverride(avifEncoder * encoder, uint32_t gridCols, uint32_t gridRows, const avifImage * firstCell)
+{
+    if (!avifEncoderUsesDisplaySizeOverride(encoder)) {
+        return AVIF_RESULT_OK;
+    }
+
+    if ((encoder->width == 0) || (encoder->height == 0)) {
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "display-size override requires both avifEncoder.width and avifEncoder.height to be non-zero");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
+    if ((gridCols > 1) || (gridRows > 1)) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with grid images");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if (!avifScalingModeIsNoScaling(&encoder->scalingMode)) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with encoder->scalingMode");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if (encoder->sampleTransformRecipe != AVIF_SAMPLE_TRANSFORM_NONE) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with sample transforms");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if (firstCell->gainMap && firstCell->gainMap->image) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported with gain maps");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if ((encoder->data->items.count > 0) && (encoder->extraLayerCount == 0)) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override is not supported for image sequences");
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
+    if ((encoder->width < firstCell->width) || (encoder->height < firstCell->height)) {
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "display-size override %ux%u must be at least the coded image size %ux%u",
+                              encoder->width,
+                              encoder->height,
+                              firstCell->width,
+                              firstCell->height);
+        return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+    }
+
+    if (firstCell->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCropRect cropRect;
+        if (!avifCropRectFromCleanApertureBox(&cropRect, &firstCell->clap, encoder->width, encoder->height, &encoder->diag)) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+
+    if ((encoder->data->items.count > 0) && (encoder->extraLayerCount > 0) &&
+        !avifImageHasEquivalentTransformProperties(firstCell, encoder->data->imageMetadata)) {
+        avifDiagnosticsPrintf(&encoder->diag, "display-size override requires 'pasp', 'clap', 'irot' and 'imir' to match across layers");
+        return AVIF_RESULT_INCOMPATIBLE_IMAGE;
+    }
+
+    return AVIF_RESULT_OK;
+}
+
 // This function is called after every color frame is encoded. It returns AVIF_TRUE if a keyframe needs to be forced for the next
 // alpha frame to be encoded, AVIF_FALSE otherwise.
 static avifBool avifEncoderDataShouldForceKeyframeForAlpha(const avifEncoderData * data,
@@ -1736,6 +1843,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         return AVIF_RESULT_NO_CONTENT;
     }
 
+    AVIF_CHECKRES(avifEncoderValidateDisplaySizeOverride(encoder, gridCols, gridRows, firstCell));
+
     AVIF_CHECKRES(avifValidateGrid(gridCols, gridRows, cellImages, /*validateGainMap=*/AVIF_FALSE, &encoder->diag));
 
     const avifBool hasGainMap = (firstCell->gainMap && firstCell->gainMap->image != NULL);
@@ -1866,6 +1975,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
     if (encoder->data->items.count == 0) {
         // Make a copy of the first image's metadata (sans pixels) for future writing/validation
         AVIF_CHECKRES(avifImageCopy(encoder->data->imageMetadata, firstCell, 0));
+        if (avifEncoderUsesDisplaySizeOverride(encoder)) {
+            encoder->data->imageMetadata->width = encoder->width;
+            encoder->data->imageMetadata->height = encoder->height;
+        }
 
         const uint32_t gridWidth = avifGridWidth(gridCols, firstCell, bottomRightCell);
         const uint32_t gridHeight = avifGridHeight(gridRows, firstCell, bottomRightCell);
