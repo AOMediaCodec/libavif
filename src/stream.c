@@ -30,11 +30,16 @@ void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics 
 
 avifBool avifROStreamHasBytesLeft(const avifROStream * stream, size_t byteCount)
 {
+    // The subtraction below underflows unless the invariant documented in
+    // internal.h holds. Check it here so a violation aborts under assertions
+    // instead of silently returning AVIF_TRUE for any byteCount.
+    assert(stream->offset <= stream->raw->size);
     return byteCount <= (stream->raw->size - stream->offset);
 }
 
 size_t avifROStreamRemainingBytes(const avifROStream * stream)
 {
+    assert(stream->offset <= stream->raw->size);
     return stream->raw->size - stream->offset;
 }
 
