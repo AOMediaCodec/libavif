@@ -43,6 +43,18 @@ foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
 endforeach()
 
+add_executable(avifoptionstest avifoptionstest.c)
+if(AVIF_CODEC_LIBGAV1_ENABLED OR AVIF_LIBYUV_ENABLED)
+    set_target_properties(avifoptionstest PROPERTIES LINKER_LANGUAGE "CXX")
+endif()
+target_link_libraries(avifoptionstest PRIVATE avif_internal avif_enable_warnings)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_definitions(avifoptionstest PRIVATE AVIF_OPTIONSTEST_WRAP_MALLOC)
+    target_link_options(avifoptionstest PRIVATE "LINKER:--wrap=malloc")
+endif()
+add_test(NAME avifoptionstest COMMAND avifoptionstest)
+register_test_for_coverage(avifoptionstest)
+
 if(AVIF_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
     add_library(aviftest_helpers OBJECT gtest/aviftest_helpers.cc)
     target_link_libraries(aviftest_helpers PUBLIC avif_apps_internal avif_internal)
