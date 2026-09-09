@@ -856,6 +856,7 @@ AVIF_NODISCARD AVIF_API avifImage * avifImageCreateEmpty(void); // helper for ma
 // Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 // Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes.
+// Returns AVIF_RESULT_INVALID_ARGUMENT if 'srcImage' uses plane storage owned by 'dstImage'.
 // Ignores the gainMap field.
 AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect);
 AVIF_API void avifImageDestroy(avifImage * image);

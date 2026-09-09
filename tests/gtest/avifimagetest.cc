@@ -93,5 +93,91 @@ TEST(AvifImageTest, CopyViewIntoOwner) {
   }
 }
 
+TEST(AvifImageTest, SetViewRectRejectsViewIntoDestination) {
+  ImagePtr owner(avifImageCreate(/*width=*/16, /*height=*/16, /*depth=*/8,
+                                 AVIF_PIXEL_FORMAT_YUV444));
+  ImagePtr view(avifImageCreateEmpty());
+  ASSERT_NE(owner, nullptr);
+  ASSERT_NE(view, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(owner.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+
+  const avifCropRect outer_rect = {/*x=*/4, /*y=*/4, /*width=*/8,
+                                   /*height=*/8};
+  ASSERT_EQ(avifImageSetViewRect(view.get(), owner.get(), &outer_rect),
+            AVIF_RESULT_OK);
+  uint8_t* const owner_y = owner->yuvPlanes[AVIF_CHAN_Y];
+  uint8_t* const owner_alpha = owner->alphaPlane;
+  uint8_t* const view_y = view->yuvPlanes[AVIF_CHAN_Y];
+  uint8_t* const view_alpha = view->alphaPlane;
+
+  const avifCropRect inner_rect = {/*x=*/0, /*y=*/0, /*width=*/4,
+                                   /*height=*/4};
+  EXPECT_EQ(avifImageSetViewRect(owner.get(), view.get(), &inner_rect),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(owner->yuvPlanes[AVIF_CHAN_Y], owner_y);
+  EXPECT_EQ(owner->alphaPlane, owner_alpha);
+  EXPECT_EQ(view->yuvPlanes[AVIF_CHAN_Y], view_y);
+  EXPECT_EQ(view->alphaPlane, view_alpha);
+  EXPECT_TRUE(owner->imageOwnsYUVPlanes);
+  EXPECT_TRUE(owner->imageOwnsAlphaPlane);
+  EXPECT_FALSE(view->imageOwnsYUVPlanes);
+  EXPECT_FALSE(view->imageOwnsAlphaPlane);
+}
+
+TEST(AvifImageTest, SetViewRectRejectsAlphaViewIntoDestination) {
+  ImagePtr owner(avifImageCreate(/*width=*/16, /*height=*/16, /*depth=*/8,
+                                 AVIF_PIXEL_FORMAT_NONE));
+  ImagePtr view(avifImageCreateEmpty());
+  ASSERT_NE(owner, nullptr);
+  ASSERT_NE(view, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(owner.get(), AVIF_PLANES_A),
+            AVIF_RESULT_OK);
+
+  const avifCropRect outer_rect = {/*x=*/4, /*y=*/4, /*width=*/8,
+                                   /*height=*/8};
+  ASSERT_EQ(avifImageSetViewRect(view.get(), owner.get(), &outer_rect),
+            AVIF_RESULT_OK);
+  uint8_t* const owner_alpha = owner->alphaPlane;
+  uint8_t* const view_alpha = view->alphaPlane;
+
+  const avifCropRect inner_rect = {/*x=*/0, /*y=*/0, /*width=*/4,
+                                   /*height=*/4};
+  EXPECT_EQ(avifImageSetViewRect(owner.get(), view.get(), &inner_rect),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(owner->alphaPlane, owner_alpha);
+  EXPECT_EQ(view->alphaPlane, view_alpha);
+  EXPECT_TRUE(owner->imageOwnsAlphaPlane);
+  EXPECT_FALSE(view->imageOwnsAlphaPlane);
+}
+
+TEST(AvifImageTest, SetViewRectAllowsUnrelatedOwningDestination) {
+  ImagePtr source(avifImageCreate(/*width=*/16, /*height=*/16, /*depth=*/8,
+                                  AVIF_PIXEL_FORMAT_YUV444));
+  ImagePtr destination(avifImageCreate(/*width=*/16, /*height=*/16,
+                                       /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444));
+  ImagePtr view(avifImageCreateEmpty());
+  ASSERT_NE(source, nullptr);
+  ASSERT_NE(destination, nullptr);
+  ASSERT_NE(view, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(source.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifImageAllocatePlanes(destination.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+
+  const avifCropRect outer_rect = {/*x=*/4, /*y=*/4, /*width=*/8,
+                                   /*height=*/8};
+  ASSERT_EQ(avifImageSetViewRect(view.get(), source.get(), &outer_rect),
+            AVIF_RESULT_OK);
+  const avifCropRect inner_rect = {/*x=*/2, /*y=*/2, /*width=*/4,
+                                   /*height=*/4};
+  ASSERT_EQ(avifImageSetViewRect(destination.get(), view.get(), &inner_rect),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(destination->yuvPlanes[AVIF_CHAN_Y],
+            view->yuvPlanes[AVIF_CHAN_Y] +
+                inner_rect.y * view->yuvRowBytes[AVIF_CHAN_Y] + inner_rect.x);
+  EXPECT_FALSE(destination->imageOwnsYUVPlanes);
+}
+
 }  // namespace
 }  // namespace avif

@@ -338,6 +338,62 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     return result;
 }
 
+static avifBool avifImageOwnsPlaneContainingPointer(const avifImage * image, const uint8_t * pointer)
+{
+    if (!pointer) {
+        return AVIF_FALSE;
+    }
+
+    const uintptr_t pointerAddress = (uintptr_t)pointer;
+    if (image->imageOwnsYUVPlanes && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
+        avifPixelFormatInfo formatInfo;
+        avifGetPixelFormatInfo(image->yuvFormat, &formatInfo);
+        for (int channel = AVIF_CHAN_Y; channel <= AVIF_CHAN_V; ++channel) {
+            if ((channel != AVIF_CHAN_Y) && formatInfo.monochrome) {
+                continue;
+            }
+            const uint8_t * const plane = image->yuvPlanes[channel];
+            const uint32_t rowBytes = image->yuvRowBytes[channel];
+            const uint32_t planeHeight =
+                (channel == AVIF_CHAN_Y) ? image->height
+                                         : (uint32_t)(((uint64_t)image->height + formatInfo.chromaShiftY) >> formatInfo.chromaShiftY);
+            if (!plane || (rowBytes == 0) || (planeHeight == 0)) {
+                continue;
+            }
+            if ((size_t)planeHeight > (SIZE_MAX / rowBytes)) {
+                return AVIF_TRUE;
+            }
+            const size_t planeSize = (size_t)rowBytes * planeHeight;
+            const uintptr_t planeAddress = (uintptr_t)plane;
+            if ((pointerAddress >= planeAddress) && ((pointerAddress - planeAddress) < planeSize)) {
+                return AVIF_TRUE;
+            }
+        }
+    }
+
+    if (image->imageOwnsAlphaPlane && image->alphaPlane && (image->alphaRowBytes != 0) && (image->height != 0)) {
+        if ((size_t)image->height > (SIZE_MAX / image->alphaRowBytes)) {
+            return AVIF_TRUE;
+        }
+        const size_t planeSize = (size_t)image->alphaRowBytes * image->height;
+        const uintptr_t planeAddress = (uintptr_t)image->alphaPlane;
+        if ((pointerAddress >= planeAddress) && ((pointerAddress - planeAddress) < planeSize)) {
+            return AVIF_TRUE;
+        }
+    }
+    return AVIF_FALSE;
+}
+
+static avifBool avifImageUsesPlanesOwnedBy(const avifImage * image, const avifImage * owner)
+{
+    for (int channel = AVIF_CHAN_Y; channel <= AVIF_CHAN_V; ++channel) {
+        if (avifImageOwnsPlaneContainingPointer(owner, image->yuvPlanes[channel])) {
+            return AVIF_TRUE;
+        }
+    }
+    return avifImageOwnsPlaneContainingPointer(owner, image->alphaPlane);
+}
+
 avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
 {
     AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
@@ -350,6 +406,8 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
     if (!formatInfo.monochrome && ((rect->x & formatInfo.chromaShiftX) || (rect->y & formatInfo.chromaShiftY))) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    // Freeing dstImage's planes would invalidate a source view into those planes.
+    AVIF_CHECKERR(!avifImageUsesPlanesOwnedBy(srcImage, dstImage), AVIF_RESULT_INVALID_ARGUMENT);
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL); // dstImage->imageOwnsYUVPlanes and dstImage->imageOwnsAlphaPlane set to AVIF_FALSE.
     avifImageCopyNoAlloc(dstImage, srcImage);
     dstImage->width = rect->width;
