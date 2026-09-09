@@ -871,8 +871,10 @@ AVIF_API avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * 
 AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 // Allocate/free/steal planes. These functions ignore the gainMap field.
-AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
-AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
+// Allocates missing planes. A complete set of pre-existing planes is left unchanged, including its ownership.
+// Incomplete non-owned YUV planes are rejected because ownership is tracked for the whole YUV plane set.
+AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes);
+AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes); // Ignores already-freed planes
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
 
 // Add arbitrary (opaque) properties to the image.
