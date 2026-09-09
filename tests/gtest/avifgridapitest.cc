@@ -16,7 +16,7 @@ struct Cell {
 };
 
 avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
-                            avifPixelFormat yuv_format) {
+                            avifPixelFormat yuv_format, bool ignore_alpha) {
   // Construct a grid.
   std::vector<ImagePtr> cell_images;
   cell_images.reserve(cell_rows.size() * cell_rows.front().size());
@@ -65,10 +65,23 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
   if (!image || !decoder) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  if (ignore_alpha) {
+    decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_ALPHA;
+  }
   result = avifDecoderReadMemory(decoder.get(), image.get(), encoded_avif.data,
                                  encoded_avif.size);
   if (result != AVIF_RESULT_OK) {
     return result;
+  }
+
+  if (ignore_alpha) {
+    if (image->alphaPlane != nullptr || image->alphaRowBytes != 0) {
+      return AVIF_RESULT_UNKNOWN_ERROR;
+    }
+  } else {
+    if (image->alphaPlane == nullptr || image->alphaRowBytes == 0) {
+      return AVIF_RESULT_UNKNOWN_ERROR;
+    }
   }
 
   // Reconstruct the input image by merging all cells into a single avifImage.
@@ -81,7 +94,7 @@ avifResult EncodeDecodeGrid(const std::vector<std::vector<Cell>>& cell_rows,
       testutil::MergeGrid(num_cols, num_rows, cell_images, grid.get()));
 
   if ((grid->width != image->width) || (grid->height != image->height) ||
-      !testutil::AreImagesEqual(*image, *grid)) {
+      !testutil::AreImagesEqual(*image, *grid, ignore_alpha)) {
     return AVIF_RESULT_UNKNOWN_ERROR;
   }
 
@@ -92,12 +105,19 @@ TEST(GridApiTest, SingleCell) {
   for (avifPixelFormat pixel_format :
        {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
         AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
-    // Rules on grids do not apply to a single cell.
-    EXPECT_EQ(EncodeDecodeGrid({{{1, 1}}}, pixel_format), AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{1, 64}}}, pixel_format), AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 1}}}, pixel_format), AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}}}, pixel_format), AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{127, 127}}}, pixel_format), AVIF_RESULT_OK);
+    for (bool ignore_alpha : {false, true}) {
+      // Rules on grids do not apply to a single cell.
+      EXPECT_EQ(EncodeDecodeGrid({{{1, 1}}}, pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{1, 64}}}, pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{64, 1}}}, pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{64, 64}}}, pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{127, 127}}}, pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+    }
   }
 }
 
@@ -105,118 +125,140 @@ TEST(GridApiTest, CellsOfSameDimensions) {
   for (avifPixelFormat pixel_format :
        {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
         AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
-    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
-    //   - the tile_width shall be greater than or equal to 64, and should be a
-    //     multiple of 64
-    //   - the tile_height shall be greater than or equal to 64, and should be a
-    //     multiple of 64
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}}}, pixel_format),
-              AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 110}},  //
-                                {{100, 110}},  //
-                                {{100, 110}}},
-                               pixel_format),
-              AVIF_RESULT_OK);
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}},
-                                {{64, 64}, {64, 64}, {64, 64}},
-                                {{64, 64}, {64, 64}, {64, 64}}},
-                               pixel_format),
-              AVIF_RESULT_OK);
+    for (bool ignore_alpha : {false, true}) {
+      // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+      //   - the tile_width shall be greater than or equal to 64, and should be
+      //   a
+      //     multiple of 64
+      //   - the tile_height shall be greater than or equal to 64, and should be
+      //   a
+      //     multiple of 64
+      EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}}}, pixel_format,
+                                 ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 110}},  //
+                                  {{100, 110}},  //
+                                  {{100, 110}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(EncodeDecodeGrid({{{64, 64}, {64, 64}, {64, 64}},
+                                  {{64, 64}, {64, 64}, {64, 64}},
+                                  {{64, 64}, {64, 64}, {64, 64}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
 
-    EXPECT_EQ(EncodeDecodeGrid({{{2, 64}, {2, 64}}}, pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 62}, {64, 62}}}, pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    EXPECT_EQ(EncodeDecodeGrid({{{64, 2}},  //
-                                {{64, 2}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    EXPECT_EQ(EncodeDecodeGrid({{{2, 64}},  //
-                                {{2, 64}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
+      EXPECT_EQ(
+          EncodeDecodeGrid({{{2, 64}, {2, 64}}}, pixel_format, ignore_alpha),
+          AVIF_RESULT_INVALID_IMAGE_GRID);
+      EXPECT_EQ(
+          EncodeDecodeGrid({{{64, 62}, {64, 62}}}, pixel_format, ignore_alpha),
+          AVIF_RESULT_INVALID_IMAGE_GRID);
+      EXPECT_EQ(EncodeDecodeGrid({{{64, 2}},  //
+                                  {{64, 2}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_INVALID_IMAGE_GRID);
+      EXPECT_EQ(EncodeDecodeGrid({{{2, 64}},  //
+                                  {{2, 64}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_INVALID_IMAGE_GRID);
+    }
   }
 
-  // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
-  //   - when the images are in the 4:2:2 chroma sampling format the horizontal
-  //     tile offsets and widths, and the output width, shall be even numbers;
-  EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV422),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV422),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
-  //   - when the images are in the 4:2:0 chroma sampling format both the
-  //     horizontal and vertical tile offsets and widths, and the output width
-  //     and height, shall be even numbers.
-  EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV420),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
-  EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV420),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
+  for (bool ignore_alpha : {false, true}) {
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - when the images are in the 4:2:2 chroma sampling format the
+    //   horizontal
+    //     tile offsets and widths, and the output width, shall be even numbers;
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV422,
+                               ignore_alpha),
+              AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV422,
+                               ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    //   - when the images are in the 4:2:0 chroma sampling format both the
+    //     horizontal and vertical tile offsets and widths, and the output width
+    //     and height, shall be even numbers.
+    EXPECT_EQ(EncodeDecodeGrid({{{64, 65}, {64, 65}}}, AVIF_PIXEL_FORMAT_YUV420,
+                               ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{65, 64}, {65, 64}}}, AVIF_PIXEL_FORMAT_YUV420,
+                               ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+  }
 }
 
 TEST(GridApiTest, CellsOfDifferentDimensions) {
   for (avifPixelFormat pixel_format :
        {AVIF_PIXEL_FORMAT_YUV444, AVIF_PIXEL_FORMAT_YUV422,
         AVIF_PIXEL_FORMAT_YUV420, AVIF_PIXEL_FORMAT_YUV400}) {
-    // Right-most cells are narrower.
-    EXPECT_EQ(
-        EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}}}, pixel_format),
-        AVIF_RESULT_OK);
-    // Bottom-most cells are shorter.
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}},
-                                {{100, 100}, {100, 100}},
-                                {{100, 66}, {100, 66}}},
-                               pixel_format),
-              AVIF_RESULT_OK);
-    // Right-most cells are narrower and bottom-most cells are shorter.
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
-                                {{100, 100}, {100, 100}, {66, 100}},
-                                {{100, 66}, {100, 66}, {66, 66}}},
-                               pixel_format),
-              AVIF_RESULT_OK);
+    for (bool ignore_alpha : {false, true}) {
+      // Right-most cells are narrower.
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      // Bottom-most cells are shorter.
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}},
+                                  {{100, 100}, {100, 100}},
+                                  {{100, 66}, {100, 66}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
+      // Right-most cells are narrower and bottom-most cells are shorter.
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
+                                  {{100, 100}, {100, 100}, {66, 100}},
+                                  {{100, 66}, {100, 66}, {66, 66}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_OK);
 
-    // Right-most cells are wider.
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {222, 100}},
-                                {{100, 100}, {100, 100}, {222, 100}},
-                                {{100, 100}, {100, 100}, {222, 100}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    // Bottom-most cells are taller.
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
-                                {{100, 100}, {100, 100}, {100, 100}},
-                                {{100, 222}, {100, 222}, {100, 222}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    // One cell dimension is off.
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
-                                {{100, 100}, {66 /* here */, 100}, {100, 100}},
-                                {{100, 100}, {100, 100}, {100, 100}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
-    EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
-                                {{100, 100}, {100, 100}, {66, 100}},
-                                {{100, 66}, {100, 66}, {66, 100 /* here */}}},
-                               pixel_format),
-              AVIF_RESULT_INVALID_IMAGE_GRID);
+      // Right-most cells are wider.
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {222, 100}},
+                                  {{100, 100}, {100, 100}, {222, 100}},
+                                  {{100, 100}, {100, 100}, {222, 100}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_INVALID_IMAGE_GRID);
+      // Bottom-most cells are taller.
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
+                                  {{100, 100}, {100, 100}, {100, 100}},
+                                  {{100, 222}, {100, 222}, {100, 222}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_INVALID_IMAGE_GRID);
+      // One cell dimension is off.
+      EXPECT_EQ(
+          EncodeDecodeGrid({{{100, 100}, {100, 100}, {100, 100}},
+                            {{100, 100}, {66 /* here */, 100}, {100, 100}},
+                            {{100, 100}, {100, 100}, {100, 100}}},
+                           pixel_format, ignore_alpha),
+          AVIF_RESULT_INVALID_IMAGE_GRID);
+      EXPECT_EQ(EncodeDecodeGrid({{{100, 100}, {100, 100}, {66, 100}},
+                                  {{100, 100}, {100, 100}, {66, 100}},
+                                  {{100, 66}, {100, 66}, {66, 100 /* here */}}},
+                                 pixel_format, ignore_alpha),
+                AVIF_RESULT_INVALID_IMAGE_GRID);
+    }
   }
 
-  // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
-  //   - when the images are in the 4:2:2 chroma sampling format the horizontal
-  //     tile offsets and widths, and the output width, shall be even numbers;
-  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}},  //
-                              {{66, 65}}},
-                             AVIF_PIXEL_FORMAT_YUV422),
-            AVIF_RESULT_OK);
-  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV422),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
-  //   - when the images are in the 4:2:0 chroma sampling format both the
-  //     horizontal and vertical tile offsets and widths, and the output width
-  //     and height, shall be even numbers.
-  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}},  //
-                              {{66, 65}}},
-                             AVIF_PIXEL_FORMAT_YUV420),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
-  EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV420),
-            AVIF_RESULT_INVALID_IMAGE_GRID);
+  for (bool ignore_alpha : {false, true}) {
+    // ISO/IEC 23000-22:2019, Section 7.3.11.4.2:
+    //   - when the images are in the 4:2:2 chroma sampling format the
+    //   horizontal
+    //     tile offsets and widths, and the output width, shall be even numbers;
+    EXPECT_EQ(EncodeDecodeGrid({{{66, 66}},  //
+                                {{66, 65}}},
+                               AVIF_PIXEL_FORMAT_YUV422, ignore_alpha),
+              AVIF_RESULT_OK);
+    EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV422,
+                               ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    //   - when the images are in the 4:2:0 chroma sampling format both the
+    //     horizontal and vertical tile offsets and widths, and the output width
+    //     and height, shall be even numbers.
+    EXPECT_EQ(EncodeDecodeGrid({{{66, 66}},  //
+                                {{66, 65}}},
+                               AVIF_PIXEL_FORMAT_YUV420, ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+    EXPECT_EQ(EncodeDecodeGrid({{{66, 66}, {65, 66}}}, AVIF_PIXEL_FORMAT_YUV420,
+                               ignore_alpha),
+              AVIF_RESULT_INVALID_IMAGE_GRID);
+  }
 }
 
 //------------------------------------------------------------------------------
