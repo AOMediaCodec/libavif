@@ -1146,7 +1146,7 @@ avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, con
     }
 
     if (value) {
-        // Prepare both strings before publishing a new entry.
+        // Add a new key
         char * newKey = avifStrdup(key);
         AVIF_CHECKERR(newKey, AVIF_RESULT_OUT_OF_MEMORY);
         char * newValue = avifStrdup(value);
