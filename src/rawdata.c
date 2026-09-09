@@ -19,8 +19,9 @@ avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
             memcpy(newData, raw->data, AVIF_MIN(raw->size, newSize));
         }
         avifFree(raw->data);
-        raw->data = newData;
+        /* counted_by: set capacity before pointer */
         raw->size = newSize;
+        raw->data = newData;
     }
     return AVIF_RESULT_OK;
 }

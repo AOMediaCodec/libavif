@@ -333,6 +333,27 @@ endif()
 
 target_link_libraries(avif_obj PRIVATE avif_enable_warnings)
 
+# Optional Clang -fbounds-safety. Default OFF: AVIF_*COUNTED_BY* macros in
+# include/avif/avif_bounds_safety.h are inert and the ABI/build is unchanged.
+# When ON, requires a Clang that provides -fbounds-safety / <ptrcheck.h>.
+# A full enforcing build also needs whole-TU unsafe-indexable baseline work;
+# this option only flips on the annotation macros + compiler flag.
+option(
+    AVIF_ENABLE_FBOUNDS_SAFETY
+    "Enable Clang -fbounds-safety annotations (experimental toolchain)"
+    OFF
+)
+if(AVIF_ENABLE_FBOUNDS_SAFETY)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(STATUS "libavif: Enabling -fbounds-safety for Clang")
+        add_compile_definitions(AVIF_SUPPORT_FBOUNDS_SAFETY)
+        add_compile_options(-fbounds-safety)
+    else()
+        message(WARNING "libavif: Ignoring AVIF_ENABLE_FBOUNDS_SAFETY; only Clang is currently supported.")
+        set(AVIF_ENABLE_FBOUNDS_SAFETY OFF)
+    endif()
+endif()
+
 option(
     AVIF_ENABLE_COVERAGE
     "Enable code coverage. Requires LLVM and clang as compiler. Has no effect unless AVIF_BUILD_TESTS is ON. Use the 'avif_coverage' target to generate a coverage report."
@@ -843,7 +864,7 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h include/avif/avif_cxx.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    install(FILES include/avif/avif.h include/avif/avif_cxx.h include/avif/avif_bounds_safety.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
 endif()
 
 # ---------------------------------------------------------------------------------------

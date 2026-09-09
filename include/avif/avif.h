@@ -235,6 +235,8 @@ typedef int avifHeaderFormatFlags;
 // ---------------------------------------------------------------------------
 // avifROData/avifRWData: Generic raw memory storage
 
+#include "avif_bounds_safety.h"
+
 typedef struct avifROData
 {
     const uint8_t * data;
@@ -242,10 +244,15 @@ typedef struct avifROData
 } avifROData;
 
 // Note: Use avifRWDataFree() if any avif*() function populates one of these.
+//
+// data is annotated with AVIF_COUNTED_BY_OR_NULL(size) so a future
+// -fbounds-safety build can enforce the existing size relationship.
+// Field order is unchanged (public ABI). Macros are inert by default.
+// Update sites assign capacity (size) before the pointer when both change.
 
 typedef struct avifRWData
 {
-    uint8_t * data;
+    uint8_t * AVIF_COUNTED_BY_OR_NULL(size) data;
     size_t size;
 } avifRWData;
 
