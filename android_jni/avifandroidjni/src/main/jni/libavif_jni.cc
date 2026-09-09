@@ -1,7 +1,10 @@
 // Copyright 2022 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <android/api-level.h>
 #include <android/bitmap.h>
+#include <android/hardware_buffer.h>
+#include <android/hardware_buffer_jni.h>
 #include <android/log.h>
 #include <cpu-features.h>
 #include <jni.h>
@@ -131,6 +134,29 @@ bool CreateDecoderAndParse(AvifDecoderWrapper* const decoder,
     decoder->crop.y = 0;
   }
   return true;
+}
+
+avifImage* ApplyCrop(
+    AvifDecoderWrapper* const decoder,
+    std::unique_ptr<avifImage, decltype(&avifImageDestroy)>& cropped_image) {
+  if (decoder->decoder->image->width == decoder->crop.width &&
+      decoder->decoder->image->height == decoder->crop.height &&
+      decoder->crop.x == 0 && decoder->crop.y == 0) {
+    return decoder->decoder->image;
+  }
+  cropped_image.reset(avifImageCreateEmpty());
+  if (cropped_image == nullptr) {
+    LOGE("Failed to allocate cropped image.");
+    return nullptr;
+  }
+  avifResult res = avifImageSetViewRect(cropped_image.get(),
+                                        decoder->decoder->image,
+                                        &decoder->crop);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to set crop rectangle. Status: %d", res);
+    return nullptr;
+  }
+  return cropped_image.get();
 }
 
 avifResult AvifImageToBitmap(JNIEnv* const env,
@@ -272,6 +298,309 @@ bool JniExceptionCheck(JNIEnv* env) {
   }
   env->ExceptionClear();
   return true;
+}
+
+AHardwareBuffer* TryAllocateHardwareBuffer(uint32_t width, uint32_t height,
+                                           uint32_t format) {
+  AHardwareBuffer_Desc desc = {};
+  desc.width = width;
+  desc.height = height;
+  desc.layers = 1;
+  desc.format = format;
+  desc.usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN |
+               AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+  // On API 29+, check if the format is supported before allocating.
+  if (android_get_device_api_level() >= 29) {
+    if (!AHardwareBuffer_isSupported(&desc)) {
+      return nullptr;
+    }
+  }
+  AHardwareBuffer* buffer = nullptr;
+  if (AHardwareBuffer_allocate(&desc, &buffer) != 0) {
+    return nullptr;
+  }
+  return buffer;
+}
+
+AHardwareBuffer* TryDirectDecode(avifImage* image, uint32_t ahb_format,
+                                 avifRGBFormat rgb_format, int rgb_depth,
+                                 avifBool is_float, int bytes_per_pixel) {
+  AHardwareBuffer* hwb =
+      TryAllocateHardwareBuffer(image->width, image->height, ahb_format);
+  if (hwb == nullptr) return nullptr;
+
+  AHardwareBuffer_Desc desc;
+  AHardwareBuffer_describe(hwb, &desc);
+
+  void* pixels = nullptr;
+  if (AHardwareBuffer_lock(hwb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1,
+                           nullptr, &pixels) != 0 ||
+      pixels == nullptr) {
+    AHardwareBuffer_release(hwb);
+    return nullptr;
+  }
+
+  avifRGBImage rgb;
+  avifRGBImageSetDefaults(&rgb, image);
+  rgb.format = rgb_format;
+  rgb.depth = rgb_depth;
+  rgb.isFloat = is_float;
+  rgb.pixels = static_cast<uint8_t*>(pixels);
+  // AHardwareBuffer_Desc.stride is in pixels, not bytes.
+  rgb.rowBytes = desc.stride * bytes_per_pixel;
+  rgb.alphaPremultiplied = AVIF_TRUE;
+
+  avifResult res = avifImageYUVToRGB(image, &rgb);
+  AHardwareBuffer_unlock(hwb, nullptr);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("avifImageYUVToRGB failed: %d", res);
+    AHardwareBuffer_release(hwb);
+    return nullptr;
+  }
+  return hwb;
+}
+
+AHardwareBuffer* AvifImageToHardwareBuffer(avifImage* image, bool allow_hdr,
+                                           uint32_t* out_format) {
+  if (allow_hdr && image->depth > 8) {
+    AHardwareBuffer* hwb =
+        TryDirectDecode(image, AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT,
+                        AVIF_RGB_FORMAT_RGBA, 16, AVIF_TRUE, 8);
+    if (hwb != nullptr) {
+      *out_format = AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT;
+      return hwb;
+    }
+  }
+  AHardwareBuffer* hwb =
+      TryDirectDecode(image, AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+                      AVIF_RGB_FORMAT_RGBA, 8, AVIF_FALSE, 4);
+  if (hwb != nullptr) {
+    *out_format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+  }
+  return hwb;
+}
+
+// avifImageYUVToRGB preserves the source transfer function and does not
+// tone-map, so PQ/HLG images must be tagged with the matching HDR color space.
+jobject GetColorSpace(JNIEnv* env, const avifImage* image,
+                      uint32_t ahb_format) {
+  if (ahb_format != AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT) {
+    return nullptr;
+  }
+  const int api = android_get_device_api_level();
+  const bool is_bt2020 =
+      (image->colorPrimaries == AVIF_COLOR_PRIMARIES_BT2020);
+  // Look up ColorSpace.get(ColorSpace.Named.<name>).
+  auto get_named_cs = [&](const char* name) -> jobject {
+    jclass cs_named = env->FindClass("android/graphics/ColorSpace$Named");
+    if (cs_named == nullptr) {
+      if (env->ExceptionCheck()) env->ExceptionClear();
+      return nullptr;
+    }
+    jfieldID fid = env->GetStaticFieldID(cs_named, name,
+                                         "Landroid/graphics/ColorSpace$Named;");
+    if (fid == nullptr) {
+      if (env->ExceptionCheck()) env->ExceptionClear();
+      return nullptr;
+    }
+    jobject named_val = env->GetStaticObjectField(cs_named, fid);
+    if (named_val == nullptr) return nullptr;
+    jclass cs = env->FindClass("android/graphics/ColorSpace");
+    if (cs == nullptr) {
+      if (env->ExceptionCheck()) env->ExceptionClear();
+      return nullptr;
+    }
+    jmethodID get = env->GetStaticMethodID(
+        cs, "get",
+        "(Landroid/graphics/ColorSpace$Named;)Landroid/graphics/ColorSpace;");
+    if (get == nullptr) {
+      if (env->ExceptionCheck()) env->ExceptionClear();
+      return nullptr;
+    }
+    jobject result = env->CallStaticObjectMethod(cs, get, named_val);
+    if (env->ExceptionCheck()) {
+      env->ExceptionClear();
+      return nullptr;
+    }
+    return result;
+  };
+  if (is_bt2020 &&
+      image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_PQ &&
+      api >= 33) {
+    jobject cs = get_named_cs("BT2020_PQ");
+    if (cs != nullptr) return cs;
+  }
+  if (is_bt2020 &&
+      image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_HLG &&
+      api >= 34) {
+    jobject cs = get_named_cs("BT2020_HLG");
+    if (cs != nullptr) return cs;
+  }
+  // FP16 with non-HDR transfer: gamma-encoded SDR content. Tag as SRGB, not
+  // LINEAR_EXTENDED_SRGB.
+  return get_named_cs("SRGB");
+}
+
+bool AvifImageToExistingHardwareBuffer(JNIEnv* env,
+                                       AvifDecoderWrapper* decoder,
+                                       jobject dest) {
+  if (android_get_device_api_level() < 26) return false;
+
+  // AHardwareBuffer_fromHardwareBuffer returns a borrowed pointer; the Java
+  // HardwareBuffer retains ownership. Do not call AHardwareBuffer_release on
+  // the returned pointer.
+  AHardwareBuffer* ahb = AHardwareBuffer_fromHardwareBuffer(env, dest);
+  if (ahb == nullptr) return false;
+
+  std::unique_ptr<avifImage, decltype(&avifImageDestroy)> cropped_image(
+      nullptr, avifImageDestroy);
+  avifImage* image = ApplyCrop(decoder, cropped_image);
+  if (image == nullptr) return false;
+
+  AHardwareBuffer_Desc desc;
+  AHardwareBuffer_describe(ahb, &desc);
+
+  if (desc.width != image->width || desc.height != image->height) {
+    LOGE("AvifImageToExistingHardwareBuffer: buffer %ux%u != image %ux%u",
+         desc.width, desc.height, image->width, image->height);
+    return false;
+  }
+
+  void* pixels = nullptr;
+  if (AHardwareBuffer_lock(ahb, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1,
+                           nullptr, &pixels) != 0 ||
+      pixels == nullptr) {
+    return false;
+  }
+
+  avifRGBImage rgb;
+  avifRGBImageSetDefaults(&rgb, image);
+  rgb.alphaPremultiplied = AVIF_TRUE;
+  rgb.pixels = static_cast<uint8_t*>(pixels);
+
+  bool ok = false;
+  switch (desc.format) {
+    case AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM:
+      rgb.format = AVIF_RGB_FORMAT_RGBA;
+      rgb.depth = 8;
+      rgb.isFloat = AVIF_FALSE;
+      rgb.rowBytes = desc.stride * 4;
+      ok = avifImageYUVToRGB(image, &rgb) == AVIF_RESULT_OK;
+      break;
+    case AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT:
+      rgb.format = AVIF_RGB_FORMAT_RGBA;
+      rgb.depth = 16;
+      rgb.isFloat = AVIF_TRUE;
+      rgb.rowBytes = desc.stride * 8;
+      ok = avifImageYUVToRGB(image, &rgb) == AVIF_RESULT_OK;
+      break;
+    default:
+      LOGE("AvifImageToExistingHardwareBuffer: unsupported format 0x%x",
+           desc.format);
+      break;
+  }
+
+  AHardwareBuffer_unlock(ahb, nullptr);
+  return ok;
+}
+
+jobject WrapHardwareBufferAsBitmap(JNIEnv* env, jobject java_hwb,
+                                   jobject color_space) {
+  jclass bitmap_class = env->FindClass("android/graphics/Bitmap");
+  if (bitmap_class == nullptr) {
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    return nullptr;
+  }
+  jmethodID wrap_method = env->GetStaticMethodID(
+      bitmap_class, "wrapHardwareBuffer",
+      "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)"
+      "Landroid/graphics/Bitmap;");
+  if (wrap_method == nullptr) {
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    return nullptr;
+  }
+  jobject bitmap = env->CallStaticObjectMethod(bitmap_class, wrap_method,
+                                               java_hwb, color_space);
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+    return nullptr;
+  }
+  return bitmap;
+}
+
+// Decodes the current image into a hardware-backed Bitmap.
+// If dest is non-null, decodes into that caller-provided HardwareBuffer and
+// wraps it as a Bitmap (null color space — caller chose the format).
+// If dest is null, allocates a new AHardwareBuffer, selects the color space
+// from the image's CICP metadata, wraps as a Bitmap, and closes the
+// intermediate Java HardwareBuffer (wrapHardwareBuffer holds its own ref).
+jobject AvifImageToHardwareBitmap(JNIEnv* env, AvifDecoderWrapper* decoder,
+                                  bool allow_hdr, jobject dest) {
+  if (android_get_device_api_level() < 26) return nullptr;
+
+  if (dest != nullptr) {
+    if (!AvifImageToExistingHardwareBuffer(env, decoder, dest)) return nullptr;
+    return WrapHardwareBufferAsBitmap(env, dest, /*color_space=*/nullptr);
+  }
+
+  std::unique_ptr<avifImage, decltype(&avifImageDestroy)> cropped_image(
+      nullptr, avifImageDestroy);
+  avifImage* image = ApplyCrop(decoder, cropped_image);
+  if (image == nullptr) return nullptr;
+  uint32_t ahb_format = 0;
+  AHardwareBuffer* hwb =
+      AvifImageToHardwareBuffer(image, allow_hdr, &ahb_format);
+  if (hwb == nullptr) return nullptr;
+  jobject java_hwb = AHardwareBuffer_toHardwareBuffer(env, hwb);
+  // toHardwareBuffer increments the refcount; release the native reference now.
+  AHardwareBuffer_release(hwb);
+  if (java_hwb == nullptr) return nullptr;
+  jobject color_space = GetColorSpace(env, image, ahb_format);
+  jobject bitmap = WrapHardwareBufferAsBitmap(env, java_hwb, color_space);
+  // Close the Java HardwareBuffer — wrapHardwareBuffer() holds its own ref.
+  jclass hwb_class = env->FindClass("android/hardware/HardwareBuffer");
+  if (hwb_class != nullptr) {
+    jmethodID close = env->GetMethodID(hwb_class, "close", "()V");
+    if (close != nullptr) env->CallVoidMethod(java_hwb, close);
+    if (env->ExceptionCheck()) env->ExceptionClear();
+  }
+  return bitmap;
+}
+
+jobject CreateHardwareBufferForImage(JNIEnv* env, int width, int height,
+                                     int depth, bool allow_hdr) {
+  if (android_get_device_api_level() < 26) return nullptr;
+
+  const uint64_t usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN |
+                         AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+
+  auto try_alloc = [&](uint32_t format) -> AHardwareBuffer* {
+    AHardwareBuffer_Desc desc = {};
+    desc.width = static_cast<uint32_t>(width);
+    desc.height = static_cast<uint32_t>(height);
+    desc.layers = 1;
+    desc.format = format;
+    desc.usage = usage;
+    if (android_get_device_api_level() >= 29 &&
+        !AHardwareBuffer_isSupported(&desc)) {
+      return nullptr;
+    }
+    AHardwareBuffer* hwb = nullptr;
+    return (AHardwareBuffer_allocate(&desc, &hwb) == 0) ? hwb : nullptr;
+  };
+
+  AHardwareBuffer* hwb = nullptr;
+  if (allow_hdr && depth > 8) {
+    hwb = try_alloc(AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT);
+  }
+  if (hwb == nullptr) {
+    hwb = try_alloc(AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+  }
+  if (hwb == nullptr) return nullptr;
+
+  jobject java_hwb = AHardwareBuffer_toHardwareBuffer(env, hwb);
+  AHardwareBuffer_release(hwb);
+  return java_hwb;
 }
 
 }  // namespace
@@ -472,3 +801,55 @@ FUNC(void, destroyDecoder, jlong jdecoder) {
       reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
   delete decoder;
 }
+
+FUNC(jobject, nativeDecodeHardwareBitmap, jobject encoded, jint length,
+     jint threads, jboolean allow_hdr) {
+  IGNORE_UNUSED_JNI_PARAMETERS;
+  const uint8_t* const buffer =
+      static_cast<const uint8_t*>(env->GetDirectBufferAddress(encoded));
+  AvifDecoderWrapper decoder;
+  if (!CreateDecoderAndParse(&decoder, buffer, length,
+                             getThreadCount(threads))) {
+    return nullptr;
+  }
+  avifResult res = avifDecoderNextImage(decoder.decoder);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return nullptr;
+  }
+  return AvifImageToHardwareBitmap(env, &decoder, allow_hdr, /*dest=*/nullptr);
+}
+
+FUNC(jobject, nativeNextFrameHardwareBitmap, jlong jdecoder, jboolean allow_hdr,
+     jobject dest) {
+  IGNORE_UNUSED_JNI_PARAMETERS;
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  avifResult res = avifDecoderNextImage(decoder->decoder);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return nullptr;
+  }
+  return AvifImageToHardwareBitmap(env, decoder, allow_hdr, dest);
+}
+
+FUNC(jobject, nativeNthFrameHardwareBitmap, jlong jdecoder, jint n,
+     jboolean allow_hdr, jobject dest) {
+  IGNORE_UNUSED_JNI_PARAMETERS;
+  AvifDecoderWrapper* const decoder =
+      reinterpret_cast<AvifDecoderWrapper*>(jdecoder);
+  avifResult res = avifDecoderNthImage(decoder->decoder, n);
+  if (res != AVIF_RESULT_OK) {
+    LOGE("Failed to decode AVIF image. Status: %d", res);
+    return nullptr;
+  }
+  return AvifImageToHardwareBitmap(env, decoder, allow_hdr, dest);
+}
+
+FUNC(jobject, nativeCreateHardwareBuffer, jint width, jint height, jint depth,
+     jboolean allow_hdr) {
+  IGNORE_UNUSED_JNI_PARAMETERS;
+  return CreateHardwareBufferForImage(env, width, height, depth, allow_hdr);
+}
+
+
