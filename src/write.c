@@ -2154,7 +2154,7 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
-    if ((uint64_t)gridCols * gridRows > 65535) {
+    if (gridCols * gridRows > 65535) {
         // Section 8.11.12.1 of ISO/IEC 14496-12: "All the references for one item of a specific type
         // are collected into a single item type reference box", whose reference_count field is
         // unsigned int(16) whatever the 'iref' version (Section 8.11.12.2). Moreover, ISO/IEC 23008-12
