@@ -53,6 +53,18 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Support encoding image grids containing more items than the 16-bit item ID
+  space allows, such as a color grid and an alpha grid of 128x256 cells each
+  (65538 items in total). The encoder now relies on 32-bit item IDs and writes
+  the 'infe' version 3, 'iloc' version 2, 'iref' version 1 and 'ipma' version 1
+  boxes when item IDs do not fit on 16 bits, instead of silently overflowing
+  them and generating an invalid file.
+* Reject grids with more than 65535 cells (e.g. 256x256 cells) with
+  AVIF_RESULT_INVALID_IMAGE_GRID instead of generating an invalid file:
+  ISO/IEC 14496-12 Section 8.11.12 requires all references from one item to
+  fit in a single item type reference box with a 16-bit reference_count field
+  (and ISO/IEC 23008-12 Section 6.6.1 forbids splitting them across several
+  'dimg' boxes).
 
 ## [1.4.2] - 2026-05-26
 
