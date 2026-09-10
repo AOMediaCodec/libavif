@@ -1259,6 +1259,19 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     const char * infeName = getInfeName(itemCategory);
     const size_t infeNameSize = strlen(infeName) + 1;
 
+    // The 'pitm', 'iloc', 'infe', 'iref' and 'ipma' boxes written by avifEncoderFinish() contain item IDs as
+    // unsigned int(16), and the item ID 0 is invalid (ISO/IEC 14496-12 Section 8.11.1.1), so at most 65535
+    // items can be encoded. Do not call avifEncoderDataCreateItem() if the items of this category would
+    // exceed that limit: a color grid and an alpha grid of 128x256 cells each for example need 65538 IDs.
+    const uint32_t categoryItemCount = cellCount + (cellCount > 1 ? 1 : 0); // Cell items + grid item.
+    if (encoder->data->items.count + categoryItemCount > 65535) {
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "cannot encode %u existing items and %u more items because the encoder only supports 16-bit item IDs (at most 65535 items)",
+                              encoder->data->items.count,
+                              categoryItemCount);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     if (cellCount > 1) {
         avifEncoderItem * gridItem = avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0);
         AVIF_CHECKRES(avifWriteGridPayload(&gridItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight));
