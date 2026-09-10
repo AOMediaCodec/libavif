@@ -2154,6 +2154,20 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
+    if ((uint64_t)gridCols * gridRows > 65535) {
+        // Section 8.11.12.1 of ISO/IEC 14496-12: "All the references for one item of a specific type
+        // are collected into a single item type reference box", whose reference_count field is
+        // unsigned int(16) whatever the 'iref' version (Section 8.11.12.2). Moreover, ISO/IEC 23008-12
+        // (HEIF) Section 6.6.1 states that "The number of SingleItemTypeReferenceBoxes with the box
+        // type 'dimg' and with the same value of from_item_ID shall not be greater than 1".
+        // A grid item therefore cannot reference more than 65535 cell items, so a 256x256-cell grid
+        // cannot be encoded in a conformant way, whatever the item ID width.
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "avifEncoderAddImageGrid() failed because a grid cannot have more than 65535 cells due to the 16-bit 'dimg' reference_count field (%u columns x %u rows)",
+                              gridCols,
+                              gridRows);
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
     if (encoder->extraLayerCount == 0) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // image grids cannot be image sequences
     }

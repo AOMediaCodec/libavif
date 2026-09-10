@@ -277,5 +277,29 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
       AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
+TEST(GridApiTest, CellsTooManyForDimgReferenceCount) {
+  // Section 8.11.12.1 of ISO/IEC 14496-12 requires all the references from one
+  // item to be collected into a single item type reference box, whose
+  // reference_count field is unsigned int(16) whatever the 'iref' version
+  // (Section 8.11.12.2). ISO/IEC 23008-12 (HEIF) Section 6.6.1 additionally
+  // forbids more than one 'dimg' box with the same from_item_ID. A grid item
+  // therefore cannot have more than 65535 cells, so a 256x256-cell grid is
+  // rejected upfront instead of silently generating a broken file.
+  ImagePtr cell = testutil::CreateImage(
+      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(cell, nullptr);
+  testutil::FillImageGradient(cell.get());
+  const std::vector<avifImage*> cell_image_ptrs(256 * 256, cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/256,
+                                    /*gridRows=*/256, cell_image_ptrs.data(),
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
 }  // namespace
 }  // namespace avif
