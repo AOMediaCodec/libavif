@@ -219,6 +219,42 @@ TEST(GridApiTest, CellsOfDifferentDimensions) {
             AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
+TEST(GridApiTest, ColorAlphaGridExceeding16BitItemIDs) {
+  // A color grid and an alpha grid of 128x256 cells each contain 32768 cells,
+  // so encoding them requires 65538 distinct item IDs (2 grid items + 2 x 32768
+  // cell items), which does not fit in the 16-bit item ID space written in the
+  // 'pitm', 'iloc', 'infe', 'iref' and 'ipma' boxes (item ID 0 is invalid, see
+  // ISO/IEC 14496-12 Section 8.11.1.1). The encoder now stores item IDs as
+  // uint32_t so they do not wrap around, but the 32-bit item ID box variants
+  // are not written yet, so avifEncoderFinish() returns
+  // AVIF_RESULT_NOT_IMPLEMENTED instead of silently truncating the item IDs
+  // and generating an invalid file. The cells are 64x64 because it is the
+  // smallest size allowed by [MIAF].
+  ImagePtr cell = testutil::CreateImage(
+      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
+      AVIF_PLANES_ALL /* alpha channel needed */);
+  ASSERT_NE(cell, nullptr);
+  // The pixels do not matter but avoid use-of-uninitialized-value errors.
+  testutil::FillImageGradient(cell.get());
+  const std::vector<avifImage*> cell_image_ptrs(128 * 256, cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  // Worst quality to keep the encoding of the 65536 cells fast.
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->minQuantizer = 63;
+  encoder->maxQuantizer = 63;
+  encoder->minQuantizerAlpha = 63;
+  encoder->maxQuantizerAlpha = 63;
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/128,
+                                    /*gridRows=*/256, cell_image_ptrs.data(),
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_OK);
+  testutil::AvifRwData encoded_avif;
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif),
+            AVIF_RESULT_NOT_IMPLEMENTED);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(GridApiTest, SameMatrixCoefficients) {
@@ -275,42 +311,6 @@ TEST(GridApiTest, DifferentMatrixCoefficients) {
       avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/2, /*gridRows=*/1,
                               cell_image_ptrs, AVIF_ADD_IMAGE_FLAG_SINGLE),
       AVIF_RESULT_INVALID_IMAGE_GRID);
-}
-
-TEST(GridApiTest, ColorAlphaGridExceeding16BitItemIDs) {
-  // A color grid and an alpha grid of 128x256 cells each contain 32768 cells,
-  // so encoding them requires 65538 distinct item IDs (2 grid items + 2 x 32768
-  // cell items), which does not fit in the 16-bit item ID space written in the
-  // 'pitm', 'iloc', 'infe', 'iref' and 'ipma' boxes (item ID 0 is invalid, see
-  // ISO/IEC 14496-12 Section 8.11.1.1). The encoder now stores item IDs as
-  // uint32_t so they do not wrap around, but the 32-bit item ID box variants
-  // are not written yet, so avifEncoderFinish() returns
-  // AVIF_RESULT_NOT_IMPLEMENTED instead of silently truncating the item IDs
-  // and generating an invalid file. The cells are 64x64 because it is the
-  // smallest size allowed by [MIAF].
-  ImagePtr cell = testutil::CreateImage(
-      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420,
-      AVIF_PLANES_ALL /* alpha channel needed */);
-  ASSERT_NE(cell, nullptr);
-  // The pixels do not matter but avoid use-of-uninitialized-value errors.
-  testutil::FillImageGradient(cell.get());
-  const std::vector<avifImage*> cell_image_ptrs(128 * 256, cell.get());
-
-  EncoderPtr encoder(avifEncoderCreate());
-  ASSERT_NE(encoder, nullptr);
-  // Worst quality to keep the encoding of the 65536 cells fast.
-  encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->minQuantizer = 63;
-  encoder->maxQuantizer = 63;
-  encoder->minQuantizerAlpha = 63;
-  encoder->maxQuantizerAlpha = 63;
-  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/128,
-                                    /*gridRows=*/256, cell_image_ptrs.data(),
-                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
-            AVIF_RESULT_OK);
-  testutil::AvifRwData encoded_avif;
-  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded_avif),
-            AVIF_RESULT_NOT_IMPLEMENTED);
 }
 
 }  // namespace
