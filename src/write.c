@@ -163,7 +163,7 @@ void avifCodecEncodeOutputDestroy(avifCodecEncodeOutput * encodeOutput)
 // one "item" worth for encoder
 typedef struct avifEncoderItem
 {
-    uint16_t id;
+    uint32_t id;                          // Item IDs are unsigned int(32) in the file format (ISO/IEC 14496-12 Section 8.11.6)
     uint8_t type[4];                      // 4-character 'item_type' field in the 'infe' (item info entry) box
     avifCodec * codec;                    // only present on image items
     avifCodecEncodeOutput * encodeOutput; // AV1 sample data
@@ -180,7 +180,7 @@ typedef struct avifEncoderItem
     size_t infeContentTypeSize;
     avifOffsetFixupArray mdatFixups;
 
-    uint16_t irefToID; // if non-zero, make an iref from this id -> irefToID
+    uint32_t irefToID; // if non-zero, make an iref from this id -> irefToID
     const char * irefType;
 
     uint32_t gridCols; // if non-zero (legal range [1-256]), this is a grid item
@@ -192,7 +192,7 @@ typedef struct avifEncoderItem
 
     uint32_t extraLayerCount; // if non-zero (legal range [1-(AVIF_MAX_AV1_LAYER_COUNT-1)]), this is a layered AV1 image
 
-    uint16_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
+    uint32_t dimgFromID; // if non-zero, make an iref from dimgFromID -> this id
 
     avifItemPropertyAssociationArray associations; // 'ipma'
 } avifEncoderItem;
@@ -217,7 +217,7 @@ AVIF_ARRAY_DECLARE(avifEncoderFrameArray, avifEncoderFrame, frame);
 // ---------------------------------------------------------------------------
 // avifEncoderData
 
-AVIF_ARRAY_DECLARE(avifEncoderItemIdArray, uint16_t, itemID);
+AVIF_ARRAY_DECLARE(avifEncoderItemIdArray, uint32_t, itemID);
 
 typedef struct avifEncoderData
 {
@@ -243,8 +243,8 @@ typedef struct avifEncoderData
     avifImage * imageMetadata;
     // Holds metadata derived from the avifGainMap struct (when present) about the alternate image
     avifImage * altImageMetadata;
-    uint16_t lastItemID;
-    uint16_t primaryItemID;
+    uint32_t lastItemID;
+    uint32_t primaryItemID;
     avifEncoderItemIdArray alternativeItemIDs; // list of item ids for an 'altr' box (group of alternatives to each other)
     avifBool singleImage; // if true, the AVIF_ADD_IMAGE_FLAG_SINGLE flag was set on the first call to avifEncoderAddImage()
     avifBool alphaPresent;
@@ -278,7 +278,7 @@ static avifEncoderData * avifEncoderDataCreate(void)
     if (!avifArrayCreate(&data->frames, sizeof(avifEncoderFrame), 1)) {
         goto error;
     }
-    if (!avifArrayCreate(&data->alternativeItemIDs, sizeof(uint16_t), 1)) {
+    if (!avifArrayCreate(&data->alternativeItemIDs, sizeof(uint32_t), 1)) {
         goto error;
     }
     return data;
@@ -322,7 +322,7 @@ error:
     return NULL;
 }
 
-static avifEncoderItem * avifEncoderDataFindItemByID(avifEncoderData * data, uint16_t id)
+static avifEncoderItem * avifEncoderDataFindItemByID(avifEncoderData * data, uint32_t id)
 {
     for (uint32_t itemIndex = 0; itemIndex < data->items.count; ++itemIndex) {
         avifEncoderItem * item = &data->items.item[itemIndex];
@@ -887,11 +887,11 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
             continue;
         }
 
-        AVIF_CHECKRES(avifRWStreamWriteU16(s, item->id));          // unsigned int(16) item_ID;
-        AVIF_CHECKRES(avifRWStreamWriteU16(s, 0));                 // unsigned int(16) data_reference_index;
-        AVIF_CHECKRES(avifRWStreamWriteU16(s, 1));                 // unsigned int(16) extent_count;
-        AVIF_CHECKRES(avifEncoderItemAddMdatFixup(item, s));       //
-        AVIF_CHECKRES(avifRWStreamWriteU32(s, 0 /* set later */)); // unsigned int(offset_size*8) extent_offset;
+        AVIF_CHECKRES(avifRWStreamWriteU16(s, (uint16_t)item->id)); // unsigned int(16) item_ID;
+        AVIF_CHECKRES(avifRWStreamWriteU16(s, 0));                  // unsigned int(16) data_reference_index;
+        AVIF_CHECKRES(avifRWStreamWriteU16(s, 1));                  // unsigned int(16) extent_count;
+        AVIF_CHECKRES(avifEncoderItemAddMdatFixup(item, s));        //
+        AVIF_CHECKRES(avifRWStreamWriteU32(s, 0 /* set later */));  // unsigned int(offset_size*8) extent_offset;
         AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)item->metadataPayload.size)); // unsigned int(length_size*8) extent_length;
     }
     AVIF_CHECKRES(avifRWStreamFinishBox(s, iloc));
@@ -908,7 +908,9 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
         AVIF_ASSERT_OR_RETURN(!item->hiddenImage);
         avifBoxMarker infe;
         AVIF_CHECKRES(avifRWStreamWriteFullBox(s, "infe", AVIF_BOX_SIZE_TBD, 2, 0, &infe));
-        AVIF_CHECKRES(avifRWStreamWriteU16(s, item->id));                             // unsigned int(16) item_ID;
+        // The trak meta box only contains metadata items (Exif/XMP) of image sequences,
+        // which are too few to require 32-bit item IDs.
+        AVIF_CHECKRES(avifRWStreamWriteU16(s, (uint16_t)item->id));                   // unsigned int(16) item_ID;
         AVIF_CHECKRES(avifRWStreamWriteU16(s, 0));                                    // unsigned int(16) item_protection_index;
         AVIF_CHECKRES(avifRWStreamWrite(s, item->type, 4));                           // unsigned int(32) item_type;
         AVIF_CHECKRES(avifRWStreamWriteChars(s, item->infeName, item->infeNameSize)); // string item_name; (writing null terminator)
@@ -1245,7 +1247,7 @@ static const char * getInfeName(avifItemCategory itemCategory)
 
 // Adds the items for a single cell or a grid of cells. Outputs the topLevelItemID which is
 // the only item if there is exactly one cell, or the grid item for multiple cells.
-// Note: The topLevelItemID output argument has the type uint16_t* instead of avifEncoderItem** because
+// Note: The topLevelItemID output argument has the type uint32_t* instead of avifEncoderItem** because
 //       the avifEncoderItem pointer may be invalidated by a call to avifEncoderDataCreateItem().
 static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint32_t gridCols,
@@ -1253,7 +1255,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
                                            uint32_t gridWidth,
                                            uint32_t gridHeight,
                                            avifItemCategory itemCategory,
-                                           uint16_t * topLevelItemID)
+                                           uint32_t * topLevelItemID)
 {
     const uint32_t cellCount = gridCols * gridRows;
     const char * infeName = getInfeName(itemCategory);
@@ -1295,7 +1297,7 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
                                                           uint32_t gridRows,
                                                           uint32_t gridWidth,
                                                           uint32_t gridHeight,
-                                                          uint16_t colorItemID)
+                                                          uint32_t colorItemID)
 {
     AVIF_ASSERT_OR_RETURN(encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
                           encoder->sampleTransformRecipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B ||
@@ -1321,17 +1323,17 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
                                                                       /*cellIndex=*/0);
     AVIF_CHECKRES(avifEncoderWriteSampleTransformPayload(encoder, &sampleTransformItem->metadataPayload));
     sampleTransformItem->itemCategory = AVIF_ITEM_SAMPLE_TRANSFORM;
-    uint16_t sampleTransformItemID = sampleTransformItem->id;
+    uint32_t sampleTransformItemID = sampleTransformItem->id;
     // 'altr' group
     AVIF_ASSERT_OR_RETURN(encoder->data->alternativeItemIDs.count == 0);
-    uint16_t * alternativeItemID = (uint16_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
+    uint32_t * alternativeItemID = (uint32_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
     AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     *alternativeItemID = sampleTransformItem->id;
-    alternativeItemID = (uint16_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
+    alternativeItemID = (uint32_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
     AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     *alternativeItemID = colorItemID;
 
-    uint16_t bitDepthExtensionColorItemId;
+    uint32_t bitDepthExtensionColorItemId;
     AVIF_CHECKRES(
         avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_COLOR, &bitDepthExtensionColorItemId));
     avifEncoderItem * bitDepthExtensionColorItem = avifEncoderDataFindItemByID(encoder->data, bitDepthExtensionColorItemId);
@@ -1350,7 +1352,7 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
     bitDepthExtensionColorItem->dimgFromID = sampleTransformItemID;
 
     if (encoder->data->alphaPresent) {
-        uint16_t bitDepthExtensionAlphaItemId;
+        uint32_t bitDepthExtensionAlphaItemId;
         AVIF_CHECKRES(
             avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_SAMPLE_TRANSFORM_INPUT_0_ALPHA, &bitDepthExtensionAlphaItemId));
         avifEncoderItem * bitDepthExtensionAlphaItem = avifEncoderDataFindItemByID(encoder->data, bitDepthExtensionAlphaItemId);
@@ -1876,7 +1878,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         // Prepare all AV1 items
-        uint16_t colorItemID;
+        uint32_t colorItemID;
         AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_COLOR, &colorItemID));
         encoder->data->primaryItemID = colorItemID;
 
@@ -1902,7 +1904,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         if (encoder->data->alphaPresent) {
-            uint16_t alphaItemID;
+            uint32_t alphaItemID;
             AVIF_CHECKRES(avifEncoderAddImageItems(encoder, gridCols, gridRows, gridWidth, gridHeight, AVIF_ITEM_ALPHA, &alphaItemID));
             avifEncoderItem * alphaItem = avifEncoderDataFindItemByID(encoder->data, alphaItemID);
             AVIF_ASSERT_OR_RETURN(alphaItem);
@@ -1925,14 +1927,14 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, firstCell->gainMap, &encoder->diag));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
-            uint16_t toneMappedItemID = toneMappedItem->id;
+            uint32_t toneMappedItemID = toneMappedItem->id;
 
             AVIF_ASSERT_OR_RETURN(encoder->data->alternativeItemIDs.count == 0);
-            uint16_t * alternativeItemID = (uint16_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
+            uint32_t * alternativeItemID = (uint32_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
             AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             *alternativeItemID = toneMappedItemID;
 
-            alternativeItemID = (uint16_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
+            alternativeItemID = (uint32_t *)avifArrayPush(&encoder->data->alternativeItemIDs);
             AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             *alternativeItemID = colorItemID;
 
@@ -1941,7 +1943,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             const uint32_t gainMapGridHeight =
                 avifGridHeight(gridRows, cellImages[0]->gainMap->image, cellImages[gridCols * gridRows - 1]->gainMap->image);
 
-            uint16_t gainMapItemID;
+            uint32_t gainMapItemID;
             AVIF_CHECKRES(
                 avifEncoderAddImageItems(encoder, gridCols, gridRows, gainMapGridWidth, gainMapGridHeight, AVIF_ITEM_GAIN_MAP, &gainMapItemID));
             avifEncoderItem * gainMapItem = avifEncoderDataFindItemByID(encoder->data, gainMapItemID);
@@ -3158,6 +3160,17 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         return AVIF_RESULT_NO_CONTENT;
     }
 
+    if (encoder->data->lastItemID > UINT16_MAX) {
+        // The 32-bit item ID box variants ('pitm' version 1, 'iloc' version 2, 'iinf' version 1 with
+        // 'infe' version 3 entries, 'iref' version 1 and 'ipma' version 1) are not written by
+        // avifEncoderFinish() yet, and item ID 0 is invalid (ISO/IEC 14496-12 Section 8.11.1.1), so
+        // refuse to write a file needing more than 65535 items rather than silently truncating IDs.
+        avifDiagnosticsPrintf(&encoder->diag,
+                              "cannot write a file with %u items because the 32-bit item ID box variants are not supported yet",
+                              encoder->data->lastItemID);
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     const avifCodecType codecType = avifEncoderGetCodecType(encoder);
     if (codecType == AVIF_CODEC_TYPE_UNKNOWN) {
         return AVIF_RESULT_NO_CODEC_AVAILABLE;
@@ -3335,7 +3348,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     if (encoder->data->primaryItemID != 0) {
         AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "pitm", sizeof(uint16_t), 0, 0, /*marker=*/NULL));
-        AVIF_CHECKRES(avifRWStreamWriteU16(&s, encoder->data->primaryItemID)); //  unsigned int(16) item_ID;
+        AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)encoder->data->primaryItemID)); //  unsigned int(16) item_ID;
     }
 
     // -----------------------------------------------------------------------
@@ -3351,8 +3364,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
-        AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id)); // unsigned int(16) item_ID;
-        AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));        // unsigned int(16) data_reference_index;
+        AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->id)); // unsigned int(16) item_ID;
+        AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                  // unsigned int(16) data_reference_index;
 
         // Layered Image, write location for all samples
         if (item->extraLayerCount > 0) {
@@ -3398,7 +3411,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         uint32_t flags = item->hiddenImage ? 1 : 0;
         avifBoxMarker infe;
         AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "infe", AVIF_BOX_SIZE_TBD, 2, flags, &infe));
-        AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id));                             // unsigned int(16) item_ID;
+        AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->id));                   // unsigned int(16) item_ID;
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));                                    // unsigned int(16) item_protection_index;
         AVIF_CHECKRES(avifRWStreamWrite(&s, item->type, 4));                           // unsigned int(32) item_type;
         AVIF_CHECKRES(avifRWStreamWriteChars(&s, item->infeName, item->infeNameSize)); // utf8string item_name; (writing null terminator)
@@ -3436,12 +3449,12 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
             avifBoxMarker refType;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, "dimg", AVIF_BOX_SIZE_TBD, &refType));
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id));  // unsigned int(16) from_item_ID;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, dimgCount)); // unsigned int(16) reference_count;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->id)); // unsigned int(16) from_item_ID;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, dimgCount));          // unsigned int(16) reference_count;
             for (uint32_t dimgIndex = 0; dimgIndex < encoder->data->items.count; ++dimgIndex) {
                 avifEncoderItem * dimgItem = &encoder->data->items.item[dimgIndex];
                 if (dimgItem->dimgFromID == item->id) {
-                    AVIF_CHECKRES(avifRWStreamWriteU16(&s, dimgItem->id)); // unsigned int(16) to_item_ID;
+                    AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)dimgItem->id)); // unsigned int(16) to_item_ID;
                 }
             }
             AVIF_CHECKRES(avifRWStreamFinishBox(&s, refType));
@@ -3453,9 +3466,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             }
             avifBoxMarker refType;
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, item->irefType, AVIF_BOX_SIZE_TBD, &refType));
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id));       // unsigned int(16) from_item_ID;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));              // unsigned int(16) reference_count;
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->irefToID)); // unsigned int(16) to_item_ID;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->id));       // unsigned int(16) from_item_ID;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                        // unsigned int(16) reference_count;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->irefToID)); // unsigned int(16) to_item_ID;
             AVIF_CHECKRES(avifRWStreamFinishBox(&s, refType));
         }
     }
@@ -3500,7 +3513,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
                 continue;
             }
 
-            AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id)); // unsigned int(16) item_ID;
+            AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)item->id)); // unsigned int(16) item_ID;
             AVIF_ASSERT_OR_RETURN(item->associations.count < (1 << 8));
             AVIF_CHECKRES(avifRWStreamWriteU8(&s, (uint8_t)item->associations.count)); // unsigned int(8) association_count;
             for (uint32_t i = 0; i < item->associations.count; ++i) {
