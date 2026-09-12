@@ -245,8 +245,8 @@ TEST(GridApiTest, ColorAlphaGridExceeding16BitItemIDs) {
   // A color grid and an alpha grid of 128x256 cells each contain 32768 cells,
   // so encoding them requires 65538 distinct item IDs (2 grid items + 2 x 32768
   // cell items), which does not fit in the 16-bit item ID space (item ID 0 is
-  // also invalid, see ISO/IEC 14496-12 Section 8.11.1.1). The encoder now
-  // writes the 32-bit item ID variants of the boxes with item ID fields
+  // also invalid, see ISO/IEC 14496-12 Section 8.11.1.1). The encoder writes
+  // the 32-bit item ID variants of the boxes with item ID fields
   // ('pitm' version 1, 'iloc' version 2, 'iinf' version 1, 'infe' version 3,
   // 'iref' version 1 and 'ipma' version 1) so that such files are valid.
   // The cells are 64x64 because it is the smallest size allowed by MIAF.
@@ -394,6 +394,26 @@ TEST(GridApiTest, ColorAlphaGridExceeding16BitItemIDs) {
     ASSERT_TRUE(avifROStreamReadU32(&stream, &item_id));
     EXPECT_EQ(item_id, 1);
   }
+}
+
+TEST(GridApiTest, CellCountExceeding16BitReferenceCount) {
+  // A 256x256 grid contains 65536 cells, which does not fit in the 16-bit
+  // reference_count field of a 'dimg' item reference (ISO/IEC 14496-12
+  // Section 8.11.12), so avifEncoderAddImageGrid() refuses it. Note that the
+  // maximum is a single 256x256 grid; any other combination of grid
+  // dimensions is at most 256x255 = 65280 cells.
+  ImagePtr cell = testutil::CreateImage(
+      /*width=*/64, /*height=*/64, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_ALL);
+  ASSERT_NE(cell, nullptr);
+  const std::vector<avifImage*> cell_image_ptrs(256 * 256, cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), /*gridCols=*/256,
+                                    /*gridRows=*/256, cell_image_ptrs.data(),
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
 }
 
 //------------------------------------------------------------------------------

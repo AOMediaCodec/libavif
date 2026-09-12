@@ -288,19 +288,22 @@ error:
     return NULL;
 }
 
-// Returns NULL if a memory allocation failed, or if no item ID is left (item IDs span a
-// 32-bit space, so the latter would require more than 4 billion items).
-static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const char * type, const char * infeName, size_t infeNameSize, uint32_t cellIndex)
+// Returns AVIF_RESULT_OUT_OF_MEMORY if a memory allocation failed, or AVIF_RESULT_INTERNAL_ERROR
+// if no item ID is left (item IDs span a 32-bit space, so the latter would require more than
+// 4 billion items).
+static avifResult avifEncoderDataCreateItem(avifEncoderItem ** itemPtr,
+                                            avifEncoderData * data,
+                                            const char * type,
+                                            const char * infeName,
+                                            size_t infeNameSize,
+                                            uint32_t cellIndex)
 {
-    if (data->lastItemID == UINT32_MAX) {
-        // All item IDs are taken. This is unreachable in practice but avoid a wrap-around of
-        // item IDs, which would silently truncate or duplicate them.
-        return NULL;
-    }
+    // All item IDs are taken. This is unreachable in practice but avoid a wrap-around of
+    // item IDs, which would silently truncate or duplicate them.
+    AVIF_ASSERT_OR_RETURN(data->lastItemID != UINT32_MAX);
+
     avifEncoderItem * item = (avifEncoderItem *)avifArrayPush(&data->items);
-    if (item == NULL) {
-        return NULL;
-    }
+    AVIF_CHECKERR(item != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     ++data->lastItemID;
     item->id = data->lastItemID;
     memcpy(item->type, type, sizeof(item->type));
@@ -317,7 +320,8 @@ static avifEncoderItem * avifEncoderDataCreateItem(avifEncoderData * data, const
     if (!avifArrayCreate(&item->associations, sizeof(avifItemPropertyAssociation), 4)) {
         goto error;
     }
-    return item;
+    *itemPtr = item;
+    return AVIF_RESULT_OK;
 
 error:
     if (item->encodeOutput != NULL) {
@@ -326,7 +330,7 @@ error:
     avifArrayDestroy(&item->mdatFixups);
     --data->lastItemID;
     avifArrayPop(&data->items);
-    return NULL;
+    return AVIF_RESULT_OUT_OF_MEMORY;
 }
 
 static avifEncoderItem * avifEncoderDataFindItemByID(avifEncoderData * data, uint32_t id)
@@ -864,7 +868,7 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
 {
     // Count how many non-image items (such as EXIF/XMP) are being written
     uint32_t metadataItemCount = 0;
-    avifBool largeItemIDs = AVIF_FALSE; // Are any of the metadata item IDs too large for a 16-bit field?
+    avifBool largeItemIDs = AVIF_FALSE; // Are any of the metadata item IDs, or the metadata item count, too large for a 16-bit field?
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         if (memcmp(item->type, encoder->data->imageItemType, 4) != 0) {
@@ -872,6 +876,9 @@ static avifResult avifEncoderWriteTrackMetaBox(avifEncoder * encoder, avifRWStre
             largeItemIDs |= (item->id > UINT16_MAX);
         }
     }
+    // The 'iloc' and 'iinf' variants below are also needed if the metadata item count does not
+    // fit in a 16-bit field.
+    largeItemIDs |= (metadataItemCount > UINT16_MAX);
     if (metadataItemCount == 0) {
         // Don't even bother writing the trak meta box
         return AVIF_RESULT_OK;
@@ -1146,10 +1153,8 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
         return result;
     }
 
-    avifEncoderItem * exifItem = avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0);
-    if (!exifItem) {
-        return AVIF_RESULT_OUT_OF_MEMORY;
-    }
+    avifEncoderItem * exifItem;
+    AVIF_CHECKRES(avifEncoderDataCreateItem(&exifItem, data, "Exif", "Exif", 5, 0));
     exifItem->irefToID = data->primaryItemID;
     exifItem->irefType = "cdsc";
 
@@ -1162,10 +1167,8 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
 
 static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avifRWData * xmp)
 {
-    avifEncoderItem * xmpItem = avifEncoderDataCreateItem(data, "mime", "XMP", 4, 0);
-    if (!xmpItem) {
-        return AVIF_RESULT_OUT_OF_MEMORY;
-    }
+    avifEncoderItem * xmpItem;
+    AVIF_CHECKRES(avifEncoderDataCreateItem(&xmpItem, data, "mime", "XMP", 4, 0));
     xmpItem->irefToID = data->primaryItemID;
     xmpItem->irefType = "cdsc";
 
@@ -1288,7 +1291,8 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     const size_t infeNameSize = strlen(infeName) + 1;
 
     if (cellCount > 1) {
-        avifEncoderItem * gridItem = avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0);
+        avifEncoderItem * gridItem;
+        AVIF_CHECKRES(avifEncoderDataCreateItem(&gridItem, encoder->data, "grid", infeName, infeNameSize, 0));
         AVIF_CHECKRES(avifWriteGridPayload(&gridItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight));
         gridItem->itemCategory = itemCategory;
         gridItem->gridCols = gridCols;
@@ -1299,9 +1303,8 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
     }
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
-        avifEncoderItem * item =
-            avifEncoderDataCreateItem(encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex);
-        AVIF_CHECKERR(item, AVIF_RESULT_OUT_OF_MEMORY);
+        avifEncoderItem * item;
+        AVIF_CHECKRES(avifEncoderDataCreateItem(&item, encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex));
         AVIF_CHECKRES(avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE, &item->codec));
         item->codec->csOptions = encoder->csOptions;
         item->codec->diag = &encoder->diag;
@@ -1342,11 +1345,13 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
     //    and a 'sato' using the two color 'grid's as input items in this order; the primary color item
     //    and the 'sato' item being in an 'altr' group (backward-compatible, implemented)
     //  - a primary 'grid' of 'sato' cells and an auxiliary alpha 'grid' of 'sato' cells (backward-incompatible)
-    avifEncoderItem * sampleTransformItem = avifEncoderDataCreateItem(encoder->data,
-                                                                      "sato",
-                                                                      infeNameSampleTransform,
-                                                                      /*infeNameSize=*/strlen(infeNameSampleTransform) + 1,
-                                                                      /*cellIndex=*/0);
+    avifEncoderItem * sampleTransformItem;
+    AVIF_CHECKRES(avifEncoderDataCreateItem(&sampleTransformItem,
+                                            encoder->data,
+                                            "sato",
+                                            infeNameSampleTransform,
+                                            /*infeNameSize=*/strlen(infeNameSampleTransform) + 1,
+                                            /*cellIndex=*/0));
     AVIF_CHECKRES(avifEncoderWriteSampleTransformPayload(encoder, &sampleTransformItem->metadataPayload));
     sampleTransformItem->itemCategory = AVIF_ITEM_SAMPLE_TRANSFORM;
     uint32_t sampleTransformItemID = sampleTransformItem->id;
@@ -1945,11 +1950,13 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
         if (firstCell->gainMap && firstCell->gainMap->image) {
-            avifEncoderItem * toneMappedItem = avifEncoderDataCreateItem(encoder->data,
-                                                                         "tmap",
-                                                                         infeNameGainMap,
-                                                                         /*infeNameSize=*/strlen(infeNameGainMap) + 1,
-                                                                         /*cellIndex=*/0);
+            avifEncoderItem * toneMappedItem;
+            AVIF_CHECKRES(avifEncoderDataCreateItem(&toneMappedItem,
+                                                    encoder->data,
+                                                    "tmap",
+                                                    infeNameGainMap,
+                                                    /*infeNameSize=*/strlen(infeNameGainMap) + 1,
+                                                    /*cellIndex=*/0));
             AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, firstCell->gainMap, &encoder->diag));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
@@ -2179,7 +2186,10 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                    avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
+    // Each cell is referenced by a 'dimg' item reference whose reference_count field is
+    // 16-bit regardless of the 'iref' box version (ISO/IEC 14496-12 Section 8.11.12), so a
+    // grid cannot contain more than 65535 cells.
+    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256) || (gridCols * gridRows > 65535)) {
         return AVIF_RESULT_INVALID_IMAGE_GRID;
     }
     if (encoder->extraLayerCount == 0) {
@@ -3362,10 +3372,9 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write pitm
 
     // Use the 32-bit item ID variants of the 'pitm', 'iloc', 'iinf', 'infe', 'iref' and
-    // 'ipma' boxes below if any item ID exceeds the 16-bit item ID space, i.e. if there are
-    // more than 65535 items (item IDs are sequential and start at 1). Reading these box
-    // variants is already supported by libavif.
-    const avifBool largeItemIDs = (encoder->data->lastItemID > UINT16_MAX);
+    // 'ipma' boxes below if any item ID or the item count exceeds the 16-bit space, i.e. if
+    // there are more than 65535 items (item IDs are sequential and start at 1).
+    const avifBool largeItemIDs = encoder->data->lastItemID > UINT16_MAX || encoder->data->items.count > UINT16_MAX;
 
     if (encoder->data->primaryItemID != 0) {
         if (largeItemIDs) {
