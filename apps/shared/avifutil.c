@@ -61,10 +61,16 @@ static void printClapFraction(const char * name, int32_t n, int32_t d)
     }
 }
 
-static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifBool alphaPresent, avifProgressiveState progressiveState)
+static void avifImageDumpInternal(const avifImage * avif,
+                                  uint32_t cellWidth,
+                                  uint32_t cellHeight,
+                                  uint32_t gridCols,
+                                  uint32_t gridRows,
+                                  avifBool alphaPresent,
+                                  avifProgressiveState progressiveState)
 {
-    uint32_t width = avif->width;
-    uint32_t height = avif->height;
+    uint32_t width = cellWidth;
+    uint32_t height = cellHeight;
     if (gridCols && gridRows) {
         width *= gridCols;
         height *= gridRows;
@@ -193,15 +199,15 @@ static void avifImageDumpInternal(const avifImage * avif, uint32_t gridCols, uin
     }
 }
 
-void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
+void avifImageDump(const avifImage * avif, uint32_t cellWidth, uint32_t cellHeight, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState)
 {
     const avifBool alphaPresent = avif->alphaPlane && (avif->alphaRowBytes > 0);
-    avifImageDumpInternal(avif, gridCols, gridRows, alphaPresent, progressiveState);
+    avifImageDumpInternal(avif, cellWidth, cellHeight, gridCols, gridRows, alphaPresent, progressiveState);
 }
 
 void avifContainerDump(const avifDecoder * decoder)
 {
-    avifImageDumpInternal(decoder->image, 0, 0, decoder->alphaPresent, decoder->progressiveState);
+    avifImageDumpInternal(decoder->image, decoder->image->width, decoder->image->height, 0, 0, decoder->alphaPresent, decoder->progressiveState);
     if (decoder->imageSequenceTrackPresent) {
         if (decoder->repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
             printf(" * Repeat Count   : Infinite\n");
@@ -352,6 +358,34 @@ avifAppFileFormat avifReadImage(const char * filename,
         }
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(filename, image, requestedFormat, requestedDepth, chromaDownsampling, ignoreColorProfile, ignoreExif, ignoreXMP, ignoreAlpha, imageSizeLimit, outDepth)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        fprintf(stderr, "Unrecognized file format for input file: %s\n", filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    } else {
+        fprintf(stderr, "Unsupported file format %s for input file: %s\n", avifFileFormatToString(inputFormat), filename);
+        return AVIF_APP_FILE_FORMAT_UNKNOWN;
+    }
+    return inputFormat;
+}
+
+avifAppFileFormat avifPeekImage(const char * filename, avifAppFileFormat inputFormat, avifImage * image)
+{
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+        inputFormat = avifGuessFileFormat(filename);
+    }
+
+    if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
+        if (!y4mPeek(filename, image)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
+        if (!avifJPEGPeek(filename, image)) {
+            return AVIF_APP_FILE_FORMAT_UNKNOWN;
+        }
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
+        if (!avifPNGPeek(filename, image)) {
             return AVIF_APP_FILE_FORMAT_UNKNOWN;
         }
     } else if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {

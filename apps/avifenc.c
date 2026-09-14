@@ -78,6 +78,10 @@ typedef struct
     avifMatrixCoefficients matrixCoefficients;
     avifChromaDownsampling chromaDownsampling;
     avifAppFileFormat inputFormat;
+
+    // Inferred from the last input, only needed when using --layered
+    uint32_t width;
+    uint32_t height;
 } avifSettings;
 
 typedef struct
@@ -451,6 +455,57 @@ static avifBool convertCropToClap(uint32_t srcW, uint32_t srcH, uint32_t clapVal
     clapValues[5] = clap.horizOffD;
     clapValues[6] = clap.vertOffN;
     clapValues[7] = clap.vertOffD;
+    return AVIF_TRUE;
+}
+
+static avifBool avifVerifyImageFitsLastLayerSize(const avifSettings * settings, const avifImage * image, const char * filename)
+{
+    if (settings->width == 0) {
+        return AVIF_TRUE;
+    }
+    if ((image->width > settings->width) || (image->height > settings->height)) {
+        fprintf(stderr,
+                "ERROR: Input image dimensions [%ux%u] exceed the last layer's size [%ux%u]: %s\n",
+                image->width,
+                image->height,
+                settings->width,
+                settings->height,
+                filename);
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+// Checks, ahead of time and in CLI terms, for the settings that the library itself would reject
+// once combined with --layered inputs of different sizes (which predeclares avifEncoder.width/height,
+// a field avifenc's users never set directly). Only checks conditions actually reachable via avifenc's
+// CLI; e.g. grids and non-layered images can't reach this point at all, so they're not checked here.
+static avifBool avifVerifyLastLayerSizeCompatibility(const avifSettings * settings, const avifInput * input, const avifImage * firstImage)
+{
+    if (settings->width == 0) {
+        return AVIF_TRUE;
+    }
+    for (int i = 0; i < settings->layers; ++i) {
+        const avifScalingMode * scalingMode = &input->files[i].settings.scalingMode.value;
+        const avifBool isNoScaling = (scalingMode->horizontal.n == scalingMode->horizontal.d) &&
+                                     (scalingMode->vertical.n == scalingMode->vertical.d);
+        if (input->files[i].settings.scalingMode.set && !isNoScaling) {
+            fprintf(stderr, "ERROR: --scaling-mode cannot be used with --layered inputs of different sizes\n");
+            return AVIF_FALSE;
+        }
+    }
+    if (input->requestedDepthExtension != 0) {
+        fprintf(stderr, "ERROR: --depth with a bit depth extension cannot be used with --layered inputs of different sizes\n");
+        return AVIF_FALSE;
+    }
+#if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
+    if (firstImage->gainMap && firstImage->gainMap->image) {
+        fprintf(stderr, "ERROR: A gain map cannot be used with --layered inputs of different sizes (use --ignore-gain-map)\n");
+        return AVIF_FALSE;
+    }
+#else
+    (void)firstImage;
+#endif
     return AVIF_TRUE;
 }
 
@@ -860,10 +915,11 @@ static avifBool avifEncodeUpdateEncoderSettings(avifEncoder * encoder, const avi
 static avifBool avifEncoderVerifyImageCompatibility(const avifImage * refImage,
                                                     const avifImage * testImage,
                                                     const char * seriesType,
-                                                    const char * filename)
+                                                    const char * filename,
+                                                    avifBool allowDimensionChange)
 {
     // Verify that this frame's properties matches the first frame's properties
-    if ((refImage->width != testImage->width) || (refImage->height != testImage->height)) {
+    if (!allowDimensionChange && ((refImage->width != testImage->width) || (refImage->height != testImage->height))) {
         fprintf(stderr,
                 "ERROR: Image %s dimensions mismatch, [%ux%u] vs [%ux%u]: %s\n",
                 seriesType,
@@ -954,7 +1010,11 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
                                 settings->inputFormat)) {
             goto cleanup;
         }
-        if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "sequence", avifPrettyFilename(nextFile->filename))) {
+        if (!avifEncoderVerifyImageCompatibility(firstImage,
+                                                 nextImage,
+                                                 "sequence",
+                                                 avifPrettyFilename(nextFile->filename),
+                                                 /*allowDimensionChange=*/AVIF_FALSE)) {
             goto cleanup;
         }
         if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -1061,6 +1121,9 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                                     settings->inputFormat)) {
                 goto cleanup;
             }
+            if (!avifVerifyImageFitsLastLayerSize(settings, nextImage, avifPrettyFilename(nextFile->filename))) {
+                goto cleanup;
+            }
             // frameIter is NULL if y4m reached end, so single frame y4m is still supported.
             if (input->frameIter) {
                 fprintf(stderr,
@@ -1068,7 +1131,11 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
                         avifPrettyFilename(nextFile->filename));
                 goto cleanup;
             }
-            if (!avifEncoderVerifyImageCompatibility(firstImage, nextImage, "layer", avifPrettyFilename(nextFile->filename))) {
+            if (!avifEncoderVerifyImageCompatibility(firstImage,
+                                                     nextImage,
+                                                     "layer",
+                                                     avifPrettyFilename(nextFile->filename),
+                                                     /*allowDimensionChange=*/AVIF_TRUE)) {
                 goto cleanup;
             }
             if (!avifEncodeUpdateEncoderSettings(encoder, nextSettings)) {
@@ -1129,6 +1196,8 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     encoder->creationTime = settings->creationTime;
     encoder->modificationTime = settings->modificationTime;
     encoder->extraLayerCount = settings->layers - 1;
+    encoder->width = settings->width;
+    encoder->height = settings->height;
     if (!avifEncodeUpdateEncoderSettings(encoder, &firstFile->settings)) {
         goto cleanup;
     }
@@ -2381,6 +2450,38 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
+    uint32_t outputImageWidth = image->width;
+    uint32_t outputImageHeight = image->height;
+    if (settings.layered) {
+        // Check the resolution of the last layer without decoding it, to fill
+        // the image size in advance.
+        // Only fill if the resolution differs from the first layer's,
+        // to not interfere with --scaling-mode.
+        const avifInputFile * lastFile = &input.files[input.filesCount - 1];
+        avifImage * lastImage = avifImageCreateEmpty();
+        if (!lastImage) {
+            fprintf(stderr, "ERROR: Out of memory\n");
+            goto cleanup;
+        }
+        const avifBool lastImageOk = avifPeekImage(lastFile->filename, settings.inputFormat, lastImage) != AVIF_APP_FILE_FORMAT_UNKNOWN;
+        if (lastImageOk && ((lastImage->width != image->width) || (lastImage->height != image->height))) {
+            outputImageWidth = settings.width = lastImage->width;
+            outputImageHeight = settings.height = lastImage->height;
+        }
+        avifImageDestroy(lastImage);
+        if (!lastImageOk) {
+            fprintf(stderr, "ERROR: Failed to read last layer: %s\n", avifPrettyFilename(lastFile->filename));
+            goto cleanup;
+        }
+    }
+
+    if (!avifVerifyImageFitsLastLayerSize(&settings, image, avifPrettyFilename(firstFile->filename))) {
+        goto cleanup;
+    }
+    if (!avifVerifyLastLayerSizeCompatibility(&settings, &input, image)) {
+        goto cleanup;
+    }
+
     printf("Successfully loaded: %s\n", avifPrettyFilename(firstFile->filename));
 
     // Prepare image timings
@@ -2433,7 +2534,7 @@ int main(int argc, char * argv[])
         image->pasp.vSpacing = settings.paspValues[1];
     }
     if (cropConversionRequired) {
-        if (!convertCropToClap(image->width, image->height, settings.clapValues)) {
+        if (!convertCropToClap(outputImageWidth, outputImageHeight, settings.clapValues)) {
             goto cleanup;
         }
         settings.clapValid = AVIF_TRUE;
@@ -2453,7 +2554,7 @@ int main(int argc, char * argv[])
         avifCropRect cropRect;
         avifDiagnostics diag;
         avifDiagnosticsClearError(&diag);
-        if (!avifCropRectFromCleanApertureBox(&cropRect, &image->clap, image->width, image->height, &diag)) {
+        if (!avifCropRectFromCleanApertureBox(&cropRect, &image->clap, outputImageWidth, outputImageHeight, &diag)) {
             fprintf(stderr,
                     "ERROR: Invalid clap: width:[%d / %d], height:[%d / %d], horizOff:[%d / %d], vertOff:[%d / %d] - %s\n",
                     (int32_t)image->clap.widthN,
@@ -2635,7 +2736,11 @@ int main(int argc, char * argv[])
     }
     printf("AVIF to be written:%s\n", lossyHint);
     const avifImage * avif = gridCells ? gridCells[0] : image;
+    const uint32_t cellWidth = gridCells ? avif->width : outputImageWidth;
+    const uint32_t cellHeight = gridCells ? avif->height : outputImageHeight;
     avifImageDump(avif,
+                  cellWidth,
+                  cellHeight,
                   settings.gridDims[0],
                   settings.gridDims[1],
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);

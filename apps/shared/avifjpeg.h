@@ -28,6 +28,10 @@ avifBool avifJPEGRead(const char * inputFilename,
                       uint32_t sizeLimit);
 avifBool avifJPEGWrite(const char * outputFilename, const avifImage * avif, int jpegQuality, avifChromaUpsampling chromaUpsampling);
 
+// Parse the jpeg file at path 'inputFilename' and write its metadata into 'avif',
+// without decoding the pixels.
+avifBool avifJPEGPeek(const char * inputFilename, avifImage * avif);
+
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
 // Parses XMP gain map metadata. Visible for testing.
 avifBool avifJPEGParseGainMapXMP(const uint8_t * xmpData, size_t xmpSize, avifGainMap * gainMap, avifBool * isAppleGainMap);

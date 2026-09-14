@@ -76,6 +76,9 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
     }
 
     // SVT-AV1 does not support encoding layered image.
+    if (encoder->width || encoder->height) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     if (encoder->extraLayerCount > 0) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }

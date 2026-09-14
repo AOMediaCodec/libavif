@@ -83,6 +83,9 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
     }
 
     // rav1e does not support encoding layered image.
+    if (encoder->width || encoder->height) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
     if (encoder->extraLayerCount > 0) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }

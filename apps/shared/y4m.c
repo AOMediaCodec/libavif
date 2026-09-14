@@ -253,12 +253,13 @@ static avifBool y4mClampSamples(avifImage * avif)
             goto cleanup; \
     } while (0)
 
-avifBool y4mRead(const char * inputFilename,
-                 avifBool ignoreAlpha,
-                 uint32_t imageSizeLimit,
-                 avifImage * avif,
-                 avifAppSourceTiming * sourceTiming,
-                 struct y4mFrameIterator ** iter)
+static avifBool y4mReadInternal(const char * inputFilename,
+                                avifBool ignoreAlpha,
+                                uint32_t imageSizeLimit,
+                                avifImage * avif,
+                                avifAppSourceTiming * sourceTiming,
+                                struct y4mFrameIterator ** iter,
+                                avifBool headerOnly)
 {
     avifBool result = AVIF_FALSE;
 
@@ -412,6 +413,14 @@ avifBool y4mRead(const char * inputFilename,
     avif->yuvFormat = frame.format;
     avif->yuvRange = frame.range;
     avif->yuvChromaSamplePosition = frame.chromaSamplePosition;
+
+    if (headerOnly) {
+        // All the metadata (dimensions, depth, format, range, chroma sample position) is already
+        // known. Stop here instead of reading any frame data.
+        result = AVIF_TRUE;
+        goto cleanup;
+    }
+
     avifResult allocationResult = avifImageAllocatePlanes(avif, frame.hasAlpha ? AVIF_PLANES_ALL : AVIF_PLANES_YUV);
     if (allocationResult != AVIF_RESULT_OK) {
         fprintf(stderr, "Failed to allocate the planes: %s\n", avifResultToString(allocationResult));
@@ -476,6 +485,27 @@ cleanup:
     }
     avifRWDataFree(&raw);
     return result;
+}
+
+avifBool y4mRead(const char * inputFilename,
+                 avifBool ignoreAlpha,
+                 uint32_t imageSizeLimit,
+                 avifImage * avif,
+                 avifAppSourceTiming * sourceTiming,
+                 struct y4mFrameIterator ** iter)
+{
+    return y4mReadInternal(inputFilename, ignoreAlpha, imageSizeLimit, avif, sourceTiming, iter, /*headerOnly=*/AVIF_FALSE);
+}
+
+avifBool y4mPeek(const char * inputFilename, avifImage * avif)
+{
+    return y4mReadInternal(inputFilename,
+                           /*ignoreAlpha=*/AVIF_TRUE,
+                           /*imageSizeLimit=*/UINT32_MAX,
+                           avif,
+                           /*sourceTiming=*/NULL,
+                           /*iter=*/NULL,
+                           /*headerOnly=*/AVIF_TRUE);
 }
 
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
