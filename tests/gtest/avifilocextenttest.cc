@@ -1,6 +1,9 @@
 // Copyright 2024 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
+#include <string>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -28,6 +31,35 @@ TEST(IlocTest, TwoExtents) {
   const double psnr = testutil::GetPsnr(*source, *decoded);
   EXPECT_GT(psnr, 30.0);
   EXPECT_LT(psnr, 45.0);
+}
+
+TEST(IlocTest, NonZeroDataReferenceIndex) {
+  testutil::AvifRwData avif =
+      testutil::ReadFile(std::string(data_path) + "white_1x1.avif");
+  ASSERT_NE(avif.data, nullptr);
+
+  const uint8_t kIloc[] = {'i', 'l', 'o', 'c'};
+  uint8_t* iloc_position =
+      std::search(avif.data, avif.data + avif.size, kIloc, kIloc + 4);
+  ASSERT_NE(iloc_position, avif.data + avif.size);
+  ASSERT_GE(static_cast<size_t>(avif.data + avif.size - iloc_position),
+            size_t{16});
+
+  // white_1x1.avif uses iloc version 0 with a single item. The
+  // data_reference_index field follows the item_ID field.
+  ASSERT_EQ(iloc_position[4], 0);
+  ASSERT_EQ(iloc_position[10], 0);
+  ASSERT_EQ(iloc_position[11], 1);
+  ASSERT_EQ(iloc_position[14], 0);
+  ASSERT_EQ(iloc_position[15], 0);
+  iloc_position[14] = 0;
+  iloc_position[15] = 1;
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), avif.data, avif.size),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED);
 }
 
 //------------------------------------------------------------------------------
