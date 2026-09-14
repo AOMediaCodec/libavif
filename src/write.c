@@ -291,12 +291,12 @@ error:
 // Returns AVIF_RESULT_OUT_OF_MEMORY if a memory allocation failed, or AVIF_RESULT_INTERNAL_ERROR
 // if no item ID is left (item IDs span a 32-bit space, so the latter would require more than
 // 4 billion items).
-static avifResult avifEncoderDataCreateItem(avifEncoderItem ** itemPtr,
-                                            avifEncoderData * data,
+static avifResult avifEncoderDataCreateItem(avifEncoderData * data,
                                             const char * type,
                                             const char * infeName,
                                             size_t infeNameSize,
-                                            uint32_t cellIndex)
+                                            uint32_t cellIndex,
+                                            avifEncoderItem ** itemPtr)
 {
     // All item IDs are taken. This is unreachable in practice but avoid a wrap-around of
     // item IDs, which would silently truncate or duplicate them.
@@ -1154,7 +1154,7 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
     }
 
     avifEncoderItem * exifItem;
-    AVIF_CHECKRES(avifEncoderDataCreateItem(&exifItem, data, "Exif", "Exif", 5, 0));
+    AVIF_CHECKRES(avifEncoderDataCreateItem(data, "Exif", "Exif", 5, 0, &exifItem));
     exifItem->irefToID = data->primaryItemID;
     exifItem->irefType = "cdsc";
 
@@ -1168,7 +1168,7 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
 static avifResult avifEncoderDataCreateXMPItem(avifEncoderData * data, const avifRWData * xmp)
 {
     avifEncoderItem * xmpItem;
-    AVIF_CHECKRES(avifEncoderDataCreateItem(&xmpItem, data, "mime", "XMP", 4, 0));
+    AVIF_CHECKRES(avifEncoderDataCreateItem(data, "mime", "XMP", 4, 0, &xmpItem));
     xmpItem->irefToID = data->primaryItemID;
     xmpItem->irefType = "cdsc";
 
@@ -1292,7 +1292,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
 
     if (cellCount > 1) {
         avifEncoderItem * gridItem;
-        AVIF_CHECKRES(avifEncoderDataCreateItem(&gridItem, encoder->data, "grid", infeName, infeNameSize, 0));
+        AVIF_CHECKRES(avifEncoderDataCreateItem(encoder->data, "grid", infeName, infeNameSize, 0, &gridItem));
         AVIF_CHECKRES(avifWriteGridPayload(&gridItem->metadataPayload, gridCols, gridRows, gridWidth, gridHeight));
         gridItem->itemCategory = itemCategory;
         gridItem->gridCols = gridCols;
@@ -1304,7 +1304,7 @@ static avifResult avifEncoderAddImageItems(avifEncoder * encoder,
 
     for (uint32_t cellIndex = 0; cellIndex < cellCount; ++cellIndex) {
         avifEncoderItem * item;
-        AVIF_CHECKRES(avifEncoderDataCreateItem(&item, encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex));
+        AVIF_CHECKRES(avifEncoderDataCreateItem(encoder->data, encoder->data->imageItemType, infeName, infeNameSize, cellIndex, &item));
         AVIF_CHECKRES(avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE, &item->codec));
         item->codec->csOptions = encoder->csOptions;
         item->codec->diag = &encoder->diag;
@@ -1346,12 +1346,12 @@ static avifResult avifEncoderCreateBitDepthExtensionItems(avifEncoder * encoder,
     //    and the 'sato' item being in an 'altr' group (backward-compatible, implemented)
     //  - a primary 'grid' of 'sato' cells and an auxiliary alpha 'grid' of 'sato' cells (backward-incompatible)
     avifEncoderItem * sampleTransformItem;
-    AVIF_CHECKRES(avifEncoderDataCreateItem(&sampleTransformItem,
-                                            encoder->data,
+    AVIF_CHECKRES(avifEncoderDataCreateItem(encoder->data,
                                             "sato",
                                             infeNameSampleTransform,
                                             /*infeNameSize=*/strlen(infeNameSampleTransform) + 1,
-                                            /*cellIndex=*/0));
+                                            /*cellIndex=*/0,
+                                            &sampleTransformItem));
     AVIF_CHECKRES(avifEncoderWriteSampleTransformPayload(encoder, &sampleTransformItem->metadataPayload));
     sampleTransformItem->itemCategory = AVIF_ITEM_SAMPLE_TRANSFORM;
     uint32_t sampleTransformItemID = sampleTransformItem->id;
@@ -1951,12 +1951,12 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
         if (firstCell->gainMap && firstCell->gainMap->image) {
             avifEncoderItem * toneMappedItem;
-            AVIF_CHECKRES(avifEncoderDataCreateItem(&toneMappedItem,
-                                                    encoder->data,
+            AVIF_CHECKRES(avifEncoderDataCreateItem(encoder->data,
                                                     "tmap",
                                                     infeNameGainMap,
                                                     /*infeNameSize=*/strlen(infeNameGainMap) + 1,
-                                                    /*cellIndex=*/0));
+                                                    /*cellIndex=*/0,
+                                                    &toneMappedItem));
             AVIF_CHECKRES(avifWriteToneMappedImagePayload(&toneMappedItem->metadataPayload, firstCell->gainMap, &encoder->diag));
             // Even though the 'tmap' item is related to the gain map, it represents a color image and its metadata is more similar to the color item.
             toneMappedItem->itemCategory = AVIF_ITEM_COLOR;
