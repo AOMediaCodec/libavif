@@ -362,7 +362,7 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename) {
   avifRWData encoded = AVIF_DATA_EMPTY;
   std::cout << "AVIF to be written:\n";
-  avifImageDump(image,
+  avifImageDump(image, image->width, image->height,
                 /*gridCols=*/1,
                 /*gridRows=*/1, AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
   PrintEncodingSettings(encoder, image->gainMap != nullptr);
@@ -407,7 +407,8 @@ avifResult WriteAvifGrid(const avifImage* image, int grid_cols, int grid_rows,
 
   avifRWData encoded = AVIF_DATA_EMPTY;
   std::cout << "AVIF to be written:\n";
-  avifImageDump(grid_cells_ptrs[0], grid_cols, grid_rows,
+  avifImageDump(grid_cells_ptrs[0], grid_cells_ptrs[0]->width,
+                grid_cells_ptrs[0]->height, grid_cols, grid_rows,
                 AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
   PrintEncodingSettings(encoder, image->gainMap != nullptr);
   avifResult result = avifEncoderAddImageGrid(encoder, grid_cols, grid_rows,

@@ -28,6 +28,10 @@ avifBool avifPNGWrite(const char * outputFilename,
                       avifChromaUpsampling chromaUpsampling,
                       int compressionLevel);
 
+// Parse the PNG file at path 'inputFilename' and write its metadata into 'avif',
+// without decoding the pixels.
+avifBool avifPNGPeek(const char * inputFilename, avifImage * avif);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
