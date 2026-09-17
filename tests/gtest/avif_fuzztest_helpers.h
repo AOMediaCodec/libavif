@@ -261,23 +261,16 @@ inline auto ArbitraryAvifEncoder() {
       {AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_CHOICE_AOM});
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
   const auto max_threads = fuzztest::InRange(0, 64);
-  const auto min_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
-                                               AVIF_QUANTIZER_WORST_QUALITY);
-  const auto max_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
-                                               AVIF_QUANTIZER_WORST_QUALITY);
-  const auto min_quantizer_alpha = fuzztest::InRange(
-      AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
-  const auto max_quantizer_alpha = fuzztest::InRange(
-      AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
+  const auto quality = fuzztest::InRange(AVIF_QUALITY_WORST, AVIF_QUALITY_BEST);
+  const auto quality_alpha =
+      fuzztest::InRange(AVIF_QUALITY_WORST, AVIF_QUALITY_BEST);
   const auto tile_rows_log2 = fuzztest::InRange(0, 6);
   const auto tile_cols_log2 = fuzztest::InRange(0, 6);
   // Fuzz only a small range of 'speed' values to avoid slowing down the fuzzer
   // too much. The main goal is to fuzz libavif, not the underlying AV1 encoder.
   const auto speed = fuzztest::InRange(6, AVIF_SPEED_FASTEST);
-  return fuzztest::Map(CreateAvifEncoder, codec_choice, max_threads,
-                       min_quantizer, max_quantizer, min_quantizer_alpha,
-                       max_quantizer_alpha, tile_rows_log2, tile_cols_log2,
-                       speed);
+  return fuzztest::Map(CreateAvifEncoder, codec_choice, max_threads, quality,
+                       quality_alpha, tile_rows_log2, tile_cols_log2, speed);
 }
 
 // Generator for an arbitrary DecoderPtr with base options fuzzed (i.e.
