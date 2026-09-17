@@ -1128,9 +1128,10 @@ avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, con
         if (!strcmp(entry->key, key)) {
             if (value) {
                 // Update the value
+                char * newValue = avifStrdup(value);
+                AVIF_CHECKERR(newValue, AVIF_RESULT_OUT_OF_MEMORY);
                 avifFree(entry->value);
-                entry->value = avifStrdup(value);
-                AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
+                entry->value = newValue;
             } else {
                 // Delete the value
                 avifFree(entry->key);
@@ -1146,12 +1147,21 @@ avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, con
 
     if (value) {
         // Add a new key
+        char * newKey = avifStrdup(key);
+        AVIF_CHECKERR(newKey, AVIF_RESULT_OUT_OF_MEMORY);
+        char * newValue = avifStrdup(value);
+        if (!newValue) {
+            avifFree(newKey);
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
         avifCodecSpecificOption * entry = (avifCodecSpecificOption *)avifArrayPush(csOptions);
-        AVIF_CHECKERR(entry, AVIF_RESULT_OUT_OF_MEMORY);
-        entry->key = avifStrdup(key);
-        AVIF_CHECKERR(entry->key, AVIF_RESULT_OUT_OF_MEMORY);
-        entry->value = avifStrdup(value);
-        AVIF_CHECKERR(entry->value, AVIF_RESULT_OUT_OF_MEMORY);
+        if (!entry) {
+            avifFree(newKey);
+            avifFree(newValue);
+            return AVIF_RESULT_OUT_OF_MEMORY;
+        }
+        entry->key = newKey;
+        entry->value = newValue;
     }
     return AVIF_RESULT_OK;
 }

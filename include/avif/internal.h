@@ -525,7 +525,8 @@ AVIF_ARRAY_DECLARE(avifCodecSpecificOptions, avifCodecSpecificOption, entries);
 AVIF_NODISCARD avifCodecSpecificOptions * avifCodecSpecificOptionsCreate(void);
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions);
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions);
-avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value); // if(value==NULL), key is deleted
+// If value is NULL, key is deleted. On allocation failure, csOptions is left unchanged.
+avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value);
 
 // ---------------------------------------------------------------------------
 // avifCodecType (underlying video format)

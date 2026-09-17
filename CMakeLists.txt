@@ -738,6 +738,10 @@ if(AVIF_BUILD_APPS)
     endif()
     set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
     target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
+    if(AVIF_LIBYUV_ENABLED)
+        target_compile_definitions(avifgainmaputil PRIVATE -DAVIF_LIBYUV_ENABLED=1)
+        target_link_libraries(avifgainmaputil yuv::yuv)
+    endif()
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(
