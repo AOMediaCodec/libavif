@@ -793,10 +793,6 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     gainMapImage->height = height;
 
     avifImageFreePlanes(gainMapImage, AVIF_PLANES_ALL); // Free planes in case they were already allocated.
-    res = avifImageAllocatePlanes(gainMapImage, AVIF_PLANES_YUV);
-    if (res != AVIF_RESULT_OK) {
-        goto cleanup;
-    }
 
     avifRGBImageSetDefaults(&gainMapRGB, gainMapImage);
     res = avifRGBImageAllocatePixels(&gainMapRGB);
