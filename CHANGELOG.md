@@ -53,6 +53,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* avifImageCopy(), avifImageSetViewRect() and avifImageAllocatePlanes() no
+  longer free planes they do not own. Passing a view into the destination's
+  own planes previously freed them before reading, and allocating over a
+  non-owning view called avifFree() on borrowed memory.
 
 ## [1.4.2] - 2026-05-26
 

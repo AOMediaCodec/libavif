@@ -856,6 +856,7 @@ AVIF_NODISCARD AVIF_API avifImage * avifImageCreateEmpty(void); // helper for ma
 // Performs a deep copy of an image, including all metadata and planes, and the gain map metadata/planes if present.
 AVIF_API avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 // Performs a shallow copy of a rectangular area of an image. 'dstImage' does not own the planes.
+// Returns AVIF_RESULT_INVALID_ARGUMENT if 'srcImage' uses plane storage owned by 'dstImage'.
 // Ignores the gainMap field.
 AVIF_API avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect);
 AVIF_API void avifImageDestroy(avifImage * image);
@@ -870,8 +871,10 @@ AVIF_API avifResult avifImageSetMetadataExif(avifImage * image, const uint8_t * 
 AVIF_API avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 // Allocate/free/steal planes. These functions ignore the gainMap field.
-AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes); // Ignores any pre-existing planes
-AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes);           // Ignores already-freed planes
+// Allocates missing planes. A complete set of pre-existing planes is left unchanged, including its ownership.
+// Incomplete non-owned YUV planes are rejected because ownership is tracked for the whole YUV plane set.
+AVIF_API avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes);
+AVIF_API void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes); // Ignores already-freed planes
 AVIF_API void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes);
 
 // Add arbitrary (opaque) properties to the image.
