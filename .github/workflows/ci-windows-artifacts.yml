@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build-windows-artifacts:
@@ -80,6 +82,11 @@ jobs:
           filename: "windows-artifacts.zip"
           directory: "build/Release"
           path: "*.exe"
+      - name: Attest release artifact
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: build/Release/windows-artifacts.zip
+
       - name: Upload artifacts
         shell: pwsh
         env:
