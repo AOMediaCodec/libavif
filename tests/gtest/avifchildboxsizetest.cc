@@ -111,6 +111,122 @@ TEST(ItemReferenceTest, ReferenceBoxSizeOneByteTooLarge) {
 
 //------------------------------------------------------------------------------
 
+// The 'edts' box contains an 'elst' (EditListBox) child box.
+// In colors-animated-8bpc.avif, 'edts' is at offset 526 (size 44) and 'elst' is
+// at offset 534 with version 1 (declared size 36).
+// In colors-animated-8bpc-audio.avif, 'edts' is at offset 527 (size 36) and
+// 'elst' is at offset 535 with version 0 (declared size 28).
+constexpr const char* kEditListBoxV1FileName = "colors-animated-8bpc.avif";
+constexpr size_t kEdtsBoxV1Offset = 526;
+constexpr size_t kEditListBoxV1Offset = 534;
+constexpr uint32_t kEditListBoxV1Size = 36;
+
+constexpr const char* kEditListBoxV0FileName = "colors-animated-8bpc-audio.avif";
+constexpr size_t kEdtsBoxV0Offset = 527;
+constexpr size_t kEditListBoxV0Offset = 535;
+constexpr uint32_t kEditListBoxV0Size = 28;
+
+void SetEditListBoxSizeDelta(size_t edtsOffset, size_t elstOffset,
+                             uint32_t elstSize, int delta,
+                             testutil::AvifRwData* encoded) {
+  ASSERT_GE(encoded->size, elstOffset + elstSize);
+  uint8_t* parentBox = encoded->data + edtsOffset;
+  uint8_t* box = encoded->data + elstOffset;
+  ASSERT_EQ(std::memcmp(parentBox + 4, "edts", 4), 0);
+  ASSERT_EQ(std::memcmp(box + 4, "elst", 4), 0);
+  ASSERT_EQ(ReadBE32(box), elstSize);
+  const uint32_t parentSize = ReadBE32(parentBox);
+  WriteBE32(static_cast<uint32_t>(static_cast<int>(parentSize) + delta),
+            parentBox);
+  WriteBE32(static_cast<uint32_t>(static_cast<int>(elstSize) + delta), box);
+}
+
+TEST(EditListBoxTest, ValidFileV1Parses) {
+  const testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_OK);
+}
+
+TEST(EditListBoxTest, EditListBoxV1SizeOneByteTooSmall) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetEditListBoxSizeDelta(
+      kEdtsBoxV1Offset, kEditListBoxV1Offset, kEditListBoxV1Size, -1, &encoded));
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, EditListBoxV1SizeOneByteTooLarge) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetEditListBoxSizeDelta(
+      kEdtsBoxV1Offset, kEditListBoxV1Offset, kEditListBoxV1Size, 1, &encoded));
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, ValidFileV0Parses) {
+  const testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV0FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_OK);
+}
+
+TEST(EditListBoxTest, EditListBoxV0SizeOneByteTooSmall) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV0FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetEditListBoxSizeDelta(
+      kEdtsBoxV0Offset, kEditListBoxV0Offset, kEditListBoxV0Size, -1, &encoded));
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, EditListBoxV0SizeOneByteTooLarge) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV0FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_NO_FATAL_FAILURE(SetEditListBoxSizeDelta(
+      kEdtsBoxV0Offset, kEditListBoxV0Offset, kEditListBoxV0Size, 1, &encoded));
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, EditListBoxUnsupportedVersion) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_GE(encoded.size, kEditListBoxV1Offset + kEditListBoxV1Size);
+  uint8_t* box = encoded.data + kEditListBoxV1Offset;
+  ASSERT_EQ(std::memcmp(box + 4, "elst", 4), 0);
+  box[8] = 2;  // unsupported version
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, EditListBoxZeroSegmentDuration) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_GE(encoded.size, kEditListBoxV1Offset + kEditListBoxV1Size);
+  uint8_t* box = encoded.data + kEditListBoxV1Offset;
+  ASSERT_EQ(std::memcmp(box + 4, "elst", 4), 0);
+  WriteBE32(0, box + 16);
+  WriteBE32(0, box + 20);
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+TEST(EditListBoxTest, EditListBoxInvalidEntryCount) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + kEditListBoxV1FileName);
+  ASSERT_NE(encoded.size, size_t{0});
+  ASSERT_GE(encoded.size, kEditListBoxV1Offset + kEditListBoxV1Size);
+  uint8_t* box = encoded.data + kEditListBoxV1Offset;
+  ASSERT_EQ(std::memcmp(box + 4, "elst", 4), 0);
+  WriteBE32(0, box + 12);  // entry_count = 0
+  EXPECT_EQ(Parse(encoded), AVIF_RESULT_BMFF_PARSE_FAILED);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace avif
 

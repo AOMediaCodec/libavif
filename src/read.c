@@ -3990,12 +3990,14 @@ static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, siz
     uint32_t flags;
     AVIF_CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
 
-    if ((flags & 1) == 0) {
-        track->isRepeating = AVIF_FALSE;
-        return AVIF_TRUE;
+    if (version != 0 && version != 1) {
+        // Unsupported version
+        avifDiagnosticsPrintf(diag, "Box[elst] has an unsupported version [%u]", version);
+        return AVIF_FALSE;
     }
 
-    track->isRepeating = AVIF_TRUE;
+    track->isRepeating = ((flags & 1) != 0);
+
     uint32_t entryCount;
     AVIF_CHECK(avifROStreamReadU32(&s, &entryCount)); // unsigned int(32) entry_count;
     if (entryCount != 1) {
@@ -4003,19 +4005,28 @@ static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, siz
         return AVIF_FALSE;
     }
 
+    uint64_t ignored64;
+    uint32_t ignored32;
     if (version == 1) {
         AVIF_CHECK(avifROStreamReadU64(&s, &track->segmentDuration)); // unsigned int(64) segment_duration;
-    } else if (version == 0) {
-        uint32_t segmentDuration;
-        AVIF_CHECK(avifROStreamReadU32(&s, &segmentDuration)); // unsigned int(32) segment_duration;
-        track->segmentDuration = segmentDuration;
+        AVIF_CHECK(avifROStreamReadU64(&s, &ignored64));              // int(64) media_time;
     } else {
-        // Unsupported version
-        avifDiagnosticsPrintf(diag, "Box[elst] has an unsupported version [%u]", version);
-        return AVIF_FALSE;
+        uint32_t segmentDuration;
+        AVIF_CHECK(avifROStreamReadU32(&s, &segmentDuration));        // unsigned int(32) segment_duration;
+        track->segmentDuration = segmentDuration;
+        AVIF_CHECK(avifROStreamReadU32(&s, &ignored32));              // int(32) media_time;
     }
     if (track->segmentDuration == 0) {
         avifDiagnosticsPrintf(diag, "Box[elst] Invalid value for segment_duration (0).");
+        return AVIF_FALSE;
+    }
+
+    uint16_t ignored16;
+    AVIF_CHECK(avifROStreamReadU16(&s, &ignored16));                  // int(16) media_rate_integer;
+    AVIF_CHECK(avifROStreamReadU16(&s, &ignored16));                  // int(16) media_rate_fraction = 0;
+
+    if (avifROStreamRemainingBytes(&s) != 0) {
+        avifDiagnosticsPrintf(diag, "Box[elst] has %zu unexpected trailing bytes", avifROStreamRemainingBytes(&s));
         return AVIF_FALSE;
     }
     return AVIF_TRUE;
