@@ -444,6 +444,10 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    if (encoder->width || encoder->height) {
+        return AVIF_RESULT_NOT_IMPLEMENTED;
+    }
+
     struct avm_codec_enc_cfg * cfg = &codec->internal->cfg;
     avifBool quantizerUpdated = AVIF_FALSE;
     const int quantizer = avmQualityToQuantizer(quality, image->depth);

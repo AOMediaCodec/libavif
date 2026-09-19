@@ -279,7 +279,8 @@ static avifBool avifPNGReadImpl(FILE * f,
                                 avifBool ignoreXMP,
                                 avifBool ignoreAlpha,
                                 uint32_t imageSizeLimit,
-                                uint32_t * outPNGDepth)
+                                uint32_t * outPNGDepth,
+                                avifBool headerOnly)
 {
     volatile avifBool readResult = AVIF_FALSE;
     png_structp png = NULL;
@@ -515,6 +516,13 @@ static avifBool avifPNGReadImpl(FILE * f,
         goto cleanup;
     }
 
+    if (headerOnly) {
+        // All the metadata read so far (dimensions, depth, yuvFormat, ICC/color primaries if
+        // requested) is already set on avif. Stop here instead of decoding any pixel data.
+        readResult = AVIF_TRUE;
+        goto cleanup;
+    }
+
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.chromaDownsampling = chromaDownsampling;
     rgb.depth = imgBitDepth;
@@ -613,11 +621,37 @@ avifBool avifPNGRead(const char * inputFilename,
                                          ignoreXMP,
                                          ignoreAlpha,
                                          imageSizeLimit,
-                                         outPNGDepth);
+                                         outPNGDepth,
+                                         /*headerOnly=*/AVIF_FALSE);
 
     if (f != stdin) {
         fclose(f);
     }
+    return res;
+}
+
+avifBool avifPNGPeek(const char * inputFilename, avifImage * avif)
+{
+    FILE * f = fopen(inputFilename, "rb");
+    if (!f) {
+        fprintf(stderr, "Can't open PNG file for read: %s\n", inputFilename);
+        return AVIF_FALSE;
+    }
+
+    const avifBool res = avifPNGReadImpl(f,
+                                         inputFilename,
+                                         avif,
+                                         /*requestedFormat=*/AVIF_PIXEL_FORMAT_NONE,
+                                         /*requestedDepth=*/0,
+                                         AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                                         /*ignoreColorProfile=*/AVIF_TRUE,
+                                         /*ignoreExif=*/AVIF_TRUE,
+                                         /*ignoreXMP=*/AVIF_TRUE,
+                                         /*ignoreAlpha=*/AVIF_TRUE,
+                                         /*imageSizeLimit=*/UINT32_MAX,
+                                         /*outPNGDepth=*/NULL,
+                                         /*headerOnly=*/AVIF_TRUE);
+    fclose(f);
     return res;
 }
 

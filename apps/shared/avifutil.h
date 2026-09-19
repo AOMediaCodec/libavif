@@ -28,7 +28,7 @@ extern "C" {
 #define AVIF_FMT_ZU "zu"
 #endif
 
-void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
+void avifImageDump(const avifImage * avif, uint32_t cellWidth, uint32_t cellHeight, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
 void avifContainerDump(const avifDecoder * decoder);
 void avifPrintVersions(void);
 void avifDumpDiagnostics(const avifDiagnostics * diag);
@@ -117,6 +117,14 @@ avifAppFileFormat avifReadImage(const char * filename,
                                 uint32_t * outDepth,
                                 avifAppSourceTiming * sourceTiming,
                                 struct y4mFrameIterator ** frameIter);
+
+// Determines only the metadata available before pixel decoding starts (currently width, height,
+// depth, yuvFormat and, for JPEG/PNG, color profile information) for an image file, without
+// decoding any pixel data.
+// If 'inputFormat' is AVIF_APP_FILE_FORMAT_UNKNOWN, the image format is guessed
+// based on the filename or first few bytes.
+// Returns the format of the file, or AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
+avifAppFileFormat avifPeekImage(const char * filename, avifAppFileFormat inputFormat, avifImage * image);
 
 // Copies all the bytes from the file at filename to a newly allocated memory chunk.
 avifBool avifReadEntireFile(const char * filename, avifRWData * raw);
