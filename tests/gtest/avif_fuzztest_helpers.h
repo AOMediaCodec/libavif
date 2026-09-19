@@ -59,9 +59,8 @@ std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
                                         bool has_alpha,
                                         const std::vector<uint16_t>& samples);
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
-                             int min_quantizer, int max_quantizer,
-                             int min_quantizer_alpha, int max_quantizer_alpha,
-                             int tile_rows_log2, int tile_cols_log2, int speed);
+                             int quality, int quality_alpha, int tile_rows_log2,
+                             int tile_cols_log2, int speed);
 DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              avifDecoderSource requested_source,
                              bool allow_progressive, bool allow_incremental,
