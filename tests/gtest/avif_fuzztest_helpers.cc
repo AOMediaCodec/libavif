@@ -113,7 +113,6 @@ EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
   }
   encoder->codecChoice = codec_choice;
   encoder->maxThreads = max_threads;
-  // minQuantizer must be at most maxQuantizer.
   encoder->quality = quality;
   encoder->qualityAlpha = quality_alpha;
   encoder->tileRowsLog2 = tile_rows_log2;
