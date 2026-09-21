@@ -34,7 +34,7 @@ static float avifSignedFractionToFloat(avifSignedFraction f)
     if (f.d == 0) {
         return 0.0f;
     }
-    return (float)f.n / (float)f.d;
+    return (float)f.n / f.d;
 }
 
 static float avifUnsignedFractionToFloat(avifUnsignedFraction f)
@@ -42,7 +42,7 @@ static float avifUnsignedFractionToFloat(avifUnsignedFraction f)
     if (f.d == 0) {
         return 0.0f;
     }
-    return (float)f.n / (float)f.d;
+    return (float)f.n / f.d;
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +301,7 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
         // Convert extended SDR (where 1.0 is SDR white) to nits.
         clli->maxCLL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbMaxLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
-        const float rgbAverageLinear = rgbSumLinear / (float)((size_t)width * height);
+        const float rgbAverageLinear = rgbSumLinear / ((size_t)width * height);
         clli->maxPALL = (uint16_t)AVIF_CLAMP(avifRoundf(rgbAverageLinear * SDR_WHITE_NITS), 0.0f, (float)UINT16_MAX);
     }
 
@@ -363,19 +363,19 @@ cleanup:
 static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
-    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * (float)numBuckets), numBuckets - 1);
+    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets), numBuckets - 1);
 }
 // Returns the lower end of the value range belonging to the given histogram bucket.
 static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int numBuckets)
 {
-    return (float)idx * (bucketMax - bucketMin) / (float)numBuckets + bucketMin;
+    return idx * (bucketMax - bucketMin) / numBuckets + bucketMin;
 }
 
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixels, float * rangeMin, float * rangeMax)
 {
     const float bucketSize = 0.01f;        // Size of one bucket. Empirical value.
     const float maxOutliersRatio = 0.001f; // 0.1%
-    const int maxOutliersOnEachSide = (int)avifRoundf((float)numPixels * maxOutliersRatio / 2.0f);
+    const int maxOutliersOnEachSide = (int)avifRoundf(numPixels * maxOutliersRatio / 2.0f);
 
     float min = gainMapF[0];
     float max = gainMapF[0];

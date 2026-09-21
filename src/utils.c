@@ -19,8 +19,8 @@ uint16_t avifHTONS(uint16_t s)
 {
     uint16_t result = 0;
     uint8_t * data = (uint8_t *)&result;
-    data[0] = (uint8_t)((s >> 8) & 0xff);
-    data[1] = (uint8_t)((s >> 0) & 0xff);
+    data[0] = (s >> 8) & 0xff;
+    data[1] = (s >> 0) & 0xff;
     return result;
 }
 
@@ -40,10 +40,10 @@ uint32_t avifHTONL(uint32_t l)
 {
     uint32_t result = 0;
     uint8_t * data = (uint8_t *)&result;
-    data[0] = (uint8_t)((l >> 24) & 0xff);
-    data[1] = (uint8_t)((l >> 16) & 0xff);
-    data[2] = (uint8_t)((l >> 8) & 0xff);
-    data[3] = (uint8_t)((l >> 0) & 0xff);
+    data[0] = (l >> 24) & 0xff;
+    data[1] = (l >> 16) & 0xff;
+    data[2] = (l >> 8) & 0xff;
+    data[3] = (l >> 0) & 0xff;
     return result;
 }
 
@@ -63,14 +63,14 @@ uint64_t avifHTON64(uint64_t l)
 {
     uint64_t result = 0;
     uint8_t * data = (uint8_t *)&result;
-    data[0] = (uint8_t)((l >> 56) & 0xff);
-    data[1] = (uint8_t)((l >> 48) & 0xff);
-    data[2] = (uint8_t)((l >> 40) & 0xff);
-    data[3] = (uint8_t)((l >> 32) & 0xff);
-    data[4] = (uint8_t)((l >> 24) & 0xff);
-    data[5] = (uint8_t)((l >> 16) & 0xff);
-    data[6] = (uint8_t)((l >> 8) & 0xff);
-    data[7] = (uint8_t)((l >> 0) & 0xff);
+    data[0] = (l >> 56) & 0xff;
+    data[1] = (l >> 48) & 0xff;
+    data[2] = (l >> 40) & 0xff;
+    data[3] = (l >> 32) & 0xff;
+    data[4] = (l >> 24) & 0xff;
+    data[5] = (l >> 16) & 0xff;
+    data[6] = (l >> 8) & 0xff;
+    data[7] = (l >> 0) & 0xff;
     return result;
 }
 

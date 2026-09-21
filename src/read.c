@@ -1439,7 +1439,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             // See https://aomediacodec.github.io/av1-spec/#color-config-semantics
 
             // So item->miniBoxChromaSamplePosition can differ and will override the AV1 value.
-        } else if (item->miniBoxChromaSamplePosition != (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition) {
+        } else if ((uint8_t)item->miniBoxChromaSamplePosition != configProp->u.av1C.chromaSamplePosition) {
             avifDiagnosticsPrintf(diag,
                                   "Item ID %u chroma sample position [%u] specified by MinimizedImageBox does not match %s property chroma sample position [%u]",
                                   item->id,
@@ -7348,7 +7348,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =
-                        (uint32_t)floorf((float)gainMapRowCount / (float)gainMap->height * (float)decoder->image->height);
+                        (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
                     // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
                     AVIF_CHECKERR((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
                                                    decoder->image->gainMap->image->height) <= gainMapRowCount,

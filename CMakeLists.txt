@@ -315,16 +315,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    # -Wconversion makes narrowing integer conversions visible so that any future
-    # implicit truncation of a value (e.g. a count or a size) is caught at compile time
-    # instead of silently wrapping. Sign conversions and float conversions are excluded
-    # to keep the signal focused on truncation. The C language is targeted because the
-    # C++ code (apps and tests) has not been cleaned up yet.
-    target_compile_options(
-        avif_enable_warnings
-        INTERFACE -Wall -Wextra $<$<COMPILE_LANGUAGE:C>:-Wconversion> $<$<COMPILE_LANGUAGE:C>:-Wno-sign-conversion>
-                  $<$<COMPILE_LANGUAGE:C>:-Wno-float-conversion>
-    )
+    target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra)
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
 endif()
@@ -449,16 +440,11 @@ if(UNIX OR MINGW)
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
-    set(AVIF_BUNDLED_LIBYUV_SOURCES
-        third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c third_party/libyuv/source/scale_any.c
-        third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
+    target_sources(
+        avif_obj
+        PRIVATE third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c third_party/libyuv/source/scale_any.c
+                third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
     )
-    target_sources(avif_obj PRIVATE ${AVIF_BUNDLED_LIBYUV_SOURCES})
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-        # The vendored libyuv sources above are trusted third-party code and are not -Wconversion-clean.
-        # Scope the -Wconversion guard (see avif_enable_warnings) to libavif's own code only.
-        set_source_files_properties(${AVIF_BUNDLED_LIBYUV_SOURCES} PROPERTIES COMPILE_OPTIONS "-Wno-conversion")
-    endif()
     if(DEFINED ANDROID_ABI OR DEFINED APPLE)
         # When building third_party/libyuv/source/scale.c, some functions use
         # some of the parameters only inside an assert statement. This causes

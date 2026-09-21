@@ -148,24 +148,24 @@ static uint32_t readLittleEndianU32(const uint8_t * data)
 
 static void writeLittleEndianU32(uint8_t * data, uint32_t value)
 {
-    data[0] = (uint8_t)((value >> 0) & 0xff);
-    data[1] = (uint8_t)((value >> 8) & 0xff);
-    data[2] = (uint8_t)((value >> 16) & 0xff);
-    data[3] = (uint8_t)((value >> 24) & 0xff);
+    data[0] = (value >> 0) & 0xff;
+    data[1] = (value >> 8) & 0xff;
+    data[2] = (value >> 16) & 0xff;
+    data[3] = (value >> 24) & 0xff;
 }
 
 static void writeBigEndianU16(uint8_t * data, uint16_t value)
 {
-    data[0] = (uint8_t)((value >> 8) & 0xff);
-    data[1] = (uint8_t)((value >> 0) & 0xff);
+    data[0] = (value >> 8) & 0xff;
+    data[1] = (value >> 0) & 0xff;
 }
 
 static void writeBigEndianU32(uint8_t * data, uint32_t value)
 {
-    data[0] = (uint8_t)((value >> 24) & 0xff);
-    data[1] = (uint8_t)((value >> 16) & 0xff);
-    data[2] = (uint8_t)((value >> 8) & 0xff);
-    data[3] = (uint8_t)((value >> 0) & 0xff);
+    data[0] = (value >> 24) & 0xff;
+    data[1] = (value >> 16) & 0xff;
+    data[2] = (value >> 8) & 0xff;
+    data[3] = (value >> 0) & 0xff;
 }
 
 static avifBool putS15Fixed16(uint8_t * data, double value)
