@@ -449,11 +449,16 @@ if(UNIX OR MINGW)
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
-    target_sources(
-        avif_obj
-        PRIVATE third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c third_party/libyuv/source/scale_any.c
-                third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
+    set(AVIF_BUNDLED_LIBYUV_SOURCES
+        third_party/libyuv/source/scale.c third_party/libyuv/source/scale_common.c third_party/libyuv/source/scale_any.c
+        third_party/libyuv/source/row_common.c third_party/libyuv/source/planar_functions.c
     )
+    target_sources(avif_obj PRIVATE ${AVIF_BUNDLED_LIBYUV_SOURCES})
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+        # The vendored libyuv sources above are trusted third-party code and are not -Wconversion-clean.
+        # Scope the -Wconversion guard (see avif_enable_warnings) to libavif's own code only.
+        set_source_files_properties(${AVIF_BUNDLED_LIBYUV_SOURCES} PROPERTIES COMPILE_OPTIONS "-Wno-conversion")
+    endif()
     if(DEFINED ANDROID_ABI OR DEFINED APPLE)
         # When building third_party/libyuv/source/scale.c, some functions use
         # some of the parameters only inside an assert statement. This causes
