@@ -513,7 +513,7 @@ avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCo
         const uint32_t bits = (v >> bitCount) & ((1 << numBits) - 1);
         // Pack bits starting with the most significant bit of the first output byte.
         // This way, packed bits can be found in the same order in the bit stream.
-        *packedBits |= bits << (8 - stream->numUsedBitsInPartialByte);
+        *packedBits |= (uint8_t)(bits << (8 - stream->numUsedBitsInPartialByte));
 
         if (stream->numUsedBitsInPartialByte == 8) {
             // Start a new partial byte the next time a bit is needed.

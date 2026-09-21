@@ -1038,7 +1038,8 @@ typedef struct avifDecoderData
 
     // Remember the dimg association order to the Sample Transform derived image item.
     // Colour items only. The alpha items are implicit.
-    uint8_t sampleTransformNumInputImageItems; // At most AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS.
+    // uint32_t so that the count of 'dimg' inputs is not truncated by a wrap-around before validation.
+    uint32_t sampleTransformNumInputImageItems; // At most AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS.
     avifItemCategory sampleTransformInputImageItems[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
 } avifDecoderData;
 
@@ -1438,7 +1439,7 @@ static avifResult avifDecoderItemValidateProperties(const avifDecoderItem * item
             // See https://aomediacodec.github.io/av1-spec/#color-config-semantics
 
             // So item->miniBoxChromaSamplePosition can differ and will override the AV1 value.
-        } else if ((uint8_t)item->miniBoxChromaSamplePosition != configProp->u.av1C.chromaSamplePosition) {
+        } else if (item->miniBoxChromaSamplePosition != (avifChromaSamplePosition)configProp->u.av1C.chromaSamplePosition) {
             avifDiagnosticsPrintf(diag,
                                   "Item ID %u chroma sample position [%u] specified by MinimizedImageBox does not match %s property chroma sample position [%u]",
                                   item->id,
@@ -6457,7 +6458,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Check max number of input items allowed by the format.
             if (data->sampleTransformNumInputImageItems > 32) {
                 avifDiagnosticsPrintf(data->diag,
-                                      "Box[sato] too many input items, format allows up to 32, got %d",
+                                      "Box[sato] too many input items, format allows up to 32, got %u",
                                       data->sampleTransformNumInputImageItems);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
@@ -7347,7 +7348,7 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
                 uint32_t gainMapRowCount = avifGetDecodedRowCount(decoder, &decoder->data->tileInfos[AVIF_ITEM_GAIN_MAP], gainMap);
                 if (gainMap->height != decoder->image->height) {
                     const uint32_t scaledGainMapRowCount =
-                        (uint32_t)floorf((float)gainMapRowCount / gainMap->height * decoder->image->height);
+                        (uint32_t)floorf((float)gainMapRowCount / (float)gainMap->height * (float)decoder->image->height);
                     // Make sure it matches the formula described in the comment of avifDecoderDecodedRowCount() in avif.h.
                     AVIF_CHECKERR((uint32_t)lround((double)scaledGainMapRowCount / decoder->image->height *
                                                    decoder->image->gainMap->image->height) <= gainMapRowCount,

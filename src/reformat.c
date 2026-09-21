@@ -376,9 +376,9 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
                             const int Co = R - B;
                             const int t = B + (Co >> 1);
                             const int Cg = G - t;
-                            yuvBlock[bI][bJ].y = (t + (Cg >> 1)) / state.yuv.rangeY;
-                            yuvBlock[bI][bJ].u = Cg / state.yuv.rangeUV;
-                            yuvBlock[bI][bJ].v = Co / state.yuv.rangeUV;
+                            yuvBlock[bI][bJ].y = (float)(t + (Cg >> 1)) / state.yuv.rangeY;
+                            yuvBlock[bI][bJ].u = (float)Cg / state.yuv.rangeUV;
+                            yuvBlock[bI][bJ].v = (float)Co / state.yuv.rangeUV;
                         } else {
                             float Y = (kr * rgbPixel[0]) + (kg * rgbPixel[1]) + (kb * rgbPixel[2]);
                             yuvBlock[bI][bJ].y = Y;
@@ -865,7 +865,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image,
                         const int t = YY - (Cg >> 1);
                         G = (float)AVIF_CLAMP(t + Cg, 0, state->rgb.maxChannel);
                         B = (float)AVIF_CLAMP(t - (Co >> 1), 0, state->rgb.maxChannel);
-                        R = (float)AVIF_CLAMP(B + Co, 0, state->rgb.maxChannel);
+                        R = AVIF_CLAMP(B + (float)Co, 0.0f, (float)state->rgb.maxChannel);
                         G /= rgbMaxChannelF;
                         B /= rgbMaxChannelF;
                         R /= rgbMaxChannelF;
@@ -1426,7 +1426,7 @@ static avifResult avifRGBImageToF16(avifRGBImage * rgb)
         return libyuvResult;
     }
     const size_t channelCount = avifRGBFormatChannelCount(rgb->format);
-    const float scale = 1.0f / ((1 << rgb->depth) - 1);
+    const float scale = 1.0f / (float)((1 << rgb->depth) - 1);
     const float multiplier = F16_MULTIPLIER * scale;
     uint16_t * pixelRowBase = (uint16_t *)rgb->pixels;
     const uint32_t stride = rgb->rowBytes >> 1;

@@ -315,7 +315,16 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
     message(STATUS "libavif: Enabling warnings for GCC")
-    target_compile_options(avif_enable_warnings INTERFACE -Wall -Wextra)
+    # -Wconversion makes narrowing integer conversions visible so that any future
+    # implicit truncation of a value (e.g. a count or a size) is caught at compile time
+    # instead of silently wrapping. Sign conversions and float conversions are excluded
+    # to keep the signal focused on truncation. The C language is targeted because the
+    # C++ code (apps and tests) has not been cleaned up yet.
+    target_compile_options(
+        avif_enable_warnings
+        INTERFACE -Wall -Wextra $<$<COMPILE_LANGUAGE:C>:-Wconversion> $<$<COMPILE_LANGUAGE:C>:-Wno-sign-conversion>
+                  $<$<COMPILE_LANGUAGE:C>:-Wno-float-conversion>
+    )
 else()
     message(FATAL_ERROR "libavif: Unknown compiler, bailing out")
 endif()

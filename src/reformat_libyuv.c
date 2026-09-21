@@ -1166,7 +1166,7 @@ avifResult avifRGBImageToF16LibYUV(avifRGBImage * rgb)
     if (rgb->width > INT_MAX || rgb->height > INT_MAX || rgb->rowBytes > INT_MAX) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
-    const float scale = 1.0f / ((1 << rgb->depth) - 1);
+    const float scale = 1.0f / (float)((1 << rgb->depth) - 1);
     // Note: HalfFloatPlane requires the stride to be in bytes.
     const int result = HalfFloatPlane((const uint16_t *)rgb->pixels,
                                       rgb->rowBytes,
