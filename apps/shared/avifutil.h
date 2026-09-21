@@ -28,6 +28,9 @@ extern "C" {
 #define AVIF_FMT_ZU "zu"
 #endif
 
+// Dump an AVIF file's information, that has gridCols*gridRows cells (1*1 for non-grid image) and
+// 'avif' as the first cell that's encoded to have size cellWidth*cellHeight.
+// progressiveState indicates if the file is a progressive image.
 void avifImageDump(const avifImage * avif, uint32_t cellWidth, uint32_t cellHeight, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
 void avifContainerDump(const avifDecoder * decoder);
 void avifPrintVersions(void);
@@ -124,6 +127,8 @@ avifAppFileFormat avifReadImage(const char * filename,
 // If 'inputFormat' is AVIF_APP_FILE_FORMAT_UNKNOWN, the image format is guessed
 // based on the filename or first few bytes.
 // Returns the format of the file, or AVIF_APP_FILE_FORMAT_UNKNOWN in case of error.
+// Note: This function reuses the code that reads image. Current user of this function only uses the
+// width and height reported. Double check first when using other info returned.
 avifAppFileFormat avifPeekImage(const char * filename, avifAppFileFormat inputFormat, avifImage * image);
 
 // Copies all the bytes from the file at filename to a newly allocated memory chunk.

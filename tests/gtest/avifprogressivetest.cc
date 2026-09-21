@@ -266,12 +266,7 @@ TEST_F(ProgressiveTest, ResolutionChangeMixedRejected) {
   encoder_->height = kImageSize;
   encoder_->scalingMode = {{1, 2}, {1, 2}};
 
-  const auto smallImage = testutil::CreateImage(
-      kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
-  ASSERT_NE(smallImage, nullptr);
-
-  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
             AVIF_RESULT_INVALID_ARGUMENT);
 }
