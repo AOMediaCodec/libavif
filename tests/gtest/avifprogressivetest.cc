@@ -267,7 +267,7 @@ TEST_F(ProgressiveTest, ResolutionChangeMixedRejected) {
   encoder_->scalingMode = {{1, 2}, {1, 2}};
 
   const auto smallImage = testutil::CreateImage(
-      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
+      kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
       AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
 
@@ -277,7 +277,7 @@ TEST_F(ProgressiveTest, ResolutionChangeMixedRejected) {
 }
 
 TEST_F(ProgressiveTest, ResolutionChangeMixedDuringEncodingRejected) {
-  encoder_->extraLayerCount = 1;
+  encoder_->extraLayerCount = 2;
   encoder_->width = kImageSize;
   encoder_->height = kImageSize;
 

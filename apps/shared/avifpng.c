@@ -506,11 +506,6 @@ static avifBool avifPNGReadImpl(FILE * f,
         // Note: There is no support for the rare "Raw profile type icc" or "Raw profile type icm" text chunks.
     }
 
-    const int numChannels = png_get_channels(png, info);
-    if (numChannels < 1 || numChannels > 4) {
-        fprintf(stderr, "png_get_channels() should return 1, 2, 3 or 4 but returns %d.\n", numChannels);
-        goto cleanup;
-    }
     if (avif->width > imageSizeLimit / avif->height) {
         fprintf(stderr, "Too big PNG dimensions (%u x %u > %u px): %s\n", avif->width, avif->height, imageSizeLimit, inputFilename);
         goto cleanup;
@@ -520,6 +515,12 @@ static avifBool avifPNGReadImpl(FILE * f,
         // All the metadata read so far (dimensions, depth, yuvFormat, ICC/color primaries if
         // requested) is already set on avif. Stop here instead of decoding any pixel data.
         readResult = AVIF_TRUE;
+        goto cleanup;
+    }
+
+    const int numChannels = png_get_channels(png, info);
+    if (numChannels < 1 || numChannels > 4) {
+        fprintf(stderr, "png_get_channels() should return 1, 2, 3 or 4 but returns %d.\n", numChannels);
         goto cleanup;
     }
 

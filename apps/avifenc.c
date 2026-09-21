@@ -79,7 +79,7 @@ typedef struct
     avifChromaDownsampling chromaDownsampling;
     avifAppFileFormat inputFormat;
 
-    // Inferred from the last input, only needed when using --layered
+    // The last layer's size. Inferred from the last input, only needed when using --layered.
     uint32_t width;
     uint32_t height;
 } avifSettings;
@@ -476,10 +476,11 @@ static avifBool avifVerifyImageFitsLastLayerSize(const avifSettings * settings, 
     return AVIF_TRUE;
 }
 
-// Checks, ahead of time and in CLI terms, for the settings that the library itself would reject
-// once combined with --layered inputs of different sizes (which predeclares avifEncoder.width/height,
-// a field avifenc's users never set directly). Only checks conditions actually reachable via avifenc's
-// CLI; e.g. grids and non-layered images can't reach this point at all, so they're not checked here.
+// Checks, before encoding and in terms of CLI, for the settings that the library would reject once
+// combined with --layered inputs of different sizes (--layered sets avifEncoder.width/height, two
+// fields avifenc's users never set directly). Only checks conditions actually reachable via
+// avifenc's CLI. For example, grids and non-layered images can't reach this point at all, so they
+// are not checked here.
 static avifBool avifVerifyLastLayerSizeCompatibility(const avifSettings * settings, const avifInput * input, const avifImage * firstImage)
 {
     if (settings->width == 0) {
@@ -495,7 +496,7 @@ static avifBool avifVerifyLastLayerSizeCompatibility(const avifSettings * settin
         }
     }
     if (input->requestedDepthExtension != 0) {
-        fprintf(stderr, "ERROR: --depth with a bit depth extension cannot be used with --layered inputs of different sizes\n");
+        fprintf(stderr, "ERROR: --depth with bit depth extension cannot be used with --layered inputs of different sizes\n");
         return AVIF_FALSE;
     }
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
@@ -2453,10 +2454,10 @@ int main(int argc, char * argv[])
     uint32_t outputImageWidth = image->width;
     uint32_t outputImageHeight = image->height;
     if (settings.layered) {
-        // Check the resolution of the last layer without decoding it, to fill
-        // the image size in advance.
-        // Only fill if the resolution differs from the first layer's,
-        // to not interfere with --scaling-mode.
+        // Get the resolution of the last layer without decoding it, to fill the output image size
+        // in advance.
+        // Only fill the output image size if the last layer's resolution differs from the first
+        // layer's, to not interfere with --scaling-mode.
         const avifInputFile * lastFile = &input.files[input.filesCount - 1];
         avifImage * lastImage = avifImageCreateEmpty();
         if (!lastImage) {
@@ -2470,7 +2471,7 @@ int main(int argc, char * argv[])
         }
         avifImageDestroy(lastImage);
         if (!lastImageOk) {
-            fprintf(stderr, "ERROR: Failed to read last layer: %s\n", avifPrettyFilename(lastFile->filename));
+            fprintf(stderr, "ERROR: Failed to peek last layer: %s\n", avifPrettyFilename(lastFile->filename));
             goto cleanup;
         }
     }

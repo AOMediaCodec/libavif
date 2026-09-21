@@ -823,7 +823,7 @@ typedef struct avifImage
     // These also apply to gainMap->image, if any.
     //
     // When encoding with avifEncoder.width/height set (see their comment), these transformations
-    // are interpreted relative to that size rather than to this intermediate layer's own
+    // are interpreted relative to that size rather than to the current layer's own
     // width/height. No special handling is needed during decode: the decoded layer is
     // automatically scaled to the configured size, so these transformations are relative to the
     // decoded avifImage's width/height as usual.

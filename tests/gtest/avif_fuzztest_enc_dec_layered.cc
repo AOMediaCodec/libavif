@@ -30,8 +30,7 @@ constexpr std::array<avifScalingMode, kLayerCount> kNoScalingModes = {
 
 constexpr avifScalingMode MakeScalingMode(avifFraction horizontal,
                                           avifFraction vertical) {
-  return avifScalingMode{{horizontal.n, horizontal.d},
-                         {vertical.n, vertical.d}};
+  return {horizontal, vertical};
 }
 
 constexpr size_t BinomialCoefficient(size_t n, size_t k) {

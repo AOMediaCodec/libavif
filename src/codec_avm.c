@@ -444,6 +444,7 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                                       avifAddImageFlags addImageFlags,
                                       avifCodecEncodeOutput * output)
 {
+    // AVM does not support encoding a layered image.
     if (encoder->width || encoder->height) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }

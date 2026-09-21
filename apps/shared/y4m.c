@@ -256,10 +256,10 @@ static avifBool y4mClampSamples(avifImage * avif)
 static avifBool y4mReadInternal(const char * inputFilename,
                                 avifBool ignoreAlpha,
                                 uint32_t imageSizeLimit,
+                                avifBool headerOnly,
                                 avifImage * avif,
                                 avifAppSourceTiming * sourceTiming,
-                                struct y4mFrameIterator ** iter,
-                                avifBool headerOnly)
+                                struct y4mFrameIterator ** iter)
 {
     avifBool result = AVIF_FALSE;
 
@@ -494,7 +494,7 @@ avifBool y4mRead(const char * inputFilename,
                  avifAppSourceTiming * sourceTiming,
                  struct y4mFrameIterator ** iter)
 {
-    return y4mReadInternal(inputFilename, ignoreAlpha, imageSizeLimit, avif, sourceTiming, iter, /*headerOnly=*/AVIF_FALSE);
+    return y4mReadInternal(inputFilename, ignoreAlpha, imageSizeLimit, /*headerOnly=*/AVIF_FALSE, avif, sourceTiming, iter);
 }
 
 avifBool y4mPeek(const char * inputFilename, avifImage * avif)
@@ -502,10 +502,10 @@ avifBool y4mPeek(const char * inputFilename, avifImage * avif)
     return y4mReadInternal(inputFilename,
                            /*ignoreAlpha=*/AVIF_TRUE,
                            /*imageSizeLimit=*/UINT32_MAX,
+                           /*headerOnly=*/AVIF_TRUE,
                            avif,
                            /*sourceTiming=*/NULL,
-                           /*iter=*/NULL,
-                           /*headerOnly=*/AVIF_TRUE);
+                           /*iter=*/NULL);
 }
 
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif)

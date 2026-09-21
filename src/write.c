@@ -1639,13 +1639,13 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
             return AVIF_RESULT_OK;
         }
 
-        // For animation, the encoder will verify the input size never changes, so this check is redundant for it.
-        // But for layered image, the encoder would relax the check to allow layers to have different sizes.
+        // For animation, the encoder verifies the input size never changes, so this check is redundant.
+        // But for a layered image, the encoder relaxes the check to allow layers to have different sizes.
         // We support 2 ways to produce different sized layers:
-        // 1. Send full sized inputs and let the encoder scale it via scalingMode
+        // 1. Send full sized inputs and let the encoder scale them via scalingMode
         // 2. Declare the full size via width/height and send pre-scaled inputs
         // To avoid confusion, we require the user to consistently use only one of the 2 ways,
-        // and this check blocks the attempt to start with method 1 and tries to switch to method 2.
+        // and this check blocks the attempt to start with method 1 and try to switch to method 2.
         if ((firstCell->width != encoder->data->imageMetadata->width) || (firstCell->height != encoder->data->imageMetadata->height)) {
             avifDiagnosticsPrintf(&encoder->diag, "All images must have the same width/height unless avifEncoder.width/height is set");
             return AVIF_RESULT_INVALID_ARGUMENT;
@@ -1655,9 +1655,6 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
         //   [...] the values of image_width and image_height shall respectively equal the values of
         //   UpscaledWidth and FrameHeight as defined in [AV1] but for a specific frame in the item
         //   payload. [...]
-        //   The semantics of the 'ispe' property [...] the values of image_width and image_height shall
-        //   respectively equal the values of UpscaledWidth and FrameHeight as defined in [AV1] but for
-        //   a specific frame in the item payload. [...]
         //   In the absence of a 'lsel' property associated with the item, or if it is present and its
         //   layer_id value is set to 0xFFFF:
         //     If no OperatingPointSelectorProperty is associated with the item, the 'ispe' property
@@ -1667,7 +1664,7 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
         //   in the 'ispe' property. If renderers display these intermediate images, they are expected
         //   to scale the output image to match the 'ispe' property.
         // See https://aomediacodec.github.io/av1-avif/v1.2.0.html#image-spatial-extents-property.
-
+        //
         // Therefore the last layer must not have any scaling.
         if ((encoder->data->frames.count == encoder->extraLayerCount) && !avifScalingModeIsNoScaling(&encoder->scalingMode)) {
             avifDiagnosticsPrintf(&encoder->diag,
@@ -1692,7 +1689,7 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
     }
 
     // This blocks the attempt to use both ways to produce different sized layers together,
-    // or start with method 2 and tries to switch to method 1,
+    // or start with method 2 and try to switch to method 1,
     // so the result is INVALID_ARGUMENT. See the comment above for the detail.
     if (!avifScalingModeIsNoScaling(&encoder->scalingMode)) {
         avifDiagnosticsPrintf(&encoder->diag, "avifEncoder.width/height cannot be set together with encoder->scalingMode");
@@ -1709,9 +1706,9 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
-    // These 3 checks below are according to section 2.2.2 of AV1 Image File Format specification v1.2.0.
+    // These 3 checks below are based on section 2.2.2 of AV1 Image File Format specification v1.2.0.
     // See the comment above for the detail.
-    // Only layered image can have frames of different sizes, so reject otherwise.
+    // Only a layered image can have frames of different sizes, so reject otherwise.
     if (encoder->extraLayerCount == 0) {
         avifDiagnosticsPrintf(&encoder->diag, "avifEncoder.width/height can only be set for layered images (extraLayerCount > 0)");
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -1750,7 +1747,7 @@ static avifResult avifEncoderValidateSize(avifEncoder * encoder, uint32_t gridCo
     if ((encoder->data->items.count > 0) && (encoder->extraLayerCount > 0) &&
         !avifImageHasEquivalentTransformProperties(firstCell, encoder->data->imageMetadata)) {
         avifDiagnosticsPrintf(&encoder->diag,
-                              "when avifEncoder.width/height is set, 'pasp', 'clap', 'irot' and 'imir' must match across layers");
+                              "When avifEncoder.width/height is set, 'pasp', 'clap', 'irot' and 'imir' must match across layers");
         return AVIF_RESULT_INCOMPATIBLE_IMAGE;
     }
 
@@ -1994,7 +1991,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         encoder->data->singleImage = AVIF_TRUE;
 
         if (encoder->extraLayerCount > 0) {
-            // AVIF_ADD_IMAGE_FLAG_SINGLE may not be set for layered image.
+            // AVIF_ADD_IMAGE_FLAG_SINGLE may not be set for a layered image.
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
 

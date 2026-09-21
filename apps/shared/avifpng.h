@@ -22,15 +22,16 @@ avifBool avifPNGRead(const char * inputFilename,
                      avifBool ignoreAlpha,
                      uint32_t imageSizeLimit,
                      uint32_t * outPNGDepth);
+
+// Parse the PNG file at path 'inputFilename' and write its metadata into 'avif'
+// without decoding the pixels.
+avifBool avifPNGPeek(const char * inputFilename, avifImage * avif);
+
 avifBool avifPNGWrite(const char * outputFilename,
                       const avifImage * avif,
                       uint32_t requestedDepth,
                       avifChromaUpsampling chromaUpsampling,
                       int compressionLevel);
-
-// Parse the PNG file at path 'inputFilename' and write its metadata into 'avif',
-// without decoding the pixels.
-avifBool avifPNGPeek(const char * inputFilename, avifImage * avif);
 
 #ifdef __cplusplus
 } // extern "C"
