@@ -197,23 +197,16 @@ std::vector<ImagePtr> CreateAvifLayeredRandDim16b(
 }
 
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
-                             int min_quantizer, int max_quantizer,
-                             int min_quantizer_alpha, int max_quantizer_alpha,
-                             int tile_rows_log2, int tile_cols_log2,
-                             int speed) {
+                             int quality, int quality_alpha, int tile_rows_log2,
+                             int tile_cols_log2, int speed) {
   EncoderPtr encoder(avifEncoderCreate());
   if (encoder.get() == nullptr) {
     return encoder;
   }
   encoder->codecChoice = codec_choice;
   encoder->maxThreads = max_threads;
-  // minQuantizer must be at most maxQuantizer.
-  encoder->minQuantizer = std::min(min_quantizer, max_quantizer);
-  encoder->maxQuantizer = std::max(min_quantizer, max_quantizer);
-  encoder->minQuantizerAlpha =
-      std::min(min_quantizer_alpha, max_quantizer_alpha);
-  encoder->maxQuantizerAlpha =
-      std::max(min_quantizer_alpha, max_quantizer_alpha);
+  encoder->quality = quality;
+  encoder->qualityAlpha = quality_alpha;
   encoder->tileRowsLog2 = tile_rows_log2;
   encoder->tileColsLog2 = tile_cols_log2;
   encoder->speed = speed;

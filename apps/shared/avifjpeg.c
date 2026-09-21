@@ -54,8 +54,8 @@ static avifBool avifJPEGCopyPixels(avifImage * avif, uint32_t sizeLimit, struct 
     cinfo->raw_data_out = TRUE;
     jpeg_start_decompress(cinfo);
 
-    avif->width = cinfo->image_width;
-    avif->height = cinfo->image_height;
+    avif->width = cinfo->output_width;
+    avif->height = cinfo->output_height;
     if (avif->width > sizeLimit / avif->height) {
         return AVIF_FALSE;
     }
