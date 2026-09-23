@@ -2736,8 +2736,8 @@ int main(int argc, char * argv[])
         lossyHint = " (Lossless)";
     }
     printf("AVIF to be written:%s\n", lossyHint);
-    // avifImageDump wants the info of one cell, but image/outputImageWidth/outputImageHeight are the before-split image/info
-    // when avifImageSplitGrid is called.
+    // avifImageDump wants the info of one cell, but image, outputImageWidth, and outputImageHeight
+    // are the before-split image and its info when avifImageSplitGrid is called.
     const avifImage * avif = gridCells ? gridCells[0] : image;
     const uint32_t cellWidth = gridCells ? avif->width : outputImageWidth;
     const uint32_t cellHeight = gridCells ? avif->height : outputImageHeight;
