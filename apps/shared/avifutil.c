@@ -126,7 +126,7 @@ static void avifImageDumpInternal(const avifImage * avif,
             avifCropRect cropRect;
             avifDiagnostics diag;
             avifDiagnosticsClearError(&diag);
-            avifBool validClap = avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag);
+            avifBool validClap = avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, cellWidth, cellHeight, &diag);
             if (validClap) {
                 printf("      * Valid, derived crop rect: X: %d, Y: %d, W: %d, H: %d%s\n",
                        cropRect.x,
