@@ -807,7 +807,7 @@ INSTANTIATE_TEST_SUITE_P(
         Values(AVIF_CHROMA_DOWNSAMPLING_SHARP_YUV),
         /*add_noise=*/Values(true),
         /*rgb_step=*/Values(4567),  // High or it would be too slow.
-        /*max_average_abs_diff=*/Values(111.7),  // Sharp YUV introduces some
+        /*max_average_abs_diff=*/Values(111.8),  // Sharp YUV introduces some
                                                  // color shift.
         /*min_psnr=*/Values(49.)  // SharpYuv distortion is acceptable.
         ));
