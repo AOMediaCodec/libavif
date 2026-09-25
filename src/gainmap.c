@@ -479,7 +479,7 @@ avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b)
 
 avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b)
 {
-    if (a->altICC.size != b->altICC.size || memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0 ||
+    if (a->altICC.size != b->altICC.size || (a->altICC.size > 0 && memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0) ||
         a->altColorPrimaries != b->altColorPrimaries || a->altTransferCharacteristics != b->altTransferCharacteristics ||
         a->altMatrixCoefficients != b->altMatrixCoefficients || a->altYUVRange != b->altYUVRange || a->altDepth != b->altDepth ||
         a->altPlaneCount != b->altPlaneCount || a->altCLLI.maxCLL != b->altCLLI.maxCLL || a->altCLLI.maxPALL != b->altCLLI.maxPALL) {
