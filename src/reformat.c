@@ -1893,6 +1893,14 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
     }
 }
 
+// Clamps a channel value to [0, 1] (NaN to 0) so that the float-to-integer
+// conversions in avifSetRGBAPixel() stay well defined (C11 6.3.1.4) even if the
+// caller-provided image contains samples outside of its nominal value range.
+static float avifClamp01(float v)
+{
+    return (v != v) ? 0.0f : (v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v));
+}
+
 void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, const float rgbaPixel[4])
 {
     assert(dst != NULL);
@@ -1917,23 +1925,23 @@ void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const av
                 *((uint16_t *)ptrA) = avifFloatToF16(rgbaPixel[3]);
             }
         } else {
-            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (rgbaPixel[0] * info->maxChannelF));
-            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (rgbaPixel[1] * info->maxChannelF));
-            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (rgbaPixel[2] * info->maxChannelF));
+            *((uint16_t *)ptrR) = (uint16_t)(0.5f + (avifClamp01(rgbaPixel[0]) * info->maxChannelF));
+            *((uint16_t *)ptrG) = (uint16_t)(0.5f + (avifClamp01(rgbaPixel[1]) * info->maxChannelF));
+            *((uint16_t *)ptrB) = (uint16_t)(0.5f + (avifClamp01(rgbaPixel[2]) * info->maxChannelF));
             if (ptrA) {
-                *((uint16_t *)ptrA) = (uint16_t)(0.5f + (rgbaPixel[3] * info->maxChannelF));
+                *((uint16_t *)ptrA) = (uint16_t)(0.5f + (avifClamp01(rgbaPixel[3]) * info->maxChannelF));
             }
         }
     } else {
         avifStoreRGB8Pixel(dst->format,
-                           (uint8_t)(0.5f + (rgbaPixel[0] * info->maxChannelF)),
-                           (uint8_t)(0.5f + (rgbaPixel[1] * info->maxChannelF)),
-                           (uint8_t)(0.5f + (rgbaPixel[2] * info->maxChannelF)),
+                           (uint8_t)(0.5f + (avifClamp01(rgbaPixel[0]) * info->maxChannelF)),
+                           (uint8_t)(0.5f + (avifClamp01(rgbaPixel[1]) * info->maxChannelF)),
+                           (uint8_t)(0.5f + (avifClamp01(rgbaPixel[2]) * info->maxChannelF)),
                            ptrR,
                            ptrG,
                            ptrB);
         if (ptrA) {
-            *ptrA = (uint8_t)(0.5f + (rgbaPixel[3] * info->maxChannelF));
+            *ptrA = (uint8_t)(0.5f + (avifClamp01(rgbaPixel[3]) * info->maxChannelF));
         }
     }
 }
