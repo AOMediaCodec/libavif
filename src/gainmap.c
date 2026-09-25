@@ -91,6 +91,14 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         avifDiagnosticsPrintf(diag, "NULL input image");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    // The gain map image may be missing if it was not decoded (see
+    // avifDecoder::imageContentToDecode) or was never set. Fail early and
+    // consistently, even for calls that would not need the gain map pixels
+    // (e.g. a target headroom matching the base image headroom).
+    if (gainMap->image == NULL) {
+        avifDiagnosticsPrintf(diag, "gainMap->image is null (gain map image not decoded?)");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
 
     const uint32_t width = baseImage->width;
@@ -181,14 +189,6 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         !avifColorPrimariesComputeRGBToRGBMatrix(gainMapMathPrimaries, outputColorPrimaries, outputConversionCoeffs)) {
         avifDiagnosticsPrintf(diag, "Unsupported RGB color space conversion");
         res = AVIF_RESULT_NOT_IMPLEMENTED;
-        goto cleanup;
-    }
-
-    // The gain map pixels are needed from here on. They may be missing if the gain map
-    // was not decoded (see avifDecoder::imageContentToDecode) or was never set.
-    if (gainMap->image == NULL) {
-        avifDiagnosticsPrintf(diag, "gainMap->image is null (gain map image not decoded?)");
-        res = AVIF_RESULT_INVALID_ARGUMENT;
         goto cleanup;
     }
 

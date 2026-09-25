@@ -1342,9 +1342,10 @@ TEST(ToneMapTest, ToneMapWithoutDecodedGainMap) {
   ASSERT_NE(image->gainMap, nullptr);
   ASSERT_EQ(image->gainMap->image, nullptr);
 
-  // The check is upfront, so any headroom fails; use one that would require
-  // the gain map pixels, as in the original crash (the null dereference
-  // happened at the first use of gainMap->image).
+  // The check happens during input validation, before the headrooms are
+  // used, so any target headroom fails. Keep the headrooms of the original
+  // crash repro (the null dereference used to happen at the first use of
+  // gainMap->image).
   image->gainMap->baseHdrHeadroom = {0, 1};
   image->gainMap->alternateHdrHeadroom = {2, 1};
 
