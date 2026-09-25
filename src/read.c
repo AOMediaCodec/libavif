@@ -2154,8 +2154,12 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
-        if ((version == 0 || indexSize == 0) && offsetSize == 0 && lengthSize == 0) {
-            extentCount = 0;
+        const uint64_t bytesPerExtent = indexSize + offsetSize + lengthSize;
+        if (extentCount > 0 && bytesPerExtent == 0) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        if (bytesPerExtent > 0 && (uint64_t)extentCount * bytesPerExtent > avifROStreamRemainingBytes(&s)) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
             if ((version == 1 || version == 2) && indexSize > 0) {
@@ -2172,7 +2176,9 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(offset_size*8) extent_offset;
             uint64_t extentLength;
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentLength, lengthSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(length_size*8) extent_length;
-
+            if (lengthSize > 0 && extentLength == 0) {
+                return AVIF_RESULT_NOT_IMPLEMENTED;
+            }
             avifExtent * extent = (avifExtent *)avifArrayPush(&item->extents);
             AVIF_CHECKERR(extent != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             if (extentOffset > UINT64_MAX - baseOffset) {
