@@ -1323,6 +1323,47 @@ TEST(ToneMapTest, ToneMapRGBPaddedBaseStride) {
   avifRGBImageFreePixels(&tone_mapped);
 }
 
+// Tone mapping needs the gain map pixel data. With the default
+// avifDecoder::imageContentToDecode, the gain map metadata is read but
+// gainMap->image is left null. Tone mapping such an image should return an
+// error rather than dereference a null pointer.
+TEST(ToneMapTest, ToneMapWithoutDecodedGainMap) {
+  ImagePtr image(avifImageCreateEmpty());
+  ASSERT_NE(image, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  // Default imageContentToDecode: the gain map metadata is read but the gain
+  // map image is not decoded.
+  const avifResult result = avifDecoderReadFile(
+      decoder.get(), image.get(),
+      (std::string(data_path) + "seine_sdr_gainmap_srgb.avif").c_str());
+  ASSERT_EQ(result, AVIF_RESULT_OK)
+      << avifResultToString(result) << ": " << decoder->diag.error;
+  ASSERT_NE(image->gainMap, nullptr);
+  ASSERT_EQ(image->gainMap->image, nullptr);
+
+  // The check happens during input validation, before the headrooms are
+  // used, so any target headroom fails. Keep the headrooms of the original
+  // crash repro (the null dereference used to happen at the first use of
+  // gainMap->image).
+  image->gainMap->baseHdrHeadroom = {0, 1};
+  image->gainMap->alternateHdrHeadroom = {2, 1};
+
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+
+  avifRGBImage tone_mapped = {};
+  tone_mapped.depth = 8;
+  tone_mapped.format = AVIF_RGB_FORMAT_RGBA;
+  EXPECT_EQ(
+      avifImageApplyGainMap(image.get(), image->gainMap,
+                            /*hdrHeadroom=*/1.0f, AVIF_COLOR_PRIMARIES_BT709,
+                            AVIF_TRANSFER_CHARACTERISTICS_SRGB, &tone_mapped,
+                            /*clli=*/nullptr, &diag),
+      AVIF_RESULT_INVALID_ARGUMENT)
+      << diag.error;
+}
+
 TEST(GainMapTest, OpaqueProperties) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
