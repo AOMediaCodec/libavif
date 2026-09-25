@@ -141,5 +141,38 @@ TEST(ToFractionTest, BadValues) {
       avifDoubleToUnsignedFraction(((double)UINT32_MAX) + 1.0, &fraction));
 }
 
+TEST(DimensionsTooLargeTest, AllArguments) {
+  const uint32_t kSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
+  const uint32_t kDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
+
+  // The function shall be well-defined for any argument values, including a
+  // zero height, instead of requiring every caller to pre-validate them.
+  // (A division by imageSizeLimit / height would crash on a zero height.)
+  EXPECT_FALSE(avifDimensionsTooLarge(0, 0, kSizeLimit, kDimensionLimit));
+  EXPECT_FALSE(avifDimensionsTooLarge(1, 0, kSizeLimit, kDimensionLimit));
+  EXPECT_FALSE(avifDimensionsTooLarge(12345, 0, kSizeLimit, kDimensionLimit));
+  EXPECT_FALSE(avifDimensionsTooLarge(0, 1, kSizeLimit, kDimensionLimit));
+  EXPECT_FALSE(avifDimensionsTooLarge(0, 12345, kSizeLimit, kDimensionLimit));
+
+  // Behavior on the size limit (width * height > imageSizeLimit).
+  EXPECT_FALSE(
+      avifDimensionsTooLarge(16384, 16384, kSizeLimit, kDimensionLimit));
+  EXPECT_TRUE(
+      avifDimensionsTooLarge(16385, 16384, kSizeLimit, kDimensionLimit));
+  EXPECT_TRUE(
+      avifDimensionsTooLarge(16384, 16385, kSizeLimit, kDimensionLimit));
+
+  // Behavior on the dimension limit.
+  EXPECT_FALSE(
+      avifDimensionsTooLarge(kDimensionLimit, 1, kSizeLimit, kDimensionLimit));
+  EXPECT_TRUE(avifDimensionsTooLarge(kDimensionLimit + 1, 1, kSizeLimit,
+                                     kDimensionLimit));
+  EXPECT_TRUE(avifDimensionsTooLarge(1, kDimensionLimit + 1, kSizeLimit,
+                                     kDimensionLimit));
+
+  // No limits.
+  EXPECT_FALSE(avifDimensionsTooLarge(UINT32_MAX, UINT32_MAX, 0, 0));
+}
+
 }  // namespace
 }  // namespace avif
