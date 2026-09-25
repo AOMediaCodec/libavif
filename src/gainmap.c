@@ -184,6 +184,14 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         goto cleanup;
     }
 
+    // The gain map pixels are needed from here on. They may be missing if the gain map
+    // was not decoded (see avifDecoder::imageContentToDecode) or was never set.
+    if (gainMap->image == NULL) {
+        avifDiagnosticsPrintf(diag, "gainMap->image is null (gain map image not decoded?)");
+        res = AVIF_RESULT_INVALID_ARGUMENT;
+        goto cleanup;
+    }
+
     if (gainMap->image->width != width || gainMap->image->height != height) {
         rescaledGainMap = avifImageCreateEmpty();
         if (rescaledGainMap == NULL) {
