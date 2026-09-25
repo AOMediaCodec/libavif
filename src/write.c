@@ -3110,8 +3110,10 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             avifBool largeSize = AVIF_FALSE;
 
             for (uint32_t validLayer = 0; validLayer < item->extraLayerCount; ++validLayer) {
-                uint32_t size = (uint32_t)item->encodeOutput->samples.sample[validLayer].data.size;
-                layerSize[validLayer] = size;
+                const size_t size = item->encodeOutput->samples.sample[validLayer].data.size;
+                // The layer sizes are stored as 32-bit integers at most, so refuse to truncate them.
+                AVIF_ASSERT_OR_RETURN(size <= UINT32_MAX);
+                layerSize[validLayer] = (uint32_t)size;
                 if (size > 0xffff) {
                     largeSize = AVIF_TRUE;
                 }
