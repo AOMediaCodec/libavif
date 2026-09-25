@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -1898,7 +1899,7 @@ void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const av
 // caller-provided image contains samples outside of its nominal value range.
 static float avifClamp01(float v)
 {
-    return (v != v) ? 0.0f : (v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v));
+    return isnan(v) ? 0.0f : AVIF_CLAMP(v, 0.0f, 1.0f);
 }
 
 void avifSetRGBAPixel(const avifRGBImage * dst, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, const float rgbaPixel[4])

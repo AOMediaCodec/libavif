@@ -1380,14 +1380,26 @@ TEST(ToneMapTest, ToneMapOutOfRangeSamples) {
   memset(image->alphaPlane, 0xFF, (size_t)image->alphaRowBytes * image->height);
   image->yuvRange = AVIF_RANGE_FULL;
   image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+  // Same color primaries and transfer characteristics as the tone mapped
+  // output below, so the raw out-of-range samples reach avifSetRGBAPixel()
+  // without going through a color conversion that would clamp them.
+  image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
   image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
 
   GainMapPtr gain_map(avifGainMapCreate());
   ASSERT_NE(gain_map, nullptr);
-  // Equal headrooms give a weight of 0, so the base image goes through the
-  // pixel copy loop (the output depth differs from the input depth).
+  // The base and alternate HDR headrooms must differ (ISO 21496-1). A target
+  // headroom equal to the base headroom gives a gain map weight of 0, so the
+  // base image goes through the pixel copy loop (the output depth differs
+  // from the input depth) instead of the gain map.
   gain_map->baseHdrHeadroom = {1, 1};
-  gain_map->alternateHdrHeadroom = {1, 1};
+  gain_map->alternateHdrHeadroom = {2, 1};
+  // Tone mapping expects gain map pixels to be available, even though the
+  // gain map is not applied here.
+  gain_map->image = avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV400);
+  ASSERT_NE(gain_map->image, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(gain_map->image, AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
 
   avifRGBImage tone_mapped = {};
   tone_mapped.depth = 8;
