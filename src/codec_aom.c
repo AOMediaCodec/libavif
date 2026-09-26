@@ -944,6 +944,20 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // libaom fails if cfg->g_threads is greater than 64 threads. See MAX_NUM_THREADS in
             // aom/aom_util/aom_thread.h.
             cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
+
+            // Detect the libaom bug before v3.15.2 described in
+            // https://issuetracker.google.com/issues/559019046.
+            // See the changes in
+            // https://aomedia-review.googlesource.com/c/aom/+/216921.
+            static const int aomVersion_3_15_2 = (3 << 16) | (15 << 8) | 2;
+            if (aom_codec_version() < aomVersion_3_15_2) {
+                // libaom has a bug when creating extra workers during encoding
+                // that skips allocating some buffers needed by GOOD_QUALITY
+                // encoding. That can happen when the new frame is larger.
+                if (aomUsage == AOM_USAGE_GOOD_QUALITY && (encoder->width || encoder->height)) {
+                    cfg->g_threads = 1;
+                }
+            }
         }
 
         // Encode alpha as 4:0:0.
