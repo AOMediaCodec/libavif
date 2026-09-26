@@ -946,14 +946,15 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
 
             // Detect the libaom bug before v3.15.2 described in
-            // https://issuetracker.google.com/issues/559019046.
-            // See the changes in
+            // https://issues.oss-fuzz.com/issues/559019046. See the changes in
             // https://aomedia-review.googlesource.com/c/aom/+/216921.
             static const int aomVersion_3_15_2 = (3 << 16) | (15 << 8) | 2;
             if (aom_codec_version() < aomVersion_3_15_2) {
-                // libaom has a bug when creating extra workers during encoding
-                // that skips allocating some buffers needed by GOOD_QUALITY
-                // encoding. That can happen when the new frame is larger.
+                // When creating extra worker threads during encoding (which can
+                // happen when the new frame is larger), libaom may skip
+                // allocating the pixel_gradient_info buffers needed by
+                // GOOD_QUALITY mode. Work around the bug by disabling
+                // multithreading.
                 if (aomUsage == AOM_USAGE_GOOD_QUALITY && (encoder->width || encoder->height)) {
                     cfg->g_threads = 1;
                 }
