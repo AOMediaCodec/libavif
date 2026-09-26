@@ -2154,11 +2154,18 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
-        const uint64_t bytesPerExtent = indexSize + offsetSize + lengthSize;
-        if (extentCount > 0 && bytesPerExtent == 0) {
+        const uint32_t bytesPerExtent = indexSize + offsetSize + lengthSize;
+        if (bytesPerExtent == 0 && extentCount > 1) {
+            avifDiagnosticsPrintf(diag, "Item ID [%u] declares %u extents that consume no input bytes", itemID, extentCount);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
-        if (bytesPerExtent > 0 && (uint64_t)extentCount * bytesPerExtent > avifROStreamRemainingBytes(&s)) {
+        const size_t remainingBytes = avifROStreamRemainingBytes(&s);
+        if ((uint64_t)extentCount * bytesPerExtent > remainingBytes) {
+            avifDiagnosticsPrintf(diag,
+                                  "Item ID [%u] extent_count [%u] exceeds the remaining %zu bytes of the iloc box",
+                                  itemID,
+                                  extentCount,
+                                  remainingBytes);
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
@@ -2176,7 +2183,9 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentOffset, offsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(offset_size*8) extent_offset;
             uint64_t extentLength;
             AVIF_CHECKERR(avifROStreamReadUX8(&s, &extentLength, lengthSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(length_size*8) extent_length;
+            // ISO/IEC 14496-12, Section 8.11.3.2.4.3: extent_length == 0 is not supported by libavif.
             if (lengthSize > 0 && extentLength == 0) {
+                avifDiagnosticsPrintf(diag, "Item ID [%u] uses extent_length = 0, which is not supported", itemID);
                 return AVIF_RESULT_NOT_IMPLEMENTED;
             }
             avifExtent * extent = (avifExtent *)avifArrayPush(&item->extents);
