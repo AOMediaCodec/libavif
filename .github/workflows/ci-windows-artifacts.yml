@@ -83,7 +83,7 @@ jobs:
           directory: "build/Release"
           path: "*.exe"
       - name: Attest release artifact
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: build/Release/windows-artifacts.zip
 
