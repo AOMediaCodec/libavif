@@ -3947,17 +3947,17 @@ static avifResult avifParseMediaBox(avifTrack * track, uint64_t rawOffset, const
     return AVIF_RESULT_OK;
 }
 
-static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
+static avifResult avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
 {
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[tref]");
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECK(avifROStreamReadBoxHeader(&s, &header));
+        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         if (!memcmp(header.type, "auxl", 4) || !memcmp(header.type, "prem", 4)) {
             // Refuse a box that holds no track_ID at all.
-            AVIF_CHECK(header.size >= sizeof(uint32_t));
+            AVIF_CHECKERR(header.size >= sizeof(uint32_t), AVIF_RESULT_BMFF_PARSE_FAILED);
             // Section 8.3.3.2 of ISO/IEC 14496-12:
             //   unsigned int(32) track_IDs[];
             // There is no count field: the number of track_IDs follows from the box size.
@@ -3965,21 +3965,21 @@ static avifBool avifTrackReferenceBox(avifTrack * track, const uint8_t * raw, si
             const size_t numTrackIDs = header.size / sizeof(uint32_t);
             for (size_t i = 0; i < numTrackIDs; ++i) {
                 uint32_t toID;
-                AVIF_CHECK(avifROStreamReadU32(&s, &toID));
+                AVIF_CHECKERR(avifROStreamReadU32(&s, &toID), AVIF_RESULT_BMFF_PARSE_FAILED);
                 if (toID == 0) {
                     // Section 8.3.3.3 of ISO/IEC 14496-12:
                     //   The value 0 shall not be present.
                     // Skip it instead of rejecting for backward compatibility.
                     continue;
                 }
-                AVIF_CHECK(avifAddReference(&track->references, (const char *)header.type, toID) == AVIF_RESULT_OK);
+                AVIF_CHECKRES(avifAddReference(&track->references, (const char *)header.type, toID));
             }
-            AVIF_CHECK(avifROStreamSkip(&s, header.size - numTrackIDs * sizeof(uint32_t)));
+            AVIF_CHECKERR(avifROStreamSkip(&s, header.size - numTrackIDs * sizeof(uint32_t)), AVIF_RESULT_BMFF_PARSE_FAILED);
         } else {
-            AVIF_CHECK(avifROStreamSkip(&s, header.size));
+            AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
         }
     }
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 static avifBool avifParseEditListBox(avifTrack * track, const uint8_t * raw, size_t rawLen, avifDiagnostics * diag)
@@ -4073,7 +4073,7 @@ static avifResult avifParseTrackBox(avifDecoderData * data, uint64_t rawOffset, 
         } else if (!memcmp(header.type, "mdia", 4)) {
             AVIF_CHECKRES(avifParseMediaBox(track, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, data->diag));
         } else if (!memcmp(header.type, "tref", 4)) {
-            AVIF_CHECKERR(avifTrackReferenceBox(track, avifROStreamCurrent(&s), header.size, data->diag), AVIF_RESULT_BMFF_PARSE_FAILED);
+            AVIF_CHECKRES(avifTrackReferenceBox(track, avifROStreamCurrent(&s), header.size, data->diag));
         } else if (!memcmp(header.type, "edts", 4)) {
             if (edtsBoxSeen) {
                 avifDiagnosticsPrintf(data->diag, "Box[trak] contains a duplicate unique box of type 'edts'");
