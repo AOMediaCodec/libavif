@@ -51,6 +51,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   several such boxes in one 'tref'. Only the first track_ID of a box was read,
   and a later box overwrote what an earlier one recorded, so the alpha track of
   an image sequence could be dropped without a diagnostic.
+* Report AVIF_RESULT_OUT_OF_MEMORY instead of AVIF_RESULT_BMFF_PARSE_FAILED
+  when memory runs out while reading the references of a track 'tref' box.
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
