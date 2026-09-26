@@ -129,7 +129,7 @@ TEST_F(ProgressiveTest, TuneIq) {
 //   `ms_params->ms_buffers.ref->stride == ms_params->search_sites->stride'
 //   failed.
 // See https://aomedia.googlesource.com/aom/+/945edd671.
-TEST_F(ProgressiveTest, DimensionChange) {
+TEST_F(ProgressiveTest, ResolutionChange) {
   if (avifLibYUVVersion() == 0) {
     GTEST_SKIP() << "libyuv not available, skip test.";
   }
@@ -152,7 +152,7 @@ TEST_F(ProgressiveTest, DimensionChange) {
   TestDecode(kImageSize, kImageSize);
 }
 
-TEST_F(ProgressiveTest, DimensionChangeWithAlpha) {
+TEST_F(ProgressiveTest, ResolutionChangeWithAlpha) {
   if (avifLibYUVVersion() == 0) {
     GTEST_SKIP() << "libyuv not available, skip test.";
   }
@@ -185,6 +185,112 @@ TEST_F(ProgressiveTest, DimensionChangeWithAlpha) {
   ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
 
   TestDecode(kImageSize, kImageSize, /*expect_alpha=*/true);
+}
+
+TEST_F(ProgressiveTest, ResolutionChangeExternal) {
+  encoder_->extraLayerCount = 1;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+
+  const auto smallImage = testutil::CreateImage(
+      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(256, 256);
+}
+
+TEST_F(ProgressiveTest, ResolutionChangeExternalWithAlpha) {
+  const auto image =
+      testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
+                            AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  encoder_->extraLayerCount = 2;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+
+  auto smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
+                                          AVIF_PIXEL_FORMAT_YUV444,
+                                          AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(avifEncoderFinish(encoder_.get(), &encoded_avif_), AVIF_RESULT_OK);
+
+  TestDecode(kImageSize, kImageSize, /*expect_alpha=*/true);
+}
+
+TEST_F(ProgressiveTest, ResolutionChangeExternalBadSize) {
+  encoder_->extraLayerCount = 1;
+  encoder_->width = kImageSize * 2;
+  encoder_->height = kImageSize * 2;
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  // Last layer does not match the pre-declared size
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_INCOMPATIBLE_IMAGE);
+}
+
+// Reject mixed usage of internal and external resolution change.
+TEST_F(ProgressiveTest, ResolutionChangeMixedRejected) {
+  encoder_->extraLayerCount = 1;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+  encoder_->scalingMode = {{1, 2}, {1, 2}};
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_INVALID_ARGUMENT);
+}
+
+TEST_F(ProgressiveTest, ResolutionChangeMixedDuringEncodingRejected) {
+  encoder_->extraLayerCount = 2;
+  encoder_->width = kImageSize;
+  encoder_->height = kImageSize;
+
+  const auto smallImage = testutil::CreateImage(
+      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
+      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
+
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_OK);
+
+  encoder_->scalingMode = {{1, 2}, {1, 2}};
+  ASSERT_EQ(avifEncoderAddImage(encoder_.get(), image_.get(), 1,
+                                AVIF_ADD_IMAGE_FLAG_NONE),
+            AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 TEST_F(ProgressiveTest, LayeredGrid) {
