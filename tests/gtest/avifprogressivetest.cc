@@ -196,6 +196,7 @@ TEST_F(ProgressiveTest, ResolutionChangeExternal) {
       kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
       AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
 
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
@@ -280,6 +281,7 @@ TEST_F(ProgressiveTest, ResolutionChangeMixedDuringEncodingRejected) {
       kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
       AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
+  testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
 
   ASSERT_EQ(avifEncoderAddImage(encoder_.get(), smallImage.get(), 1,
                                 AVIF_ADD_IMAGE_FLAG_NONE),
