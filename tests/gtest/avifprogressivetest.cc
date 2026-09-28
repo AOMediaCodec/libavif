@@ -157,7 +157,7 @@ TEST_F(ProgressiveTest, ResolutionChangeWithAlpha) {
     GTEST_SKIP() << "libyuv not available, skip test.";
   }
 
-  const auto image =
+  ImagePtr image =
       testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
                             AVIF_PLANES_ALL, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
@@ -192,9 +192,9 @@ TEST_F(ProgressiveTest, ResolutionChangeExternal) {
   encoder_->width = kImageSize;
   encoder_->height = kImageSize;
 
-  const auto smallImage = testutil::CreateImage(
-      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
+                                              AVIF_PIXEL_FORMAT_YUV444,
+                                              AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
   testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
 
@@ -212,7 +212,7 @@ TEST_F(ProgressiveTest, ResolutionChangeExternal) {
 }
 
 TEST_F(ProgressiveTest, ResolutionChangeExternalWithAlpha) {
-  const auto image =
+  ImagePtr image =
       testutil::CreateImage(kImageSize, kImageSize, 8, AVIF_PIXEL_FORMAT_YUV444,
                             AVIF_PLANES_ALL, AVIF_RANGE_FULL);
   ASSERT_NE(image, nullptr);
@@ -222,9 +222,9 @@ TEST_F(ProgressiveTest, ResolutionChangeExternalWithAlpha) {
   encoder_->width = kImageSize;
   encoder_->height = kImageSize;
 
-  auto smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
-                                          AVIF_PIXEL_FORMAT_YUV444,
-                                          AVIF_PLANES_ALL, AVIF_RANGE_FULL);
+  ImagePtr smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
+                                              AVIF_PIXEL_FORMAT_YUV444,
+                                              AVIF_PLANES_ALL, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
   testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
 
@@ -277,9 +277,9 @@ TEST_F(ProgressiveTest, ResolutionChangeMixedDuringEncodingRejected) {
   encoder_->width = kImageSize;
   encoder_->height = kImageSize;
 
-  const auto smallImage = testutil::CreateImage(
-      kImageSize / 2, kImageSize / 2, 8, AVIF_PIXEL_FORMAT_YUV444,
-      AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ImagePtr smallImage = testutil::CreateImage(kImageSize / 2, kImageSize / 2, 8,
+                                              AVIF_PIXEL_FORMAT_YUV444,
+                                              AVIF_PLANES_YUV, AVIF_RANGE_FULL);
   ASSERT_NE(smallImage, nullptr);
   testutil::FillImageGradient(smallImage.get(), /*offset=*/17);
 
