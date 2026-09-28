@@ -23,15 +23,21 @@ namespace {
 
 //------------------------------------------------------------------------------
 
+// The number of seeds for kMaxNumLayers - 1 pairs of random width and height.
 constexpr size_t kNumLayeredRandDimSeeds = 2 * (kMaxNumLayers - 1);
 
+// Generates kMaxNumLayers pairs of random width and height. The first
+// kMaxNumLayers - 1 pairs of width and height are less than display_width and
+// display_height, respectively. The last pair of width and height are equal to
+// display_width and display_height, respectively.
 template <typename Sample>
 std::array<std::pair<size_t, size_t>, kMaxNumLayers> GetAvifLayeredRandDims(
-    size_t display_width, size_t display_height, const Sample* seeds) {
+    size_t display_width, size_t display_height,
+    const std::vector<Sample>& seeds) {
   assert(display_width > 1);
   assert(display_height > 1);
   std::array<std::pair<size_t, size_t>, kMaxNumLayers> sizes = {};
-  for (size_t i = 0; i + 1 < kMaxNumLayers; ++i) {
+  for (size_t i = 0; i < kMaxNumLayers - 1; ++i) {
     const size_t width =
         1 + (static_cast<size_t>(seeds[2 * i]) % (display_width - 1));
     const size_t height =
@@ -40,7 +46,7 @@ std::array<std::pair<size_t, size_t>, kMaxNumLayers> GetAvifLayeredRandDims(
     assert(height < display_height);
     sizes[i] = {width, height};
   }
-  sizes.back() = {display_width, display_height};
+  sizes[kMaxNumLayers - 1] = {display_width, display_height};
   return sizes;
 }
 
@@ -130,17 +136,15 @@ std::vector<ImagePtr> CreateAvifLayered8b(size_t width, size_t height,
                                           avifPixelFormat pixel_format,
                                           bool has_alpha,
                                           const std::vector<uint8_t>& samples) {
-  std::vector<ImagePtr> layers = CreateAvifAnim8b(
-      kMaxNumLayers, width, height, pixel_format, has_alpha, samples);
-  return layers;
+  return CreateAvifAnim8b(kMaxNumLayers, width, height, pixel_format, has_alpha,
+                          samples);
 }
 
 std::vector<ImagePtr> CreateAvifLayered16b(
     size_t width, size_t height, int depth, avifPixelFormat pixel_format,
     bool has_alpha, const std::vector<uint16_t>& samples) {
-  std::vector<ImagePtr> layers = CreateAvifAnim16b(
-      kMaxNumLayers, width, height, depth, pixel_format, has_alpha, samples);
-  return layers;
+  return CreateAvifAnim16b(kMaxNumLayers, width, height, depth, pixel_format,
+                           has_alpha, samples);
 }
 
 size_t GetNumSamplesLayeredRandDim(size_t display_width, size_t display_height,
@@ -156,7 +160,7 @@ std::vector<ImagePtr> CreateAvifLayeredRandDim8b(
     bool has_alpha, const std::vector<uint8_t>& samples) {
   assert(samples.size() >= kNumLayeredRandDimSeeds);
   const auto dims =
-      GetAvifLayeredRandDims(display_width, display_height, samples.data());
+      GetAvifLayeredRandDims(display_width, display_height, samples);
   std::vector<ImagePtr> layers;
   layers.reserve(kMaxNumLayers);
 
@@ -179,7 +183,7 @@ std::vector<ImagePtr> CreateAvifLayeredRandDim16b(
     const std::vector<uint16_t>& samples) {
   assert(samples.size() >= kNumLayeredRandDimSeeds);
   const auto dims =
-      GetAvifLayeredRandDims(display_width, display_height, samples.data());
+      GetAvifLayeredRandDims(display_width, display_height, samples);
   std::vector<ImagePtr> layers;
   layers.reserve(kMaxNumLayers);
 

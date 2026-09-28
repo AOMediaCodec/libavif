@@ -58,10 +58,12 @@ std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
                                         avifPixelFormat pixel_format,
                                         bool has_alpha,
                                         const std::vector<uint16_t>& samples);
+// Returns kMaxNumLayers images.
 std::vector<ImagePtr> CreateAvifLayered8b(size_t width, size_t height,
                                           avifPixelFormat pixel_format,
                                           bool has_alpha,
                                           const std::vector<uint8_t>& samples);
+// Returns kMaxNumLayers images.
 std::vector<ImagePtr> CreateAvifLayered16b(
     size_t width, size_t height, int depth, avifPixelFormat pixel_format,
     bool has_alpha, const std::vector<uint16_t>& samples);
@@ -103,6 +105,8 @@ inline constexpr size_t kMaxNumLayers = AVIF_MAX_AV1_LAYER_COUNT;
 
 size_t GetNumSamples(size_t num_frames, size_t width, size_t height,
                      avifPixelFormat pixel_format, bool has_alpha);
+// Returns the number of samples needed for CreateAvifLayeredRandDim8b() and
+// CreateAvifLayeredRandDim16b().
 size_t GetNumSamplesLayeredRandDim(size_t display_width, size_t display_height,
                                    avifPixelFormat pixel_format,
                                    bool has_alpha);
