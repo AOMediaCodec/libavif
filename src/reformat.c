@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -1839,18 +1840,88 @@ int avifFullToLimitedUV(uint32_t depth, int v)
     return v;
 }
 
-static inline uint16_t avifFloatToF16(float v)
-{
-    avifF16 f16;
-    f16.f = v * F16_MULTIPLIER;
-    return (uint16_t)(f16.u32 >> 13);
-}
+// ---------------------------------------------------------------------------
+// IEEE 754 binary16 (half precision) <-> binary32 (float) conversions.
+//
+// The previous implementation reused the bit trick of libyuv's HalfFloatRow_C()
+// (see F16_MULTIPLIER above), which converts *unsigned integer samples* to half
+// floats. Reused as a general purpose conversion on arbitrary half precision
+// pixel data, it silently mishandled every value outside the non-negative
+// normal range: the sign bit landed inside the exponent field (decoding
+// 0xBC00, i.e. -1.0h, as +4294967296.0f, a 2^32 magnitude error), +Infinity
+// (0x7C00) decoded as the finite value 65536.0f, NaN (0x7E00) as 98304.0f,
+// and avifFloatToF16() dropped the sign of negative values entirely. The
+// implementations below convert the full binary16 domain faithfully: signed
+// zeros, subnormals, negatives, infinities and NaNs, with round-to-nearest-even
+// in the float-to-half direction. Every one of the 65536 half precision bit
+// patterns survives a decode/encode round trip bit exactly (covered by
+// F16Test in tests/gtest/avifrgbtest.cc).
 
 static inline float avifF16ToFloat(uint16_t v)
 {
+    const uint32_t sign = (uint32_t)(v & 0x8000u) << 16;
+    const uint32_t biasedExp = (v >> 10) & 0x1Fu;
+    uint32_t mantissa = (uint32_t)(v & 0x3FFu) << 13;
+    uint32_t bits;
+    if (biasedExp == 0) {
+        if (mantissa == 0) {
+            bits = sign; // Signed zero.
+        } else {
+            // Subnormal half: renormalize into a normal float.
+            uint32_t exponent = 113; // 127 - 15 + 1, decremented by the loop.
+            do {
+                --exponent;
+                mantissa <<= 1;
+            } while ((mantissa & 0x800000u) == 0);
+            bits = sign | (exponent << 23) | (mantissa & 0x7FFFFFu);
+        }
+    } else if (biasedExp == 0x1Fu) {
+        bits = sign | 0x7F800000u | mantissa; // Infinity or NaN.
+    } else {
+        bits = sign | ((biasedExp - 15 + 127) << 23) | mantissa;
+    }
     avifF16 f16;
-    f16.u32 = v << 13;
-    return f16.f / F16_MULTIPLIER;
+    f16.u32 = bits;
+    return f16.f;
+}
+
+static inline uint16_t avifFloatToF16(float v)
+{
+    avifF16 f16;
+    f16.f = v;
+    const uint32_t sign = (f16.u32 >> 16) & 0x8000u;
+    const uint32_t abs = f16.u32 & 0x7FFFFFFFu;
+
+    if (abs >= 0x7F800000u) {
+        if (abs == 0x7F800000u) {
+            return (uint16_t)(sign | 0x7C00u); // Infinity.
+        }
+        uint32_t payload = (abs >> 13) & 0x3FFu;
+        if (payload == 0u) {
+            payload = 0x0200u; // Keep it a quiet NaN.
+        }
+        return (uint16_t)(sign | 0x7C00u | payload); // NaN.
+    }
+    if (abs > 0x477FF000u) { // abs > 65520.0f: overflow rounds to infinity.
+        return (uint16_t)(sign | 0x7C00u);
+    }
+    if (abs < 0x38800000u) {
+        // Subnormal half or zero: round v to the nearest multiple of 2^-24
+        // (ties to even). v * 2^24 is exact for any float, and the F16
+        // subnormal mantissa is simply the nearest integer to it.
+        const float scaled = v * 16777216.0f; // 2^24
+        const float magnitude = fabsf(nearbyintf(scaled));
+        if (magnitude >= 1024.0f) {
+            return (uint16_t)(sign | 0x0400u); // Rounded up to the smallest normal half.
+        }
+        return (uint16_t)(sign | (uint32_t)magnitude);
+    }
+    // Normal half: round the significand from 24 to 11 bits, ties to even.
+    // A rounding carry propagates into the exponent as needed; the largest
+    // value (65520.0f, exactly halfway between 65504 and infinity) rounds to
+    // infinity because 65504 has an odd significand.
+    const uint32_t rounded = abs + 0x0FFFu + ((abs >> 13) & 1u);
+    return (uint16_t)(sign | ((rounded - 0x38000000u) >> 13));
 }
 
 void avifGetRGBAPixel(const avifRGBImage * src, uint32_t x, uint32_t y, const avifRGBColorSpaceInfo * info, float rgbaPixel[4])
