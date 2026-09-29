@@ -150,6 +150,10 @@ void avifReformatAlpha(const avifAlphaParams * params)
 
 avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
 {
+    if (!rgb) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
     // no data
     if (!rgb->pixels || !rgb->rowBytes) {
         return AVIF_RESULT_REFORMAT_FAILED;
@@ -337,6 +341,10 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
 
 avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
 {
+    if (!rgb) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
     // no data
     if (!rgb->pixels || !rgb->rowBytes) {
         return AVIF_RESULT_REFORMAT_FAILED;

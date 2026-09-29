@@ -440,6 +440,7 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixel
 
 avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag)
 {
+    AVIF_CHECKERR(gainMap != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     for (int i = 0; i < 3; ++i) {
         if (gainMap->gainMapMin[i].d == 0 || gainMap->gainMapMax[i].d == 0 || gainMap->gainMapGamma[i].d == 0 ||
             gainMap->baseOffset[i].d == 0 || gainMap->alternateOffset[i].d == 0) {
@@ -469,6 +470,12 @@ avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnost
 
 avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b)
 {
+    if (a == b) {
+        return AVIF_TRUE;
+    }
+    if (!a || !b) {
+        return AVIF_FALSE;
+    }
     if (a->baseHdrHeadroom.n != b->baseHdrHeadroom.n || a->baseHdrHeadroom.d != b->baseHdrHeadroom.d ||
         a->alternateHdrHeadroom.n != b->alternateHdrHeadroom.n || a->alternateHdrHeadroom.d != b->alternateHdrHeadroom.d) {
         return AVIF_FALSE;
@@ -487,6 +494,12 @@ avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b)
 
 avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b)
 {
+    if (a == b) {
+        return AVIF_TRUE;
+    }
+    if (!a || !b) {
+        return AVIF_FALSE;
+    }
     if (a->altICC.size != b->altICC.size || (a->altICC.size > 0 && memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0) ||
         a->altColorPrimaries != b->altColorPrimaries || a->altTransferCharacteristics != b->altTransferCharacteristics ||
         a->altMatrixCoefficients != b->altMatrixCoefficients || a->altYUVRange != b->altYUVRange || a->altDepth != b->altDepth ||

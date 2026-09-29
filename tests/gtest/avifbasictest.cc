@@ -53,5 +53,85 @@ TEST(BasicTest, RGBImageCleanup) {
   ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
 }
 
+TEST(BasicTest, NullPointerGuards) {
+  avifGetPixelFormatInfo(AVIF_PIXEL_FORMAT_YUV420, nullptr);
+  avifImageSetDefaults(nullptr);
+  avifImageDestroy(nullptr);
+  avifImageFreePlanes(nullptr, AVIF_PLANES_ALL);
+  avifImageStealPlanes(nullptr, nullptr, AVIF_PLANES_ALL);
+  EXPECT_EQ(avifImageUsesU16(nullptr), AVIF_FALSE);
+  EXPECT_EQ(avifImageIsOpaque(nullptr), AVIF_TRUE);
+  EXPECT_EQ(avifImagePlane(nullptr, AVIF_CHAN_Y), nullptr);
+  EXPECT_EQ(avifImagePlaneRowBytes(nullptr, AVIF_CHAN_Y), 0u);
+  EXPECT_EQ(avifImagePlaneWidth(nullptr, AVIF_CHAN_Y), 0u);
+  EXPECT_EQ(avifImagePlaneHeight(nullptr, AVIF_CHAN_Y), 0u);
+  EXPECT_EQ(avifImageCopy(nullptr, nullptr, AVIF_PLANES_ALL),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  avifImageCopyNoAlloc(nullptr, nullptr);
+  avifImageCopySamples(nullptr, nullptr, AVIF_PLANES_ALL);
+  EXPECT_EQ(avifImageSetViewRect(nullptr, nullptr, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifImageAllocatePlanes(nullptr, AVIF_PLANES_ALL),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifImageSetProfileICC(nullptr, nullptr, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifImageSetMetadataXMP(nullptr, nullptr, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+
+  avifRGBImageSetDefaults(nullptr, nullptr);
+  EXPECT_EQ(avifRGBImagePixelSize(nullptr), 0u);
+  EXPECT_EQ(avifRGBImageAllocatePixels(nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  avifRGBImageFreePixels(nullptr);
+
+  avifGainMapSetDefaults(nullptr);
+  avifGainMapDestroy(nullptr);
+  EXPECT_EQ(avifGainMapValidateMetadata(nullptr), AVIF_FALSE);
+  EXPECT_EQ(avifSameGainMapMetadata(nullptr, nullptr), AVIF_TRUE);
+
+  avifEncoderDestroy(nullptr);
+  avifEncoderSetCodecSpecificOption(nullptr, "key", "val");
+  EXPECT_EQ(avifEncoderAddImage(nullptr, nullptr, 1, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifEncoderAddImageGrid(nullptr, nullptr, 1, 1, nullptr, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifEncoderFinish(nullptr, nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifEncoderWrite(nullptr, nullptr, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+
+  avifDecoderDestroy(nullptr);
+  EXPECT_EQ(avifDecoderSetSource(nullptr, AVIF_DECODER_SOURCE_AUTO),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  avifDecoderSetIO(nullptr, nullptr);
+  EXPECT_EQ(avifDecoderSetIOMemory(nullptr, nullptr, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderSetIOFile(nullptr, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderParse(nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderReset(nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderNextImage(nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderNthImage(nullptr, 0), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderNthImageTiming(nullptr, 0, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderNthImageMaxExtent(nullptr, 0, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderIsKeyframe(nullptr, 0), AVIF_FALSE);
+  EXPECT_EQ(avifDecoderNearestKeyframe(nullptr, 0), 0u);
+  EXPECT_EQ(avifDecoderDecodedRowCount(nullptr), 0u);
+  EXPECT_EQ(avifDecoderRead(nullptr, nullptr), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderReadMemory(nullptr, nullptr, nullptr, 0),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifDecoderReadFile(nullptr, nullptr, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+
+  EXPECT_EQ(avifRWDataRealloc(nullptr, 0), AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWDataSet(nullptr, nullptr, 0), AVIF_RESULT_INVALID_ARGUMENT);
+  avifRWDataFree(nullptr);
+
+  avifCodecSpecificOptionsClear(nullptr);
+  avifCodecSpecificOptionsDestroy(nullptr);
+  EXPECT_EQ(avifCodecSpecificOptionsSet(nullptr, nullptr, nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+}
+
 }  // namespace
 }  // namespace avif

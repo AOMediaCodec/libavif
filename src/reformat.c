@@ -31,6 +31,7 @@ struct YUVBlock
 
 avifBool avifGetRGBColorSpaceInfo(const avifRGBImage * rgb, avifRGBColorSpaceInfo * info)
 {
+    AVIF_CHECK(rgb != NULL && info != NULL);
     AVIF_CHECK(rgb->depth == 8 || rgb->depth == 10 || rgb->depth == 12 || rgb->depth == 16);
     if (rgb->isFloat) {
         AVIF_CHECK(rgb->depth == 16);
@@ -220,7 +221,8 @@ static int avifYUVColorSpaceInfoUVToUNorm(avifYUVColorSpaceInfo * info, float v)
 
 avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
 {
-    if (!rgb->pixels || rgb->format == AVIF_RGB_FORMAT_RGB_565) {
+    if (!image || !rgb || !rgb->pixels ||
+        rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
@@ -1648,6 +1650,10 @@ static avifBool avifJoinYUVToRGBThread(YUVToRGBThreadData * tdata)
 
 avifResult avifImageYUVToRGB(const avifImage * image, avifRGBImage * rgb)
 {
+    if (!image || !rgb) {
+        return AVIF_RESULT_REFORMAT_FAILED;
+    }
+
     // It is okay for rgb->maxThreads to be equal to zero in order to allow clients to zero initialize the avifRGBImage struct
     // with memset.
     if (!image->yuvPlanes[AVIF_CHAN_Y] || rgb->maxThreads < 0) {

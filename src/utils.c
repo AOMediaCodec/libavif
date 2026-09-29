@@ -139,6 +139,9 @@ void avifArrayPop(void * arrayStruct)
 
 void avifArrayDestroy(void * arrayStruct)
 {
+    if (!arrayStruct) {
+        return;
+    }
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
     if (arr->ptr) {
         avifFree(arr->ptr);

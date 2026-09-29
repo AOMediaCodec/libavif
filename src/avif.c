@@ -38,6 +38,9 @@ const char * avifPixelFormatToString(avifPixelFormat format)
 
 void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 {
+    if (!info) {
+        return;
+    }
     memset(info, 0, sizeof(avifPixelFormatInfo));
 
     switch (format) {
@@ -133,6 +136,9 @@ const char * avifProgressiveStateToString(avifProgressiveState progressiveState)
 
 void avifImageSetDefaults(avifImage * image)
 {
+    if (!image) {
+        return;
+    }
     memset(image, 0, sizeof(avifImage));
     image->yuvRange = AVIF_RANGE_FULL;
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
@@ -164,6 +170,9 @@ avifImage * avifImageCreateEmpty(void)
 
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 {
+    if (!dstImage || !srcImage) {
+        return;
+    }
     dstImage->width = srcImage->width;
     dstImage->height = srcImage->height;
     dstImage->depth = srcImage->depth;
@@ -186,6 +195,9 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
 
 void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
+    if (!dstImage || !srcImage) {
+        return;
+    }
     assert(srcImage->depth == dstImage->depth);
     if (planes & AVIF_PLANES_YUV) {
         assert(srcImage->yuvFormat == dstImage->yuvFormat);
@@ -252,7 +264,8 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 {
     // Disallow self copy even though it could be supported easily. Self copy is
     // unlikely to be needed, so it almost always indicates a programming error.
-    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(dstImage != NULL && srcImage != NULL && dstImage != srcImage,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
 
@@ -324,7 +337,9 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
 
 avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
 {
-    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(dstImage != NULL && srcImage != NULL && rect != NULL &&
+                      dstImage != srcImage,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifPixelFormatInfo formatInfo;
     avifGetPixelFormatInfo(srcImage->yuvFormat, &formatInfo);
     if ((rect->width > srcImage->width) || (rect->height > srcImage->height) || (rect->x > (srcImage->width - rect->width)) ||
@@ -359,6 +374,9 @@ avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage
 
 void avifImageDestroy(avifImage * image)
 {
+    if (!image) {
+        return;
+    }
     if (image->gainMap) {
         avifGainMapDestroy(image->gainMap);
     }
@@ -377,16 +395,24 @@ void avifImageDestroy(avifImage * image)
 
 avifResult avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize)
 {
+    if (!image) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     return avifRWDataSet(&image->icc, icc, iccSize);
 }
 
 avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize)
 {
+    if (!image) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     return avifRWDataSet(&image->xmp, xmp, xmpSize);
 }
 
 avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadSize)
 {
+    AVIF_CHECKERR(image != NULL && boxtype != NULL && usertype != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     AVIF_CHECKERR(image->numProperties < SIZE_MAX / sizeof(avifImageItemProperty), AVIF_RESULT_INVALID_ARGUMENT);
     // Shallow copy the current properties.
     const size_t numProperties = image->numProperties + 1;
@@ -410,6 +436,8 @@ avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], co
 
 avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t * data, size_t dataSize)
 {
+    AVIF_CHECKERR(image != NULL && boxtype != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     const uint8_t uuid[16] = { 0 };
     // Do not allow adding properties that are also handled by libavif
     if (avifIsKnownPropertyType(boxtype)) {
@@ -420,6 +448,8 @@ avifResult avifImageAddOpaqueProperty(avifImage * image, const uint8_t boxtype[4
 
 avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], const uint8_t * data, size_t dataSize)
 {
+    AVIF_CHECKERR(image != NULL && uuid != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     const uint8_t boxtype[4] = { 'u', 'u', 'i', 'd' };
     // Do not allow adding invalid UUIDs, or using uuid representation of properties that are also handled by libavif
     if (!avifIsValidUUID(uuid)) {
@@ -430,6 +460,9 @@ avifResult avifImageAddUUIDProperty(avifImage * image, const uint8_t uuid[16], c
 
 avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 {
+    if (!image) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (image->width == 0 || image->height == 0 || image->depth == 0 || image->depth > 16) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
@@ -491,6 +524,9 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
 
 void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes)
 {
+    if (!image) {
+        return;
+    }
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
         if (image->imageOwnsYUVPlanes) {
             avifFree(image->yuvPlanes[AVIF_CHAN_Y]);
@@ -517,6 +553,9 @@ void avifImageFreePlanes(avifImage * image, avifPlanesFlags planes)
 
 void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanesFlags planes)
 {
+    if (!dstImage || !srcImage) {
+        return;
+    }
     avifImageFreePlanes(dstImage, planes);
 
     if (planes & AVIF_PLANES_YUV) {
@@ -552,12 +591,15 @@ void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, avifPlanes
 
 avifBool avifImageUsesU16(const avifImage * image)
 {
+    if (!image) {
+        return AVIF_FALSE;
+    }
     return (image->depth > 8);
 }
 
 avifBool avifImageIsOpaque(const avifImage * image)
 {
-    if (!image->alphaPlane) {
+    if (!image || !image->alphaPlane) {
         return AVIF_TRUE;
     }
 
@@ -585,6 +627,9 @@ avifBool avifImageIsOpaque(const avifImage * image)
 
 uint8_t * avifImagePlane(const avifImage * image, int channel)
 {
+    if (!image) {
+        return NULL;
+    }
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
         return image->yuvPlanes[channel];
     }
@@ -596,6 +641,9 @@ uint8_t * avifImagePlane(const avifImage * image, int channel)
 
 uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel)
 {
+    if (!image) {
+        return 0;
+    }
     if ((channel == AVIF_CHAN_Y) || (channel == AVIF_CHAN_U) || (channel == AVIF_CHAN_V)) {
         return image->yuvRowBytes[channel];
     }
@@ -607,6 +655,9 @@ uint32_t avifImagePlaneRowBytes(const avifImage * image, int channel)
 
 uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
 {
+    if (!image) {
+        return 0;
+    }
     if (channel == AVIF_CHAN_Y) {
         return image->width;
     }
@@ -626,6 +677,9 @@ uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
 
 uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
 {
+    if (!image) {
+        return 0;
+    }
     if (channel == AVIF_CHAN_Y) {
         return image->height;
     }
@@ -691,6 +745,9 @@ uint32_t avifRGBFormatChannelCount(avifRGBFormat format)
 
 uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb)
 {
+    if (!rgb) {
+        return 0;
+    }
     if (rgb->format == AVIF_RGB_FORMAT_RGB_565) {
         return 2;
     }
@@ -699,6 +756,9 @@ uint32_t avifRGBImagePixelSize(const avifRGBImage * rgb)
 
 void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
 {
+    if (!rgb || !image) {
+        return;
+    }
     rgb->width = image->width;
     rgb->height = image->height;
     rgb->depth = image->depth;
@@ -718,6 +778,9 @@ void avifRGBImageSetDefaults(avifRGBImage * rgb, const avifImage * image)
 
 avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
 {
+    if (!rgb) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     avifRGBImageFreePixels(rgb);
     if (rgb->width == 0 || rgb->height == 0) {
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -738,6 +801,9 @@ avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
 
 void avifRGBImageFreePixels(avifRGBImage * rgb)
 {
+    if (!rgb) {
+        return;
+    }
     if (rgb->pixels) {
         avifFree(rgb->pixels);
     }
@@ -1104,6 +1170,9 @@ error:
 
 void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 {
+    if (!csOptions) {
+        return;
+    }
     for (uint32_t i = 0; i < csOptions->count; ++i) {
         avifCodecSpecificOption * entry = &csOptions->entries[i];
         avifFree(entry->key);
@@ -1115,6 +1184,9 @@ void avifCodecSpecificOptionsClear(avifCodecSpecificOptions * csOptions)
 
 void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 {
+    if (!csOptions) {
+        return;
+    }
     avifCodecSpecificOptionsClear(csOptions);
     avifArrayDestroy(csOptions);
     avifFree(csOptions);
@@ -1122,6 +1194,8 @@ void avifCodecSpecificOptionsDestroy(avifCodecSpecificOptions * csOptions)
 
 avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, const char * key, const char * value)
 {
+    AVIF_CHECKERR(csOptions != NULL && key != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     // Check to see if a key must be replaced
     for (uint32_t i = 0; i < csOptions->count; ++i) {
         avifCodecSpecificOption * entry = &csOptions->entries[i];
@@ -1334,6 +1408,9 @@ avifGainMap * avifGainMapCreate(void)
 
 void avifGainMapSetDefaults(avifGainMap * gainMap)
 {
+    if (!gainMap) {
+        return;
+    }
     memset(gainMap, 0, sizeof(avifGainMap));
     gainMap->altColorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
@@ -1355,6 +1432,9 @@ void avifGainMapSetDefaults(avifGainMap * gainMap)
 
 void avifGainMapDestroy(avifGainMap * gainMap)
 {
+    if (!gainMap) {
+        return;
+    }
     if (gainMap->image) {
         avifImageDestroy(gainMap->image);
     }
