@@ -5200,6 +5200,10 @@ avifDecoder * avifDecoderCreate(void)
 
 static void avifDecoderCleanup(avifDecoder * decoder)
 {
+    if (!decoder) {
+        return;
+    }
+
     if (decoder->data) {
         avifDecoderDataDestroy(decoder->data);
         decoder->data = NULL;
@@ -5214,6 +5218,9 @@ static void avifDecoderCleanup(avifDecoder * decoder)
 
 void avifDecoderDestroy(avifDecoder * decoder)
 {
+    if (!decoder) {
+        return;
+    }
     avifDecoderCleanup(decoder);
     avifIODestroy(decoder->io);
     avifFree(decoder);
@@ -5221,18 +5228,27 @@ void avifDecoderDestroy(avifDecoder * decoder)
 
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source)
 {
+    if (!decoder) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     decoder->requestedSource = source;
     return avifDecoderReset(decoder);
 }
 
 void avifDecoderSetIO(avifDecoder * decoder, avifIO * io)
 {
+    if (!decoder) {
+        return;
+    }
     avifIODestroy(decoder->io);
     decoder->io = io;
 }
 
 avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const uint8_t * data, size_t size)
 {
+    if (!decoder) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     avifIO * io = avifIOCreateMemoryReader(data, size);
     AVIF_CHECKERR(io != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     avifDecoderSetIO(decoder, io);
@@ -5241,6 +5257,9 @@ avifResult avifDecoderSetIOMemory(avifDecoder * decoder, const uint8_t * data, s
 
 avifResult avifDecoderSetIOFile(avifDecoder * decoder, const char * filename)
 {
+    if (!decoder || !filename) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     avifIO * io = avifIOCreateFileReader(filename);
     if (!io) {
         return AVIF_RESULT_IO_ERROR;
@@ -5279,6 +5298,9 @@ static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
 
 avifResult avifDecoderNthImageMaxExtent(const avifDecoder * decoder, uint32_t frameIndex, avifExtent * outExtent)
 {
+    if (!decoder || !outExtent) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (!decoder->data) {
         // Nothing has been parsed yet
         return AVIF_RESULT_NO_CONTENT;
@@ -5399,6 +5421,7 @@ static avifBool avifDecoderItemShouldBeSkipped(const avifDecoderItem * item)
 
 avifResult avifDecoderParse(avifDecoder * decoder)
 {
+    AVIF_CHECKERR(decoder != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
 
     // Alpha only is not currently supported.
@@ -6190,6 +6213,7 @@ static avifResult avifReadCodecConfigProperty(avifImage * image, const avifPrope
 
 avifResult avifDecoderReset(avifDecoder * decoder)
 {
+    AVIF_CHECKERR(decoder != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
 
     avifDecoderData * data = decoder->data;
@@ -7132,6 +7156,7 @@ static avifResult avifDecoderApplySampleTransform(const avifDecoder * decoder, a
 
 avifResult avifDecoderNextImage(avifDecoder * decoder)
 {
+    AVIF_CHECKERR(decoder != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
 
     if (!decoder->data || decoder->data->tiles.count == 0) {
@@ -7224,6 +7249,10 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
 
 avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming)
 {
+    if (!decoder || !outTiming) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
     if (!decoder->data) {
         // Nothing has been parsed yet
         return AVIF_RESULT_NO_CONTENT;
@@ -7260,6 +7289,7 @@ avifResult avifDecoderNthImageTiming(const avifDecoder * decoder, uint32_t frame
 
 avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 {
+    AVIF_CHECKERR(decoder != NULL, AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
 
     if (!decoder->data) {
@@ -7313,7 +7343,7 @@ avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex)
 
 avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
-    if (!decoder->data || (decoder->data->tiles.count == 0)) {
+    if (!decoder || !decoder->data || (decoder->data->tiles.count == 0)) {
         // Nothing has been parsed yet
         return AVIF_FALSE;
     }
@@ -7333,7 +7363,7 @@ avifBool avifDecoderIsKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 
 uint32_t avifDecoderNearestKeyframe(const avifDecoder * decoder, uint32_t frameIndex)
 {
-    if (!decoder->data) {
+    if (!decoder || !decoder->data) {
         // Nothing has been parsed yet
         return 0;
     }
@@ -7373,6 +7403,10 @@ static uint32_t avifGetDecodedRowCount(const avifDecoder * decoder, const avifTi
 
 uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 {
+    if (!decoder || !decoder->data || !decoder->image) {
+        return 0;
+    }
+
     if (decoder->data->tileInfos[AVIF_ITEM_COLOR].tileCount == 0) {
         // decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR
         // was likely 0 when avifDecoderNextImage() was called.
@@ -7408,6 +7442,8 @@ uint32_t avifDecoderDecodedRowCount(const avifDecoder * decoder)
 
 avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
 {
+    AVIF_CHECKERR(decoder != NULL && image != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifResult result = avifDecoderParse(decoder);
     if (result != AVIF_RESULT_OK) {
         return result;
@@ -7427,6 +7463,8 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image)
 
 avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const uint8_t * data, size_t size)
 {
+    AVIF_CHECKERR(decoder != NULL && image != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
     avifResult result = avifDecoderSetIOMemory(decoder, data, size);
     if (result != AVIF_RESULT_OK) {
@@ -7437,6 +7475,8 @@ avifResult avifDecoderReadMemory(avifDecoder * decoder, avifImage * image, const
 
 avifResult avifDecoderReadFile(avifDecoder * decoder, avifImage * image, const char * filename)
 {
+    AVIF_CHECKERR(decoder != NULL && image != NULL && filename != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&decoder->diag);
     avifResult result = avifDecoderSetIOFile(decoder, filename);
     if (result != AVIF_RESULT_OK) {

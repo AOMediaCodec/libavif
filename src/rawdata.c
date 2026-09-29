@@ -7,6 +7,9 @@
 
 avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
 {
+    if (!raw) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (raw->size != newSize) {
         if (newSize == 0) {
             // avifAlloc(0) returns NULL, so handle the shrink-to-zero case by freeing the buffer.
@@ -27,7 +30,13 @@ avifResult avifRWDataRealloc(avifRWData * raw, size_t newSize)
 
 avifResult avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len)
 {
+    if (!raw) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (len) {
+        if (!data) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
         AVIF_CHECKRES(avifRWDataRealloc(raw, len));
         memcpy(raw->data, data, len);
     } else {
@@ -38,6 +47,9 @@ avifResult avifRWDataSet(avifRWData * raw, const uint8_t * data, size_t len)
 
 void avifRWDataFree(avifRWData * raw)
 {
+    if (!raw) {
+        return;
+    }
     avifFree(raw->data);
     raw->data = NULL;
     raw->size = 0;

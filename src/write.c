@@ -557,6 +557,9 @@ avifEncoder * avifEncoderCreate(void)
 
 void avifEncoderDestroy(avifEncoder * encoder)
 {
+    if (!encoder) {
+        return;
+    }
     if (encoder->csOptions) {
         avifCodecSpecificOptionsDestroy(encoder->csOptions);
     }
@@ -568,6 +571,9 @@ void avifEncoderDestroy(avifEncoder * encoder)
 
 avifResult avifEncoderSetCodecSpecificOption(avifEncoder * encoder, const char * key, const char * value)
 {
+    if (!encoder) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     return avifCodecSpecificOptionsSet(encoder->csOptions, key, value);
 }
 
@@ -2348,6 +2354,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
+    AVIF_CHECKERR(encoder != NULL && image != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&encoder->diag);
     return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
 }
@@ -2358,6 +2366,8 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                    const avifImage * const * cellImages,
                                    avifAddImageFlags addImageFlags)
 {
+    AVIF_CHECKERR(encoder != NULL && cellImages != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&encoder->diag);
     // Each cell is referenced by a 'dimg' item reference whose reference_count field is
     // 16-bit regardless of the 'iref' box version (ISO/IEC 14496-12 Section 8.11.12), so a
@@ -2387,6 +2397,9 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)
 {
+    if (data == NULL || size == 0) {
+        return 0;
+    }
     const size_t mdatCurrentOffset = avifRWStreamOffset(s);
     const size_t mdatSearchSize = mdatCurrentOffset - mdatStartOffset;
     if (mdatSearchSize < size) {
@@ -3378,6 +3391,8 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
 
 avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 {
+    AVIF_CHECKERR(encoder != NULL && output != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifDiagnosticsClearError(&encoder->diag);
     if (encoder->data->items.count == 0) {
         return AVIF_RESULT_NO_CONTENT;
@@ -4142,6 +4157,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
 avifResult avifEncoderWrite(avifEncoder * encoder, const avifImage * image, avifRWData * output)
 {
+    AVIF_CHECKERR(encoder != NULL && image != NULL && output != NULL,
+                  AVIF_RESULT_INVALID_ARGUMENT);
     avifResult addImageResult = avifEncoderAddImage(encoder, image, 1, AVIF_ADD_IMAGE_FLAG_SINGLE);
     if (addImageResult != AVIF_RESULT_OK) {
         return addImageResult;
