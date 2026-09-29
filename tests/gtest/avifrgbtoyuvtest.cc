@@ -520,6 +520,50 @@ TEST(RGBToYUVTest, ZeroWidthOrHeight) {
   avifRGBImageFreePixels(&rgb);
 }
 
+TEST(RGBToYUVTest, DimensionMismatchIsRejected) {
+  // avifRGBImage::width and height "must match associated avifImage" because
+  // the conversion routines read and write the RGB buffer using the image
+  // dimensions. A mismatch used to cause an out-of-bounds write
+  // (avifImageYUVToRGB) or read (avifImageRGBToYUV) on a smaller RGB buffer.
+  ImagePtr image(
+      avifImageCreate(/*width=*/4, /*height=*/4, 8, AVIF_PIXEL_FORMAT_YUV444));
+  ASSERT_NE(image, nullptr);
+  image->yuvRange = AVIF_RANGE_FULL;
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+  ASSERT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+
+  // Control group: matching dimensions still succeed.
+  {
+    testutil::AvifRgbImage rgb(image.get(), /*rgbDepth=*/8,
+                               AVIF_RGB_FORMAT_RGBA);
+    EXPECT_EQ(avifImageRGBToYUV(image.get(), &rgb), AVIF_RESULT_OK);
+    EXPECT_EQ(avifImageYUVToRGB(image.get(), &rgb), AVIF_RESULT_OK);
+  }
+
+  // Any width or height mismatch is rejected before any pixel is accessed.
+  for (uint32_t width : {2u, 4u, 6u}) {
+    for (uint32_t height : {2u, 4u, 6u}) {
+      if ((width == image->width) && (height == image->height)) {
+        continue;
+      }
+      testutil::AvifRgbImage rgb(image.get(), /*rgbDepth=*/8,
+                                 AVIF_RGB_FORMAT_RGBA);
+      rgb.width = width;
+      rgb.height = height;
+      // Reallocate at the lying size: a conversion that ignores the
+      // dimensions would overflow this smaller buffer.
+      ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+      EXPECT_EQ(avifImageRGBToYUV(image.get(), &rgb),
+                AVIF_RESULT_REFORMAT_FAILED)
+          << "rgb " << width << 'x' << height;
+      EXPECT_EQ(avifImageYUVToRGB(image.get(), &rgb),
+                AVIF_RESULT_REFORMAT_FAILED)
+          << "rgb " << width << 'x' << height;
+    }
+  }
+}
+
 //------------------------------------------------------------------------------
 // Selected configurations
 
