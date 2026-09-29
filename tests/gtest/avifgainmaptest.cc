@@ -1364,10 +1364,14 @@ TEST(ToneMapTest, ToneMapWithoutDecodedGainMap) {
       << diag.error;
 }
 
-// Samples beyond the nominal bit depth range are not rejected by the image
-// creation API. Tone mapping such an image used to overflow the nominal range
-// in avifSetRGBAPixel() (undefined behavior per C11 6.3.1.4, caught by UBSan)
-// and to store truncated channel values on non-sanitizer builds.
+// Per the project policy, keeping input samples within the range implied by
+// the bit depth and yuvRange is the caller's responsibility, and the image
+// creation API does not reject out-of-range samples. This test documents the
+// defense-in-depth behavior of avifSetRGBAPixel() when a caller violates the
+// policy: without the clamping, tone mapping such an image overflowed the
+// nominal range in avifSetRGBAPixel() (undefined behavior per C11 6.3.1.4,
+// caught by UBSan) and stored truncated channel values on non-sanitizer
+// builds.
 TEST(ToneMapTest, ToneMapOutOfRangeSamples) {
   ImagePtr image(avifImageCreate(2, 2, 12, AVIF_PIXEL_FORMAT_YUV444));
   ASSERT_NE(image, nullptr);
@@ -1394,12 +1398,15 @@ TEST(ToneMapTest, ToneMapOutOfRangeSamples) {
   // from the input depth) instead of the gain map.
   gain_map->baseHdrHeadroom = {1, 1};
   gain_map->alternateHdrHeadroom = {2, 1};
-  // Tone mapping expects gain map pixels to be available, even though the
-  // gain map is not applied here.
-  gain_map->image = avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV400);
-  ASSERT_NE(gain_map->image, nullptr);
-  ASSERT_EQ(avifImageAllocatePlanes(gain_map->image, AVIF_PLANES_YUV),
-            AVIF_RESULT_OK);
+  // Tone mapping requires gainMap->image to be set even when the weight is
+  // 0, in which case the gain map pixels are never read. Initialize them
+  // anyway, the same way the other tests in this file do.
+  ImagePtr gain_map_image = testutil::CreateImage(
+      /*width=*/2, /*height=*/2, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map_image, nullptr);
+  testutil::FillImageGradient(gain_map_image.get());
+  gain_map->image = gain_map_image.release();
 
   avifRGBImage tone_mapped = {};
   tone_mapped.depth = 8;
@@ -1420,18 +1427,21 @@ TEST(ToneMapTest, ToneMapOutOfRangeSamples) {
   avifRGBImageFreePixels(&tone_mapped);
 }
 
-// A float (F16) base image is not bound by a bit depth range: samples above
-// 1.0 are ordinary HDR float content, and libavif's F16 encoding matches IEEE
-// 754 binary16 for positive values (4.0f is stored as 0x4400). Tone mapping
-// such an image to an integer output at the base headroom gives a gain map
-// weight of 0; with the same transfer characteristics and color primaries on
-// both sides, the pixel copy loop of avifRGBImageApplyGainMap() used to
-// forward the raw samples to the float-to-integer conversions in
-// avifSetRGBAPixel(), which is undefined behavior per C11 6.3.1.4 (UBSan
-// float-cast-overflow; debug builds abort on the range asserts; a plain
-// release build stored the low bits of the truncated value, 252 for 4.0f in
-// an 8-bit output). The same image at any other target headroom goes through
-// the gain map math path, which clamps each channel with avifNanSafeClamp().
+// Per the project policy, keeping input samples within the closed interval
+// [0.0, 1.0] is also the caller's responsibility for an avifRGBImage whose
+// isFloat is set. This test documents the defense-in-depth behavior of
+// avifSetRGBAPixel() when a caller violates the policy with a float base
+// image (libavif's F16 encoding matches IEEE 754 binary16 for positive
+// values, so 4.0f is stored as 0x4400). Tone mapping such an image to an
+// integer output at the base headroom gives a gain map weight of 0; with the
+// same transfer characteristics and color primaries on both sides, the pixel
+// copy loop of avifRGBImageApplyGainMap() forwards the raw samples to the
+// float-to-integer conversions in avifSetRGBAPixel(), which without the
+// clamping is undefined behavior per C11 6.3.1.4 (UBSan float-cast-overflow;
+// debug builds abort on the range asserts; a plain release build stored the
+// low bits of the truncated value, 252 for 4.0f in an 8-bit output). The same
+// image at any other target headroom goes through the gain map math path,
+// which clamps each channel with avifNanSafeClamp().
 TEST(ToneMapTest, ToneMapFloatBaseOutOfRange) {
   avifRGBImage base = {};
   base.width = 2;
@@ -1441,8 +1451,9 @@ TEST(ToneMapTest, ToneMapFloatBaseOutOfRange) {
   base.isFloat = AVIF_TRUE;
   ASSERT_EQ(avifRGBImageAllocatePixels(&base), AVIF_RESULT_OK);
   // Positive half precision values: 4.0f is 0x4400, 16.0f is 0x4C00 and
-  // 1.0f is 0x3C00. Both samples are beyond the nominal [0, 1] range but are
-  // well-formed HDR float content.
+  // 1.0f is 0x3C00. The r/g/b samples are outside the [0.0, 1.0] interval
+  // that the caller is responsible for, to exercise the defense-in-depth
+  // clamping.
   const uint16_t kSamples[2][4] = {
       {0x4400, 0x4400, 0x4400, 0x3C00},  // r = g = b = 4.0f, a = 1.0f
       {0x4C00, 0x4C00, 0x4C00, 0x3C00},  // r = g = b = 16.0f, a = 1.0f
@@ -1457,12 +1468,15 @@ TEST(ToneMapTest, ToneMapFloatBaseOutOfRange) {
   // the memcpy fast path ineligible too) instead of the gain map.
   gain_map->baseHdrHeadroom = {1, 1};
   gain_map->alternateHdrHeadroom = {2, 1};
-  // Tone mapping expects gain map pixels to be available, even though the
-  // gain map is not applied here.
-  gain_map->image = avifImageCreate(2, 1, 8, AVIF_PIXEL_FORMAT_YUV400);
-  ASSERT_NE(gain_map->image, nullptr);
-  ASSERT_EQ(avifImageAllocatePlanes(gain_map->image, AVIF_PLANES_YUV),
-            AVIF_RESULT_OK);
+  // Tone mapping requires gainMap->image to be set even when the weight is
+  // 0, in which case the gain map pixels are never read. Initialize them
+  // anyway, the same way the other tests in this file do.
+  ImagePtr gain_map_image = testutil::CreateImage(
+      /*width=*/2, /*height=*/1, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map_image, nullptr);
+  testutil::FillImageGradient(gain_map_image.get());
+  gain_map->image = gain_map_image.release();
 
   avifRGBImage tone_mapped = {};
   tone_mapped.depth = 8;
