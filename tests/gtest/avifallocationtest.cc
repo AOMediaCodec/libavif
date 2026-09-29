@@ -82,6 +82,49 @@ TEST(AllocationTest, MaximumInvalidDimensions) {
                  AVIF_RESULT_INVALID_ARGUMENT);
 }
 
+TEST(AllocationTest, PreserveNonOwnedViewPlanes) {
+  ImagePtr owner(avifImageCreate(/*width=*/16, /*height=*/16, /*depth=*/8,
+                                 AVIF_PIXEL_FORMAT_YUV444));
+  ImagePtr view(avifImageCreateEmpty());
+  ASSERT_NE(owner, nullptr);
+  ASSERT_NE(view, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(owner.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+
+  const avifCropRect rect = {/*x=*/4, /*y=*/4, /*width=*/8, /*height=*/8};
+  ASSERT_EQ(avifImageSetViewRect(view.get(), owner.get(), &rect),
+            AVIF_RESULT_OK);
+  uint8_t* const y_plane = view->yuvPlanes[AVIF_CHAN_Y];
+  uint8_t* const alpha_plane = view->alphaPlane;
+
+  EXPECT_EQ(avifImageAllocatePlanes(view.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(view->yuvPlanes[AVIF_CHAN_Y], y_plane);
+  EXPECT_EQ(view->alphaPlane, alpha_plane);
+  EXPECT_FALSE(view->imageOwnsYUVPlanes);
+  EXPECT_FALSE(view->imageOwnsAlphaPlane);
+}
+
+TEST(AllocationTest, RejectIncompleteNonOwnedYUVPlanes) {
+  ImagePtr image(avifImageCreate(/*width=*/16, /*height=*/16, /*depth=*/8,
+                                 AVIF_PIXEL_FORMAT_YUV444));
+  ASSERT_NE(image, nullptr);
+  std::vector<uint8_t> y_plane(16 * 16);
+  image->yuvPlanes[AVIF_CHAN_Y] = y_plane.data();
+  image->yuvRowBytes[AVIF_CHAN_Y] = 16;
+
+  EXPECT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_Y], y_plane.data());
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_U], nullptr);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_V], nullptr);
+  EXPECT_FALSE(image->imageOwnsYUVPlanes);
+
+  // If an older implementation incorrectly took ownership, keep teardown from
+  // freeing storage owned by y_plane. The expectations above still fail.
+  image->yuvPlanes[AVIF_CHAN_Y] = nullptr;
+}
+
 TEST(DISABLED_AllocationTest, OutOfMemory) {
   // This should pass on 64-bit but may fail on 32-bit or other setups.
   TestAllocation(std::numeric_limits<decltype(avifImage::width)>::max(), 1, 8,
