@@ -5,13 +5,194 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
 #include "avifjpeg.h"
 #include "avifpng.h"
 #include "y4m.h"
+
+static void avifSetDiagnostic(avifDiagnostics * diag, const char * fmt, ...)
+{
+    if (!diag) {
+        return;
+    }
+
+    avifDiagnosticsClearError(diag);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(diag->error, sizeof(diag->error), fmt, args);
+    va_end(args);
+}
+
+static const char * avifCustomCodecLibraryError(char buffer[], size_t bufferSize)
+{
+#if defined(_WIN32)
+    const DWORD error = GetLastError();
+    if (error == 0) {
+        snprintf(buffer, bufferSize, "unknown error");
+        return buffer;
+    }
+
+    DWORD messageLength = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                         NULL,
+                                         error,
+                                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                         buffer,
+                                         (DWORD)bufferSize,
+                                         NULL);
+    if (messageLength == 0) {
+        snprintf(buffer, bufferSize, "error 0x%08lx", (unsigned long)error);
+        return buffer;
+    }
+    while ((messageLength > 0) && ((buffer[messageLength - 1] == '\r') || (buffer[messageLength - 1] == '\n'))) {
+        buffer[--messageLength] = '\0';
+    }
+    return buffer;
+#else
+    const char * error = dlerror();
+    if (!error) {
+        error = "unknown error";
+    }
+    snprintf(buffer, bufferSize, "%s", error);
+    return buffer;
+#endif
+}
+
+#if defined(_WIN32)
+static avifBool avifCustomCodecLibraryLoadFunction(HMODULE module,
+                                                   const char * moduleName,
+                                                   const char * symbolName,
+                                                   void * function,
+                                                   avifDiagnostics * diag)
+{
+    char errorBuffer[256];
+    FARPROC proc = GetProcAddress(module, symbolName);
+    if (!proc) {
+        avifSetDiagnostic(diag,
+                          "failed loading function %s from module %s: %s",
+                          symbolName,
+                          moduleName,
+                          avifCustomCodecLibraryError(errorBuffer, sizeof(errorBuffer)));
+        return AVIF_FALSE;
+    }
+
+    // MinGW/GCC warns on direct FARPROC-to-function-pointer casts.
+    memcpy(function, &proc, sizeof(proc));
+    return AVIF_TRUE;
+}
+#endif
+
+void avifCustomCodecLibraryUnload(avifCustomCodecLibrary * library)
+{
+    if (!library) {
+        return;
+    }
+    if (library->handle) {
+#if defined(_WIN32)
+        FreeLibrary((HMODULE)library->handle);
+#else
+        dlclose(library->handle);
+#endif
+    }
+    memset(library, 0, sizeof(*library));
+}
+
+static avifBool avifCustomCodecLibraryLoad(avifCustomCodecLibrary * library, const char * name, avifDiagnostics * diag)
+{
+    char errorBuffer[256];
+
+    memset(library, 0, sizeof(*library));
+    library->name = name;
+#if defined(_WIN32)
+    library->handle = LoadLibraryA(name);
+#else
+    dlerror();
+    library->handle = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+#endif
+    if (!library->handle) {
+        avifSetDiagnostic(diag, "failed loading module %s: %s", name, avifCustomCodecLibraryError(errorBuffer, sizeof(errorBuffer)));
+        return AVIF_FALSE;
+    }
+
+#if defined(_WIN32)
+    if (!avifCustomCodecLibraryLoadFunction((HMODULE)library->handle, name, AVIF_APPS_CUSTOM_CODEC_SETUP_SYMBOL, &library->setup, diag)) {
+        avifCustomCodecLibraryUnload(library);
+        return AVIF_FALSE;
+    }
+    if (!avifCustomCodecLibraryLoadFunction((HMODULE)library->handle, name, AVIF_APPS_CUSTOM_CODEC_SHUTDOWN_SYMBOL, &library->shutdown, diag)) {
+        avifCustomCodecLibraryUnload(library);
+        return AVIF_FALSE;
+    }
+#else
+    dlerror();
+    library->setup = (avifAppsCustomCodecSetupFunc)dlsym(library->handle, AVIF_APPS_CUSTOM_CODEC_SETUP_SYMBOL);
+    {
+        const char * loadError = dlerror();
+        if (loadError) {
+            avifSetDiagnostic(diag, "failed loading function %s from module %s: %s", AVIF_APPS_CUSTOM_CODEC_SETUP_SYMBOL, name, loadError);
+            avifCustomCodecLibraryUnload(library);
+            return AVIF_FALSE;
+        }
+    }
+    dlerror();
+    library->shutdown = (avifAppsCustomCodecShutdownFunc)dlsym(library->handle, AVIF_APPS_CUSTOM_CODEC_SHUTDOWN_SYMBOL);
+    {
+        const char * loadError = dlerror();
+        if (loadError) {
+            avifSetDiagnostic(diag, "failed loading function %s from module %s: %s", AVIF_APPS_CUSTOM_CODEC_SHUTDOWN_SYMBOL, name, loadError);
+            avifCustomCodecLibraryUnload(library);
+            return AVIF_FALSE;
+        }
+    }
+#endif
+
+    return AVIF_TRUE;
+}
+
+avifBool avifCustomCodecLibrarySetup(avifCustomCodecLibrary * library, const char * name, avifDiagnostics * diag)
+{
+    if (!avifCustomCodecLibraryLoad(library, name, diag)) {
+        return AVIF_FALSE;
+    }
+
+    avifDiagnosticsClearError(diag);
+    const avifResult result = library->setup(diag);
+    if (result != AVIF_RESULT_OK) {
+        if (!diag->error[0]) {
+            avifSetDiagnostic(diag, "custom codec setup failed: %s", avifResultToString(result));
+        }
+        avifCustomCodecLibraryUnload(library);
+        return AVIF_FALSE;
+    }
+
+    library->initialized = AVIF_TRUE;
+    return AVIF_TRUE;
+}
+
+avifResult avifCustomCodecLibraryShutdown(avifCustomCodecLibrary * library, avifDiagnostics * diag)
+{
+    if (!library || !library->initialized) {
+        return AVIF_RESULT_OK;
+    }
+    avifDiagnosticsClearError(diag);
+    const avifResult result = library->shutdown(diag);
+    if (result == AVIF_RESULT_OK) {
+        library->initialized = AVIF_FALSE;
+    }
+    return result;
+}
 
 char * avifFileFormatToString(avifAppFileFormat format)
 {
@@ -460,8 +641,6 @@ void avifDumpDiagnostics(const avifDiagnostics * diag)
 #if defined(_WIN32)
 
 // Windows
-
-#include <windows.h>
 
 int avifQueryCPUCount(void)
 {
