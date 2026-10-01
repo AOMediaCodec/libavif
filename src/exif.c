@@ -11,7 +11,7 @@ avifResult avifGetExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, si
     const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
     const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
     exifSize = AVIF_MIN(exifSize, UINT32_MAX);
-    for (*offset = 0; *offset + 4 < exifSize; ++*offset) {
+    for (*offset = 0; *offset + 4 <= exifSize; ++*offset) {
         if (!memcmp(&exif[*offset], tiffHeaderBE, 4) || !memcmp(&exif[*offset], tiffHeaderLE, 4)) {
             return AVIF_RESULT_OK;
         }
