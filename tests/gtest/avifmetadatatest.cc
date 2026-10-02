@@ -409,6 +409,23 @@ TEST(MetadataTest, ExifIfdOffsetLoopingTo8) {
             AVIF_RESULT_OK);
 }
 
+// The TIFF header may be located in the last four bytes of the payload.
+// avifGetExifTiffHeaderOffset() must still find it there.
+TEST(MetadataTest, ExifTiffHeaderOffsetAtEnd) {
+  const uint8_t kLittleEndian[] = {0x00, 0x00, 'I', 'I', 42, 0};
+  size_t offset;
+  ASSERT_EQ(avifGetExifTiffHeaderOffset(kLittleEndian, sizeof(kLittleEndian),
+                                        &offset),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(offset, 2u);
+
+  const uint8_t kBigEndian[] = {0x00, 'M', 'M', 0, 42};
+  ASSERT_EQ(
+      avifGetExifTiffHeaderOffset(kBigEndian, sizeof(kBigEndian), &offset),
+      AVIF_RESULT_OK);
+  EXPECT_EQ(offset, 1u);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(MetadataTest, ExtendedXMP) {
