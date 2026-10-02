@@ -353,7 +353,7 @@ static avifResult avifImageApplyExpression32b(avifImage * dstImage,
 avifResult avifImageApplyExpression(avifImage * dstImage,
                                     avifSampleTransformBitDepth bitDepth,
                                     const avifSampleTransformExpression * expression,
-                                    uint8_t numInputImageItems,
+                                    uint32_t numInputImageItems,
                                     const avifImage * inputImageItems[],
                                     avifPlanesFlags planes)
 {
@@ -391,7 +391,7 @@ avifResult avifImageApplyOperations(avifImage * dstImage,
                                     avifSampleTransformBitDepth bitDepth,
                                     uint32_t numTokens,
                                     const avifSampleTransformToken tokens[],
-                                    uint8_t numInputImageItems,
+                                    uint32_t numInputImageItems,
                                     const avifImage * inputImageItems[],
                                     avifPlanesFlags planes)
 {
