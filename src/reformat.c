@@ -160,6 +160,18 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
+    // The RGB buffer is read and written using the image dimensions, as
+    // documented on avifRGBImage::width and avifRGBImage::height ("must match
+    // associated avifImage") and in the avifRGBFormat documentation
+    // ("conversion routines will fail if the width and height don't match the
+    // associated avifImage"). Enforce it here, before any plane is touched, so
+    // that every downstream path (built-in, libyuv, libsharpyuv and the
+    // multithreaded path) can safely assume matching dimensions instead of
+    // reading out of bounds or writing out of bounds on smaller RGB buffers.
+    if ((rgb->width != image->width) || (rgb->height != image->height)) {
+        return AVIF_FALSE;
+    }
+
     const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
     if (useYCgCoRe || useYCgCoRo) {
