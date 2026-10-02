@@ -384,6 +384,10 @@ static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int
 
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixels, float * rangeMin, float * rangeMax)
 {
+    if (numPixels == 0) {
+        // Reading gainMapF[0] below would be an out-of-bounds read.
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     const float bucketSize = 0.01f;        // Size of one bucket. Empirical value.
     const float maxOutliersRatio = 0.001f; // 0.1%
     const int maxOutliersOnEachSide = (int)avifRoundf(numPixels * maxOutliersRatio / 2.0f);
