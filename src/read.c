@@ -425,9 +425,12 @@ static void avifSampleTableDestroy(avifSampleTable * sampleTable)
 
 static uint32_t avifSampleTableGetImageDelta(const avifSampleTable * sampleTable, uint32_t imageIndex)
 {
-    uint32_t maxSampleIndex = 0;
+    uint64_t maxSampleIndex = 0;
     for (uint32_t i = 0; i < sampleTable->timeToSamples.count; ++i) {
         const avifSampleTableTimeToSample * timeToSample = &sampleTable->timeToSamples.timeToSample[i];
+        // stts sampleCount values are raw uint32 from the file and are not
+        // required to sum to the real sample count; accumulating in uint32
+        // would wrap and pick an arbitrary entry's sampleDelta.
         maxSampleIndex += timeToSample->sampleCount;
         if ((imageIndex < maxSampleIndex) || (i == (sampleTable->timeToSamples.count - 1))) {
             return timeToSample->sampleDelta;
