@@ -486,7 +486,8 @@ static avifBool avifJPEGReadInternal(FILE * f,
                                      avifBool ignoreExif,
                                      avifBool ignoreXMP,
                                      avifBool ignoreGainMap,
-                                     uint32_t sizeLimit);
+                                     uint32_t sizeLimit,
+                                     avifBool headerOnly);
 
 // Arbitrary max number of jpeg segments to parse before giving up.
 #define MAX_JPEG_SEGMENTS 100
@@ -1024,7 +1025,8 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
                                   /*ignoreExif=*/AVIF_TRUE,
                                   /*ignoreXMP=*/AVIF_FALSE,
                                   /*ignoreGainMap=*/AVIF_TRUE,
-                                  sizeLimit)) {
+                                  sizeLimit,
+                                  /*headerOnly=*/AVIF_FALSE)) {
             continue;
         }
         if (avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size, NULL)) {
@@ -1261,7 +1263,8 @@ static avifBool avifJPEGReadInternal(FILE * f,
                                      avifBool ignoreExif,
                                      avifBool ignoreXMP,
                                      avifBool ignoreGainMap,
-                                     uint32_t sizeLimit)
+                                     uint32_t sizeLimit,
+                                     avifBool headerOnly)
 {
     volatile avifBool ret = AVIF_FALSE;
     uint8_t * volatile iccData = NULL;
@@ -1305,6 +1308,8 @@ static avifBool avifJPEGReadInternal(FILE * f,
         fprintf(stderr, "Too big JPEG dimensions (%u x %u > %u px): %s\n", cinfo.output_width, cinfo.output_height, sizeLimit, inputFilename);
         goto cleanup;
     }
+    avif->width = cinfo.output_width;
+    avif->height = cinfo.output_height;
 
     if (!ignoreColorProfile) {
         uint8_t * iccDataTmp;
@@ -1336,6 +1341,12 @@ static avifBool avifJPEGReadInternal(FILE * f,
     // JPEG doesn't have alpha. Prevent confusion.
     avif->alphaPremultiplied = AVIF_FALSE;
 
+    if (headerOnly) {
+        // No real decoding needed. Stop here.
+        ret = AVIF_TRUE;
+        goto cleanup;
+    }
+
     if (avifJPEGReadCopy(avif, sizeLimit, &cinfo)) {
         // JPEG pixels were successfully copied without conversion. Notify the enduser.
 
@@ -1351,8 +1362,6 @@ static avifBool avifJPEGReadInternal(FILE * f,
         int row_stride = cinfo.output_width * cinfo.output_components;
         JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
-        avif->width = cinfo.output_width;
-        avif->height = cinfo.output_height;
         if (avif->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
             fprintf(stderr, "AVIF_MATRIX_COEFFICIENTS_YCGCO_RO cannot be used with JPEG because it has an even bit depth.\n");
             goto cleanup;
@@ -1672,10 +1681,34 @@ avifBool avifJPEGRead(const char * inputFilename,
                                               ignoreExif,
                                               ignoreXMP,
                                               ignoreGainMap,
-                                              sizeLimit);
+                                              sizeLimit,
+                                              /*headerOnly=*/AVIF_FALSE);
     if (f && f != stdin) {
         fclose(f);
     }
+    return res;
+}
+
+avifBool avifJPEGPeek(const char * inputFilename, avifImage * avif)
+{
+    FILE * f = fopen(inputFilename, "rb");
+    if (!f) {
+        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+        return AVIF_FALSE;
+    }
+    const avifBool res = avifJPEGReadInternal(f,
+                                              inputFilename,
+                                              avif,
+                                              AVIF_PIXEL_FORMAT_NONE,
+                                              /*requestedDepth=*/0,
+                                              AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                                              /*ignoreColorProfile=*/AVIF_TRUE,
+                                              /*ignoreExif=*/AVIF_TRUE,
+                                              /*ignoreXMP=*/AVIF_TRUE,
+                                              /*ignoreGainMap=*/AVIF_TRUE,
+                                              /*sizeLimit=*/UINT32_MAX,
+                                              /*headerOnly=*/AVIF_TRUE);
+    fclose(f);
     return res;
 }
 

@@ -12,6 +12,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 * Add the ignoreICC option to avifDecoder
 * Support ignoring alpha in avifDecoder::imageContentToDecode
+* Support encoding layered image with pre-scaled inputs
 * avifenc: add --ignore-alpha flag to discard alpha channel on encode
 * avifgainmaputil: add --ignore-alpha flag to discard alpha channel
 * avifgainmaputil: add --ignore-exif and --ignore-xmp flags
@@ -19,7 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.4.2
 
-* Update aom.cmd/LocalAom.cmake: v3.15.0
+* Update aom.cmd/LocalAom.cmake: v3.15.1
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.4
 * Update LocalAvm.cmake: v1.0.0
 * Update libyuv.cmd/LocalLibyuv.cmake: 26e56be0f (1960)
@@ -50,6 +51,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   several such boxes in one 'tref'. Only the first track_ID of a box was read,
   and a later box overwrote what an earlier one recorded, so the alpha track of
   an image sequence could be dropped without a diagnostic.
+* Report AVIF_RESULT_OUT_OF_MEMORY instead of AVIF_RESULT_BMFF_PARSE_FAILED
+  when memory runs out while reading the references of a track 'tref' box.
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.

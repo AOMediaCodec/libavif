@@ -9,6 +9,7 @@ permissions:
   contents: write
   id-token: write
   attestations: write
+  # artifact-metadata is not needed because push-to-registry is not enabled.
 
 jobs:
   build-linux-artifacts:
@@ -51,8 +52,8 @@ jobs:
             avifenc
             avifdec
             avifgainmaputil
-      - name: Attest release artifact
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - name: Attest artifacts
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/linux-artifacts.zip
 

@@ -155,11 +155,20 @@ generic fields alone.
 
 ### Files `kodim*`
 
-#### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif)
+#### File [kodim03_yuv420_8bpc.avif](io/kodim03_yuv420_8bpc.avif), [kodim03_yuv420_8bpc.y4m](kodim03_yuv420_8bpc.y4m)
 
 ![](io/kodim03_yuv420_8bpc.avif)
 
 License: released by the Eastman Kodak Company for unrestricted usage
+
+#### File [kodim03_yuv420_8bpc_384x256.y4m](kodim03_yuv420_8bpc_384x256.y4m)
+
+![](kodim03_yuv420_8bpc_384x256.y4m)
+
+License: released by the Eastman Kodak Company for unrestricted usage
+
+It is [kodim03_yuv420_8bpc.y4m](kodim03_yuv420_8bpc.y4m) resized to half the
+width and height.
 
 #### File [kodim03_grayscale_gamma1.6.png](kodim03_grayscale_gamma1.6.png)
 

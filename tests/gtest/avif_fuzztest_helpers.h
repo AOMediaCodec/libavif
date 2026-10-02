@@ -58,10 +58,25 @@ std::vector<ImagePtr> CreateAvifAnim16b(size_t num_frames, size_t width,
                                         avifPixelFormat pixel_format,
                                         bool has_alpha,
                                         const std::vector<uint16_t>& samples);
+// CreateAvifLayered* all return exactly kMaxNumLayers images.
+std::vector<ImagePtr> CreateAvifLayered8b(size_t width, size_t height,
+                                          avifPixelFormat pixel_format,
+                                          bool has_alpha,
+                                          const std::vector<uint8_t>& samples);
+std::vector<ImagePtr> CreateAvifLayered16b(
+    size_t width, size_t height, int depth, avifPixelFormat pixel_format,
+    bool has_alpha, const std::vector<uint16_t>& samples);
+std::vector<ImagePtr> CreateAvifLayeredRandDim8b(
+    size_t last_layer_width, size_t last_layer_height,
+    avifPixelFormat pixel_format, bool has_alpha,
+    const std::vector<uint8_t>& samples);
+std::vector<ImagePtr> CreateAvifLayeredRandDim16b(
+    size_t last_layer_width, size_t last_layer_height, int depth,
+    avifPixelFormat pixel_format, bool has_alpha,
+    const std::vector<uint16_t>& samples);
 EncoderPtr CreateAvifEncoder(avifCodecChoice codec_choice, int max_threads,
-                             int min_quantizer, int max_quantizer,
-                             int min_quantizer_alpha, int max_quantizer_alpha,
-                             int tile_rows_log2, int tile_cols_log2, int speed);
+                             int quality, int quality_alpha, int tile_rows_log2,
+                             int tile_cols_log2, int speed);
 DecoderPtr CreateAvifDecoder(avifCodecChoice codec_choice, int max_threads,
                              avifDecoderSource requested_source,
                              bool allow_progressive, bool allow_incremental,
@@ -85,9 +100,17 @@ inline constexpr size_t kMaxNumFramesSquareRoot = 2;
 // Do not generate animations with more than this number of frames.
 inline constexpr size_t kMaxNumFrames =
     kMaxNumFramesSquareRoot * kMaxNumFramesSquareRoot;
+// Do not generate layered images with more than this number of layers.
+inline constexpr size_t kMaxNumLayers = AVIF_MAX_AV1_LAYER_COUNT;
 
 size_t GetNumSamples(size_t num_frames, size_t width, size_t height,
                      avifPixelFormat pixel_format, bool has_alpha);
+// Returns the number of samples needed for CreateAvifLayeredRandDim8b() and
+// CreateAvifLayeredRandDim16b().
+size_t GetNumSamplesLayeredRandDim(size_t last_layer_width,
+                                   size_t last_layer_height,
+                                   avifPixelFormat pixel_format,
+                                   bool has_alpha);
 
 // To avoid using fuzztest::internal, the return type of the functions below is
 // auto.
@@ -187,6 +210,108 @@ inline auto ArbitraryAvifAnim() {
   return fuzztest::OneOf(ArbitraryAvifAnim8b(), ArbitraryAvifAnim16b());
 }
 
+// Layered avifImage generator type: fixed number of layers, same width/height,
+// pixel format and 8-bit samples.
+inline auto ArbitraryAvifLayered8b() {
+  constexpr uint16_t kMinLayerDimension = 8;
+  constexpr uint16_t kMaxLayerDimension =
+      kMaxDimension / kMaxNumFramesSquareRoot;
+  return fuzztest::FlatMap(
+      [](size_t width, size_t height, avifPixelFormat pixel_format,
+         bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifLayered8b, fuzztest::Just(width), fuzztest::Just(height),
+            fuzztest::Just(pixel_format), fuzztest::Just(has_alpha),
+            fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(GetNumSamples(
+                kMaxNumLayers, width, height, pixel_format, has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      ArbitraryPixelFormat(), fuzztest::Arbitrary<bool>());
+}
+
+// Layered avifImage generator type: fixed number of layers, same width/height,
+// depth, pixel format and 16-bit samples.
+inline auto ArbitraryAvifLayered16b() {
+  constexpr uint16_t kMinLayerDimension = 8;
+  constexpr uint16_t kMaxLayerDimension =
+      kMaxDimension / kMaxNumFramesSquareRoot;
+  return fuzztest::FlatMap(
+      [](size_t width, size_t height, int depth, avifPixelFormat pixel_format,
+         bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifLayered16b, fuzztest::Just(width), fuzztest::Just(height),
+            fuzztest::Just(depth), fuzztest::Just(pixel_format),
+            fuzztest::Just(has_alpha),
+            fuzztest::ContainerOf<std::vector<uint16_t>>(
+                fuzztest::InRange<uint16_t>(0, (1 << depth) - 1))
+                .WithSize(GetNumSamples(kMaxNumLayers, width, height,
+                                        pixel_format, has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::ElementOf({10, 12}), ArbitraryPixelFormat(),
+      fuzztest::Arbitrary<bool>());
+}
+
+// Generator for an arbitrary layered still image with same-sized layers.
+inline auto ArbitraryAvifLayered() {
+  return fuzztest::OneOf(ArbitraryAvifLayered8b(), ArbitraryAvifLayered16b());
+}
+
+// Layered avifImage generator type: fixed number of layers, last layer size,
+// pixel format and 8-bit samples.
+inline auto ArbitraryAvifLayeredRandDim8b() {
+  constexpr uint16_t kMinLayerDimension = 8;
+  constexpr uint16_t kMaxLayerDimension =
+      kMaxDimension / kMaxNumFramesSquareRoot;
+  return fuzztest::FlatMap(
+      [](size_t last_layer_width, size_t last_layer_height,
+         avifPixelFormat pixel_format, bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifLayeredRandDim8b, fuzztest::Just(last_layer_width),
+            fuzztest::Just(last_layer_height), fuzztest::Just(pixel_format),
+            fuzztest::Just(has_alpha),
+            fuzztest::Arbitrary<std::vector<uint8_t>>().WithSize(
+                GetNumSamplesLayeredRandDim(last_layer_width, last_layer_height,
+                                            pixel_format, has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      ArbitraryPixelFormat(), fuzztest::Arbitrary<bool>());
+}
+
+// Layered avifImage generator type: fixed number of layers, last layer size,
+// depth, pixel format and 16-bit samples.
+inline auto ArbitraryAvifLayeredRandDim16b() {
+  constexpr uint16_t kMinLayerDimension = 8;
+  constexpr uint16_t kMaxLayerDimension =
+      kMaxDimension / kMaxNumFramesSquareRoot;
+  return fuzztest::FlatMap(
+      [](size_t last_layer_width, size_t last_layer_height, int depth,
+         avifPixelFormat pixel_format, bool has_alpha) {
+        return fuzztest::Map(
+            CreateAvifLayeredRandDim16b, fuzztest::Just(last_layer_width),
+            fuzztest::Just(last_layer_height), fuzztest::Just(depth),
+            fuzztest::Just(pixel_format), fuzztest::Just(has_alpha),
+            fuzztest::ContainerOf<std::vector<uint16_t>>(
+                fuzztest::InRange<uint16_t>(0, (1 << depth) - 1))
+                .WithSize(GetNumSamplesLayeredRandDim(
+                    last_layer_width, last_layer_height, pixel_format,
+                    has_alpha)));
+      },
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::InRange<uint16_t>(kMinLayerDimension, kMaxLayerDimension),
+      fuzztest::ElementOf({10, 12}), ArbitraryPixelFormat(),
+      fuzztest::Arbitrary<bool>());
+}
+
+// Generator for an arbitrary layered still image with varying layer sizes.
+inline auto ArbitraryAvifLayeredRandDim() {
+  return fuzztest::OneOf(ArbitraryAvifLayeredRandDim8b(),
+                         ArbitraryAvifLayeredRandDim16b());
+}
+
 // Generates two signed fractions where the first one is smaller than or equal
 // to the second one.
 inline auto ArbitraryMinMaxSignedFraction() {
@@ -261,23 +386,16 @@ inline auto ArbitraryAvifEncoder() {
       {AVIF_CODEC_CHOICE_AUTO, AVIF_CODEC_CHOICE_AOM});
   // MAX_NUM_THREADS from libaom/aom_util/aom_thread.h
   const auto max_threads = fuzztest::InRange(0, 64);
-  const auto min_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
-                                               AVIF_QUANTIZER_WORST_QUALITY);
-  const auto max_quantizer = fuzztest::InRange(AVIF_QUANTIZER_BEST_QUALITY,
-                                               AVIF_QUANTIZER_WORST_QUALITY);
-  const auto min_quantizer_alpha = fuzztest::InRange(
-      AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
-  const auto max_quantizer_alpha = fuzztest::InRange(
-      AVIF_QUANTIZER_BEST_QUALITY, AVIF_QUANTIZER_WORST_QUALITY);
+  const auto quality = fuzztest::InRange(AVIF_QUALITY_WORST, AVIF_QUALITY_BEST);
+  const auto quality_alpha =
+      fuzztest::InRange(AVIF_QUALITY_WORST, AVIF_QUALITY_BEST);
   const auto tile_rows_log2 = fuzztest::InRange(0, 6);
   const auto tile_cols_log2 = fuzztest::InRange(0, 6);
   // Fuzz only a small range of 'speed' values to avoid slowing down the fuzzer
   // too much. The main goal is to fuzz libavif, not the underlying AV1 encoder.
   const auto speed = fuzztest::InRange(6, AVIF_SPEED_FASTEST);
-  return fuzztest::Map(CreateAvifEncoder, codec_choice, max_threads,
-                       min_quantizer, max_quantizer, min_quantizer_alpha,
-                       max_quantizer_alpha, tile_rows_log2, tile_cols_log2,
-                       speed);
+  return fuzztest::Map(CreateAvifEncoder, codec_choice, max_threads, quality,
+                       quality_alpha, tile_rows_log2, tile_cols_log2, speed);
 }
 
 // Generator for an arbitrary DecoderPtr with base options fuzzed (i.e.

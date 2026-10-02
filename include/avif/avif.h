@@ -821,6 +821,12 @@ typedef struct avifImage
     // To encode any of these boxes, set the values in the associated box, then enable the flag in
     // transformFlags. On decode, only honor the values in boxes with the associated transform flag set.
     // These also apply to gainMap->image, if any.
+    //
+    // When encoding with avifEncoder.width/height set (see their comment), these transformations
+    // are interpreted relative to that size rather than to the current layer's own
+    // width/height. No special handling is needed during decode: the decoded layer is
+    // automatically scaled to the configured size, so these transformations are relative to the
+    // decoded avifImage's width/height as usual.
     avifTransformFlags transformFlags;
     avifPixelAspectRatioBox pasp;
     avifCleanApertureBox clap;
@@ -1582,6 +1588,7 @@ typedef struct avifEncoder
     avifBool autoTiling;
 
     // Up/down scaling of the image to perform before encoding.
+    // This cannot be used together with encoder->width / encoder->height.
     avifScalingMode scalingMode;
 
     // --------------------------------------------------------------------------------------------
@@ -1628,6 +1635,13 @@ typedef struct avifEncoder
 
     // Version 1.4.0 ends here. Add any new members after this line.
     // --------------------------------------------------------------------------------------------
+
+    // Only for layered image (extraLayerCount > 0), otherwise must be the default value 0.
+    // Declares the size of the encoded image beforehand, which shall be exactly the size of the
+    // last layer. This allows adding smaller images as earlier layers to avoid a wasted scaling
+    // round trip, or scale ratios that the encoder does not support via scalingMode.
+    uint32_t width;
+    uint32_t height;
 } avifEncoder;
 
 // Creates an encoder initialized with default settings values.

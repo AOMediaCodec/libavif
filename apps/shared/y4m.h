@@ -24,6 +24,11 @@ avifBool y4mRead(const char * inputFilename,
                  avifImage * avif,
                  avifAppSourceTiming * sourceTiming,
                  struct y4mFrameIterator ** iter);
+
+// Parse the y4m file at path 'inputFilename' and write its metadata into 'avif'
+// without decoding the pixels.
+avifBool y4mPeek(const char * inputFilename, avifImage * avif);
+
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif);
 
 #ifdef __cplusplus

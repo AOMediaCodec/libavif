@@ -871,6 +871,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         cfg->g_input_bit_depth = image->depth;
         cfg->g_w = image->width;
         cfg->g_h = image->height;
+        cfg->g_forced_max_frame_width = encoder->width;
+        cfg->g_forced_max_frame_height = encoder->height;
 
         // Detect the libaom v3.6.0 bug described in
         // https://crbug.com/aomedia/2871#c12. See the changes to
@@ -933,10 +935,30 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if (disableLaggedOutput) {
             cfg->g_lag_in_frames = 0;
         }
+        if ((encoder->width || encoder->height) && (cfg->g_lag_in_frames > 1)) {
+            // aom_codec_enc_config_set() does not allow changing frame dimensions if
+            // g_lag_in_frames > 1.
+            cfg->g_lag_in_frames = 1;
+        }
         if (encoder->maxThreads > 1) {
             // libaom fails if cfg->g_threads is greater than 64 threads. See MAX_NUM_THREADS in
             // aom/aom_util/aom_thread.h.
             cfg->g_threads = AVIF_MIN(encoder->maxThreads, 64);
+
+            // Detect the libaom bug before v3.15.2 described in
+            // https://issues.oss-fuzz.com/issues/559019046. See the changes in
+            // https://aomedia-review.googlesource.com/c/aom/+/216921.
+            static const int aomVersion_3_15_2 = (3 << 16) | (15 << 8) | 2;
+            if (aom_codec_version() < aomVersion_3_15_2) {
+                // When creating extra worker threads during encoding (which can
+                // happen when the new frame is larger), libaom may skip
+                // allocating the pixel_gradient_info buffers needed by
+                // GOOD_QUALITY mode. Work around the bug by disabling
+                // multithreading.
+                if (aomUsage == AOM_USAGE_GOOD_QUALITY && (encoder->width || encoder->height)) {
+                    cfg->g_threads = 1;
+                }
+            }
         }
 
         // Encode alpha as 4:0:0.
@@ -1082,8 +1104,9 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
     } else {
         avifBool dimensionsChanged = AVIF_FALSE;
         if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
-            // We are not ready for dimension change for now.
-            return AVIF_RESULT_NOT_IMPLEMENTED;
+            cfg->g_w = image->width;
+            cfg->g_h = image->height;
+            dimensionsChanged = AVIF_TRUE;
         }
         if (alpha) {
             if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {

@@ -91,6 +91,14 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
         avifDiagnosticsPrintf(diag, "NULL input image");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    // The gain map image may be missing if it was not decoded (see
+    // avifDecoder::imageContentToDecode) or was never set. Fail early and
+    // consistently, even for calls that would not need the gain map pixels
+    // (e.g. a target headroom matching the base image headroom).
+    if (gainMap->image == NULL) {
+        avifDiagnosticsPrintf(diag, "gainMap->image is null (gain map image not decoded?)");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     AVIF_CHECKRES(avifGainMapValidateMetadata(gainMap, diag));
 
     const uint32_t width = baseImage->width;
@@ -479,7 +487,7 @@ avifBool avifSameGainMapMetadata(const avifGainMap * a, const avifGainMap * b)
 
 avifBool avifSameGainMapAltMetadata(const avifGainMap * a, const avifGainMap * b)
 {
-    if (a->altICC.size != b->altICC.size || memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0 ||
+    if (a->altICC.size != b->altICC.size || (a->altICC.size > 0 && memcmp(a->altICC.data, b->altICC.data, a->altICC.size) != 0) ||
         a->altColorPrimaries != b->altColorPrimaries || a->altTransferCharacteristics != b->altTransferCharacteristics ||
         a->altMatrixCoefficients != b->altMatrixCoefficients || a->altYUVRange != b->altYUVRange || a->altDepth != b->altDepth ||
         a->altPlaneCount != b->altPlaneCount || a->altCLLI.maxCLL != b->altCLLI.maxCLL || a->altCLLI.maxPALL != b->altCLLI.maxPALL) {
@@ -793,10 +801,6 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     gainMapImage->height = height;
 
     avifImageFreePlanes(gainMapImage, AVIF_PLANES_ALL); // Free planes in case they were already allocated.
-    res = avifImageAllocatePlanes(gainMapImage, AVIF_PLANES_YUV);
-    if (res != AVIF_RESULT_OK) {
-        goto cleanup;
-    }
 
     avifRGBImageSetDefaults(&gainMapRGB, gainMapImage);
     res = avifRGBImageAllocatePixels(&gainMapRGB);
