@@ -140,55 +140,6 @@ TEST_P(AvifMinimizedImageBoxTest, All) {
 
 //------------------------------------------------------------------------------
 
-// The ICC profile of the tone mapped ('tmap') image carried by a
-// MinimizedImageBox must be associated with the tone mapped image item, not the
-// primary color item. Here the base image has no ICC while the alternate image
-// does, so after a round trip the profile must surface on the gain map and the
-// base image must stay profile-less.
-TEST(AvifMinimizedImageBoxTest, GainMapAlternateIcc) {
-  ImagePtr image = testutil::CreateImage(/*width=*/8, /*height=*/10,
-                                         /*depth=*/10, AVIF_PIXEL_FORMAT_YUV420,
-                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
-  ASSERT_NE(image, nullptr);
-  testutil::FillImageGradient(image.get());
-  image->gainMap = avifGainMapCreate();
-  ASSERT_NE(image->gainMap, nullptr);
-  image->gainMap->image =
-      testutil::CreateImage(/*width=*/8, /*height=*/10, /*depth=*/8,
-                            AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV,
-                            AVIF_RANGE_FULL)
-          .release();
-  ASSERT_NE(image->gainMap->image, nullptr);
-  testutil::FillImageGradient(image->gainMap->image);
-  // Only the alternate (tone mapped) image has an ICC profile.
-  ASSERT_EQ(avifRWDataSet(&image->gainMap->altICC, testutil::kSampleIcc.data(),
-                          testutil::kSampleIcc.size()),
-            AVIF_RESULT_OK);
-
-  testutil::AvifRwData encoded;
-  EncoderPtr encoder(avifEncoderCreate());
-  ASSERT_NE(encoder, nullptr);
-  encoder->speed = AVIF_SPEED_FASTEST;
-  encoder->headerFormat = AVIF_HEADER_MINI;
-  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
-            AVIF_RESULT_OK);
-
-  ImagePtr decoded(avifImageCreateEmpty());
-  ASSERT_NE(decoded, nullptr);
-  DecoderPtr decoder(avifDecoderCreate());
-  ASSERT_NE(decoder, nullptr);
-  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
-                                  encoded.size),
-            AVIF_RESULT_OK);
-
-  ASSERT_NE(decoded->gainMap, nullptr);
-  EXPECT_EQ(decoded->gainMap->altICC.size, testutil::kSampleIcc.size());
-  EXPECT_EQ(decoded->icc.size, 0u);
-}
-
-//------------------------------------------------------------------------------
-
 INSTANTIATE_TEST_SUITE_P(OnePixel, AvifMinimizedImageBoxTest,
                          Combine(/*width=*/Values(1), /*height=*/Values(1),
                                  /*depth=*/Values(8),
@@ -242,6 +193,55 @@ INSTANTIATE_TEST_SUITE_P(
             /*create_exif=*/Values(false), /*create_xmp=*/Values(false),
             Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(true),
             /*create_premul=*/Values(false)));
+
+//------------------------------------------------------------------------------
+
+// The ICC profile of the tone mapped ('tmap') image carried by a
+// MinimizedImageBox must be associated with the tone mapped image item, not the
+// primary color item. Here the base image has no ICC while the alternate image
+// does, so after a round trip the profile must surface on the gain map and the
+// base image must stay profile-less.
+TEST(AvifMinimizedImageBoxTest, GainMapAlternateIcc) {
+  ImagePtr image = testutil::CreateImage(/*width=*/8, /*height=*/10,
+                                         /*depth=*/10, AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  image->gainMap = avifGainMapCreate();
+  ASSERT_NE(image->gainMap, nullptr);
+  image->gainMap->image =
+      testutil::CreateImage(/*width=*/8, /*height=*/10, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV,
+                            AVIF_RANGE_FULL)
+          .release();
+  ASSERT_NE(image->gainMap->image, nullptr);
+  testutil::FillImageGradient(image->gainMap->image);
+  // Only the alternate (tone mapped) image has an ICC profile.
+  ASSERT_EQ(avifRWDataSet(&image->gainMap->altICC, testutil::kSampleIcc.data(),
+                          testutil::kSampleIcc.size()),
+            AVIF_RESULT_OK);
+
+  testutil::AvifRwData encoded;
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->headerFormat = AVIF_HEADER_MINI;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+
+  ASSERT_NE(decoded->gainMap, nullptr);
+  EXPECT_EQ(decoded->gainMap->altICC.size, testutil::kSampleIcc.size());
+  EXPECT_EQ(decoded->icc.size, 0u);
+}
 
 //------------------------------------------------------------------------------
 
