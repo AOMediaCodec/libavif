@@ -4,7 +4,7 @@
 #ifndef LIBAVIF_APPS_SHARED_AVIFUTIL_H
 #define LIBAVIF_APPS_SHARED_AVIFUTIL_H
 
-#include "avif/avif.h"
+#include "avif/apps.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +35,19 @@ void avifContainerDump(const avifDecoder * decoder);
 void avifPrintVersions(void);
 void avifDumpDiagnostics(const avifDiagnostics * diag);
 int avifQueryCPUCount(void); // Returns 1 if it cannot query or fails to query
+
+typedef struct avifCustomCodecLibrary
+{
+    void * handle;
+    const char * name;
+    avifAppsCustomCodecSetupFunc setup;
+    avifAppsCustomCodecShutdownFunc shutdown;
+    avifBool initialized;
+} avifCustomCodecLibrary;
+
+AVIF_NODISCARD avifBool avifCustomCodecLibrarySetup(avifCustomCodecLibrary * library, const char * name, avifDiagnostics * diag);
+AVIF_NODISCARD avifResult avifCustomCodecLibraryShutdown(avifCustomCodecLibrary * library, avifDiagnostics * diag);
+void avifCustomCodecLibraryUnload(avifCustomCodecLibrary * library);
 
 typedef enum avifAppFileFormat
 {
