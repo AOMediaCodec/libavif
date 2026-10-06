@@ -4773,7 +4773,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         tmapColrPropICC->u.colr.iccOffset = rawOffset + avifROStreamOffset(&s);
         tmapColrPropICC->u.colr.iccSize = tmapIccDataSize;
         AVIF_CHECKERR(avifROStreamSkip(&s, tmapColrPropICC->u.colr.iccSize), AVIF_RESULT_BMFF_PARSE_FAILED);
-        AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, tmapColrPropICC), AVIF_RESULT_OUT_OF_MEMORY);
+        AVIF_CHECKERR(avifDecoderItemAddProperty(tmapItem, tmapColrPropICC), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
     }
