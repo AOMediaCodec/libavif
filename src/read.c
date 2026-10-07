@@ -6937,8 +6937,12 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             }
         }
 
-        // Scale the decoded image so that it corresponds to this tile's output dimensions
-        if ((tile->width != tile->image->width) || (tile->height != tile->image->height)) {
+        // Scale the decoded image so that it corresponds to this tile's output dimensions.
+        // Image sequence samples may each have different dimensions; the track's
+        // width/height (tkhd) is only a display hint (often the max of all frames)
+        // and must not be forced onto every sample. Still-image tiles keep scaling.
+        if (!decoder->data->sourceSampleTable &&
+            ((tile->width != tile->image->width) || (tile->height != tile->image->height))) {
             if (avifImageScaleWithLimit(tile->image,
                                         tile->width,
                                         tile->height,
