@@ -45,6 +45,11 @@ include(FindPkgConfig)
 include(AvifExternalProjectUtils)
 include(GNUInstallDirs)
 
+# Prevent race condition when copying dependencies in parallel builds with vcpkg on Windows.
+if(WIN32 AND VCPKG_APPLOCAL_DEPS)
+    set(X_VCPKG_APPLOCAL_DEPS_SERIALIZED ON CACHE BOOL "Add USES_TERMINAL to VCPKG_APPLOCAL_DEPS to force serialization." FORCE)
+endif()
+
 option(AVIF_ENABLE_NODISCARD "Add [[nodiscard]] to some functions." OFF)
 
 # Set C11 as the default

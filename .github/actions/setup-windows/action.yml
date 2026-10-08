@@ -35,7 +35,7 @@ outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
   vcpkg-cmake-config:
-    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config != '' && format('{0} -DX_VCPKG_APPLOCAL_DEPS_SERIALIZED=ON', steps.vcpkg.outputs.vcpkg-cmake-config) || '' }}
 runs:
   using: "composite"
   steps:
