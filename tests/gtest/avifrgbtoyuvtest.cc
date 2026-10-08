@@ -520,6 +520,35 @@ TEST(RGBToYUVTest, ZeroWidthOrHeight) {
   avifRGBImageFreePixels(&rgb);
 }
 
+TEST(YUVToRGBTest, DimensionMismatchIsRejected) {
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/4, /*height=*/4, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  testutil::AvifRgbImage rgb(image.get(), /*rgbDepth=*/8, AVIF_RGB_FORMAT_RGBA);
+  rgb.width = image->width - 1;
+  ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+  EXPECT_EQ(avifImageYUVToRGB(image.get(), &rgb), AVIF_RESULT_REFORMAT_FAILED);
+}
+
+TEST(RGBToYUVTest, DimensionMismatchIsRejected) {
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/4, /*height=*/4, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+
+  testutil::AvifRgbImage rgb(image.get(), /*rgbDepth=*/8, AVIF_RGB_FORMAT_RGBA);
+  rgb.height = image->height + 1;
+  ASSERT_EQ(avifRGBImageAllocatePixels(&rgb), AVIF_RESULT_OK);
+  for (uint32_t channel_offset : {0, 1, 2, 3}) {
+    testutil::FillImageChannel(&rgb, channel_offset, 123);
+  }
+
+  EXPECT_EQ(avifImageRGBToYUV(image.get(), &rgb), AVIF_RESULT_REFORMAT_FAILED);
+}
+
 //------------------------------------------------------------------------------
 // Selected configurations
 

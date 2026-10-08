@@ -160,6 +160,10 @@ avifBool avifGetYUVColorSpaceInfo(const avifImage * image, avifYUVColorSpaceInfo
 
 static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBImage * rgb, avifReformatState * state)
 {
+    if (rgb->width != image->width || rgb->height != image->height) {
+        return AVIF_FALSE;
+    }
+
     const avifBool useYCgCoRe = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RE);
     const avifBool useYCgCoRo = (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_YCGCO_RO);
     if (useYCgCoRe || useYCgCoRo) {
