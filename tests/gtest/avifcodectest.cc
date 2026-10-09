@@ -160,9 +160,35 @@ std::vector<uint8_t> CreateOversizedSequenceHeaderOBU() {
   return obu;
 }
 
-std::vector<uint8_t> CreateOversizedAvif() {
-  const std::vector<uint8_t> obu = CreateOversizedSequenceHeaderOBU();
+// AV2 sequence header OBU, following libavif's parseAV2SequenceHeader():
+// profile 0, 8-bit 4:2:0, max_frame 65536x65536. Unlike AV1, the size comes
+// first, and the OBU header is a 1-bit extension flag, 5-bit type
+// (OBU_SEQUENCE_HEADER = 1) and 2-bit tlayer_id.
+std::vector<uint8_t> CreateOversizedAv2SequenceHeaderOBU() {
+  BitWriter w;
+  w.put(1, 1);      // seq_header_id VLC = 0
+  w.put(0, 5);      // seq_profile
+  w.put(1, 1);      // single_picture_header_flag (reduced_still_picture_header)
+  w.put(0, 5);      // seq_level_idx
+  w.put(1, 1);      // chroma_format_idc VLC = 0 (4:2:0)
+  w.put(0b010, 3);  // bitdepth_index VLC = 1 (8-bit)
+  w.put(15, 4);     // frame_width_bits_minus_1 (16 bits)
+  w.put(15, 4);     // frame_height_bits_minus_1 (16 bits)
+  w.put(65535, 16);  // max_frame_width_minus_1
+  w.put(65535, 16);  // max_frame_height_minus_1
 
+  const std::vector<uint8_t> payload = w.bytes();
+  std::vector<uint8_t> obu;
+  obu.push_back(static_cast<uint8_t>(
+      1 + payload.size()));  // leb128 size: header + payload.
+  obu.push_back(0x04);       // obu_type = OBU_SEQUENCE_HEADER, no extension.
+  obu.insert(obu.end(), payload.begin(), payload.end());
+  return obu;
+}
+
+std::vector<uint8_t> CreateOversizedAvif(const char* itemType,
+                                         const char* configType,
+                                         const std::vector<uint8_t>& obu) {
   std::vector<uint8_t> hdlr;
   Put32(&hdlr, 0);  // pre_defined
   PutType(&hdlr, "pict");
@@ -175,7 +201,7 @@ std::vector<uint8_t> CreateOversizedAvif() {
   std::vector<uint8_t> infe;
   Put16(&infe, 1);  // item_ID
   Put16(&infe, 0);  // item_protection_index
-  PutType(&infe, "av01");
+  PutType(&infe, itemType);
   infe.push_back(0);  // item_name
 
   std::vector<uint8_t> infeBox;
@@ -192,15 +218,15 @@ std::vector<uint8_t> CreateOversizedAvif() {
   Put32(&ispe, 64);  // width
   Put32(&ispe, 64);  // height
 
-  const std::vector<uint8_t> av1C = {0x81, 0x00, 0x0C,
-                                     0x00};  // 8-bit 4:2:0, level 0.
+  const std::vector<uint8_t> codecConfig = {0x81, 0x00, 0x0C,
+                                            0x00};  // 8-bit 4:2:0, level 0.
 
   const std::vector<uint8_t> pixi = {0x03, 0x08, 0x08,
                                      0x08};  // Three 8-bit channels.
 
   std::vector<uint8_t> ipco;
   PutFullBox(&ipco, "ispe", ispe);
-  PutBox(&ipco, "av1C", av1C);
+  PutBox(&ipco, configType, codecConfig);
   PutFullBox(&ipco, "pixi", pixi);
 
   std::vector<uint8_t> ipma;
@@ -208,7 +234,7 @@ std::vector<uint8_t> CreateOversizedAvif() {
   Put16(&ipma, 1);    // item_ID
   ipma.push_back(3);  // association_count
   ipma.push_back(1);  // ispe
-  ipma.push_back(2);  // av1C
+  ipma.push_back(2);  // codec config
   ipma.push_back(3);  // pixi
 
   std::vector<uint8_t> iprp;
@@ -260,36 +286,63 @@ std::vector<uint8_t> CreateOversizedAvif() {
   Put32(&file, static_cast<uint32_t>(8 + obu.size()));
   PutType(&file, "mdat");
   file.insert(file.end(), obu.begin(), obu.end());
-  assert(file[extentOffset] == 0x0A);  // The OBU starts at the declared extent.
+  assert(file[extentOffset] ==
+         obu[0]);  // The OBU starts at the declared extent.
   return file;
 }
 
 TEST(CodecTest, OversizedSequenceHeaderRejected) {
-  const std::vector<uint8_t> file = CreateOversizedAvif();
-  ASSERT_GT(file.size(), size_t{0});
+  // AV1 codecs with an AV1 file.
+  {
+    const std::vector<uint8_t> file =
+        CreateOversizedAvif("av01", "av1C", CreateOversizedSequenceHeaderOBU());
+    ASSERT_GT(file.size(), size_t{0});
 
-  for (const avifCodecChoice choice :
-       {AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D,
-        AVIF_CODEC_CHOICE_LIBGAV1}) {
-    if (avifCodecName(choice, AVIF_CODEC_FLAG_CAN_DECODE) == nullptr) {
-      continue;
+    for (const avifCodecChoice choice :
+         {AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D,
+          AVIF_CODEC_CHOICE_LIBGAV1}) {
+      if (avifCodecName(choice, AVIF_CODEC_FLAG_CAN_DECODE) == nullptr) {
+        continue;
+      }
+      DecoderPtr decoder(avifDecoderCreate());
+      ASSERT_NE(decoder, nullptr);
+      decoder->codecChoice = choice;
+      ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), file.data(), file.size()),
+                AVIF_RESULT_OK);
+      // The item ispe is small, so parsing succeeds regardless of the codec.
+      const avifResult parseResult = avifDecoderParse(decoder.get());
+      ASSERT_EQ(parseResult, AVIF_RESULT_OK)
+          << "choice=" << choice << " diag: " << decoder->diag.error;
+      // The sequence header declares a 65536x65536 maximum frame size, which no
+      // codec may decode.
+      EXPECT_NE(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+      if (choice == AVIF_CODEC_CHOICE_LIBGAV1) {
+        EXPECT_NE(strstr(decoder->diag.error, "dimensions too large"), nullptr)
+            << decoder->diag.error;
+      }
     }
+  }
+
+  // AV2 codec with an AV2 file. Only runs when the avm codec is built in.
+  if (avifCodecName(AVIF_CODEC_CHOICE_AVM, AVIF_CODEC_FLAG_CAN_DECODE) !=
+      nullptr) {
+    const std::vector<uint8_t> file = CreateOversizedAvif(
+        "av02", "av2C", CreateOversizedAv2SequenceHeaderOBU());
+    ASSERT_GT(file.size(), size_t{0});
+
     DecoderPtr decoder(avifDecoderCreate());
     ASSERT_NE(decoder, nullptr);
-    decoder->codecChoice = choice;
+    decoder->codecChoice = AVIF_CODEC_CHOICE_AVM;
     ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), file.data(), file.size()),
               AVIF_RESULT_OK);
-    // The item ispe is small, so parsing succeeds regardless of the codec.
-    const avifResult parseResult = avifDecoderParse(decoder.get());
-    ASSERT_EQ(parseResult, AVIF_RESULT_OK)
-        << "choice=" << choice << " diag: " << decoder->diag.error;
-    // The sequence header declares a 65536x65536 maximum frame size, which no
-    // codec may decode.
+    // The item ispe is small, so parsing succeeds.
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+        << "diag: " << decoder->diag.error;
+    // The sequence header declares a 65536x65536 maximum frame size, which the
+    // codec may not decode.
     EXPECT_NE(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
-    if (choice == AVIF_CODEC_CHOICE_LIBGAV1) {
-      EXPECT_NE(strstr(decoder->diag.error, "dimensions too large"), nullptr)
-          << decoder->diag.error;
-    }
+    EXPECT_NE(strstr(decoder->diag.error, "dimensions too large"), nullptr)
+        << decoder->diag.error;
   }
 }
 
