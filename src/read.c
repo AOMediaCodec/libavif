@@ -6648,7 +6648,9 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 avifDecoderItemValidateProperties(mainItems[c], avifGetConfigurationPropertyName(codecType[c]), &decoder->diag, strictFlags));
         }
 
-        if (mainItems[AVIF_ITEM_COLOR]->progressive) {
+        // The color tiles were not generated above if AVIF_IMAGE_CONTENT_COLOR is not set, even if
+        // mainItems[AVIF_ITEM_COLOR]->progressive was set by a previous call to avifDecoderReset().
+        if ((decoder->imageContentToDecode & AVIF_IMAGE_CONTENT_COLOR) && mainItems[AVIF_ITEM_COLOR]->progressive) {
             decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
             // data->tileInfos[AVIF_ITEM_COLOR].firstTileIndex is not yet defined but will be set to 0 a few lines below.
             const avifTile * colorTile = &data->tiles.tile[0];

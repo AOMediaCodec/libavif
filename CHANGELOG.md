@@ -56,6 +56,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Fix a NULL pointer dereference in avifDecoderReset() when a progressive image
+  was parsed and imageContentToDecode was then changed to not include
+  AVIF_IMAGE_CONTENT_COLOR.
 
 ## [1.4.2] - 2026-05-26
 

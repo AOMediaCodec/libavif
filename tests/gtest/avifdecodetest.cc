@@ -66,6 +66,37 @@ TEST(AvifDecodeTest, ImageContentToDecodeNone) {
   }
 }
 
+// Same as ImageContentToDecodeNone but imageContentToDecode is changed after
+// avifDecoderParse(), and taken into account by avifDecoderReset().
+TEST(AvifDecodeTest, ImageContentToDecodeNoneAfterParse) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+  for (const std::string file_name :
+       {"paris_icc_exif_xmp.avif", "draw_points_idat.avif",
+        "sofa_grid1x5_420.avif", "color_grid_alpha_nogrid.avif",
+        "seine_sdr_gainmap_srgb.avif", "draw_points_idat_progressive.avif",
+        "weld_sato_12B_8B_q0.avif"}) {
+    for (avifImageContentTypeFlag image_content_to_decode :
+         {AVIF_IMAGE_CONTENT_NONE, AVIF_IMAGE_CONTENT_GAIN_MAP}) {
+      SCOPED_TRACE(file_name);
+      DecoderPtr decoder(avifDecoderCreate());
+      ASSERT_NE(decoder, nullptr);
+      ASSERT_EQ(
+          avifDecoderSetIOFile(decoder.get(),
+                               (std::string(data_path) + file_name).c_str()),
+          AVIF_RESULT_OK);
+      ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+          << decoder->diag.error;
+      // Do not decode the color image.
+      decoder->imageContentToDecode = image_content_to_decode;
+      ASSERT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK)
+          << decoder->diag.error;
+      EXPECT_EQ(decoder->progressiveState, AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+    }
+  }
+}
+
 TEST(AvifDecodeTest, ParseEmptyData) {
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
