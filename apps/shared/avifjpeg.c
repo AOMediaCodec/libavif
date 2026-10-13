@@ -1246,7 +1246,8 @@ cleanup_xml:
 //   except that non-volatile automatic variables in the function calling setjmp
 //   become undefined if they were changed after the setjmp call.
 //
-// Therefore, 'iccData' is declared as volatile. 'rgb' should be declared as
+// Therefore, 'iccData' and the modified 'requestedFormat' parameter are
+// declared as volatile. 'rgb' should be declared as
 // volatile, but doing so would be inconvenient (try it) and since it is a
 // struct, the compiler is unlikely to put it in a register. 'ret' does not need
 // to be declared as volatile because it is not modified between setjmp and
@@ -1256,7 +1257,7 @@ cleanup_xml:
 static avifBool avifJPEGReadInternal(FILE * f,
                                      const char * inputFilename,
                                      avifImage * avif,
-                                     avifPixelFormat requestedFormat,
+                                     volatile avifPixelFormat requestedFormat,
                                      uint32_t requestedDepth,
                                      avifChromaDownsampling chromaDownsampling,
                                      avifBool ignoreColorProfile,
