@@ -36,7 +36,7 @@ outputs:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
   vcpkg-cmake-config:
     # Disable vcpkg applocal deployment to prevent race conditions during parallel Ninja builds.
-    # Dependencies are added to PATH instead.
+    # Dependent DLLs are added to PATH instead.
     value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config != '' && format('{0} -DVCPKG_APPLOCAL_DEPS=OFF', steps.vcpkg.outputs.vcpkg-cmake-config) || '' }}
 runs:
   using: "composite"
@@ -114,7 +114,7 @@ runs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
       shell: pwsh
 
-    - name: Add dependencies to PATH
+    - name: Add dependent DLLs to PATH
       if: env.AVIF_WIN_LIBRARIES != '' || inputs.codec-rav1e == 'SYSTEM'
       run: |
         echo "${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin" >> $env:GITHUB_PATH
