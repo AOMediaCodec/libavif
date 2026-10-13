@@ -35,7 +35,9 @@ outputs:
   ext-cache-hit:
     value: ${{ steps.cache.outputs.ext-cache-hit }}
   vcpkg-cmake-config:
-    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config != '' && format('{0} -DX_VCPKG_APPLOCAL_DEPS_SERIALIZED=ON', steps.vcpkg.outputs.vcpkg-cmake-config) || '' }}
+    # Disable vcpkg applocal deployment to prevent race conditions during parallel Ninja builds.
+    # Dependencies are added to PATH instead.
+    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config != '' && format('{0} -DVCPKG_APPLOCAL_DEPS=OFF', steps.vcpkg.outputs.vcpkg-cmake-config) || '' }}
 runs:
   using: "composite"
   steps:
@@ -110,6 +112,13 @@ runs:
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\include\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\rav1e* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
         mv ${{ github.workspace }}\tmp\rav1e-windows-msvc-sdk\lib\pkgconfig\* ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib\pkgconfig
+      shell: pwsh
+
+    - name: Add dependencies to PATH
+      if: env.AVIF_WIN_LIBRARIES != '' || inputs.codec-rav1e == 'SYSTEM'
+      run: |
+        echo "${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin" >> $env:GITHUB_PATH
+        echo "${{ github.workspace }}\build" >> $env:GITHUB_PATH
       shell: pwsh
 
     - uses: ./.github/actions/cache
