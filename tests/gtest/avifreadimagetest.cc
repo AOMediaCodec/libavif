@@ -372,10 +372,11 @@ TEST(ICCTest, RGB2Gray2RGB) {
         }
         // These matrix coefficients require color output and remain
         // incompatible with a gray ICC profile.
-        for (avifMatrixCoefficients matrix :
-             {AVIF_MATRIX_COEFFICIENTS_IDENTITY,
-              AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
-              AVIF_MATRIX_COEFFICIENTS_YCGCO_RO}) {
+        constexpr avifMatrixCoefficients kIncompatibleMatrices[] = {
+            AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+            AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+            AVIF_MATRIX_COEFFICIENTS_YCGCO_RO};
+        for (avifMatrixCoefficients matrix : kIncompatibleMatrices) {
           ImagePtr incompatible(avifImageCreateEmpty());
           ASSERT_NE(incompatible, nullptr);
           incompatible->matrixCoefficients = matrix;
