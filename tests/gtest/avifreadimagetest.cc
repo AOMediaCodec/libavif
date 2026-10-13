@@ -347,6 +347,47 @@ TEST(ICCTest, RGB2Gray2RGB) {
           }
         }
       }
+
+      // A gray JPEG with a gray ICC profile should also work when the output
+      // format is automatic, including paths that require RGB conversion.
+      // See https://github.com/AOMediaCodec/libavif/issues/2892.
+      if (format == AVIF_PIXEL_FORMAT_YUV400 && ext == "jpg") {
+        for (uint32_t depth : {0u, 10u}) {
+          for (avifRange range : {AVIF_RANGE_FULL, AVIF_RANGE_LIMITED}) {
+            ImagePtr automatic(avifImageCreateEmpty());
+            ASSERT_NE(automatic, nullptr);
+            automatic->yuvRange = range;
+            ASSERT_TRUE(avifJPEGRead(
+                new_path.c_str(), automatic.get(), AVIF_PIXEL_FORMAT_NONE,
+                depth, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+                /*ignoreColorProfile=*/AVIF_FALSE,
+                /*ignoreExif=*/AVIF_TRUE,
+                /*ignoreXMP=*/AVIF_TRUE,
+                /*ignoreGainMap=*/AVIF_TRUE, AVIF_DEFAULT_IMAGE_SIZE_LIMIT));
+            EXPECT_EQ(automatic->yuvFormat, AVIF_PIXEL_FORMAT_YUV400);
+            EXPECT_EQ(automatic->depth, depth ? depth : 8u);
+            EXPECT_TRUE(
+                testutil::AreByteSequencesEqual(automatic->icc, image->icc));
+          }
+        }
+        // These matrix coefficients require color output and remain
+        // incompatible with a gray ICC profile.
+        for (avifMatrixCoefficients matrix :
+             {AVIF_MATRIX_COEFFICIENTS_IDENTITY,
+              AVIF_MATRIX_COEFFICIENTS_YCGCO_RE,
+              AVIF_MATRIX_COEFFICIENTS_YCGCO_RO}) {
+          ImagePtr incompatible(avifImageCreateEmpty());
+          ASSERT_NE(incompatible, nullptr);
+          incompatible->matrixCoefficients = matrix;
+          EXPECT_FALSE(avifJPEGRead(
+              new_path.c_str(), incompatible.get(), AVIF_PIXEL_FORMAT_NONE,
+              /*requestedDepth=*/0, AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC,
+              /*ignoreColorProfile=*/AVIF_FALSE,
+              /*ignoreExif=*/AVIF_TRUE,
+              /*ignoreXMP=*/AVIF_TRUE,
+              /*ignoreGainMap=*/AVIF_TRUE, AVIF_DEFAULT_IMAGE_SIZE_LIMIT));
+        }
+      }
     }
   }
 }

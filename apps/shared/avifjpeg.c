@@ -1317,6 +1317,13 @@ static avifBool avifJPEGReadInternal(FILE * f,
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
             const avifBool isGray = (cinfo.jpeg_color_space == JCS_GRAYSCALE);
+            if (isGray && requestedFormat == AVIF_PIXEL_FORMAT_NONE && avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+                // Keep a grayscale ICC profile compatible with automatic
+                // output even if decoding later requires RGB conversion.
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
+            }
             if (!isGray && (requestedFormat == AVIF_PIXEL_FORMAT_YUV400)) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
