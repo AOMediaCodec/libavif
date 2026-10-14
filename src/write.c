@@ -1203,7 +1203,9 @@ static avifResult avifEncoderDataCreateExifItem(avifEncoderData * data, const av
     exifItem->irefType = "cdsc";
 
     const uint32_t offset32bit = avifHTONL((uint32_t)exifTiffHeaderOffset);
-    AVIF_CHECKRES(avifRWDataRealloc(&exifItem->metadataPayload, sizeof(offset32bit) + exif->size));
+    size_t payloadSize;
+    AVIF_CHECKERR(avifCheckedAddSize(sizeof(offset32bit), exif->size, &payloadSize), AVIF_RESULT_OUT_OF_MEMORY);
+    AVIF_CHECKRES(avifRWDataRealloc(&exifItem->metadataPayload, payloadSize));
     memcpy(exifItem->metadataPayload.data, &offset32bit, sizeof(offset32bit));
     memcpy(exifItem->metadataPayload.data + sizeof(offset32bit), exif->data, exif->size);
     return AVIF_RESULT_OK;
