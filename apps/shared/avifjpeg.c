@@ -1246,7 +1246,8 @@ cleanup_xml:
 //   except that non-volatile automatic variables in the function calling setjmp
 //   become undefined if they were changed after the setjmp call.
 //
-// Therefore, 'iccData' is declared as volatile. 'rgb' should be declared as
+// Therefore, 'iccData' and the modified 'requestedFormat' parameter are
+// declared as volatile. 'rgb' should be declared as
 // volatile, but doing so would be inconvenient (try it) and since it is a
 // struct, the compiler is unlikely to put it in a register. 'ret' does not need
 // to be declared as volatile because it is not modified between setjmp and
@@ -1256,7 +1257,7 @@ cleanup_xml:
 static avifBool avifJPEGReadInternal(FILE * f,
                                      const char * inputFilename,
                                      avifImage * avif,
-                                     avifPixelFormat requestedFormat,
+                                     volatile avifPixelFormat requestedFormat,
                                      uint32_t requestedDepth,
                                      avifChromaDownsampling chromaDownsampling,
                                      avifBool ignoreColorProfile,
@@ -1317,6 +1318,13 @@ static avifBool avifJPEGReadInternal(FILE * f,
         if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
             iccData = iccDataTmp;
             const avifBool isGray = (cinfo.jpeg_color_space == JCS_GRAYSCALE);
+            if (isGray && requestedFormat == AVIF_PIXEL_FORMAT_NONE && avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+                avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RE &&
+                avif->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_YCGCO_RO) {
+                // Keep a grayscale ICC profile compatible with automatic
+                // output even if decoding later requires RGB conversion.
+                requestedFormat = AVIF_PIXEL_FORMAT_YUV400;
+            }
             if (!isGray && (requestedFormat == AVIF_PIXEL_FORMAT_YUV400)) {
                 fprintf(stderr,
                         "The image contains a color ICC profile which is incompatible with the requested output "
