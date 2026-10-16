@@ -91,6 +91,15 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // -Wunsafe-buffer-usage doesn't know the raw pointer argv is associated with
+  // the bound argc, so it cannot prove these accesses safe. They are bounded
+  // by the argc checks and by the host's contract with main():
+  // argv[0..argc-1] are valid.
+#ifdef __clang__
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang unsafe_buffer_usage begin
+#endif
+#endif
   const std::string command_name(argv[1]);
   if (command_name == "help") {
     if (argc >= 3) {
@@ -129,6 +138,11 @@ int main(int argc, char** argv) {
       }
     }
   }
+#ifdef __clang__
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang unsafe_buffer_usage end
+#endif
+#endif
 
   std::cerr << "Unknown command " << command_name << "\n";
   avif::PrintUsage(commands);
