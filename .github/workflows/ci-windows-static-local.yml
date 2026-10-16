@@ -1,13 +1,4 @@
-# This is a copy of ci-unix-static.yml for Windows. It differs from ci-unix-static.yml as follows:
-#
-#   * The os matrix consists of windows-latest only.
-#   * Installs Visual Studio in the os image.
-#   * Runs ext/*.cmd as Windows batch files rather than using bash. This is
-#     important for ext/svt.cmd, to prevent it from running ext/svt.sh.
-#   * Builds with local libjpeg (-DAVIF_JPEG=LOCAL).
-#   * Builds with local zlib and libpng (-DAVIF_ZLIBPNG=LOCAL).
-
-name: CI Windows
+name: CI Windows Static Local
 on:
   push:
   pull_request:
@@ -27,13 +18,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-windows:
-    runs-on: ${{ matrix.os }}
+  build-static-local:
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
         generator: ["-G Ninja", ""]
+
+    name: build-static-local (windows, cmake ${{ matrix.generator }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

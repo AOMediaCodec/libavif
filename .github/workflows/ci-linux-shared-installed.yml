@@ -1,7 +1,4 @@
-# This is a copy of ci-unix-shared-local.yml for building shared libraries
-# with an additional build configuration (using installed deps and dav1d).
-
-name: CI Unix Shared Installed
+name: CI Linux Shared Installed
 on: [push, pull_request]
 
 permissions:
@@ -14,31 +11,23 @@ concurrency:
 
 jobs:
   build-shared-installed:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Generate the configurations:
-      # Ubuntu with gcc 14 with oldest-cmake set to true or false
-      # OSX with default gcc and CMake (oldest-cmake is unused on OSX)
       matrix:
-        os: [ubuntu-latest, macos-latest]
         oldest-cmake: [false, true]
         include:
-          # Add a gcc version on Ubuntu only
           - os: ubuntu-latest
             compiler: gcc
             gcc: 14
-        exclude:
-          # Do not use the oldest CMake on OSX
-          - os: macos-latest
-            oldest-cmake: true
-    runs-on: ${{ matrix.os }}
+
+    name: build-shared-installed (ubuntu, oldest-cmake ${{ matrix.oldest-cmake }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-linux
-        if: runner.os == 'Linux'
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
@@ -50,20 +39,6 @@ jobs:
           libyuv: "SYSTEM"
           oldest-cmake: ${{ matrix.oldest-cmake }}
           zlibpng: "SYSTEM"
-      - uses: ./.github/actions/setup-macos
-        if: runner.os == 'macOS'
-        with:
-          codec-aom: "SYSTEM"
-          codec-dav1d: "SYSTEM"
-          codec-rav1e: "SYSTEM"
-          codec-svt: "SYSTEM"
-          gtest: "SYSTEM"
-          libjpeg-turbo: "SYSTEM"
-          zlibpng: "SYSTEM"
-      - name: Disable libyuv on macOS
-        # libyuv is not available with brew.
-        if: runner.os == 'macOS'
-        run: echo "CMAKE_AVIF_FLAGS=\"-DAVIF_LIBYUV=OFF\""  >> $GITHUB_ENV
 
       - name: Prepare libavif (cmake)
         run: >

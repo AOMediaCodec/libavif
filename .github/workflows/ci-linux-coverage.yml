@@ -12,12 +12,12 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-shared-run-golden-tests:
-    runs-on: ${{ matrix.os }}
+  build-shared-local-run-code-coverage:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
+
+    name: build-shared-local-run-code-coverage (ubuntu)
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

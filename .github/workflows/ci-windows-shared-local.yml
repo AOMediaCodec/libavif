@@ -20,12 +20,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-windows-shared-local:
+  build-shared-local:
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         compiler: [msvc, clang-cl]
+
+    name: build-shared-local (windows, ${{ matrix.compiler }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -1,9 +1,3 @@
-# This is a copy of ci-unix-static.yml with gtest disabled. It differs from ci-unix-static.yml as follows:
-#
-#   * The os matrix consists of ubuntu-latest only.
-#   * Does not build libgav1. (Building libgav1 would enable CXX in CMakeLists.txt.)
-#   * Disables gtest.
-
 name: CI Disable GTest
 on:
   push:
@@ -25,15 +19,16 @@ concurrency:
 
 jobs:
   build-disable-gtest:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         include:
           - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
+
+    name: build-disable-gtest (ubuntu)
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

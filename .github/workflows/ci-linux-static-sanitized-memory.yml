@@ -1,5 +1,5 @@
 # Memory sanitizer needs to be in its own file because it is slower than other sanitizers.
-name: CI Unix Static Sanitized Memory
+name: CI Linux Static Sanitized Memory
 on:
   push:
   pull_request:
@@ -11,19 +11,20 @@ permissions:
   contents: read
 
 jobs:
-  build-static-sanitized-memory:
+  build-static-local-sanitized-memory:
     runs-on: ubuntu-latest
 
     env:
       CC: clang
       CXX: clang++
 
+    name: build-static-local-sanitized-memory (ubuntu)
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-linux
-        if: runner.os == 'Linux'
         id: setup_linux
         with:
           codec-aom: "LOCAL"
@@ -31,7 +32,7 @@ jobs:
           libyuv: "LOCAL"
           extra-cache-key: memory
       - id: cache-hit
-        run: echo "hit=${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"
+        run: echo "hit=${{ steps.setup_linux.outputs.ext-cache-hit == 'true' }}" >> "$GITHUB_OUTPUT"
 
       - name: Build cxx and cxxabi
         run: |
