@@ -22,10 +22,12 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-and-run-android-jni-tests:
+  build-android-jni-and-run-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+
+    name: build-android-jni-and-run-tests
 
     steps:
       - name: Checkout the repository

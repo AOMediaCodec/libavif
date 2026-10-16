@@ -1,5 +1,3 @@
-# This is a copy of ci-unix-shared-installed.yml for finding bugs when adding warnings.
-
 name: CI C conformance
 on: [push, pull_request]
 
@@ -12,7 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-shared-installed:
+  build-c-warnings:
     strategy:
       fail-fast: false
       # Generate the configurations:
@@ -22,6 +20,8 @@ jobs:
         case: [0, 1, 2]
 
     runs-on: ${{ matrix.os }}
+
+    name: build-c-warnings (${{ matrix.os }}, case ${{ matrix.case }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

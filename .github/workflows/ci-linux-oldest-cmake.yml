@@ -12,12 +12,12 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-shared-local:
+  build-shared-local-oldest-cmake:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
-    name: build-linux-oldest-cmake
+    name: build-shared-local-oldest-cmake (ubuntu)
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -1,9 +1,8 @@
-# This is a copy of ci-unix-static.yml for building shared libraries. It differs from ci-unix-static.yml as follows:
-#
-#   * Does not build rav1e, SVT-AV1 nor libgav1.
-
-name: CI Unix Shared Local
-on: [push, pull_request]
+name: CI macOS Shared Local
+on:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -15,33 +14,22 @@ concurrency:
 
 jobs:
   build-shared-local:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         libyuv: [OFF, LOCAL]
         include:
           - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
 
-    name: build-shared-local (${{ matrix.os }}, libyuv ${{ matrix.libyuv }})
+    name: build-shared-local (macos, libyuv ${{ matrix.libyuv }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup-linux
-        if: runner.os == 'Linux'
-        with:
-          codec-aom: "LOCAL"
-          codec-dav1d: "LOCAL"
-          gcc-version: ${{ matrix.gcc }}
-          libjpeg-turbo: "SYSTEM"
-          libxml2: "LOCAL"
-          libyuv: ${{ matrix.libyuv }}
-          zlibpng: "SYSTEM"
       - uses: ./.github/actions/setup-macos
         if: runner.os == 'macOS'
         with:

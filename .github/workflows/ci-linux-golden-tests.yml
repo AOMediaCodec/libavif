@@ -14,16 +14,17 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-shared-run-golden-tests:
-    runs-on: ${{ matrix.os }}
+  build-static-local-run-golden-tests:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         include:
           - runs-on: ubuntu-latest
             compiler: gcc
             gcc: 14
+
+    name: build-static-local-run-golden-tests (ubuntu)
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -16,15 +16,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-shared-local:
-    runs-on: ${{ matrix.os }}
+  build-fuzztest:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         libyuv: [OFF, LOCAL]
 
-    name: build-shared-local-fuzztest
+    name: build-fuzztest (ubuntu, libyuv ${{ matrix.libyuv }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

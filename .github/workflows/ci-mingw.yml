@@ -22,6 +22,8 @@ jobs:
           - ucrt64
           - clang64
 
+    name: build-mingw
+
     defaults:
       run:
         shell: msys2 {0}

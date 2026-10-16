@@ -1,4 +1,4 @@
-name: CI Unix Static Sanitized
+name: CI Linux Static Sanitized
 on:
   push:
   pull_request:
@@ -13,12 +13,11 @@ permissions:
   contents: read
 
 jobs:
-  build-static-sanitized:
-    runs-on: ${{ matrix.os }}
+  build-static-local-sanitized:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         # Memory sanitizer needs to be in its own file because it is slower than other sanitizers.
         sanitizer: [address, thread, undefined]
 
@@ -26,12 +25,13 @@ jobs:
       CC: clang
       CXX: clang++
 
+    name: build-static-local-sanitized-${{ matrix.sanitizer }} (ubuntu)
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-linux
-        if: runner.os == 'Linux'
         id: setup_linux
         with:
           codec-aom: "LOCAL"
@@ -40,18 +40,8 @@ jobs:
           libjpeg-turbo: "SYSTEM"
           libyuv: "LOCAL"
           zlibpng: "SYSTEM"
-      - uses: ./.github/actions/setup-macos
-        if: runner.os == 'macOS'
-        id: setup_macos
-        with:
-          codec-aom: "LOCAL"
-          codec-dav1d: "LOCAL"
-          extra-cache-key: ${{ matrix.sanitizer }}
-          libjpeg-turbo: "SYSTEM"
-          libyuv: "LOCAL"
-          zlibpng: "SYSTEM"
       - id: cache-hit
-        run: echo "hit=${{ (runner.os == 'Linux' && steps.setup_linux.outputs.ext-cache-hit == 'true') || (runner.os == 'macOS' && steps.setup_macos.outputs.ext-cache-hit == 'true') }}" >> "$GITHUB_OUTPUT"
+        run: echo "hit=${{ steps.setup_linux.outputs.ext-cache-hit == 'true' }}" >> "$GITHUB_OUTPUT"
 
       - name: Set FLAGS for sanitizers
         run: |
