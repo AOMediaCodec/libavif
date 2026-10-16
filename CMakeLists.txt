@@ -432,12 +432,13 @@ if(NOT WIN32 AND NOT APPLE)
     target_link_libraries(avif_obj PRIVATE m)
 endif()
 
-if(UNIX OR MINGW)
-    # Find out if we have threading available
+# Find out if we have threading available
+if(UNIX)
+    # Use Win32 native threads on Windows.
     set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads)
-    target_link_libraries(avif_obj PRIVATE Threads::Threads)
 endif()
+find_package(Threads)
+target_link_libraries(avif_obj PRIVATE Threads::Threads)
 
 if(NOT AVIF_LIBYUV_ENABLED)
     target_sources(
