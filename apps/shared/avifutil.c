@@ -827,8 +827,7 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
     if (avif->transformFlags & AVIF_TRANSFORM_CLAP) {
         avifCropRect cropRect;
         avifDiagnostics diag;
-        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
-            (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
+        if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag)) {
             avifRGBImageSetViewRect(dstView, srcImage, &cropRect);
         } else {
             fprintf(stderr, "Invalid clean aperture box\n");
