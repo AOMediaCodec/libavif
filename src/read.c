@@ -5421,7 +5421,23 @@ avifResult avifDecoderParse(avifDecoder * decoder)
     decoder->data->diag = &decoder->diag;
 
     AVIF_CHECKRES(avifParse(decoder));
-
+    const uint64_t sizeHint = decoder->io->sizeHint;
+    if (sizeHint > 0 && sizeHint <= UINT64_MAX / 16) {
+        uint64_t totalItemSize = 0;
+        for (uint32_t itemIndex = 0; itemIndex < decoder->data->meta->items.count; ++itemIndex) {
+            const avifDecoderItem * item = decoder->data->meta->items.item[itemIndex];
+            if (item->size > UINT64_MAX - totalItemSize) {
+                avifDiagnosticsPrintf(&decoder->diag, "Total item size overflows");
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            totalItemSize += item->size;
+        }
+        if (totalItemSize > sizeHint * 16) {
+            avifDiagnosticsPrintf(&decoder->diag,
+                                  "Total item size exceeds 16x file size; overlapping extents are not supported");
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+    }
     // Walk the decoded items (if any) and harvest ispe
     avifDecoderData * data = decoder->data;
     for (uint32_t itemIndex = 0; itemIndex < data->meta->items.count; ++itemIndex) {
