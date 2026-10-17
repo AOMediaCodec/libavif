@@ -65,6 +65,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   tile if colour tiles exist.
 * Fix a use-after-free in avifEncoderAddImageGrid() with a Sample Transform
   recipe when the right-most or bottom-most cells are smaller than the others.
+* Fail to decode an alpha sample that outputs no frame with the aom and avm
+  decoders, as with dav1d and libgav1. The previous alpha frame was reused,
+  although libaom and libavm invalidate it when the next sample is decoded.
 
 ## [1.4.2] - 2026-05-26
 
