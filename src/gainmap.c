@@ -585,12 +585,12 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     avifResult res = AVIF_RESULT_OK;
     // --- After this point, the function should exit with 'goto cleanup' to free allocated resources.
 
-    const size_t numPixels = (size_t)width * height;
-    if (numPixels > SIZE_MAX / sizeof(float)) {
+    size_t numPixels;
+    size_t gainMapChannelSize;
+    if (!avifCheckedMulSize(width, height, &numPixels) || !avifCheckedMulSize(numPixels, sizeof(float), &gainMapChannelSize)) {
         res = AVIF_RESULT_INVALID_ARGUMENT;
         goto cleanup;
     }
-    const size_t gainMapChannelSize = numPixels * sizeof(float);
     const avifBool singleChannel = (gainMap->image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400);
     const int numGainMapChannels = singleChannel ? 1 : 3;
     for (int c = 0; c < numGainMapChannels; ++c) {
