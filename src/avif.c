@@ -1169,22 +1169,9 @@ avifResult avifCodecSpecificOptionsSet(avifCodecSpecificOptions * csOptions, con
 // ---------------------------------------------------------------------------
 // Codec availability and versions
 
-typedef const char * (*versionFunc)(void);
-typedef avifCodec * (*avifCodecCreateFunc)(void);
-
-struct AvailableCodec
-{
-    avifCodecChoice choice;
-    avifCodecType type;
-    const char * name;
-    versionFunc version;
-    avifCodecCreateFunc create;
-    uint32_t flags;
-};
-
 // This is the main codec table; it determines all usage/availability in libavif.
 
-static struct AvailableCodec availableCodecs[] = {
+static struct avifCodecInformation availableCodecs[] = {
 // Ordered by preference (for AUTO)
 
 #if defined(AVIF_CODEC_DAV1D)
@@ -1224,8 +1211,49 @@ static struct AvailableCodec availableCodecs[] = {
 
 static const int availableCodecsCount = (sizeof(availableCodecs) / sizeof(availableCodecs[0])) - 1;
 
-static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, avifCodecFlags requiredFlags)
+// ---------------------------------------------------------------------------
+// Custom codec registry
+
+#define MAX_CUSTOM_CODECS 128
+
+static avifCodecInformation customCodecs[MAX_CUSTOM_CODECS];
+static int customCodecCount = 0;
+static avifCodecChoice nextCustomChoice = AVIF_CODEC_CHOICE_CUSTOM_BASE;
+
+avifResult avifRegisterCustomCodec(avifCodecInformation * codec)
 {
+    if (!codec || !codec->name || !codec->version || !codec->create) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
+    if (customCodecCount >= MAX_CUSTOM_CODECS) {
+        return AVIF_RESULT_OUT_OF_MEMORY;
+    }
+
+    // Check if a codec with the same name already exists
+    for (int i = 0; i < availableCodecsCount; ++i) {
+        if (availableCodecs[i].name && !strcmp(availableCodecs[i].name, codec->name)) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+    for (int i = 0; i < customCodecCount; ++i) {
+        if (!strcmp(customCodecs[i].name, codec->name)) {
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+
+    // Assign a custom choice value and register
+    customCodecs[customCodecCount] = *codec;
+    customCodecs[customCodecCount].choice = nextCustomChoice++;
+    codec->choice = customCodecs[customCodecCount].choice;
+    customCodecCount++;
+
+    return AVIF_RESULT_OK;
+}
+
+static struct avifCodecInformation * findavifCodecInformation(avifCodecChoice choice, avifCodecFlags requiredFlags)
+{
+    // First search built-in codecs
     for (int i = 0; i < availableCodecsCount; ++i) {
         if ((choice != AVIF_CODEC_CHOICE_AUTO) && (availableCodecs[i].choice != choice)) {
             continue;
@@ -1239,12 +1267,29 @@ static struct AvailableCodec * findAvailableCodec(avifCodecChoice choice, avifCo
         }
         return &availableCodecs[i];
     }
+
+    if (choice == AVIF_CODEC_CHOICE_AUTO) {
+        // Custom codec cannot be the default, it must be explicitly selected.
+        return NULL;
+    }
+
+    // Then search custom codecs
+    for (int i = 0; i < customCodecCount; ++i) {
+        if (customCodecs[i].choice != choice) {
+            continue;
+        }
+        if (requiredFlags && ((customCodecs[i].flags & requiredFlags) != requiredFlags)) {
+            continue;
+        }
+        return &customCodecs[i];
+    }
+
     return NULL;
 }
 
 const char * avifCodecName(avifCodecChoice choice, avifCodecFlags requiredFlags)
 {
-    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    struct avifCodecInformation * availableCodec = findavifCodecInformation(choice, requiredFlags);
     if (availableCodec) {
         return availableCodec->name;
     }
@@ -1253,7 +1298,7 @@ const char * avifCodecName(avifCodecChoice choice, avifCodecFlags requiredFlags)
 
 avifCodecType avifCodecTypeFromChoice(avifCodecChoice choice, avifCodecFlags requiredFlags)
 {
-    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    struct avifCodecInformation * availableCodec = findavifCodecInformation(choice, requiredFlags);
     if (availableCodec) {
         return availableCodec->type;
     }
@@ -1267,13 +1312,18 @@ avifCodecChoice avifCodecChoiceFromName(const char * name)
             return availableCodecs[i].choice;
         }
     }
+    for (int i = 0; i < customCodecCount; ++i) {
+        if (!strcmp(customCodecs[i].name, name)) {
+            return customCodecs[i].choice;
+        }
+    }
     return AVIF_CODEC_CHOICE_AUTO;
 }
 
 avifResult avifCodecCreate(avifCodecChoice choice, avifCodecFlags requiredFlags, avifCodec ** codec)
 {
     *codec = NULL;
-    struct AvailableCodec * availableCodec = findAvailableCodec(choice, requiredFlags);
+    struct avifCodecInformation * availableCodec = findavifCodecInformation(choice, requiredFlags);
     AVIF_CHECKERR(availableCodec != NULL, AVIF_RESULT_NO_CODEC_AVAILABLE);
     *codec = availableCodec->create();
     AVIF_CHECKERR(*codec != NULL, AVIF_RESULT_OUT_OF_MEMORY);

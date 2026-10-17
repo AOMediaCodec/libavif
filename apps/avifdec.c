@@ -29,31 +29,32 @@ static void syntax(void)
     printf("Syntax: avifdec [options] input.avif output.[jpg|jpeg|png|y4m]\n");
     printf("        avifdec --info    input.avif\n");
     printf("Options:\n");
-    printf("    -h,--help         : Show syntax help\n");
-    printf("    -V,--version      : Show the version number\n");
-    printf("    -j,--jobs J       : Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all)\n");
-    printf("    -c,--codec C      : Codec to use (choose from versions list below)\n");
-    printf("    -d,--depth D      : Output depth, either 8 or 16. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
-    printf("    --sato            : Enable Sample Transforms decoding (e.g. 16-bit AVIF)\n");
-    printf("    -q,--quality Q    : Output quality in 0..100. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
-    printf("    --png-compress L  : PNG compression level in 0..9 (PNG only; 0=none, 9=max). Defaults to libpng's builtin default\n");
-    printf("    -u,--upsampling U : Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'\n");
-    printf("    -r,--raw-color    : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
-    printf("                        (JPEG only; not applicable to y4m)\n");
-    printf("    --index I         : When decoding an image sequence or progressive image, specify which frame index to decode, where the first frame has index 0, or 'all' to decode all frames. (Default: 0)\n");
-    printf("    --progressive     : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
-    printf("                        avifdec will use --index to choose which layer to decode (in progressive order).\n");
-    printf("    --no-strict       : Disable strict decoding, which disables strict validation checks and errors\n");
-    printf("    -i,--info         : Decode all frames and display all image information instead of saving to disk\n");
-    printf("    --ignore-exif     : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
-    printf("    --ignore-xmp      : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
-    printf("    --icc FILENAME    : Provide an ICC profile payload (implies --ignore-icc)\n");
-    printf("    --ignore-icc      : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
-    printf("    --size-limit C    : Maximum image size (in total pixels) that should be tolerated.\n");
-    printf("                        0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
-    printf("  --dimension-limit C : Maximum image dimension (width or height) that should be tolerated.\n");
-    printf("                        0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
-    printf("    --                : Signal the end of options. Everything after this is interpreted as file names.\n");
+    printf("    -h,--help              : Show syntax help\n");
+    printf("    -V,--version           : Show the version number\n");
+    printf("    -j,--jobs J            : Number of jobs (worker threads), or 'all' to potentially use as many cores as possible. (Default: all)\n");
+    printf("    -c,--codec C           : Codec to use (choose from versions list below, or name of the custom codec loaded)\n");
+    printf("    --custom-codec LIBRARY : Load a custom codec shared library\n");
+    printf("    -d,--depth D           : Output depth, either 8 or 16. (PNG only; For y4m, depth is retained, and JPEG is always 8bpc)\n");
+    printf("    --sato                 : Enable Sample Transforms decoding (e.g. 16-bit AVIF)\n");
+    printf("    -q,--quality Q         : Output quality in 0..100. (JPEG only, default: %d)\n", DEFAULT_JPEG_QUALITY);
+    printf("    --png-compress L       : PNG compression level in 0..9 (PNG only; 0=none, 9=max). Defaults to libpng's builtin default\n");
+    printf("    -u,--upsampling U      : Chroma upsampling (for 420/422). One of 'automatic' (default), 'fastest', 'best', 'nearest', or 'bilinear'\n");
+    printf("    -r,--raw-color         : Output raw RGB values instead of multiplying by alpha when saving to opaque formats\n");
+    printf("                             (JPEG only; not applicable to y4m)\n");
+    printf("    --index I              : When decoding an image sequence or progressive image, specify which frame index to decode, where the first frame has index 0, or 'all' to decode all frames. (Default: 0)\n");
+    printf("    --progressive          : Enable progressive AVIF processing. If a progressive image is encountered and --progressive is passed,\n");
+    printf("                             avifdec will use --index to choose which layer to decode (in progressive order).\n");
+    printf("    --no-strict            : Disable strict decoding, which disables strict validation checks and errors\n");
+    printf("    -i,--info              : Decode all frames and display all image information instead of saving to disk\n");
+    printf("    --ignore-exif          : If the input file contains embedded Exif metadata, ignore it (no-op if absent)\n");
+    printf("    --ignore-xmp           : If the input file contains embedded XMP metadata, ignore it (no-op if absent)\n");
+    printf("    --icc FILENAME         : Provide an ICC profile payload (implies --ignore-icc)\n");
+    printf("    --ignore-icc           : If the input file contains an embedded ICC profile, ignore it (no-op if absent)\n");
+    printf("    --size-limit C         : Maximum image size (in total pixels) that should be tolerated.\n");
+    printf("                             0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_SIZE_LIMIT);
+    printf("  --dimension-limit C      : Maximum image dimension (width or height) that should be tolerated.\n");
+    printf("                             0 means unlimited. (Default: %u)\n", AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT);
+    printf("    --                     : Signal the end of options. Everything after this is interpreted as file names.\n");
     printf("\n");
     avifPrintVersions();
 }
@@ -110,6 +111,9 @@ int main(int argc, char * argv[])
     uint32_t imageSizeLimit = AVIF_DEFAULT_IMAGE_SIZE_LIMIT;
     uint32_t imageDimensionLimit = AVIF_DEFAULT_IMAGE_DIMENSION_LIMIT;
     avifRWData iccOverride = AVIF_DATA_EMPTY;
+    const char * requestedCodecName = NULL;
+    const char * customCodecLibraryName = NULL;
+    avifCustomCodecLibrary customCodecLibrary = { 0 };
 
     if (argc < 2) {
         syntax();
@@ -154,19 +158,16 @@ int main(int argc, char * argv[])
                     jobs = 1;
                 }
             }
+        } else if (!strcmp(arg, "--custom-codec")) {
+            NEXTARG();
+            if (customCodecLibraryName) {
+                fprintf(stderr, "ERROR: --custom-codec may only be specified once\n");
+                return 1;
+            }
+            customCodecLibraryName = arg;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
-            codecChoice = avifCodecChoiceFromName(arg);
-            if (codecChoice == AVIF_CODEC_CHOICE_AUTO) {
-                fprintf(stderr, "ERROR: Unrecognized codec: %s\n", arg);
-                return 1;
-            } else {
-                const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE);
-                if (codecName == NULL) {
-                    fprintf(stderr, "ERROR: Codec cannot decode: %s\n", arg);
-                    return 1;
-                }
-            }
+            requestedCodecName = arg;
         } else if (!strcmp(arg, "-d") || !strcmp(arg, "--depth")) {
             NEXTARG();
             requestedDepth = atoi(arg);
@@ -318,6 +319,32 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Memory allocation failure\n");
         goto cleanup;
     }
+
+    if (customCodecLibraryName) {
+        avifDiagnostics diag;
+        avifDiagnosticsClearError(&diag);
+        if (!avifCustomCodecLibrarySetup(&customCodecLibrary, customCodecLibraryName, &diag)) {
+            fprintf(stderr,
+                    "ERROR: Failed to load custom codec shared library %s: %s\n",
+                    customCodecLibraryName,
+                    diag.error[0] ? diag.error : "unknown error");
+            goto cleanup;
+        }
+    }
+
+    if (requestedCodecName) {
+        codecChoice = avifCodecChoiceFromName(requestedCodecName);
+        if (codecChoice == AVIF_CODEC_CHOICE_AUTO) {
+            fprintf(stderr, "ERROR: Unrecognized codec: %s\n", requestedCodecName);
+            goto cleanup;
+        }
+        const char * codecName = avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE);
+        if (codecName == NULL) {
+            fprintf(stderr, "ERROR: Codec cannot decode: %s\n", requestedCodecName);
+            goto cleanup;
+        }
+    }
+
     decoder->maxThreads = jobs;
     decoder->codecChoice = codecChoice;
     decoder->imageSizeLimit = imageSizeLimit;
@@ -506,5 +533,24 @@ cleanup:
         avifDecoderDestroy(decoder);
     }
     avifRWDataFree(&iccOverride);
+    if (customCodecLibrary.handle) {
+        avifBool unloadCustomCodecLibrary = AVIF_TRUE;
+        if (customCodecLibrary.initialized) {
+            avifDiagnostics diag;
+            avifDiagnosticsClearError(&diag);
+            const avifResult shutdownResult = avifCustomCodecLibraryShutdown(&customCodecLibrary, &diag);
+            if (shutdownResult != AVIF_RESULT_OK) {
+                fprintf(stderr,
+                        "ERROR: Failed to shut down custom codec shared library %s: %s\n",
+                        customCodecLibrary.name ? customCodecLibrary.name : "(unknown)",
+                        diag.error[0] ? diag.error : avifResultToString(shutdownResult));
+                returnCode = 1;
+                unloadCustomCodecLibrary = AVIF_FALSE;
+            }
+        }
+        if (unloadCustomCodecLibrary) {
+            avifCustomCodecLibraryUnload(&customCodecLibrary);
+        }
+    }
     return returnCode;
 }
