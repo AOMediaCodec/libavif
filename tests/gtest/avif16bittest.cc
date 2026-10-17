@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 #include "avif/avif.h"
 #include "avif/avif_cxx.h"
@@ -453,6 +454,78 @@ TEST(Avif16bitTest, SampleTransformWithOtherBitDepths) {
     }
   }
 }
+
+//------------------------------------------------------------------------------
+
+class SampleTransformGridTest
+    : public testing::TestWithParam<avifSampleTransformRecipe> {};
+
+TEST_P(SampleTransformGridTest, SmallerLastCells) {
+  const avifSampleTransformRecipe recipe = GetParam();
+
+  const ImagePtr image =
+      testutil::ReadImage(data_path, "weld_16bit.png", AVIF_PIXEL_FORMAT_YUV444,
+                          /*requested_depth=*/16);
+  ASSERT_NE(image, nullptr);
+  // Speed test up.
+  image->width = 100;
+  image->height = 100;
+  // Simulate alpha plane with a view on luma.
+  image->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
+  image->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+  image->imageOwnsAlphaPlane = false;
+
+  // The right-most column and the bottom-most row are smaller than the other
+  // cells, so they are padded by the encoder.
+  const uint32_t kGridCols = 2, kGridRows = 2;
+  const uint32_t cell_width = 64, cell_height = 64;
+  std::vector<ImagePtr> cells;
+  std::vector<const avifImage*> cell_ptrs;
+  for (uint32_t row = 0; row < kGridRows; ++row) {
+    for (uint32_t col = 0; col < kGridCols; ++col) {
+      const avifCropRect rect{
+          col * cell_width, row * cell_height,
+          col + 1 < kGridCols ? cell_width : image->width - col * cell_width,
+          row + 1 < kGridRows ? cell_height
+                              : image->height - row * cell_height};
+      cells.emplace_back(avifImageCreateEmpty());
+      ASSERT_NE(cells.back(), nullptr);
+      ASSERT_EQ(avifImageSetViewRect(cells.back().get(), image.get(), &rect),
+                AVIF_RESULT_OK);
+      cell_ptrs.push_back(cells.back().get());
+    }
+  }
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->quality = AVIF_QUALITY_LOSSLESS;
+  encoder->qualityAlpha = AVIF_QUALITY_LOSSLESS;
+  encoder->sampleTransformRecipe = recipe;
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(
+      avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
+                              cell_ptrs.data(), AVIF_ADD_IMAGE_FLAG_SINGLE),
+      AVIF_RESULT_OK);
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+  EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Recipes, SampleTransformGridTest,
+    testing::Values(
+        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B,
+        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B,
+        AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B));
 
 //------------------------------------------------------------------------------
 
