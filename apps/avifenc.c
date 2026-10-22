@@ -9,6 +9,7 @@
 #include "y4m.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
@@ -21,11 +22,13 @@
 #include <io.h>
 #endif
 
-#define NEXTARG()                                                     \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        fprintf(stderr, "%s requires an argument.", arg);             \
-        goto cleanup;                                                 \
-    }                                                                 \
+// Consumes the argument of the current option. An argument that starts with '-' is the next option instead, unless the '-' is
+// followed by a digit, as in a negative number such as -10, so that the current option can validate it.
+#define NEXTARG()                                                                                                         \
+    if (((argIndex + 1) == argc) || ((argv[argIndex + 1][0] == '-') && !isdigit((unsigned char)argv[argIndex + 1][1]))) { \
+        fprintf(stderr, "%s requires an argument.\n", arg);                                                               \
+        goto cleanup;                                                                                                     \
+    }                                                                                                                     \
     arg = argv[++argIndex]
 
 typedef struct
@@ -353,10 +356,11 @@ static const char * qualityString(int quality)
     return "Low";
 }
 
-// Parse exactly n uint32_t from arg with separator character delim.
+// Parse exactly n integers from arg with separator character delim, and store them as uint32_t.
 // Output must be able to hold at least n elements.
 // Length of arg shall not exceed 127 characters or result can be truncated.
-static avifBool parseU32List(uint32_t output[], int n, const char * arg, const char delim)
+// A negative integer is rejected unless allowNegative is true, in which case it is cast to uint32_t.
+static avifBool parseIntList(uint32_t output[], int n, const char * arg, const char delim, avifBool allowNegative)
 {
     char buffer[128];
     strncpy(buffer, arg, 127);
@@ -371,7 +375,11 @@ static avifBool parseU32List(uint32_t output[], int n, const char * arg, const c
         token = strtok(buffer, delims);
     }
     while (token != NULL) {
-        output[index] = (uint32_t)atoi(token);
+        const int value = atoi(token);
+        if ((value < 0) && !allowNegative) {
+            return AVIF_FALSE;
+        }
+        output[index] = (uint32_t)value;
         ++index;
         if (index >= n) {
             break;
@@ -385,6 +393,12 @@ static avifBool parseU32List(uint32_t output[], int n, const char * arg, const c
         return AVIF_TRUE;
     }
     return AVIF_FALSE;
+}
+
+// Parse exactly n uint32_t from arg with separator character delim. A negative integer is rejected.
+static avifBool parseU32List(uint32_t output[], int n, const char * arg, const char delim)
+{
+    return parseIntList(output, n, arg, delim, /*allowNegative=*/AVIF_FALSE);
 }
 
 typedef enum avifOptionSuffixType
@@ -1582,6 +1596,10 @@ int main(int argc, char * argv[])
                 settings.jobs = avifQueryCPUCount();
             } else {
                 settings.jobs = atoi(arg);
+                if (settings.jobs < 0) {
+                    fprintf(stderr, "ERROR: Invalid number of jobs: %s\n", arg);
+                    goto cleanup;
+                }
                 if (settings.jobs < 1) {
                     settings.jobs = 1;
                 }
@@ -2040,25 +2058,29 @@ int main(int argc, char * argv[])
             cropConversionRequired = AVIF_TRUE;
         } else if (!strcmp(arg, "--clap")) {
             NEXTARG();
-            if (!parseU32List(settings.clapValues, 8, arg, ',')) {
+            // horizOffN and vertOffN may be negative (ISO/IEC 14496-12:2022, Section 12.1.4.1).
+            // All the values are validated later by avifCropRectFromCleanApertureBox().
+            if (!parseIntList(settings.clapValues, 8, arg, ',', /*allowNegative=*/AVIF_TRUE)) {
                 fprintf(stderr, "ERROR: Invalid clap values: %s\n", arg);
                 goto cleanup;
             }
             settings.clapValid = AVIF_TRUE;
         } else if (!strcmp(arg, "--irot")) {
             NEXTARG();
-            irotAngle = (uint8_t)atoi(arg);
-            if (irotAngle > 3) {
+            const int angle = atoi(arg);
+            if ((angle < 0) || (angle > 3)) {
                 fprintf(stderr, "ERROR: Invalid irot angle: %s\n", arg);
                 goto cleanup;
             }
+            irotAngle = (uint8_t)angle;
         } else if (!strcmp(arg, "--imir")) {
             NEXTARG();
-            imirAxis = (uint8_t)atoi(arg);
-            if (imirAxis > 1) {
+            const int axis = atoi(arg);
+            if ((axis < 0) || (axis > 1)) {
                 fprintf(stderr, "ERROR: Invalid imir axis: %s\n", arg);
                 goto cleanup;
             }
+            imirAxis = (uint8_t)axis;
         } else if (!strcmp(arg, "--clli")) {
             NEXTARG();
             if (!parseU32List(settings.clliValues, 2, arg, ',') || settings.clliValues[0] >= (1u << 16) ||

@@ -56,6 +56,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* avifenc, avifdec: Allow a negative number as an option argument so that it is
+  validated (e.g. --jobs -10 is now reported as an invalid number of jobs).
+  Reject values that used to wrap around, such as avifenc --cicp 1/-1/1 or
+  --irot 259.
 
 ## [1.4.2] - 2026-05-26
 
