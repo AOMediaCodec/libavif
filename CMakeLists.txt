@@ -350,6 +350,22 @@ if(AVIF_ENABLE_COVERAGE)
     endif()
 endif()
 
+option(
+    AVIF_ENABLE_FBOUNDS_SAFETY
+    "Compile the library with Clang's -fbounds-safety to enforce the AVIF_COUNTED_BY() bounds-safety annotations. Requires a Clang that supports -fbounds-safety. No effect with other compilers."
+    OFF
+)
+if(AVIF_ENABLE_FBOUNDS_SAFETY)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(STATUS "libavif: Enabling -fbounds-safety for Clang")
+        target_compile_options(avif_obj PRIVATE $<BUILD_INTERFACE:-fbounds-safety>)
+        target_compile_options(avif PRIVATE $<BUILD_INTERFACE:-fbounds-safety>)
+    else()
+        message(WARNING "libavif: Ignoring request for bounds safety (AVIF_ENABLE_FBOUNDS_SAFETY); only clang is currently supported.")
+        set(AVIF_ENABLE_FBOUNDS_SAFETY OFF)
+    endif()
+endif()
+
 if(AVIF_ENABLE_EXPERIMENTAL_MINI)
     add_compile_definitions(AVIF_ENABLE_EXPERIMENTAL_MINI)
 endif()
