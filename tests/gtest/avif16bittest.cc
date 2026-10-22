@@ -101,6 +101,13 @@ TEST_P(SampleTransformTest, Avif16bit) {
   ASSERT_EQ(image->depth, decoded->depth);
   ASSERT_EQ(image->width, decoded->width);
   ASSERT_EQ(image->height, decoded->height);
+  if (create_alpha) {
+    ASSERT_NE(decoded->alphaPlane, nullptr);
+    ASSERT_GT(decoded->alphaRowBytes, 0);
+  } else {
+    ASSERT_EQ(decoded->alphaPlane, nullptr);
+    ASSERT_EQ(decoded->alphaRowBytes, 0);
+  }
 
   if (quality == AVIF_QUALITY_LOSSLESS) {
     EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded));
@@ -123,6 +130,32 @@ TEST_P(SampleTransformTest, Avif16bit) {
   ASSERT_EQ(avifDecoderReadMemory(decoder_no_sato.get(), decoded_no_sato.get(),
                                   encoded.data, encoded.size),
             AVIF_RESULT_OK);
+
+  uint32_t base_depth;
+  switch (recipe) {
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B:
+      base_depth = 8;
+      break;
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B:
+      base_depth = 12;
+      break;
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B:
+      base_depth = 12;
+      break;
+    default:
+      FAIL() << "Invalid sample transform recipe";
+  }
+  ASSERT_EQ(base_depth, decoded_no_sato->depth);
+  ASSERT_EQ(image->width, decoded_no_sato->width);
+  ASSERT_EQ(image->height, decoded_no_sato->height);
+  if (create_alpha) {
+    ASSERT_NE(decoded_no_sato->alphaPlane, nullptr);
+    ASSERT_GT(decoded_no_sato->alphaRowBytes, 0);
+  } else {
+    ASSERT_EQ(decoded_no_sato->alphaPlane, nullptr);
+    ASSERT_EQ(decoded_no_sato->alphaRowBytes, 0);
+  }
+
   // Only the most significant bits of each sample can be retrieved.
   ImagePtr image_no_sato = testutil::CreateImage(
       static_cast<int>(image->width), static_cast<int>(image->height),
@@ -152,6 +185,159 @@ TEST_P(SampleTransformTest, Avif16bit) {
                                       image->xmp.size),
               AVIF_RESULT_OK);
     EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato));
+  }
+}
+
+TEST_P(SampleTransformTest, Avif16bitIgnoreAlpha) {
+  const avifSampleTransformRecipe recipe = std::get<0>(GetParam());
+  const avifPixelFormat yuv_format = std::get<1>(GetParam());
+  const avifRange yuv_range = std::get<2>(GetParam());
+  const bool create_alpha = std::get<3>(GetParam());
+  const bool use_grid = std::get<4>(GetParam());
+  const int quality = std::get<5>(GetParam());
+  const bool add_xmp = std::get<6>(GetParam());
+
+  const ImagePtr image = testutil::ReadImage(
+      data_path, "weld_16bit.png", yuv_format, /*requested_depth=*/16);
+  ASSERT_NE(image, nullptr);
+  image->yuvRange = yuv_range;  // Some pixel values are out-of-range.
+  if (create_alpha && !image->alphaPlane) {
+    // Simulate alpha plane with a view on luma.
+    image->alphaPlane = image->yuvPlanes[AVIF_CHAN_Y];
+    image->alphaRowBytes = image->yuvRowBytes[AVIF_CHAN_Y];
+    image->imageOwnsAlphaPlane = false;
+  }
+  if (add_xmp) {
+    const uint8_t xmp[] = {1, 2, 3, 4};
+    ASSERT_EQ(avifImageSetMetadataXMP(image.get(), xmp, sizeof(xmp)),
+              AVIF_RESULT_OK);
+  }
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->quality = quality;
+  encoder->qualityAlpha = quality;
+  encoder->sampleTransformRecipe = recipe;
+  testutil::AvifRwData encoded;
+  const uint64_t kDurationInTimescales = 1;
+  const avifAddImageFlags kAddImageFlags = AVIF_ADD_IMAGE_FLAG_SINGLE;
+  if (use_grid) {
+    const uint32_t kGridCols = 2, kGridRows = 1;
+    const ImagePtr cell0{avifImageCreateEmpty()};
+    const ImagePtr cell1{avifImageCreateEmpty()};
+    ASSERT_NE(cell0, nullptr);
+    ASSERT_NE(cell1, nullptr);
+    const avifCropRect rect0{0, 0, image->width / kGridCols, image->height};
+    const avifCropRect rect1{rect0.width, 0, image->width - rect0.width,
+                             image->height};
+    ASSERT_EQ(avifImageSetViewRect(cell0.get(), image.get(), &rect0),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifImageSetViewRect(cell1.get(), image.get(), &rect1),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(
+        avifImageSetMetadataXMP(cell0.get(), image->xmp.data, image->xmp.size),
+        AVIF_RESULT_OK);
+    const avifImage* cells[] = {cell0.get(), cell1.get()};
+    ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows,
+                                      cells, kAddImageFlags),
+              AVIF_RESULT_OK);
+  } else {
+    ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(),
+                                  kDurationInTimescales, kAddImageFlags),
+              AVIF_RESULT_OK);
+  }
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode =
+      AVIF_IMAGE_CONTENT_COLOR | AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+
+  ASSERT_EQ(image->depth, decoded->depth);
+  ASSERT_EQ(image->width, decoded->width);
+  ASSERT_EQ(image->height, decoded->height);
+  ASSERT_EQ(decoded->alphaPlane, nullptr);
+  ASSERT_EQ(decoded->alphaRowBytes, 0);
+
+  const bool ignore_alpha = create_alpha;
+  if (quality == AVIF_QUALITY_LOSSLESS) {
+    EXPECT_TRUE(testutil::AreImagesEqual(*image, *decoded, ignore_alpha));
+  } else {
+    EXPECT_GE(testutil::GetPsnr(*image, *decoded), 15.0);
+  }
+
+  // Replace all 'sato' box types by "zzzz" garbage. This simulates an old
+  // decoder that does not recognize the Sample Transform feature.
+  for (size_t i = 0; i + 4 <= encoded.size; ++i) {
+    if (!std::memcmp(&encoded.data[i], "sato", 4)) {
+      std::memcpy(&encoded.data[i], "zzzz", 4);
+    }
+  }
+  ImagePtr decoded_no_sato(avifImageCreateEmpty());
+  ASSERT_NE(decoded_no_sato, nullptr);
+  DecoderPtr decoder_no_sato(avifDecoderCreate());
+  ASSERT_NE(decoder_no_sato, nullptr);
+  decoder_no_sato->imageContentToDecode = decoder->imageContentToDecode;
+  ASSERT_EQ(avifDecoderReadMemory(decoder_no_sato.get(), decoded_no_sato.get(),
+                                  encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+
+  uint32_t base_depth;
+  switch (recipe) {
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B:
+      base_depth = 8;
+      break;
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B:
+      base_depth = 12;
+      break;
+    case AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_8B_OVERLAP_4B:
+      base_depth = 12;
+      break;
+    default:
+      FAIL() << "Invalid sample transform recipe";
+  }
+  ASSERT_EQ(base_depth, decoded_no_sato->depth);
+  ASSERT_EQ(image->width, decoded_no_sato->width);
+  ASSERT_EQ(image->height, decoded_no_sato->height);
+  ASSERT_EQ(decoded_no_sato->alphaPlane, nullptr);
+  ASSERT_EQ(decoded_no_sato->alphaRowBytes, 0);
+
+  // Only the most significant bits of each sample can be retrieved.
+  ImagePtr image_no_sato = testutil::CreateImage(
+      static_cast<int>(image->width), static_cast<int>(image->height),
+      static_cast<int>(decoded_no_sato->depth), image->yuvFormat,
+      image->alphaPlane ? AVIF_PLANES_ALL : AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image_no_sato, nullptr);
+
+  if (recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ||
+      recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_12B_4B) {
+    // These recipes always encode the primary item losslessly. Check that.
+    const uint32_t shift =
+        recipe == AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B ? 8 : 4;
+    const avifImage* inputImage = image.get();
+    // Postfix notation.
+    const avifSampleTransformToken tokens[] = {
+        {AVIF_SAMPLE_TRANSFORM_INPUT_IMAGE_ITEM_INDEX, 0,
+         /*inputImageItemIndex=*/1},
+        {AVIF_SAMPLE_TRANSFORM_CONSTANT, 1 << shift, 0},
+        {AVIF_SAMPLE_TRANSFORM_QUOTIENT, 0, 0}};
+    ASSERT_EQ(avifImageApplyOperations(
+                  image_no_sato.get(), AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_32,
+                  /*numTokens=*/3, tokens, /*numInputImageItems=*/1,
+                  &inputImage, AVIF_PLANES_ALL),
+              AVIF_RESULT_OK);
+    image_no_sato->yuvRange = image->yuvRange;
+    ASSERT_EQ(avifImageSetMetadataXMP(image_no_sato.get(), image->xmp.data,
+                                      image->xmp.size),
+              AVIF_RESULT_OK);
+    EXPECT_TRUE(testutil::AreImagesEqual(*image_no_sato, *decoded_no_sato,
+                                         ignore_alpha));
   }
 }
 
@@ -385,6 +571,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(AVIF_IMAGE_CONTENT_NONE,
                         AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA,
                         AVIF_IMAGE_CONTENT_COLOR, AVIF_IMAGE_CONTENT_GAIN_MAP,
+                        AVIF_IMAGE_CONTENT_COLOR | AVIF_IMAGE_CONTENT_GAIN_MAP,
                         AVIF_IMAGE_CONTENT_ALL)));
 
 //------------------------------------------------------------------------------
