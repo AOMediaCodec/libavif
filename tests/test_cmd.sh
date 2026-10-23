@@ -82,6 +82,32 @@ pushd ${TMP_DIR}
   # Passing a filename starting with a dash without using -- should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+  # A negative number is the argument of the preceding option, which validates it.
+  "${AVIFENC}" -s 10 --jobs -10 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: Invalid number of jobs: -10" "${OUT_MSG}"
+  "${AVIFDEC}" --jobs -10 "${ENCODED_FILE}" "${DECODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: invalid number of jobs: -10" "${OUT_MSG}"
+  "${AVIFDEC}" --index -1 "${ENCODED_FILE}" "${DECODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: invalid index: -1" "${OUT_MSG}"
+  "${AVIFDEC}" --size-limit -1 "${ENCODED_FILE}" "${DECODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: invalid image size limit: -1" "${OUT_MSG}"
+  # Negative values must not be converted to large unsigned values.
+  "${AVIFENC}" -s 10 --cicp -1/-1/-1 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: Invalid CICP value: -1/-1/-1" "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --pasp -1,1 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: Invalid pasp values: -1,1" "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --irot -253 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: Invalid irot angle: -253" "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --imir -255 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep "ERROR: Invalid imir axis: -255" "${OUT_MSG}"
+  # The clap offsets are signed.
+  "${AVIFENC}" -s 10 --clap 100,1,100,1,-10,1,-20,1 "${INPUT_Y4M}" "${ENCODED_FILE}"
+  "${AVIFDEC}" --info "${ENCODED_FILE}" | grep "hOff: -10/1, vOff: -20/1"
+  # An option name is not the argument of the preceding option.
+  "${AVIFENC}" -s 10 --jobs -o "${ENCODED_FILE}" "${INPUT_Y4M}" 2> "${OUT_MSG}" && exit 1
+  grep -- "--jobs requires an argument." "${OUT_MSG}"
+  "${AVIFDEC}" --jobs -i "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+  grep -- "--jobs requires an argument." "${OUT_MSG}"
 
   # Option update handling test
   # Passing non-update option before input should not print warning.
