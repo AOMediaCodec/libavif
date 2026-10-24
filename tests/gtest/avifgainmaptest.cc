@@ -1660,6 +1660,32 @@ TEST(GainMapTest, ComputeGainMapUnsupportedDepth) {
   EXPECT_EQ(gain_map->image->yuvPlanes[0], nullptr);
 }
 
+TEST(FindMinMaxWithoutOutliers, NonFiniteSamples) {
+    // An infinite or NaN gain map sample must not produce undefined behavior
+    // in the histogram (out-of-range float-to-int casts). The function is
+    // expected to complete and return OK.
+    constexpr int kNumValues = 10000;
+    std::vector<float> values(kNumValues, 1.0f);
+    values[42] = INFINITY;
+    values[43] = NAN;
+    values[44] = 2.0f;
+
+    float min, max;
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
+}
+
+TEST(FindMinMaxWithoutOutliers, AllNaN) {
+    constexpr int kNumValues = 100;
+    std::vector<float> values(kNumValues, NAN);
+
+    float min, max;
+    ASSERT_EQ(
+        avifFindMinMaxWithoutOutliers(values.data(), kNumValues, &min, &max),
+        AVIF_RESULT_OK);
+}
+
 TEST(FindMinMaxWithoutOutliers, AllSame) {
   constexpr int kNumValues = 10000;
 
