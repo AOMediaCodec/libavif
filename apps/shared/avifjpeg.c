@@ -516,6 +516,16 @@ static avifBool avifJPEGFindMpfSegmentOffset(FILE * f, uint32_t * mpfOffset)
         }
         offset += 4;
 
+        // At a marker boundary the first byte must be the marker prefix.  A
+        // marker with no length payload (SOI, EOI, RSTn, TEM) means the walk
+        // can no longer skip by segment length; stop instead of trusting the
+        // following bytes as a length.
+        if (buffer[0] != 0xFF || buffer[1] == 0xD8 /* SOI */ || buffer[1] == 0xD9 /* EOI */ ||
+            (buffer[1] >= 0xD0 && buffer[1] <= 0xD7) /* RSTn */ || buffer[1] == 0x01 /* TEM */) {
+            fseek(f, oldOffset, SEEK_SET);
+            return AVIF_FALSE; // Not at a marker boundary.
+        }
+
         // Total APP<n> segment byte count, including the byte count value (2 bytes), but excluding the 2 byte APP<n> marker itself.
         const uint16_t segmentLength = avifJPEGReadUint16BigEndian(&buffer[2]);
         if (segmentLength < 2) {
@@ -1007,6 +1017,9 @@ static avifBool avifJPEGExtractGainMapImageFromMpf(FILE * f,
         }
 
         // Offsets are relative to the start of the MPF segment. Make them absolute.
+        if (imageDataOffset > UINT32_MAX - mpfSegmentOffset) {
+            return AVIF_FALSE; // Would wrap; cannot be a valid absolute offset.
+        }
         imageDataOffset += mpfSegmentOffset;
         if (fseek(f, imageDataOffset, SEEK_SET) != 0) {
             return AVIF_FALSE;
