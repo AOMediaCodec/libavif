@@ -64,7 +64,7 @@ avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gridCols,
 // Performs a shallow copy of a rectangular area of an RGB image. 'dstImage' does not own the pixel data.
 // Assumes that cropRect is a valid cropping rectangle for srcImage. This is true if it was obtained
 // using avifCropRectFromCleanApertureBox().
-void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect);
+avifBool avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect);
 
 // Rotates srcImage into dstImage. The two pointers must be different (does not rotate in place).
 // Allocates the pixels of dstImage which must be freed by the caller.

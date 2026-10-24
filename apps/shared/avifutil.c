@@ -699,9 +699,13 @@ cleanup:
     return success;
 }
 
-void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect)
+avifBool avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcImage, const avifCropRect * cropRect)
 {
     memset(dstImage, 0, sizeof(avifRGBImage));
+    if ((cropRect->width > srcImage->width) || (cropRect->height > srcImage->height) ||
+        (cropRect->x > (srcImage->width - cropRect->width)) || (cropRect->y > (srcImage->height - cropRect->height))) {
+        return AVIF_FALSE; // cropRect is not a valid crop of srcImage.
+    }
     dstImage->width = cropRect->width;
     dstImage->height = cropRect->height;
     dstImage->depth = srcImage->depth;
@@ -713,6 +717,7 @@ void avifRGBImageSetViewRect(avifRGBImage * dstImage, const avifRGBImage * srcIm
     const size_t offset = (size_t)cropRect->y * srcImage->rowBytes + (size_t)cropRect->x * bytesPerPixel;
     dstImage->pixels = srcImage->pixels + offset;
     dstImage->rowBytes = srcImage->rowBytes;
+    return AVIF_TRUE;
 }
 
 // NOTE: this saves the rotated pixels to a different image. Rotating an image in place is possible, but can be non trivial depending on the angle.
@@ -829,7 +834,10 @@ avifResult avifApplyTransforms(avifRGBImage * dstView, avifRGBImage * srcImage, 
         avifDiagnostics diag;
         if (avifCropRectFromCleanApertureBox(&cropRect, &avif->clap, avif->width, avif->height, &diag) &&
             (cropRect.x != 0 || cropRect.y != 0 || cropRect.width != avif->width || cropRect.height != avif->height)) {
-            avifRGBImageSetViewRect(dstView, srcImage, &cropRect);
+            if (!avifRGBImageSetViewRect(dstView, srcImage, &cropRect)) {
+                fprintf(stderr, "Clean aperture box does not fit the image\n");
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
         } else {
             fprintf(stderr, "Invalid clean aperture box\n");
             return AVIF_RESULT_INVALID_ARGUMENT;
