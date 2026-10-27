@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -241,6 +243,95 @@ TEST(AvifMinimizedImageBoxTest, GainMapAlternateIcc) {
   ASSERT_NE(decoded->gainMap, nullptr);
   EXPECT_EQ(decoded->gainMap->altICC.size, testutil::kSampleIcc.size());
   EXPECT_EQ(decoded->icc.size, 0u);
+}
+
+//------------------------------------------------------------------------------
+
+// The gain map chroma subsampling signaled by a MinimizedImageBox must match
+// the codec configuration of the gain map item, as for the primary item.
+TEST(AvifMinimizedImageBoxTest, GainMapChromaSubsamplingMismatch) {
+  ImagePtr image = testutil::CreateImage(/*width=*/8, /*height=*/10,
+                                         /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  image->gainMap = avifGainMapCreate();
+  ASSERT_NE(image->gainMap, nullptr);
+  image->gainMap->image =
+      testutil::CreateImage(/*width=*/8, /*height=*/10, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV,
+                            AVIF_RANGE_FULL)
+          .release();
+  ASSERT_NE(image->gainMap->image, nullptr);
+  testutil::FillImageGradient(image->gainMap->image);
+
+  testutil::AvifRwData encoded;
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->headerFormat = AVIF_HEADER_MINI;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  // Locate the gainmap_chroma_subsampling field in the MinimizedImageBox.
+  const uint8_t kMini[] = {'m', 'i', 'n', 'i'};
+  const uint8_t* mini = std::search(encoded.data, encoded.data + encoded.size,
+                                    kMini, kMini + sizeof(kMini));
+  ASSERT_NE(mini, encoded.data + encoded.size);
+  const size_t payload_offset = mini + sizeof(kMini) - encoded.data;
+  size_t bit = 0;
+  auto read_bits = [&](size_t num_bits) {
+    uint32_t value = 0;
+    for (size_t i = 0; i < num_bits; ++i, ++bit) {
+      const uint8_t byte = encoded.data[payload_offset + bit / 8];
+      value = (value << 1) | ((byte >> (7 - bit % 8)) & 1);
+    }
+    return value;
+  };
+  read_bits(2);  // version
+  const uint32_t explicit_codec_types_flag = read_bits(1);
+  ASSERT_EQ(read_bits(1), 0u);  // float_flag
+  read_bits(1);                 // full_range_flag
+  ASSERT_EQ(read_bits(1), 0u);  // alpha_flag
+  const uint32_t explicit_cicp_flag = read_bits(1);
+  ASSERT_EQ(read_bits(1), 1u);  // hdr_flag
+  read_bits(3);                 // icc_flag, exif_flag, xmp_flag
+  ASSERT_EQ(read_bits(2), 3u);  // chroma_subsampling
+  read_bits(3);                 // orientation_minus1
+  ASSERT_EQ(read_bits(1), 0u);  // large_dimensions_flag
+  read_bits(7 + 7);             // width_minus1, height_minus1
+  ASSERT_EQ(read_bits(1), 0u);  // high_bit_depth_flag
+  if (explicit_cicp_flag) read_bits(8 + 8 + 8);
+  if (explicit_codec_types_flag) read_bits(32 + 32);
+  ASSERT_EQ(read_bits(1), 1u);  // gainmap_flag
+  read_bits(7 + 7 + 8 + 1);     // gainmap dimensions, matrix, full range
+  const size_t gainmap_chroma_subsampling_bit = bit;
+  ASSERT_EQ(read_bits(2), 0u);  // gainmap_chroma_subsampling
+
+  // The unmodified file decodes.
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+
+  // Signal 4:4:4 instead of 4:0:0. This does not change the size of the
+  // following fields.
+  for (size_t i = gainmap_chroma_subsampling_bit;
+       i < gainmap_chroma_subsampling_bit + 2; ++i) {
+    encoded.data[payload_offset + i / 8] |= 1 << (7 - i % 8);
+  }
+  decoded.reset(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  decoder.reset(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  EXPECT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_BMFF_PARSE_FAILED);
 }
 
 //------------------------------------------------------------------------------
