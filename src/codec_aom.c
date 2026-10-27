@@ -1094,8 +1094,11 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        if (image->depth == 12) {
-            // The encoder may produce integer overflows with 12-bit input when loop restoration is enabled. See crbug.com/aomedia/42302587.
+        static const int aomVersion_3_15_2 = (3 << 16) | (15 << 8) | 2;
+        if (aomVersion < aomVersion_3_15_2 && image->depth == 12) {
+            // The encoder may produce integer overflows with 12-bit input when loop restoration is
+            // enabled. See crbug.com/aomedia/42302587. This issue was fixed adequately in libaom
+            // v3.15.2 by the fix for bug oss-fuzz:566951534.
             if (aom_codec_control(&codec->internal->encoder, AV1E_SET_ENABLE_RESTORATION, 0) != AOM_CODEC_OK) {
                 aomDiagPrintf(codec->diag, "aom_codec_control(AV1E_SET_ENABLE_RESTORATION)", &codec->internal->encoder);
                 return AVIF_RESULT_UNKNOWN_ERROR;
