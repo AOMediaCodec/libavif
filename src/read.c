@@ -1077,7 +1077,8 @@ typedef struct avifDecoderData
 
     // Remember the dimg association order to the Sample Transform derived image item.
     // Colour items only. The alpha items are implicit.
-    uint8_t sampleTransformNumInputImageItems; // At most AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS.
+    // uint32_t so that the count of 'dimg' inputs is not truncated by a wrap-around before validation.
+    uint32_t sampleTransformNumInputImageItems; // At most AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS.
     avifItemCategory sampleTransformInputImageItems[AVIF_SAMPLE_TRANSFORM_MAX_NUM_INPUT_IMAGE_ITEMS];
 } avifDecoderData;
 
@@ -6498,7 +6499,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             // Check max number of input items allowed by the format.
             if (data->sampleTransformNumInputImageItems > 32) {
                 avifDiagnosticsPrintf(data->diag,
-                                      "Box[sato] too many input items, format allows up to 32, got %d",
+                                      "Box[sato] too many input items, format allows up to 32, got %u",
                                       data->sampleTransformNumInputImageItems);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
