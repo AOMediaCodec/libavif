@@ -9,6 +9,7 @@
 #include "y4m.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +18,13 @@
 #define DEFAULT_JPEG_QUALITY 90
 #define DECODE_ALL_FRAMES -1
 
-#define NEXTARG()                                                     \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        fprintf(stderr, "%s requires an argument.", arg);             \
-        return 1;                                                     \
-    }                                                                 \
+// Consumes the argument of the current option. An argument that starts with '-' is the next option instead, unless the '-' is
+// followed by a digit, as in a negative number such as -10, so that the current option can validate it.
+#define NEXTARG()                                                                                                         \
+    if (((argIndex + 1) == argc) || ((argv[argIndex + 1][0] == '-') && !isdigit((unsigned char)argv[argIndex + 1][1]))) { \
+        fprintf(stderr, "%s requires an argument.\n", arg);                                                               \
+        return 1;                                                                                                         \
+    }                                                                                                                     \
     arg = argv[++argIndex]
 
 static void syntax(void)
@@ -150,6 +153,10 @@ int main(int argc, char * argv[])
                 jobs = avifQueryCPUCount();
             } else {
                 jobs = atoi(arg);
+                if (jobs < 0) {
+                    fprintf(stderr, "ERROR: invalid number of jobs: %s\n", arg);
+                    return 1;
+                }
                 if (jobs < 1) {
                     jobs = 1;
                 }
@@ -217,7 +224,11 @@ int main(int argc, char * argv[])
             if (!strcmp(arg, "all")) {
                 frameIndex = DECODE_ALL_FRAMES;
             } else {
-                frameIndex = (uint32_t)atoi(arg);
+                frameIndex = atoi(arg);
+                if (frameIndex < 0) {
+                    fprintf(stderr, "ERROR: invalid index: %s\n", arg);
+                    return 1;
+                }
             }
             frameIndexSpecified = AVIF_TRUE;
         } else if (!strcmp(arg, "--no-strict")) {
@@ -237,7 +248,8 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--size-limit")) {
             NEXTARG();
             unsigned long value = strtoul(arg, NULL, 10);
-            if (value > UINT32_MAX) {
+            // strtoul() converts -1 to ULONG_MAX, which is UINT32_MAX where unsigned long is 32 bits.
+            if ((arg[0] == '-') || (value > UINT32_MAX)) {
                 fprintf(stderr, "ERROR: invalid image size limit: %s\n", arg);
                 return 1;
             }
@@ -245,7 +257,8 @@ int main(int argc, char * argv[])
         } else if (!strcmp(arg, "--dimension-limit")) {
             NEXTARG();
             unsigned long value = strtoul(arg, NULL, 10);
-            if (value > UINT32_MAX) {
+            // strtoul() converts -1 to ULONG_MAX, which is UINT32_MAX where unsigned long is 32 bits.
+            if ((arg[0] == '-') || (value > UINT32_MAX)) {
                 fprintf(stderr, "ERROR: invalid image dimension limit: %s\n", arg);
                 return 1;
             }
