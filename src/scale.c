@@ -42,6 +42,21 @@ avifResult avifImageScaleWithLimit(avifImage * image,
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
+    const uint32_t srcWidth = image->width;
+    const uint32_t srcHeight = image->height;
+    if (image->yuvPlanes[0] || image->alphaPlane) {
+        // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
+        // ScalePlane_12() functions.
+        if (srcWidth > 16384) {
+            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+        if (srcHeight > 16384) {
+            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+    }
+
     uint8_t * srcYUVPlanes[AVIF_PLANE_COUNT_YUV];
     uint32_t srcYUVRowBytes[AVIF_PLANE_COUNT_YUV];
     for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
@@ -60,28 +75,12 @@ avifResult avifImageScaleWithLimit(avifImage * image,
     const avifBool srcImageOwnsAlphaPlane = image->imageOwnsAlphaPlane;
     image->imageOwnsAlphaPlane = AVIF_FALSE;
 
-    const uint32_t srcWidth = image->width;
-    const uint32_t srcHeight = image->height;
     const uint32_t srcUVWidth = avifImagePlaneWidth(image, AVIF_CHAN_U);
     const uint32_t srcUVHeight = avifImagePlaneHeight(image, AVIF_CHAN_U);
     image->width = dstWidth;
     image->height = dstHeight;
 
     avifResult result = AVIF_RESULT_OK;
-    if (srcYUVPlanes[0] || srcAlphaPlane) {
-        // A simple conservative check to avoid integer overflows in libyuv's ScalePlane() and
-        // ScalePlane_12() functions.
-        if (srcWidth > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid width scale for libyuv [%u -> %u]", srcWidth, dstWidth);
-            result = AVIF_RESULT_NOT_IMPLEMENTED;
-            goto cleanup;
-        }
-        if (srcHeight > 16384) {
-            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid height scale for libyuv [%u -> %u]", srcHeight, dstHeight);
-            result = AVIF_RESULT_NOT_IMPLEMENTED;
-            goto cleanup;
-        }
-    }
 
     if (srcYUVPlanes[0]) {
         const avifResult allocationResult = avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
@@ -183,13 +182,27 @@ avifResult avifImageScaleWithLimit(avifImage * image,
     }
 
 cleanup:
-    if (srcYUVPlanes[0] && srcImageOwnsYUVPlanes) {
+    if (result != AVIF_RESULT_OK) {
+        avifImageFreePlanes(image, AVIF_PLANES_ALL);
         for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
-            avifFree(srcYUVPlanes[i]);
+            image->yuvPlanes[i] = srcYUVPlanes[i];
+            image->yuvRowBytes[i] = srcYUVRowBytes[i];
         }
-    }
-    if (srcAlphaPlane && srcImageOwnsAlphaPlane) {
-        avifFree(srcAlphaPlane);
+        image->imageOwnsYUVPlanes = srcImageOwnsYUVPlanes;
+        image->alphaPlane = srcAlphaPlane;
+        image->alphaRowBytes = srcAlphaRowBytes;
+        image->imageOwnsAlphaPlane = srcImageOwnsAlphaPlane;
+        image->width = srcWidth;
+        image->height = srcHeight;
+    } else {
+        if (srcYUVPlanes[0] && srcImageOwnsYUVPlanes) {
+            for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
+                avifFree(srcYUVPlanes[i]);
+            }
+        }
+        if (srcAlphaPlane && srcImageOwnsAlphaPlane) {
+            avifFree(srcAlphaPlane);
+        }
     }
     return result;
 }
