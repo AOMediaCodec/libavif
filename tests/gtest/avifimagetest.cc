@@ -1,6 +1,7 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <array>
 #include <cstdint>
 #include <limits>
 
@@ -47,6 +48,49 @@ TEST(AvifImageTest, WriteImage) {
   testutil::FillImageGradient(image.get());
   ASSERT_TRUE(testutil::WriteImage(
       image.get(), (testing::TempDir() + "/avifimagetest.png").c_str()));
+}
+
+TEST(AvifImageTest, CopyViewIntoOwner) {
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/16, /*height=*/16, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_ALL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+
+  ImagePtr view(avifImageCreateEmpty());
+  ASSERT_NE(view, nullptr);
+  const avifCropRect rect = {/*x=*/4, /*y=*/4, /*width=*/8, /*height=*/8};
+  ASSERT_EQ(avifImageSetViewRect(view.get(), image.get(), &rect),
+            AVIF_RESULT_OK);
+
+  std::array<std::array<uint8_t, 64>, 4> expected;
+  for (int channel = AVIF_CHAN_Y; channel <= AVIF_CHAN_A; ++channel) {
+    const uint8_t* row = avifImagePlane(view.get(), channel);
+    ASSERT_NE(row, nullptr);
+    for (uint32_t y = 0; y < rect.height; ++y) {
+      for (uint32_t x = 0; x < rect.width; ++x) {
+        expected[channel][y * rect.width + x] = row[x];
+      }
+      row += avifImagePlaneRowBytes(view.get(), channel);
+    }
+  }
+
+  ASSERT_EQ(avifImageCopy(image.get(), view.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(image->width, rect.width);
+  EXPECT_EQ(image->height, rect.height);
+  EXPECT_TRUE(image->imageOwnsYUVPlanes);
+  EXPECT_TRUE(image->imageOwnsAlphaPlane);
+  for (int channel = AVIF_CHAN_Y; channel <= AVIF_CHAN_A; ++channel) {
+    const uint8_t* row = avifImagePlane(image.get(), channel);
+    ASSERT_NE(row, nullptr);
+    for (uint32_t y = 0; y < rect.height; ++y) {
+      for (uint32_t x = 0; x < rect.width; ++x) {
+        EXPECT_EQ(row[x], expected[channel][y * rect.width + x]);
+      }
+      row += avifImagePlaneRowBytes(image.get(), channel);
+    }
+  }
 }
 
 }  // namespace
