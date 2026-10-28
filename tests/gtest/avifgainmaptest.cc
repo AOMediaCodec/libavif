@@ -1364,6 +1364,141 @@ TEST(ToneMapTest, ToneMapWithoutDecodedGainMap) {
       << diag.error;
 }
 
+// Per the project policy, keeping input samples within the range implied by
+// the bit depth and yuvRange is the caller's responsibility, and the image
+// creation API does not reject out-of-range samples. This test documents the
+// defense-in-depth behavior of avifSetRGBAPixel() when a caller violates the
+// policy: without the clamping, tone mapping such an image overflowed the
+// nominal range in avifSetRGBAPixel() (undefined behavior per C11 6.3.1.4,
+// caught by UBSan) and stored truncated channel values on non-sanitizer
+// builds.
+TEST(ToneMapTest, ToneMapOutOfRangeSamples) {
+  ImagePtr image(avifImageCreate(2, 2, 12, AVIF_PIXEL_FORMAT_YUV444));
+  ASSERT_NE(image, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+  for (int p = 0; p < 3; ++p) {
+    memset(image->yuvPlanes[p], 0xFF,
+           (size_t)image->yuvRowBytes[p] * image->height);
+  }
+  memset(image->alphaPlane, 0xFF, (size_t)image->alphaRowBytes * image->height);
+  image->yuvRange = AVIF_RANGE_FULL;
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+  // Same color primaries and transfer characteristics as the tone mapped
+  // output below, so the raw out-of-range samples reach avifSetRGBAPixel()
+  // without going through a color conversion that would clamp them.
+  image->colorPrimaries = AVIF_COLOR_PRIMARIES_BT709;
+  image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+
+  GainMapPtr gain_map(avifGainMapCreate());
+  ASSERT_NE(gain_map, nullptr);
+  // The base and alternate HDR headrooms must differ (ISO 21496-1). A target
+  // headroom equal to the base headroom gives a gain map weight of 0, so the
+  // base image goes through the pixel copy loop (the output depth differs
+  // from the input depth) instead of the gain map.
+  gain_map->baseHdrHeadroom = {1, 1};
+  gain_map->alternateHdrHeadroom = {2, 1};
+  // Tone mapping requires gainMap->image to be set even when the weight is
+  // 0, in which case the gain map pixels are never read. Initialize them
+  // anyway, the same way the other tests in this file do.
+  ImagePtr gain_map_image = testutil::CreateImage(
+      /*width=*/2, /*height=*/2, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map_image, nullptr);
+  testutil::FillImageGradient(gain_map_image.get());
+  gain_map->image = gain_map_image.release();
+
+  avifRGBImage tone_mapped = {};
+  tone_mapped.depth = 8;
+  tone_mapped.format = AVIF_RGB_FORMAT_RGBA;
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+  ASSERT_EQ(
+      avifImageApplyGainMap(image.get(), gain_map.get(), /*hdrHeadroom=*/1.0f,
+                            AVIF_COLOR_PRIMARIES_BT709,
+                            AVIF_TRANSFER_CHARACTERISTICS_SRGB, &tone_mapped,
+                            /*clli=*/nullptr, &diag),
+      AVIF_RESULT_OK)
+      << diag.error;
+  // Every channel is clamped to the nominal range instead of overflowing.
+  for (uint32_t i = 0; i < 2 * 2 * 4; ++i) {
+    EXPECT_EQ(tone_mapped.pixels[i], 255) << "channel " << i;
+  }
+  avifRGBImageFreePixels(&tone_mapped);
+}
+
+// Per the project policy, keeping input samples within the closed interval
+// [0.0, 1.0] is also the caller's responsibility for an avifRGBImage whose
+// isFloat is set. This test documents the defense-in-depth behavior of
+// avifSetRGBAPixel() when a caller violates the policy with a float base
+// image (libavif's F16 encoding matches IEEE 754 binary16 for positive
+// values, so 4.0f is stored as 0x4400). Tone mapping such an image to an
+// integer output at the base headroom gives a gain map weight of 0; with the
+// same transfer characteristics and color primaries on both sides, the pixel
+// copy loop of avifRGBImageApplyGainMap() forwards the raw samples to the
+// float-to-integer conversions in avifSetRGBAPixel(), which without the
+// clamping is undefined behavior per C11 6.3.1.4 (UBSan float-cast-overflow;
+// debug builds abort on the range asserts; a plain release build stored the
+// low bits of the truncated value, 252 for 4.0f in an 8-bit output). The same
+// image at any other target headroom goes through the gain map math path,
+// which clamps each channel with avifNanSafeClamp().
+TEST(ToneMapTest, ToneMapFloatBaseOutOfRange) {
+  avifRGBImage base = {};
+  base.width = 2;
+  base.height = 1;
+  base.depth = 16;
+  base.format = AVIF_RGB_FORMAT_RGBA;
+  base.isFloat = AVIF_TRUE;
+  ASSERT_EQ(avifRGBImageAllocatePixels(&base), AVIF_RESULT_OK);
+  // Positive half precision values: 4.0f is 0x4400, 16.0f is 0x4C00 and
+  // 1.0f is 0x3C00. The r/g/b samples are outside the [0.0, 1.0] interval
+  // that the caller is responsible for, to exercise the defense-in-depth
+  // clamping.
+  const uint16_t kSamples[2][4] = {
+      {0x4400, 0x4400, 0x4400, 0x3C00},  // r = g = b = 4.0f, a = 1.0f
+      {0x4C00, 0x4C00, 0x4C00, 0x3C00},  // r = g = b = 16.0f, a = 1.0f
+  };
+  memcpy(base.pixels, kSamples, sizeof(kSamples));
+
+  GainMapPtr gain_map(avifGainMapCreate());
+  ASSERT_NE(gain_map, nullptr);
+  // The base and alternate HDR headrooms must differ (ISO 21496-1). A target
+  // headroom equal to the base headroom gives a gain map weight of 0, so the
+  // base image goes through the pixel copy loop (the integer output makes
+  // the memcpy fast path ineligible too) instead of the gain map.
+  gain_map->baseHdrHeadroom = {1, 1};
+  gain_map->alternateHdrHeadroom = {2, 1};
+  // Tone mapping requires gainMap->image to be set even when the weight is
+  // 0, in which case the gain map pixels are never read. Initialize them
+  // anyway, the same way the other tests in this file do.
+  ImagePtr gain_map_image = testutil::CreateImage(
+      /*width=*/2, /*height=*/1, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400,
+      AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map_image, nullptr);
+  testutil::FillImageGradient(gain_map_image.get());
+  gain_map->image = gain_map_image.release();
+
+  avifRGBImage tone_mapped = {};
+  tone_mapped.depth = 8;
+  tone_mapped.format = AVIF_RGB_FORMAT_RGBA;
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+  ASSERT_EQ(avifRGBImageApplyGainMap(
+                &base, AVIF_COLOR_PRIMARIES_BT709,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, gain_map.get(),
+                /*hdrHeadroom=*/1.0f, AVIF_COLOR_PRIMARIES_BT709,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, &tone_mapped,
+                /*clli=*/nullptr, &diag),
+            AVIF_RESULT_OK)
+      << diag.error;
+  // Every channel is clamped to the nominal range instead of overflowing.
+  for (uint32_t i = 0; i < 2 * 1 * 4; ++i) {
+    EXPECT_EQ(tone_mapped.pixels[i], 255) << "channel " << i;
+  }
+  avifRGBImageFreePixels(&tone_mapped);
+  avifRGBImageFreePixels(&base);
+}
+
 TEST(GainMapTest, OpaqueProperties) {
   ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
   ASSERT_NE(image, nullptr);
