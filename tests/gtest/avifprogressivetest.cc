@@ -382,6 +382,31 @@ TEST(DecodeProgressiveTest, DecodeIdat) {
   }
 }
 
+// Regression test: avifDecoderReset() used to read the first color tile
+// whenever the primary item was progressive, without checking that any
+// color tiles exist. Parsing a progressive file sets the item's
+// progressive flag; if imageContentToDecode is then changed to exclude
+// color, Reset() clears all tiles and generates none, so the progressive
+// check ran on an empty tile list and dereferenced a null tile input.
+// white_1x1_a1lx_progressive.avif is white_1x1.avif with an 'a1lx'
+// property (and no 'lsel' property) on the primary item, which makes the
+// item progressive.
+TEST(DecodeProgressiveTest, ResetAfterExcludingColor) {
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA;
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(), (std::string(data_path) +
+                                                 "white_1x1_a1lx_progressive.avif")
+                                                    .c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  ASSERT_EQ(decoder->progressiveState, AVIF_PROGRESSIVE_STATE_AVAILABLE);
+
+  decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_GAIN_MAP;
+  EXPECT_EQ(avifDecoderReset(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->progressiveState, AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
+}
+
 }  // namespace
 }  // namespace avif
 

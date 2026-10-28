@@ -6648,7 +6648,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
                 avifDecoderItemValidateProperties(mainItems[c], avifGetConfigurationPropertyName(codecType[c]), &decoder->diag, strictFlags));
         }
 
-        if (mainItems[AVIF_ITEM_COLOR]->progressive) {
+        if (mainItems[AVIF_ITEM_COLOR]->progressive && (data->tileInfos[AVIF_ITEM_COLOR].tileCount > 0)) {
             decoder->progressiveState = AVIF_PROGRESSIVE_STATE_AVAILABLE;
             // data->tileInfos[AVIF_ITEM_COLOR].firstTileIndex is not yet defined but will be set to 0 a few lines below.
             const avifTile * colorTile = &data->tiles.tile[0];
