@@ -436,7 +436,9 @@ if(UNIX OR MINGW)
     # Find out if we have threading available
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    target_link_libraries(avif_obj PRIVATE Threads::Threads)
+    if(Threads_FOUND)
+        target_link_libraries(avif_obj PRIVATE Threads::Threads)
+    endif()
 endif()
 
 if(NOT AVIF_LIBYUV_ENABLED)
