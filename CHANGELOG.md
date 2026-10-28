@@ -23,7 +23,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Update aom.cmd/LocalAom.cmake: v3.15.3-rc1
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.4
 * Update LocalAvm.cmake: v1.0.0
-* Update libyuv.cmd/LocalLibyuv.cmake: 26e56be0f (1960)
+* Update libyuv.cmd/LocalLibyuv.cmake: eeb06a645 (1974)
 * Update svt.cmd/svt.sh/LocalSvt.cmake: v4.2.0
 * Copy XMP/Exif in avifgainmaputil tonemap
 * Apply patch to SVT-AV1 with AVIF_CODEC_SVT=LOCAL to fix corrupted encoded
