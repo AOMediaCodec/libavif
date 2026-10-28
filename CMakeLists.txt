@@ -666,6 +666,9 @@ if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
         if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
             target_link_libraries(avif_apps${suffix} PRIVATE LibXml2::LibXml2)
         endif()
+        if(UNIX AND NOT APPLE)
+            target_link_libraries(avif_apps${suffix} PRIVATE ${CMAKE_DL_LIBS}) # for dlsym
+        endif()
         target_include_directories(avif_apps${suffix} INTERFACE apps/shared)
         # In GitHub CI's macos-latest os image, /usr/local/include has not only the headers of libpng
         # and libjpeg but also the headers of an older version of libavif. Put the avif include
@@ -843,7 +846,9 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libavif.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES include/avif/avif.h include/avif/avif_cxx.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif")
+    install(FILES include/avif/avif.h include/avif/apps.h include/avif/avif_cxx.h include/avif/codec.h
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/avif"
+    )
 endif()
 
 # ---------------------------------------------------------------------------------------
