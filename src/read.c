@@ -596,6 +596,12 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
                                                           const uint64_t sizeHint,
                                                           avifDiagnostics * diag)
 {
+    // The sum of all sample sizes is bounded by the file size because chunks are disjoint in a
+    // well-formed file. Allowing anything above that would let a tiny file materialize the whole
+    // imageCountLimit budget of samples (about 125 MiB with the default limit).
+    const uint64_t maxTotalSampleSize = (sizeHint > 0 && sizeHint <= UINT64_MAX / 16) ? sizeHint * 16 : 0; // 0 means unlimited
+    uint64_t totalSampleSize = 0;
+
     if (imageCountLimit) {
         // Verify that the we're not about to exceed the frame count limit.
 
@@ -641,6 +647,16 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
                 }
                 avifSampleTableSampleSize * sampleSizePtr = &sampleTable->sampleSizes.sampleSize[sampleSizeIndex];
                 sampleSize = sampleSizePtr->size;
+            }
+
+            if (sampleSize > UINT64_MAX - totalSampleSize) {
+                avifDiagnosticsPrintf(diag, "Total sample size overflows");
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+            totalSampleSize += sampleSize;
+            if (maxTotalSampleSize != 0 && totalSampleSize > maxTotalSampleSize) {
+                avifDiagnosticsPrintf(diag, "Total sample size exceeds 16x file size; overlapping chunks are not supported");
+                return AVIF_RESULT_NOT_IMPLEMENTED;
             }
 
             avifDecodeSample * sample = (avifDecodeSample *)avifArrayPush(&decodeInput->samples);
