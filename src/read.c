@@ -4189,6 +4189,40 @@ static avifProperty * avifDecoderItemAddProperty(avifDecoderItem * item, const a
     return itemProperty;
 }
 
+// Sets the pixel format and chroma sample position signaled by the MinimizedImageBox for the given item.
+// These are checked against the codec configuration property in avifDecoderItemValidateProperties().
+static avifResult avifDecoderItemSetMiniBoxPixelFormat(avifDecoderItem * item,
+                                                       uint32_t chromaSubsampling,
+                                                       uint32_t chromaIsHorizontallyCentered,
+                                                       uint32_t chromaIsVerticallyCentered)
+{
+    item->miniBoxPixelFormat = chromaSubsampling == 0   ? AVIF_PIXEL_FORMAT_YUV400
+                               : chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
+                               : chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
+                                                        : AVIF_PIXEL_FORMAT_YUV444;
+    if (item->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV422) {
+        // In AV1, the chroma_sample_position syntax element is not present for the YUV 4:2:2 format.
+        // Assume that AV1 uses the same 4:2:2 chroma sample location as HEVC and VVC (colocated).
+        AVIF_CHECKERR(!chromaIsHorizontallyCentered, AVIF_RESULT_BMFF_PARSE_FAILED);
+        // chromaIsVerticallyCentered: Ignored unless chroma_subsampling is 1.
+        item->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    } else if (item->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
+        if (chromaIsHorizontallyCentered) {
+            // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN.
+            // There is a proposal to assign the reserved value 3 (CSP_RESERVED) to the center chroma sample position.
+            item->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+        } else {
+            item->miniBoxChromaSamplePosition = chromaIsVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
+                                                                           : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
+        }
+    } else {
+        // chromaIsHorizontallyCentered: Ignored unless chroma_subsampling is 1 or 2.
+        // chromaIsVerticallyCentered: Ignored unless chroma_subsampling is 1.
+        item->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
                                              uint64_t rawOffset,
                                              const uint8_t * raw,
@@ -4314,6 +4348,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     uint8_t gainmapMatrixCoefficients = 0;
     uint32_t gainmapFullRange = 0;
     uint32_t gainmapChromaSubsampling = 0;
+    uint32_t gainmapChromaIsHorizontallyCentered = 0, gainmapChromaIsVerticallyCentered = 0;
     uint32_t gainmapBitDepth = 0;
     uint32_t tmapHasExplicitCicp = AVIF_FALSE;
     uint8_t tmapColorPrimaries = AVIF_COLOR_PRIMARIES_UNKNOWN;
@@ -4343,7 +4378,6 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapFullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_full_range_flag;
 
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapChromaSubsampling, 2), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(2) gainmap_chroma_subsampling;
-            uint32_t gainmapChromaIsHorizontallyCentered = 0, gainmapChromaIsVerticallyCentered = 0;
             if (gainmapChromaSubsampling == 1 || gainmapChromaSubsampling == 2) {
                 AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapChromaIsHorizontallyCentered, 1),
                               AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_chroma_is_horizontally_centered;
@@ -4513,30 +4547,8 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     memcpy(colorItem->type, infeType, 4);
     colorItem->width = width;
     colorItem->height = height;
-    colorItem->miniBoxPixelFormat = chromaSubsampling == 0   ? AVIF_PIXEL_FORMAT_YUV400
-                                    : chromaSubsampling == 1 ? AVIF_PIXEL_FORMAT_YUV420
-                                    : chromaSubsampling == 2 ? AVIF_PIXEL_FORMAT_YUV422
-                                                             : AVIF_PIXEL_FORMAT_YUV444;
-    if (colorItem->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV422) {
-        // In AV1, the chroma_sample_position syntax element is not present for the YUV 4:2:2 format.
-        // Assume that AV1 uses the same 4:2:2 chroma sample location as HEVC and VVC (colocated).
-        AVIF_CHECKERR(!chromaIsHorizontallyCentered, AVIF_RESULT_BMFF_PARSE_FAILED);
-        // chromaIsVerticallyCentered: Ignored unless chroma_subsampling is 1.
-        colorItem->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    } else if (colorItem->miniBoxPixelFormat == AVIF_PIXEL_FORMAT_YUV420) {
-        if (chromaIsHorizontallyCentered) {
-            // There is no way to describe this with AV1's chroma_sample_position enum besides CSP_UNKNOWN.
-            // There is a proposal to assign the reserved value 3 (CSP_RESERVED) to the center chroma sample position.
-            colorItem->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-        } else {
-            colorItem->miniBoxChromaSamplePosition = chromaIsVerticallyCentered ? AVIF_CHROMA_SAMPLE_POSITION_VERTICAL
-                                                                                : AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
-        }
-    } else {
-        // chromaIsHorizontallyCentered: Ignored unless chroma_subsampling is 1 or 2.
-        // chromaIsVerticallyCentered: Ignored unless chroma_subsampling is 1.
-        colorItem->miniBoxChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-    }
+    AVIF_CHECKRES(
+        avifDecoderItemSetMiniBoxPixelFormat(colorItem, chromaSubsampling, chromaIsHorizontallyCentered, chromaIsVerticallyCentered));
 
     avifDecoderItem * alphaItem = NULL;
     if (hasAlpha) {
@@ -4572,6 +4584,10 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         memcpy(gainmapItem->type, infeType, 4);
         gainmapItem->width = gainmapWidth;
         gainmapItem->height = gainmapHeight;
+        AVIF_CHECKRES(avifDecoderItemSetMiniBoxPixelFormat(gainmapItem,
+                                                           gainmapChromaSubsampling,
+                                                           gainmapChromaIsHorizontallyCentered,
+                                                           gainmapChromaIsVerticallyCentered));
         AVIF_CHECKRES(avifAddDimgInput(tmapItem, gainmapItem));
     }
 
