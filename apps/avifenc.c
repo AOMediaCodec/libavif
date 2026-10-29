@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,6 +79,7 @@ typedef struct
     avifMatrixCoefficients matrixCoefficients;
     avifChromaDownsampling chromaDownsampling;
     avifAppFileFormat inputFormat;
+    avifBool forceXyb;
 
     // The last layer's size. Inferred from the last input, only needed when using --layered.
     uint32_t width;
@@ -253,6 +255,7 @@ static void syntaxLong(void)
     printf("    --exif FILENAME                   : Provide an Exif metadata payload to be associated with the primary item (implies --ignore-exif)\n");
     printf("    --xmp FILENAME                    : Provide an XMP metadata payload to be associated with the primary item (implies --ignore-xmp)\n");
     printf("    --icc FILENAME                    : Provide an ICC profile payload to be associated with the primary item (implies --ignore-icc)\n");
+    printf("    --force-xyb                       : Convert RGB input to XYB color space and attach XYB ICC profile\n");
     printf("    --timescale,--fps V               : Timescale for image sequences. If all frames are 1 timescale in length, this is equivalent to frames per second. (Default: 30)\n");
     printf("                                        If neither duration nor timescale are set, avifenc will attempt to use the framerate stored in a y4m header, if present.\n");
     printf("    --creation-time                   : Creation time for image sequences, in seconds since 1970-01-01 00:00:00 UTC (the Unix epoch). (Default: 0, use the modification time)\n");
@@ -600,6 +603,21 @@ static avifBool avifInputReadImage(avifInput * input,
         const avifCropRect rect = { 0, 0, cached->image->width, cached->image->height };
         if (avifImageSetViewRect(image, cached->image, &rect) != AVIF_RESULT_OK) {
             assert(AVIF_FALSE);
+        }
+        if (cached->image->icc.size > 0) {
+            if (avifImageSetProfileICC(image, cached->image->icc.data, cached->image->icc.size) != AVIF_RESULT_OK) {
+                return AVIF_FALSE;
+            }
+        }
+        if (cached->image->exif.size > 0) {
+            if (avifImageSetMetadataExif(image, cached->image->exif.data, cached->image->exif.size) != AVIF_RESULT_OK) {
+                return AVIF_FALSE;
+            }
+        }
+        if (cached->image->xmp.size > 0) {
+            if (avifImageSetMetadataXMP(image, cached->image->xmp.data, cached->image->xmp.size) != AVIF_RESULT_OK) {
+                return AVIF_FALSE;
+            }
         }
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         if (cached->image->gainMap && cached->image->gainMap->image) {
@@ -1171,6 +1189,274 @@ cleanup:
     return success;
 }
 
+static const uint8_t kXybIcc[720] = {
+    0x00, 0x00, 0x02, 0xd0, 0x6a, 0x78, 0x6c, 0x20, 0x04, 0x40, 0x00, 0x00,
+    0x73, 0x63, 0x6e, 0x72, 0x52, 0x47, 0x42, 0x20, 0x58, 0x59, 0x5a, 0x20,
+    0x07, 0xe3, 0x00, 0x0c, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x61, 0x63, 0x73, 0x70, 0x41, 0x50, 0x50, 0x4c, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf6, 0xd6,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xd3, 0x2d, 0x6a, 0x78, 0x6c, 0x20,
+    0x55, 0x8e, 0xdd, 0x94, 0x0f, 0x32, 0x04, 0x06, 0x99, 0xc6, 0x8a, 0x17,
+    0xb4, 0x0d, 0x3f, 0x7b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06,
+    0x64, 0x65, 0x73, 0x63, 0x00, 0x00, 0x00, 0xcc, 0x00, 0x00, 0x00, 0x2c,
+    0x63, 0x70, 0x72, 0x74, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00, 0x00, 0x24,
+    0x77, 0x74, 0x70, 0x74, 0x00, 0x00, 0x01, 0x1c, 0x00, 0x00, 0x00, 0x14,
+    0x63, 0x68, 0x61, 0x64, 0x00, 0x00, 0x01, 0x30, 0x00, 0x00, 0x00, 0x2c,
+    0x41, 0x32, 0x42, 0x30, 0x00, 0x00, 0x01, 0x5c, 0x00, 0x00, 0x01, 0x24,
+    0x42, 0x32, 0x41, 0x30, 0x00, 0x00, 0x02, 0x80, 0x00, 0x00, 0x00, 0x50,
+    0x6d, 0x6c, 0x75, 0x63, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+    0x00, 0x00, 0x00, 0x0c, 0x65, 0x6e, 0x55, 0x53, 0x00, 0x00, 0x00, 0x0e,
+    0x00, 0x00, 0x00, 0x1c, 0x00, 0x58, 0x00, 0x59, 0x00, 0x42, 0x00, 0x5f,
+    0x00, 0x50, 0x00, 0x65, 0x00, 0x72, 0x00, 0x00, 0x6d, 0x6c, 0x75, 0x63,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c,
+    0x65, 0x6e, 0x55, 0x53, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x1c,
+    0x00, 0x43, 0x00, 0x43, 0x00, 0x30, 0x00, 0x00, 0x58, 0x59, 0x5a, 0x20,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf6, 0xd6, 0x00, 0x01, 0x00, 0x00,
+    0x00, 0x00, 0xd3, 0x2d, 0x73, 0x66, 0x33, 0x32, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x0c, 0x40, 0x00, 0x00, 0x05, 0xdd, 0xff, 0xff, 0xf3, 0x29,
+    0x00, 0x00, 0x07, 0x92, 0x00, 0x00, 0xfd, 0x90, 0xff, 0xff, 0xfb, 0xa2,
+    0xff, 0xff, 0xfd, 0xa2, 0x00, 0x00, 0x03, 0xdb, 0x00, 0x00, 0xc0, 0x81,
+    0x6d, 0x41, 0x42, 0x20, 0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xf4, 0x00, 0x00, 0x00, 0x94,
+    0x00, 0x00, 0x00, 0x50, 0x00, 0x00, 0x00, 0x20, 0x70, 0x61, 0x72, 0x61,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+    0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x00, 0x00, 0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x02, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x86, 0x00, 0x00, 0x00, 0x00,
+    0x0c, 0x86, 0x70, 0xc9, 0xf3, 0x79, 0xff, 0xff, 0x8f, 0x36, 0xf3, 0x79,
+    0xff, 0xff, 0xff, 0xff, 0x0c, 0x86, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x86,
+    0x00, 0x00, 0x70, 0xc9, 0xff, 0xff, 0xf3, 0x79, 0x8f, 0x36, 0xff, 0xff,
+    0xf3, 0x79, 0xff, 0xff, 0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0xe3, 0x88,
+    0x00, 0x00, 0x23, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00,
+    0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0xe3, 0x88, 0x00, 0x00, 0x20, 0xbb,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70, 0x61, 0x72, 0x61,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00,
+    0x00, 0x01, 0x82, 0xd3, 0xff, 0xff, 0xe0, 0xd5, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x14, 0xa1, 0x00, 0x01, 0x84, 0x5b, 0xff, 0xfe, 0xe4, 0xbb,
+    0x00, 0x00, 0x12, 0x56, 0xff, 0xff, 0xf3, 0x32, 0x00, 0x00, 0x91, 0x80,
+    0xff, 0xff, 0xfb, 0x4e, 0xff, 0xfe, 0x9c, 0xc1, 0x00, 0x01, 0x1d, 0x54,
+    0x00, 0x00, 0xaf, 0x8c, 0xff, 0xff, 0xff, 0x88, 0xff, 0xff, 0xff, 0x84,
+    0xff, 0xff, 0xff, 0x99, 0x6d, 0x42, 0x41, 0x20, 0x00, 0x00, 0x00, 0x00,
+    0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x00, 0x00, 0x70, 0x61, 0x72, 0x61, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x70, 0x61, 0x72, 0x61,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
+};
+
+static float avifFClampf(float v, float min, float max) {
+    if (v < min) return min;
+    if (v > max) return max;
+    return v;
+}
+
+static const float kOpsinMatrix[3][3] = {
+    { 0.30f, 0.622f, 0.078f },
+    { 0.23f, 0.692f, 0.078f },
+    { 0.2434226892f, 0.2047674442f, 0.5518098666f }
+};
+static const float kOpsinBias[3] = { 0.003793073255f, 0.003793073255f, 0.003793073255f };
+
+static float avifSrgbToLinear(float x) {
+    return (x <= 0.04045f) ? (x / 12.92f) : powf((x + 0.055f) / 1.055f, 2.4f);
+}
+
+static avifBool avifImageConvertGBRToXyb(avifImage * image)
+{
+    if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444 || image->depth < 8 || image->depth > 12) {
+        return AVIF_FALSE;
+    }
+    const uint32_t width = image->width;
+    const uint32_t height = image->height;
+    const int input_depth = image->depth;
+    assert(image->alphaPlane == NULL);
+
+    uint8_t * srcPlanes[3] = { image->yuvPlanes[0], image->yuvPlanes[1], image->yuvPlanes[2] };
+    uint32_t srcRowBytes[3] = { image->yuvRowBytes[0], image->yuvRowBytes[1], image->yuvRowBytes[2] };
+    const avifBool srcOwnsPlanes = image->imageOwnsYUVPlanes;
+
+    image->yuvPlanes[0] = NULL;
+    image->yuvPlanes[1] = NULL;
+    image->yuvPlanes[2] = NULL;
+    image->yuvRowBytes[0] = 0;
+    image->yuvRowBytes[1] = 0;
+    image->yuvRowBytes[2] = 0;
+    image->imageOwnsYUVPlanes = AVIF_FALSE;
+    image->depth = 10;
+    if (avifImageAllocatePlanes(image, AVIF_PLANES_YUV) != AVIF_RESULT_OK) {
+        if (srcOwnsPlanes) {
+            avifFree(srcPlanes[0]);
+            avifFree(srcPlanes[1]);
+            avifFree(srcPlanes[2]);
+        }
+        return AVIF_FALSE;
+    }
+
+    const float max_val_in = (float)((1 << input_depth) - 1);
+    const float max_val_out = 1023.0f;
+    const float bias_cbrt = cbrtf(kOpsinBias[0]);
+
+    const int lut_size = 1 << input_depth;
+    assert(lut_size <= 4096);
+    float srgb_lut[4096];
+    for (int i = 0; i < lut_size; ++i) {
+        srgb_lut[i] = avifSrgbToLinear((float)i / max_val_in);
+    }
+    const uint16_t max_idx = (uint16_t)(lut_size - 1);
+
+    const float SCALE_X = 22.995788804f;
+    const float OFFSET_X = 0.015386134f;
+    const float SCALE_Y = 1.183000077f;
+    const float OFFSET_Y = 0.0f;
+    const float SCALE_B = 1.502141333f;
+    const float OFFSET_B = 0.27770459f;
+
+    for (uint32_t y = 0; y < height; ++y) {
+        uint16_t * const rowY16 = (uint16_t *)(image->yuvPlanes[AVIF_CHAN_Y] + (size_t)y * image->yuvRowBytes[AVIF_CHAN_Y]);
+        uint16_t * const rowU16 = (uint16_t *)(image->yuvPlanes[AVIF_CHAN_U] + (size_t)y * image->yuvRowBytes[AVIF_CHAN_U]);
+        uint16_t * const rowV16 = (uint16_t *)(image->yuvPlanes[AVIF_CHAN_V] + (size_t)y * image->yuvRowBytes[AVIF_CHAN_V]);
+
+        const uint8_t * const srcG = srcPlanes[AVIF_CHAN_Y] + (size_t)y * srcRowBytes[AVIF_CHAN_Y];
+        const uint8_t * const srcB = srcPlanes[AVIF_CHAN_U] + (size_t)y * srcRowBytes[AVIF_CHAN_U];
+        const uint8_t * const srcR = srcPlanes[AVIF_CHAN_V] + (size_t)y * srcRowBytes[AVIF_CHAN_V];
+
+        if (input_depth > 8) {
+            const uint16_t * const srcG16 = (const uint16_t *)srcG;
+            const uint16_t * const srcB16 = (const uint16_t *)srcB;
+            const uint16_t * const srcR16 = (const uint16_t *)srcR;
+
+            for (uint32_t x = 0; x < width; ++x) {
+                const uint16_t r_val = (srcR16[x] > max_idx) ? max_idx : srcR16[x];
+                const uint16_t g_val = (srcG16[x] > max_idx) ? max_idx : srcG16[x];
+                const uint16_t b_val = (srcB16[x] > max_idx) ? max_idx : srcB16[x];
+                const float r_lin = srgb_lut[r_val];
+                const float g_lin = srgb_lut[g_val];
+                const float b_lin = srgb_lut[b_val];
+
+                const float m0 =
+                    kOpsinMatrix[0][0] * r_lin + kOpsinMatrix[0][1] * g_lin + kOpsinMatrix[0][2] * b_lin + kOpsinBias[0];
+                const float m1 =
+                    kOpsinMatrix[1][0] * r_lin + kOpsinMatrix[1][1] * g_lin + kOpsinMatrix[1][2] * b_lin + kOpsinBias[1];
+                const float m2 =
+                    kOpsinMatrix[2][0] * r_lin + kOpsinMatrix[2][1] * g_lin + kOpsinMatrix[2][2] * b_lin + kOpsinBias[2];
+
+                const float m0_act = cbrtf(m0) - bias_cbrt;
+                const float m1_act = cbrtf(m1) - bias_cbrt;
+                const float m2_act = cbrtf(m2) - bias_cbrt;
+
+                const float valX = 0.5f * (m0_act - m1_act);
+                const float valY = 0.5f * (m0_act + m1_act);
+                const float valB = m2_act;
+
+                float x_scaled = (valX + OFFSET_X) * SCALE_X;
+                float y_scaled = (valY + OFFSET_Y) * SCALE_Y;
+                float b_scaled = (valB - valY + OFFSET_B) * SCALE_B;
+
+                x_scaled = avifFClampf(x_scaled, 0.0f, 1.0f);
+                y_scaled = avifFClampf(y_scaled, 0.0f, 1.0f);
+                b_scaled = avifFClampf(b_scaled, 0.0f, 1.0f);
+
+                rowY16[x] = (uint16_t)(y_scaled * max_val_out + 0.5f);
+                rowU16[x] = (uint16_t)(b_scaled * max_val_out + 0.5f);
+                rowV16[x] = (uint16_t)(x_scaled * max_val_out + 0.5f);
+            }
+        } else {
+            for (uint32_t x = 0; x < width; ++x) {
+                const float r_lin = srgb_lut[srcR[x]];
+                const float g_lin = srgb_lut[srcG[x]];
+                const float b_lin = srgb_lut[srcB[x]];
+
+                const float m0 =
+                    kOpsinMatrix[0][0] * r_lin + kOpsinMatrix[0][1] * g_lin + kOpsinMatrix[0][2] * b_lin + kOpsinBias[0];
+                const float m1 =
+                    kOpsinMatrix[1][0] * r_lin + kOpsinMatrix[1][1] * g_lin + kOpsinMatrix[1][2] * b_lin + kOpsinBias[1];
+                const float m2 =
+                    kOpsinMatrix[2][0] * r_lin + kOpsinMatrix[2][1] * g_lin + kOpsinMatrix[2][2] * b_lin + kOpsinBias[2];
+
+                const float m0_act = cbrtf(m0) - bias_cbrt;
+                const float m1_act = cbrtf(m1) - bias_cbrt;
+                const float m2_act = cbrtf(m2) - bias_cbrt;
+
+                const float valX = 0.5f * (m0_act - m1_act);
+                const float valY = 0.5f * (m0_act + m1_act);
+                const float valB = m2_act;
+
+                float x_scaled = (valX + OFFSET_X) * SCALE_X;
+                float y_scaled = (valY + OFFSET_Y) * SCALE_Y;
+                float b_scaled = (valB - valY + OFFSET_B) * SCALE_B;
+
+                x_scaled = avifFClampf(x_scaled, 0.0f, 1.0f);
+                y_scaled = avifFClampf(y_scaled, 0.0f, 1.0f);
+                b_scaled = avifFClampf(b_scaled, 0.0f, 1.0f);
+
+                rowY16[x] = (uint16_t)(y_scaled * max_val_out + 0.5f);
+                rowU16[x] = (uint16_t)(b_scaled * max_val_out + 0.5f);
+                rowV16[x] = (uint16_t)(x_scaled * max_val_out + 0.5f);
+            }
+        }
+    }
+
+    if (srcOwnsPlanes) {
+        avifFree(srcPlanes[0]);
+        avifFree(srcPlanes[1]);
+        avifFree(srcPlanes[2]);
+    }
+    return AVIF_TRUE;
+}
+
+static avifBool avifImageConvertGBRToYCbCr(avifImage * image, avifMatrixCoefficients mc)
+{
+    if (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
+        return AVIF_FALSE;
+    }
+    // Temporarily detach alphaPlane so avifImageYUVToRGB/RGBToYUV operate purely on RGB
+    // without triggering alpha premultiplication or copying alpha into the RGB buffer.
+    uint8_t * const alphaPlane = image->alphaPlane;
+    const uint32_t alphaRowBytes = image->alphaRowBytes;
+    image->alphaPlane = NULL;
+    image->alphaRowBytes = 0;
+
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image);
+    rgb.format = AVIF_RGB_FORMAT_RGB;
+
+    if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK) {
+        image->alphaPlane = alphaPlane;
+        image->alphaRowBytes = alphaRowBytes;
+        return AVIF_FALSE;
+    }
+
+    if (avifImageYUVToRGB(image, &rgb) != AVIF_RESULT_OK) {
+        avifRGBImageFreePixels(&rgb);
+        image->alphaPlane = alphaPlane;
+        image->alphaRowBytes = alphaRowBytes;
+        return AVIF_FALSE;
+    }
+
+    image->matrixCoefficients = mc;
+    avifImageFreePlanes(image, AVIF_PLANES_YUV);
+
+    if (avifImageRGBToYUV(image, &rgb) != AVIF_RESULT_OK) {
+        avifRGBImageFreePixels(&rgb);
+        image->alphaPlane = alphaPlane;
+        image->alphaRowBytes = alphaRowBytes;
+        return AVIF_FALSE;
+    }
+
+    image->alphaPlane = alphaPlane;
+    image->alphaRowBytes = alphaRowBytes;
+    avifRGBImageFreePixels(&rgb);
+    return AVIF_TRUE;
+}
+
 static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
                                              avifInput * input,
                                              const avifInputFile * firstFile,
@@ -1203,6 +1489,29 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         goto cleanup;
     }
 
+    const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+    avifBool enable_qm_explicitly_set = AVIF_FALSE;
+    for (int i = 0; i < firstFile->settings.codecSpecificOptions.count; ++i) {
+        const char * key = firstFile->settings.codecSpecificOptions.keys[i];
+        if (strncmp(key, "color:", 6) == 0) {
+            key += 6;
+        } else if (strncmp(key, "c:", 2) == 0) {
+            key += 2;
+        }
+        if (strcmp(key, "enable-qm") == 0) {
+            enable_qm_explicitly_set = AVIF_TRUE;
+            break;
+        }
+    }
+    const avifBool is_xyb = (firstImage->icc.size == sizeof(kXybIcc) &&
+                             memcmp(firstImage->icc.data, kXybIcc, sizeof(kXybIcc)) == 0);
+    if (is_xyb && !enable_qm_explicitly_set && codecName && strcmp(codecName, "aom") == 0) {
+        if (avifEncoderSetCodecSpecificOption(encoder, "color:enable-qm", "0") != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set enable-qm option\n");
+            goto cleanup;
+        }
+    }
+
     if (settings->overrideQuality != INVALID_QUALITY) {
         encoder->quality = settings->overrideQuality;
     }
@@ -1226,7 +1535,6 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
         goto cleanup;
     }
 
-    const char * const codecName = avifCodecName(settings->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
     char speedStr[16];
     if (settings->speed == AVIF_SPEED_DEFAULT) {
         strcpy(speedStr, "default");
@@ -1524,6 +1832,7 @@ int main(int argc, char * argv[])
     settings.ignoreGainMap = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
     settings.inputFormat = AVIF_APP_FILE_FORMAT_UNKNOWN;
+    settings.forceXyb = AVIF_FALSE;
 
     avifInputFileSettings pendingSettings;
     memset(&pendingSettings, 0, sizeof(pendingSettings));
@@ -1533,6 +1842,7 @@ int main(int argc, char * argv[])
     uint8_t imirAxis = 0xff;  // sentinel value indicating "unused"
     avifRange requestedRange = AVIF_RANGE_FULL;
     avifBool lossless = AVIF_FALSE;
+    avifBool forcedGbrLoading = AVIF_FALSE;
     avifImage * image = NULL;
     avifRWData raw = AVIF_DATA_EMPTY;
     avifRWData exifOverride = AVIF_DATA_EMPTY;
@@ -2009,6 +2319,8 @@ int main(int argc, char * argv[])
             settings.ignoreColorProfile = AVIF_TRUE;
         } else if (!strcmp(arg, "--ignore-alpha")) {
             settings.ignoreAlpha = AVIF_TRUE;
+        } else if (!strcmp(arg, "--force-xyb")) {
+            settings.forceXyb = AVIF_TRUE;
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         } else if (!strcmp(arg, "--ignore-gain-map")) {
             settings.ignoreGainMap = AVIF_TRUE;
@@ -2411,12 +2723,101 @@ int main(int argc, char * argv[])
     input.cacheEnabled = (settings.targetSize != -1);
 
     const avifInputFile * firstFile = avifInputGetFile(&input, /*imageIndex=*/0);
+    if (!firstFile) {
+        fprintf(stderr, "ERROR: No input frames found in stdin\n");
+        goto cleanup;
+    }
     uint32_t sourceDepth = 0;
     avifBool sourceWasRGB = AVIF_FALSE;
     avifAppSourceTiming firstSourceTiming;
     const avifBool isImageSequence = (!settings.gridDimsPresent) && (settings.layers == 1) && (input.filesCount > 1);
     // Gain maps are not supported for animations or layered images.
     const avifBool ignoreGainMap = settings.ignoreGainMap || isImageSequence || settings.progressive;
+    avifBool ssimulacra2_requested = AVIF_FALSE;
+    for (int i = 0; i < firstFile->settings.codecSpecificOptions.count; ++i) {
+        const char * key = firstFile->settings.codecSpecificOptions.keys[i];
+        const char * val = firstFile->settings.codecSpecificOptions.values[i];
+        if (strncmp(key, "color:", 6) == 0) {
+            key += 6;
+        } else if (strncmp(key, "c:", 2) == 0) {
+            key += 2;
+        }
+        if (strcmp(key, "tune") == 0) {
+            ssimulacra2_requested = (strcmp(val, "ssimulacra2") == 0);
+        }
+    }
+    avifAppFileFormat detectedFormat = settings.inputFormat;
+    if (detectedFormat == AVIF_APP_FILE_FORMAT_UNKNOWN && firstFile->filename != AVIF_FILENAME_STDIN) {
+        detectedFormat = avifGuessFileFormat(firstFile->filename);
+    }
+    if (settings.forceXyb) {
+        if (lossless) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with lossless (-l)\n");
+            goto cleanup;
+        }
+        if (settings.cicpExplicitlySet) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with explicit --cicp\n");
+            goto cleanup;
+        }
+        if (iccOverride.size > 0) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with --icc\n");
+            goto cleanup;
+        }
+        if (input.requestedFormat != AVIF_PIXEL_FORMAT_NONE && input.requestedFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            fprintf(stderr, "ERROR: --force-xyb requires 4:4:4 format (-y 444 or -y auto)\n");
+            goto cleanup;
+        }
+        if (requestedRange != AVIF_RANGE_FULL) {
+            fprintf(stderr, "ERROR: --force-xyb requires full range (-r full)\n");
+            goto cleanup;
+        }
+        if (input.requestedDepth != 0 && input.requestedDepth != 10) {
+            fprintf(stderr, "ERROR: --force-xyb requires 10-bit output depth (-d 10)\n");
+            goto cleanup;
+        }
+        if (input.requestedDepthExtension != 0) {
+            fprintf(stderr, "ERROR: --force-xyb does not support depth extension\n");
+            goto cleanup;
+        }
+        avifAppFileFormat inputFormatForFile = settings.inputFormat;
+        if (inputFormatForFile == AVIF_APP_FILE_FORMAT_UNKNOWN) {
+            if (firstFile->filename == AVIF_FILENAME_STDIN) {
+                inputFormatForFile = AVIF_APP_FILE_FORMAT_Y4M;
+            } else {
+                inputFormatForFile = detectedFormat;
+            }
+        }
+        if (inputFormatForFile != AVIF_APP_FILE_FORMAT_PNG) {
+            fprintf(stderr, "ERROR: --force-xyb requires PNG input\n");
+            goto cleanup;
+        }
+        if (isImageSequence || settings.layers > 1) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with image sequences or layered images\n");
+            goto cleanup;
+        }
+        if (settings.gridDimsPresent) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with image grids\n");
+            goto cleanup;
+        }
+        if (cropConversionRequired) {
+            fprintf(stderr, "ERROR: --force-xyb cannot be used with crop conversion\n");
+            goto cleanup;
+        }
+    }
+    const int targetQuality = (settings.overrideQuality != INVALID_QUALITY) ? settings.overrideQuality
+                                                                            : firstFile->settings.quality.value;
+    const avifBool can_use_xyb =
+        (settings.forceXyb || (ssimulacra2_requested && (targetQuality >= 92))) && !lossless &&
+        !settings.cicpExplicitlySet && !iccOverride.size &&
+        (input.requestedFormat == AVIF_PIXEL_FORMAT_NONE || input.requestedFormat == AVIF_PIXEL_FORMAT_YUV444) &&
+        (input.requestedDepth == 0 || input.requestedDepth == 10) &&
+        (input.requestedDepthExtension == 0) && (requestedRange == AVIF_RANGE_FULL) &&
+        !isImageSequence && (settings.layers == 1) && !cropConversionRequired && !settings.gridDimsPresent &&
+        (detectedFormat == AVIF_APP_FILE_FORMAT_PNG);
+    if (can_use_xyb) {
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+        forcedGbrLoading = AVIF_TRUE;
+    }
     if (!avifInputReadImage(&input,
                             /*imageIndex=*/0,
                             settings.ignoreColorProfile,
@@ -2433,6 +2834,70 @@ int main(int argc, char * argv[])
                             settings.chromaDownsampling,
                             settings.inputFormat)) {
         goto cleanup;
+    }
+
+    if (forcedGbrLoading) {
+        forcedGbrLoading = AVIF_FALSE;
+        const avifBool is_srgb_cicp =
+            (image->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB ||
+             image->colorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) &&
+            (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB ||
+             image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED);
+
+        if (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400 || !sourceWasRGB ||
+            image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444) {
+            if (settings.forceXyb) {
+                fprintf(stderr, "ERROR: --force-xyb requires 4:4:4 RGB input\n");
+                goto cleanup;
+            }
+            image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+        } else if (image->alphaPlane != NULL) {
+            if (settings.forceXyb) {
+                fprintf(stderr, "ERROR: --force-xyb cannot be used with images containing alpha (use --ignore-alpha to discard alpha)\n");
+                goto cleanup;
+            }
+            if (!avifImageConvertGBRToYCbCr(image, AVIF_MATRIX_COEFFICIENTS_BT601)) {
+                fprintf(stderr, "ERROR: Failed to convert image to YCbCr color space\n");
+                goto cleanup;
+            }
+        } else if (image->gainMap != NULL) {
+            if (settings.forceXyb) {
+                fprintf(stderr, "ERROR: --force-xyb cannot be used with images containing gain maps (use --ignore-gain-map to discard)\n");
+                goto cleanup;
+            }
+            if (!avifImageConvertGBRToYCbCr(image, AVIF_MATRIX_COEFFICIENTS_BT601)) {
+                fprintf(stderr, "ERROR: Failed to convert image to YCbCr color space\n");
+                goto cleanup;
+            }
+        } else if (image->icc.size > 0 || !is_srgb_cicp) {
+            if (settings.forceXyb) {
+                fprintf(stderr,
+                        "ERROR: --force-xyb cannot be used with images containing ICC profiles or non-sRGB color spaces "
+                        "(use --ignore-profile to discard)\n");
+                goto cleanup;
+            }
+            if (!avifImageConvertGBRToYCbCr(image, AVIF_MATRIX_COEFFICIENTS_BT601)) {
+                fprintf(stderr, "ERROR: Failed to convert image to YCbCr color space\n");
+                goto cleanup;
+            }
+        } else if (!settings.forceXyb && (image->width < 256 || image->height < 256)) {
+            if (!avifImageConvertGBRToYCbCr(image, AVIF_MATRIX_COEFFICIENTS_BT601)) {
+                fprintf(stderr, "ERROR: Failed to convert image to YCbCr color space\n");
+                goto cleanup;
+            }
+        } else {
+            if (!avifImageConvertGBRToXyb(image)) {
+                fprintf(stderr, "ERROR: Failed to convert image to XYB color space\n");
+                goto cleanup;
+            }
+            if (avifImageSetProfileICC(image, kXybIcc, sizeof(kXybIcc)) != AVIF_RESULT_OK) {
+                fprintf(stderr, "ERROR: Failed to set XYB ICC profile\n");
+                goto cleanup;
+            }
+            image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+            image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+            image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+        }
     }
 
     // Check again for -y auto or for y4m input (y4m input ignores input.requestedFormat and
