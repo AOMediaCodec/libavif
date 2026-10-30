@@ -565,6 +565,14 @@ The color and alpha planes are arranged as 2x2 grid items. The color `dimg`
 associations are manually edited from 2,3,4,5 to 2,3,4,A. The item with ID 0xA
 is an item used in two grids.
 
+### File [color_grid_tiles_do_not_cover_image.avif](color_grid_tiles_do_not_cover_image.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as `color_grid_alpha_nogrid.avif`
+
+The width in the `grid` item payload and in its `ispe` property is manually edited from 80 to 160, so the single column of 80 pixel wide tiles does not cover the canvas and decoding fails with `AVIF_RESULT_INVALID_IMAGE_GRID`.
+
 ### File [color_grid_alpha_item_shared_in_auxl.avif](color_grid_alpha_item_shared_in_auxl.avif)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)

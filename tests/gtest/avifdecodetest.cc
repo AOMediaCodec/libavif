@@ -34,6 +34,26 @@ TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   EXPECT_GT(decoder->image->alphaRowBytes, 0u);
 }
 
+TEST(AvifDecodeTest, DecodeAgainAfterGridError) {
+  if (!testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+  const char* file_name = "color_grid_tiles_do_not_cover_image.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  // The planes cannot be allocated, so every attempt must fail the same way.
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+  EXPECT_EQ(avifDecoderNthImage(decoder.get(), 0),
+            AVIF_RESULT_INVALID_IMAGE_GRID);
+}
+
 TEST(AvifDecodeTest, ImageContentToDecodeNone) {
   if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
