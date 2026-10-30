@@ -650,19 +650,20 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
             sample->spatialID = AVIF_SPATIAL_ID_UNSET; // Not filtering by spatial_id
             sample->sync = AVIF_FALSE;                 // to potentially be set to true following the outer loop
 
-            if (sampleSize > UINT64_MAX - sampleOffset) {
+            uint64_t sampleEnd;
+            if (!avifCheckedAddU64(sampleOffset, sampleSize, &sampleEnd)) {
                 avifDiagnosticsPrintf(diag,
                                       "Sample table contains an offset/size pair which overflows: [%" PRIu64 " / %u]",
                                       sampleOffset,
                                       sampleSize);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            if (sizeHint && ((sampleOffset + sampleSize) > sizeHint)) {
+            if (sizeHint && (sampleEnd > sizeHint)) {
                 avifDiagnosticsPrintf(diag, "Exceeded avifIO's sizeHint, possibly truncated data");
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
 
-            sampleOffset += sampleSize;
+            sampleOffset = sampleEnd;
             ++sampleSizeIndex;
         }
     }
@@ -1775,8 +1776,12 @@ static avifResult avifDecoderAdoptGridTileCodecTypeIfNeeded(avifDecoder * decode
 {
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
-        const uint32_t numTiles = info->grid.rows * info->grid.columns;
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
+        uint32_t numTiles;
+        size_t byteCount;
+        AVIF_CHECKERR(avifCheckedMulU32(info->grid.rows, info->grid.columns, &numTiles) &&
+                          avifCheckedMulSize(numTiles, sizeof(uint32_t), &byteCount),
+                      AVIF_RESULT_INVALID_IMAGE_GRID);
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(byteCount);
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {
@@ -2172,7 +2177,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
 
             avifExtent * extent = (avifExtent *)avifArrayPush(&item->extents);
             AVIF_CHECKERR(extent != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-            if (extentOffset > UINT64_MAX - baseOffset) {
+            if (!avifCheckedAddU64(baseOffset, extentOffset, &extent->offset)) {
                 avifDiagnosticsPrintf(diag,
                                       "Item ID [%u] contains an extent offset which overflows: [base: %" PRIu64 " offset:%" PRIu64 "]",
                                       itemID,
@@ -2180,8 +2185,6 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
                                       extentOffset);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            uint64_t offset = baseOffset + extentOffset;
-            extent->offset = offset;
 #if UINT64_MAX > SIZE_MAX
             if (extentLength > SIZE_MAX) {
                 avifDiagnosticsPrintf(diag, "Item ID [%u] contains an extent length which overflows: [%" PRIu64 "]", itemID, extentLength);
@@ -2189,7 +2192,7 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
             }
 #endif
             extent->size = (size_t)extentLength;
-            if (extent->size > SIZE_MAX - item->size) {
+            if (!avifCheckedAddSize(item->size, extent->size, &item->size)) {
                 avifDiagnosticsPrintf(diag,
                                       "Item ID [%u] contains an extent length which overflows the item size: [%zu, %zu]",
                                       itemID,
@@ -2197,7 +2200,6 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
                                       item->size);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
             }
-            item->size += extent->size;
         }
     }
     return AVIF_RESULT_OK;
@@ -5263,9 +5265,12 @@ static avifResult avifExtentMerge(avifExtent * dst, const avifExtent * src)
     }
 
     const uint64_t minExtent1 = dst->offset;
-    const uint64_t maxExtent1 = dst->offset + dst->size;
     const uint64_t minExtent2 = src->offset;
-    const uint64_t maxExtent2 = src->offset + src->size;
+    uint64_t maxExtent1;
+    uint64_t maxExtent2;
+    if (!avifCheckedAddU64(dst->offset, dst->size, &maxExtent1) || !avifCheckedAddU64(src->offset, src->size, &maxExtent2)) {
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
     dst->offset = AVIF_MIN(minExtent1, minExtent2);
     const uint64_t extentLength = AVIF_MAX(maxExtent1, maxExtent2) - dst->offset;
 #if UINT64_MAX > SIZE_MAX
@@ -5628,14 +5633,17 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         return AVIF_RESULT_OK;
     }
     // If color item is a grid, check if there is an alpha channel which is represented as an auxl item to each color tile item.
-    const uint32_t tileCount = colorInfo->grid.rows * colorInfo->grid.columns;
+    uint32_t tileCount;
+    AVIF_CHECKERR(avifCheckedMulU32(colorInfo->grid.rows, colorInfo->grid.columns, &tileCount), AVIF_RESULT_INVALID_IMAGE_GRID);
     if (tileCount == 0) {
         *alphaItem = NULL;
         *isAlphaItemInInput = AVIF_FALSE;
         return AVIF_RESULT_OK;
     }
     // Keep the same 'dimg' order as it defines where each tile is located in the reconstructed image.
-    uint32_t * dimgIdxToAlphaItemIdx = (uint32_t *)avifAlloc(tileCount * sizeof(uint32_t));
+    size_t byteCount;
+    AVIF_CHECKERR(avifCheckedMulSize(tileCount, sizeof(uint32_t), &byteCount), AVIF_RESULT_INVALID_IMAGE_GRID);
+    uint32_t * dimgIdxToAlphaItemIdx = (uint32_t *)avifAlloc(byteCount);
     AVIF_CHECKERR(dimgIdxToAlphaItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     const uint32_t itemIndexNotSet = UINT32_MAX;
     for (uint32_t dimgIdx = 0; dimgIdx < tileCount; ++dimgIdx) {
@@ -6134,8 +6142,12 @@ static avifResult avifDecoderGenerateImageTiles(avifDecoder * decoder, avifTileI
     const uint32_t previousTileCount = decoder->data->tiles.count;
     if ((info->grid.rows > 0) && (info->grid.columns > 0)) {
         // The number of tiles was verified in avifDecoderItemReadAndParse().
-        const uint32_t numTiles = info->grid.rows * info->grid.columns;
-        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(numTiles * sizeof(uint32_t));
+        uint32_t numTiles;
+        size_t byteCount;
+        AVIF_CHECKERR(avifCheckedMulU32(info->grid.rows, info->grid.columns, &numTiles) &&
+                          avifCheckedMulSize(numTiles, sizeof(uint32_t), &byteCount),
+                      AVIF_RESULT_INVALID_IMAGE_GRID);
+        uint32_t * dimgIdxToItemIdx = (uint32_t *)avifAlloc(byteCount);
         AVIF_CHECKERR(dimgIdxToItemIdx != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         avifResult result = avifFillDimgIdxToItemIdxArray(dimgIdxToItemIdx, numTiles, item);
         if (result == AVIF_RESULT_OK) {
