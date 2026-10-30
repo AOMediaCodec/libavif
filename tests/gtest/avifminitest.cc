@@ -191,8 +191,10 @@ INSTANTIATE_TEST_SUITE_P(
             Values(AVIF_PLANES_YUV, AVIF_PLANES_ALL), Values(AVIF_RANGE_FULL),
             /*create_icc=*/Values(false),
             /*create_exif=*/Values(false), /*create_xmp=*/Values(false),
-            Values(AVIF_TRANSFORM_NONE), /*create_hdr=*/Values(true),
-            /*create_premul=*/Values(false)));
+            Values(AVIF_TRANSFORM_NONE, AVIF_TRANSFORM_IROT,
+                   AVIF_TRANSFORM_IMIR,
+                   AVIF_TRANSFORM_IROT | AVIF_TRANSFORM_IMIR),
+            /*create_hdr=*/Values(true), /*create_premul=*/Values(false)));
 
 //------------------------------------------------------------------------------
 
