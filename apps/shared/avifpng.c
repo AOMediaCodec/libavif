@@ -698,6 +698,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     volatile int colorType;
     if (copyYPlane) {
+        if (!avif->yuvPlanes[AVIF_CHAN_Y] || (avif->width == 0) || (avif->height == 0) || (avif->yuvRowBytes[AVIF_CHAN_Y] < avif->width)) {
+            fprintf(stderr, "Error writing PNG: invalid Y plane buffer: %s\n", outputFilename);
+            goto cleanup;
+        }
         colorType = PNG_COLOR_TYPE_GRAY;
     } else {
         avifRGBImageSetDefaults(&rgbData, avif);
@@ -782,6 +786,10 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
 
     const avifBool hasIcc = avif->icc.data && (avif->icc.size > 0);
     if (hasIcc) {
+        if (avif->icc.size > UINT32_MAX) {
+            fprintf(stderr, "Error writing PNG: ICC profile is too big\n");
+            goto cleanup;
+        }
         // If there is an ICC profile, the CICP values are irrelevant and only the ICC profile
         // is written. If we could extract the primaries/transfer curve from the ICC profile,
         // then they could be written in cHRM/gAMA chunks.
@@ -868,6 +876,8 @@ avifBool avifPNGWrite(const char * outputFilename, const avifImage * avif, uint3
         memset(text, 0, sizeof(*text));
         text->compression = PNG_ITXT_COMPRESSION_NONE;
         text->key = "XML:com.adobe.xmp";
+        text->lang = "";
+        text->lang_key = "";
         text->text = (char *)xmp.data;
         text->itxt_length = xmp.size;
     }
