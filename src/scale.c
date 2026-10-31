@@ -37,6 +37,30 @@ avifResult avifImageScaleWithLimit(avifImage * image,
         avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    if (image->yuvPlanes[0] || image->alphaPlane) {
+        // libyuv's ScaleFilterReduce() multiplies destination dimensions by 2 and 3.
+        // This also bounds its signed int dimensions and strides, dimension + 1,
+        // and the two-byte destination row size used for depths greater than 8.
+        if (dstWidth > INT_MAX / 3 || dstHeight > INT_MAX / 3) {
+            avifDiagnosticsPrintf(diag,
+                                  "avifImageScaleWithLimit requested dst dimensions that exceed libyuv's int range [%ux%u]",
+                                  dstWidth,
+                                  dstHeight);
+            return AVIF_RESULT_NOT_IMPLEMENTED;
+        }
+        const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+        for (int i = 0; i < AVIF_PLANE_COUNT_YUV; ++i) {
+            if (image->yuvPlanes[i] && image->yuvRowBytes[i] / bytesPerSample > INT_MAX) {
+                avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested YUV row stride that exceeds libyuv's int range");
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
+        }
+        if (image->alphaPlane && image->alphaRowBytes / bytesPerSample > INT_MAX) {
+            avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested alpha row stride that exceeds libyuv's int range");
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
+    }
+
     if (avifDimensionsTooLarge(dstWidth, dstHeight, imageSizeLimit, imageDimensionLimit)) {
         avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
         return AVIF_RESULT_NOT_IMPLEMENTED;
