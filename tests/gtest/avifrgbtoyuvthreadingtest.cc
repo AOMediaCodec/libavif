@@ -4,7 +4,16 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <climits>
+#include <cstdint>
+#include <cstring>
 #include <tuple>
+#include <vector>
+
+#if (defined(__linux__) || defined(__APPLE__)) && UINTPTR_MAX > UINT32_MAX
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -119,6 +128,187 @@ INSTANTIATE_TEST_SUITE_P(
                    AVIF_CHROMA_UPSAMPLING_NEAREST,
                    AVIF_CHROMA_UPSAMPLING_BILINEAR),
             /*has_alpha=*/Bool()));
+
+#if (defined(__linux__) || defined(__APPLE__)) && UINTPTR_MAX > UINT32_MAX
+// Regression tests for signed int stride overflow when plane rowBytes > INT_MAX.
+class ScopedHugeStrideTwoRowPlane {
+ public:
+  static constexpr uint32_t kStride = 0x80000000u;
+
+  bool Init(uint8_t fill_value) {
+    const long raw_page = sysconf(_SC_PAGESIZE);
+    if (raw_page <= 0) return false;
+    page_size_ = static_cast<size_t>(raw_page);
+    total_size_ = static_cast<size_t>(kStride) * 2 + page_size_ * 2;
+    mapping_ = mmap(nullptr, total_size_, PROT_NONE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mapping_ == MAP_FAILED) {
+      mapping_ = nullptr;
+      return false;
+    }
+    row0_ = static_cast<uint8_t*>(mapping_) + kStride;
+    row1_ = row0_ + kStride;
+    if (mprotect(row0_, page_size_, PROT_READ | PROT_WRITE) != 0 ||
+        mprotect(row1_, page_size_, PROT_READ | PROT_WRITE) != 0) {
+      munmap(mapping_, total_size_);
+      mapping_ = nullptr;
+      row0_ = nullptr;
+      row1_ = nullptr;
+      return false;
+    }
+    std::memset(row0_, fill_value, 16);
+    std::memset(row1_, fill_value, 16);
+    return true;
+  }
+
+  ~ScopedHugeStrideTwoRowPlane() {
+    if (mapping_ != nullptr) {
+      munmap(mapping_, total_size_);
+    }
+  }
+
+  uint8_t* row0() const { return row0_; }
+  uint8_t* row1() const { return row1_; }
+
+ private:
+  void* mapping_ = nullptr;
+  uint8_t* row0_ = nullptr;
+  uint8_t* row1_ = nullptr;
+  size_t page_size_ = 0;
+  size_t total_size_ = 0;
+};
+
+void DetachBorrowedYUVPlanes(avifImage* image) {
+  image->imageOwnsYUVPlanes = AVIF_FALSE;
+  image->yuvPlanes[AVIF_CHAN_Y] = nullptr;
+  image->yuvPlanes[AVIF_CHAN_U] = nullptr;
+  image->yuvPlanes[AVIF_CHAN_V] = nullptr;
+}
+
+TEST(LibYUVPlaneStrideTest, RGBToYUVOversizedChromaStridesFallBackSafely) {
+  ScopedHugeStrideTwoRowPlane huge_u;
+  ScopedHugeStrideTwoRowPlane huge_v;
+  if (!huge_u.Init(0) || !huge_v.Init(0)) {
+    GTEST_SKIP() << "Virtual address space reservation unavailable";
+  }
+
+  for (int huge_chan : {AVIF_CHAN_U, AVIF_CHAN_V}) {
+    ImagePtr image(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV422));
+    ASSERT_NE(image, nullptr);
+    image->yuvRange = AVIF_RANGE_LIMITED;
+    image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+    std::vector<uint8_t> y_buf(16, 0);
+    std::vector<uint8_t> normal_chroma(16, 0);
+    image->yuvPlanes[AVIF_CHAN_Y] = y_buf.data();
+    image->yuvRowBytes[AVIF_CHAN_Y] = 2;
+    if (huge_chan == AVIF_CHAN_U) {
+      image->yuvPlanes[AVIF_CHAN_U] = huge_u.row0();
+      image->yuvRowBytes[AVIF_CHAN_U] = ScopedHugeStrideTwoRowPlane::kStride;
+      image->yuvPlanes[AVIF_CHAN_V] = normal_chroma.data();
+      image->yuvRowBytes[AVIF_CHAN_V] = 1;
+    } else {
+      image->yuvPlanes[AVIF_CHAN_U] = normal_chroma.data();
+      image->yuvRowBytes[AVIF_CHAN_U] = 1;
+      image->yuvPlanes[AVIF_CHAN_V] = huge_v.row0();
+      image->yuvRowBytes[AVIF_CHAN_V] = ScopedHugeStrideTwoRowPlane::kStride;
+    }
+
+    testutil::AvifRgbImage rgb(image.get(), 8, AVIF_RGB_FORMAT_BGRA);
+    rgb.avoidLibYUV = AVIF_FALSE;
+    std::memset(rgb.pixels, 96, rgb.rowBytes * rgb.height);
+
+    const avifResult res = avifImageRGBToYUV(image.get(), &rgb);
+    DetachBorrowedYUVPlanes(image.get());
+    ASSERT_EQ(res, AVIF_RESULT_OK);
+  }
+
+  // Positive control: monochrome YUV400 ignores unused chroma rowBytes fields.
+  ImagePtr mono(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV400));
+  ASSERT_NE(mono, nullptr);
+  mono->yuvRange = AVIF_RANGE_LIMITED;
+  mono->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+  ASSERT_EQ(avifImageAllocatePlanes(mono.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+  mono->yuvRowBytes[AVIF_CHAN_U] = ScopedHugeStrideTwoRowPlane::kStride;
+  mono->yuvRowBytes[AVIF_CHAN_V] = ScopedHugeStrideTwoRowPlane::kStride;
+  testutil::AvifRgbImage mono_rgb(mono.get(), 8, AVIF_RGB_FORMAT_BGRA);
+  mono_rgb.avoidLibYUV = AVIF_FALSE;
+  std::memset(mono_rgb.pixels, 96, mono_rgb.rowBytes * mono_rgb.height);
+  EXPECT_EQ(avifImageRGBToYUV(mono.get(), &mono_rgb), AVIF_RESULT_OK);
+}
+
+TEST(LibYUVPlaneStrideTest, YUVToRGBOversizedChromaStridesFallBackSafely) {
+  ScopedHugeStrideTwoRowPlane huge_plane;
+  if (!huge_plane.Init(128)) {
+    GTEST_SKIP() << "Virtual address space reservation unavailable";
+  }
+
+  for (int huge_chan : {AVIF_CHAN_U, AVIF_CHAN_V}) {
+    ImagePtr image(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV422));
+    ASSERT_NE(image, nullptr);
+    image->yuvRange = AVIF_RANGE_LIMITED;
+    image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+
+    std::vector<uint8_t> y_buf(16, 128);
+    std::vector<uint8_t> u_buf(16, 128);
+    std::vector<uint8_t> v_buf(16, 128);
+    image->yuvPlanes[AVIF_CHAN_Y] = y_buf.data();
+    image->yuvRowBytes[AVIF_CHAN_Y] = 2;
+    image->yuvPlanes[AVIF_CHAN_U] = u_buf.data();
+    image->yuvRowBytes[AVIF_CHAN_U] = 1;
+    image->yuvPlanes[AVIF_CHAN_V] = v_buf.data();
+    image->yuvRowBytes[AVIF_CHAN_V] = 1;
+
+    if (huge_chan == AVIF_CHAN_U) {
+      image->yuvPlanes[AVIF_CHAN_U] = huge_plane.row0();
+      image->yuvRowBytes[AVIF_CHAN_U] = ScopedHugeStrideTwoRowPlane::kStride;
+    } else {
+      image->yuvPlanes[AVIF_CHAN_V] = huge_plane.row0();
+      image->yuvRowBytes[AVIF_CHAN_V] = ScopedHugeStrideTwoRowPlane::kStride;
+    }
+
+    testutil::AvifRgbImage rgb(image.get(), 8, AVIF_RGB_FORMAT_RGBA);
+    rgb.avoidLibYUV = AVIF_FALSE;
+    rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
+
+    const avifResult res = avifImageYUVToRGB(image.get(), &rgb);
+    DetachBorrowedYUVPlanes(image.get());
+    ASSERT_EQ(res, AVIF_RESULT_OK);
+  }
+}
+
+TEST(LibYUVPlaneStrideTest, YUVToRGBOversized8BitAlphaStrideFallsBackSafely) {
+  ScopedHugeStrideTwoRowPlane huge_alpha;
+  if (!huge_alpha.Init(192)) {
+    GTEST_SKIP() << "Virtual address space reservation unavailable";
+  }
+
+  ImagePtr image(avifImageCreate(2, 2, 8, AVIF_PIXEL_FORMAT_YUV420));
+  ASSERT_NE(image, nullptr);
+  image->yuvRange = AVIF_RANGE_LIMITED;
+  image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+  ASSERT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+  std::memset(image->yuvPlanes[AVIF_CHAN_Y], 128,
+              image->yuvRowBytes[AVIF_CHAN_Y] * image->height);
+  std::memset(image->yuvPlanes[AVIF_CHAN_U], 128,
+              image->yuvRowBytes[AVIF_CHAN_U]);
+  std::memset(image->yuvPlanes[AVIF_CHAN_V], 128,
+              image->yuvRowBytes[AVIF_CHAN_V]);
+  image->alphaPlane = huge_alpha.row0();
+  image->alphaRowBytes = ScopedHugeStrideTwoRowPlane::kStride;
+  image->imageOwnsAlphaPlane = AVIF_FALSE;
+
+  testutil::AvifRgbImage rgb(image.get(), 8, AVIF_RGB_FORMAT_RGBA);
+  rgb.avoidLibYUV = AVIF_FALSE;
+  rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
+
+  const avifResult res = avifImageYUVToRGB(image.get(), &rgb);
+  image->alphaPlane = nullptr;
+  ASSERT_EQ(res, AVIF_RESULT_OK);
+}
+#endif
 
 }  // namespace
 }  // namespace avif

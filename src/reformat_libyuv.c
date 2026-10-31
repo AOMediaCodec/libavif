@@ -270,7 +270,10 @@ static avifResult avifImageRGBToYUVLibYUV8bpc(avifImage * image, const avifRGBIm
 avifResult avifImageRGBToYUVLibYUV(avifImage * image, const avifRGBImage * rgb)
 {
     // The width, height, and stride parameters of libyuv functions are all of the int type.
-    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
+    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX ||
+        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400 &&
+         (image->yuvRowBytes[AVIF_CHAN_U] > INT_MAX || image->yuvRowBytes[AVIF_CHAN_V] > INT_MAX)) ||
+        rgb->rowBytes > INT_MAX) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
 
@@ -932,8 +935,12 @@ static avifResult avifImageDownshiftTo8bpc(const avifImage * image, avifImage * 
 IGNORE_CFI_ICALL avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avifRGBImage * rgb, avifBool reformatAlpha, avifBool * alphaReformattedWithLibYUV)
 {
     *alphaReformattedWithLibYUV = AVIF_FALSE;
+    const avifBool alphaPreferred = reformatAlpha && image->alphaPlane && image->alphaRowBytes;
     // The width, height, and stride parameters of libyuv functions are all of the int type.
-    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX || rgb->rowBytes > INT_MAX) {
+    if (image->width > INT_MAX || image->height > INT_MAX || image->yuvRowBytes[AVIF_CHAN_Y] > INT_MAX ||
+        (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400 &&
+         (image->yuvRowBytes[AVIF_CHAN_U] > INT_MAX || image->yuvRowBytes[AVIF_CHAN_V] > INT_MAX)) ||
+        (image->depth == 8 && alphaPreferred && image->alphaRowBytes > INT_MAX) || rgb->rowBytes > INT_MAX) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
     if (rgb->depth != 8 || (image->depth != 8 && image->depth != 10 && image->depth != 12)) {
@@ -949,7 +956,6 @@ IGNORE_CFI_ICALL avifResult avifImageYUVToRGBLibYUV(const avifImage * image, avi
     }
 
     LibyuvConversionFunction lcf;
-    const avifBool alphaPreferred = reformatAlpha && image->alphaPlane && image->alphaRowBytes;
     if (!getLibYUVConversionFunction(image->yuvFormat, image->depth, rgb, alphaPreferred, &lcf)) {
         return AVIF_RESULT_NOT_IMPLEMENTED;
     }
