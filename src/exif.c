@@ -11,7 +11,11 @@ avifResult avifGetExifTiffHeaderOffset(const uint8_t * exif, size_t exifSize, si
     const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
     const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
     exifSize = AVIF_MIN(exifSize, UINT32_MAX);
-    for (*offset = 0; *offset + 4 <= exifSize; ++*offset) {
+    if (exifSize < 4) {
+        *offset = 0;
+        return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+    }
+    for (*offset = 0; *offset <= exifSize - 4; ++*offset) {
         if (!memcmp(&exif[*offset], tiffHeaderBE, 4) || !memcmp(&exif[*offset], tiffHeaderLE, 4)) {
             return AVIF_RESULT_OK;
         }
@@ -38,7 +42,7 @@ avifResult avifGetExifOrientationOffset(const uint8_t * exif, size_t exifSize, s
     // TIFF Header
     uint32_t offsetTo0thIfd;
     if (!avifROStreamSkip(&stream, 4) || // Skip tiffHeaderBE or tiffHeaderLE.
-        !avifROStreamReadU32Endianness(&stream, &offsetTo0thIfd, littleEndian)) {
+        !avifROStreamReadU32Endianness(&stream, &offsetTo0thIfd, littleEndian) || offsetTo0thIfd < 8) {
         return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
     }
 
