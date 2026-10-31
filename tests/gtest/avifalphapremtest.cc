@@ -3,6 +3,9 @@
 
 #include <string.h>
 
+#include <array>
+#include <cstdint>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -57,6 +60,91 @@ TEST(AlphaMultiplyTest, OpaqueIsNoOp) {
         no_alpha_rgb.pixels, no_alpha_rgb.height * no_alpha_rgb.rowBytes));
 
     // TODO(yguyon): Also compare avifImageYUVToRGB() with ignoreAlpha.
+  }
+}
+
+TEST(AlphaMultiplyTest, SupportedDepths) {
+  for (uint32_t depth : {8u, 10u, 12u, 16u}) {
+    for (avifRGBFormat format :
+         {AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_BGRA, AVIF_RGB_FORMAT_ARGB,
+          AVIF_RGB_FORMAT_ABGR, AVIF_RGB_FORMAT_GRAYA, AVIF_RGB_FORMAT_AGRAY}) {
+      for (bool premultiply : {false, true}) {
+        SCOPED_TRACE(depth);
+        SCOPED_TRACE(format);
+        SCOPED_TRACE(premultiply);
+        const uint32_t channels = avifRGBFormatChannelCount(format);
+        const uint32_t alpha_channel =
+            (format == AVIF_RGB_FORMAT_ARGB || format == AVIF_RGB_FORMAT_ABGR ||
+             format == AVIF_RGB_FORMAT_AGRAY)
+                ? 0
+                : channels - 1;
+        const uint16_t max = (uint32_t{1} << depth) - 1;
+        const std::array<uint16_t, 3> alphas = {0, uint16_t(max / 2), max};
+        // Real, aligned storage accommodates all three pixels at every depth.
+        std::array<uint16_t, 12> storage = {};
+        avifRGBImage rgb = {};
+        rgb.width = alphas.size();
+        rgb.height = 1;
+        rgb.depth = depth;
+        rgb.format = format;
+        rgb.pixels = reinterpret_cast<uint8_t*>(storage.data());
+        rgb.rowBytes = rgb.width * channels * (depth == 8 ? 1 : 2);
+        for (uint32_t pixel = 0; pixel < rgb.width; ++pixel) {
+          for (uint32_t channel = 0; channel < channels; ++channel) {
+            const uint16_t value =
+                channel == alpha_channel || !premultiply ? alphas[pixel] : max;
+            const size_t index = pixel * channels + channel;
+            if (depth == 8) {
+              rgb.pixels[index] = static_cast<uint8_t>(value);
+            } else {
+              storage[index] = value;
+            }
+          }
+        }
+        ASSERT_EQ(premultiply ? avifRGBImagePremultiplyAlpha(&rgb)
+                              : avifRGBImageUnpremultiplyAlpha(&rgb),
+                  AVIF_RESULT_OK);
+        for (uint32_t pixel = 0; pixel < rgb.width; ++pixel) {
+          for (uint32_t channel = 0; channel < channels; ++channel) {
+            const uint16_t expected = channel == alpha_channel || premultiply
+                                          ? alphas[pixel]
+                                          : (alphas[pixel] == 0 ? 0 : max);
+            const size_t index = pixel * channels + channel;
+            const uint16_t actual =
+                depth == 8 ? rgb.pixels[index] : storage[index];
+            EXPECT_EQ(actual, expected);
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(AlphaMultiplyTest, RejectsUnsupportedDepths) {
+  for (uint32_t depth : {0u, 7u, 9u, 11u, 15u, 17u}) {
+    for (avifRGBFormat format :
+         {AVIF_RGB_FORMAT_RGBA, AVIF_RGB_FORMAT_ARGB, AVIF_RGB_FORMAT_GRAYA}) {
+      for (bool premultiply : {false, true}) {
+        SCOPED_TRACE(depth);
+        SCOPED_TRACE(format);
+        SCOPED_TRACE(premultiply);
+        const uint32_t channels = avifRGBFormatChannelCount(format);
+        std::array<uint16_t, 12> storage = {};
+        storage.fill(0x0102u);
+        const auto expected = storage;
+        avifRGBImage rgb = {};
+        rgb.width = 3;
+        rgb.height = 1;
+        rgb.depth = depth;
+        rgb.format = format;
+        rgb.pixels = reinterpret_cast<uint8_t*>(storage.data());
+        rgb.rowBytes = rgb.width * channels * 2;
+        EXPECT_EQ(premultiply ? avifRGBImagePremultiplyAlpha(&rgb)
+                              : avifRGBImageUnpremultiplyAlpha(&rgb),
+                  AVIF_RESULT_INVALID_ARGUMENT);
+        EXPECT_EQ(storage, expected);
+      }
+    }
   }
 }
 
