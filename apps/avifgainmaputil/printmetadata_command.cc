@@ -23,9 +23,9 @@ template <typename T>
 std::string FormatFractions(const T fractions[3]) {
   std::stringstream stream;
   const int w = 40;
-  stream << "R " << std::left << std::setw(w) << FormatFraction(fractions)
-         << " G " << std::left << std::setw(w) << FormatFraction(fractions)
-         << " B " << std::left << std::setw(w) << FormatFraction(fractions);
+  stream << "R " << std::left << std::setw(w) << FormatFraction(&fractions[0])
+         << " G " << std::left << std::setw(w) << FormatFraction(&fractions[1])
+         << " B " << std::left << std::setw(w) << FormatFraction(&fractions[2]);
   return stream.str();
 }
 }  // namespace
