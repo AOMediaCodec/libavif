@@ -572,8 +572,10 @@ struct aomScalingModeMapList
     AOM_SCALING_MODE aomMode;
 };
 
+// AOME_TWOTHREE (7) and AOME_ONETHREE (8) were added in v3.7.0 (2023-08-10).
 static const struct aomScalingModeMapList scalingModeMap[] = {
-    { { 1, 1 }, AOME_NORMAL },    { { 1, 2 }, AOME_ONETWO },    { { 1, 4 }, AOME_ONEFOUR },  { { 1, 8 }, AOME_ONEEIGHT },
+    { { 1, 1 }, AOME_NORMAL },    { { 1, 2 }, AOME_ONETWO },    { { 1, 3 }, AOME_ONETHREE },
+    { { 1, 4 }, AOME_ONEFOUR },   { { 1, 8 }, AOME_ONEEIGHT },  { { 2, 3 }, AOME_TWOTHREE },
     { { 3, 4 }, AOME_THREEFOUR }, { { 3, 5 }, AOME_THREEFIVE }, { { 4, 5 }, AOME_FOURFIVE },
 };
 
