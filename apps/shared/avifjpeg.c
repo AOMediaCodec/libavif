@@ -679,6 +679,7 @@ static avifBool avifParseBoolean(const char * str, avifBool * value)
     if (str == NULL || value == NULL) {
         return AVIF_FALSE;
     }
+    // Trim.
     while (isspace((unsigned char)*str)) {
         ++str;
     }
@@ -843,13 +844,6 @@ static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNo
     return AVIF_TRUE;
 }
 
-static inline void SwapDoubles(double * x, double * y)
-{
-    double tmp = *x;
-    *x = *y;
-    *y = tmp;
-}
-
 static avifBool avifJPEGParseGainMapXMPPropertiesAppleFormat(const xmlNode * descNode, avifGainMap * gainMap)
 {
     double hdrHeadroomLinear = 1.0;
@@ -894,27 +888,44 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         return avifJPEGParseGainMapXMPPropertiesAppleFormat(descNode, gainMap);
     }
 
-    double baseHdrHeadroom = 0.0;
-    double alternateHdrHeadroom = 1.0;
+    const char * ns = XML_NAME_SPACE_GAIN_MAP;
+    uint32_t numValues;
+    const char * baseRenditionIsHDR;
+    avifBool isHDR = AVIF_FALSE;
+    if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues, ns)) {
+        if (!avifParseBoolean(baseRenditionIsHDR, &isHDR)) {
+            return AVIF_FALSE; // Unexpected value.
+        }
+    }
+
+    double baseHdrHeadroom = isHDR ? 1.0 : 0.0;
+    double alternateHdrHeadroom = isHDR ? 0.0 : 1.0;
     double gainMapMin[3] = { 0.0, 0.0, 0.0 };
     double gainMapMax[3] = { 1.0, 1.0, 1.0 };
     double gainMapGamma[3] = { 1.0, 1.0, 1.0 };
     double baseOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
     double alternateOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
-    const char * ns = XML_NAME_SPACE_GAIN_MAP;
-    avifBool hasBaseHeadroom = AVIF_FALSE;
-    avifBool hasAlternateHeadroom = AVIF_FALSE;
-    // (Recent as of 2026) Apple devices use BaseHeadroom/AlternateHeadroom instead of HDRCapacityMin/HDRCapacityMax.
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "BaseHeadroom", &baseHdrHeadroom, /*numDoubles=*/1, ns, &hasBaseHeadroom));
-    if (!hasBaseHeadroom) {
-        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1, ns, NULL));
+    avifBool hasHdrCapacityMin = AVIF_FALSE;
+    avifBool hasHdrCapacityMax = AVIF_FALSE;
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
+                                                  "HDRCapacityMin",
+                                                  isHDR ? &alternateHdrHeadroom : &baseHdrHeadroom,
+                                                  /*numDoubles=*/1,
+                                                  ns,
+                                                  &hasHdrCapacityMin));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode,
+                                                  "HDRCapacityMax",
+                                                  isHDR ? &baseHdrHeadroom : &alternateHdrHeadroom,
+                                                  /*numDoubles=*/1,
+                                                  ns,
+                                                  &hasHdrCapacityMax));
+    if (!hasHdrCapacityMin && !hasHdrCapacityMax) {
+        // (Recent as of 2026) Apple devices use BaseHeadroom/AlternateHeadroom instead of HDRCapacityMin/HDRCapacityMax.
+        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "AlternateHeadroom", &alternateHdrHeadroom, /*numDoubles=*/1, ns, NULL));
+        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "BaseHeadroom", &baseHdrHeadroom, /*numDoubles=*/1, ns, NULL));
     }
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "AlternateHeadroom", &alternateHdrHeadroom, /*numDoubles=*/1, ns, &hasAlternateHeadroom));
-    if (!hasAlternateHeadroom) {
-        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1, ns, NULL));
-    }
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3, ns, NULL));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", isHDR ? alternateOffset : baseOffset, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", isHDR ? baseOffset : alternateOffset, /*numDoubles=*/3, ns, NULL));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3, ns, NULL));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3, ns, NULL));
     AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3, ns, NULL));
@@ -925,25 +936,6 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
         AVIF_CHECK(alternateOffset[i] >= 0.0);
         AVIF_CHECK(gainMapGamma[i] > 0.0);
     }
-
-    uint32_t numValues;
-    const char * baseRenditionIsHDR;
-    avifBool isHDR = AVIF_FALSE;
-    if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues, ns)) {
-        if (!avifParseBoolean(baseRenditionIsHDR, &isHDR)) {
-            return AVIF_FALSE; // Unexpected value.
-        }
-    }
-    if (isHDR) {
-        // Only swap if headroom was specified as CapacityMin/Max.
-        if (!hasBaseHeadroom && !hasAlternateHeadroom) {
-            SwapDoubles(&baseHdrHeadroom, &alternateHdrHeadroom);
-        }
-        for (int c = 0; c < 3; ++c) {
-            SwapDoubles(&baseOffset[c], &alternateOffset[c]);
-        }
-    }
-
     AVIF_CHECK(baseHdrHeadroom >= 0.0);
     AVIF_CHECK(alternateHdrHeadroom >= 0.0);
     AVIF_CHECK(baseHdrHeadroom != alternateHdrHeadroom);
