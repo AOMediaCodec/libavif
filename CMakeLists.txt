@@ -155,6 +155,11 @@ endif()
 add_library(avif_obj OBJECT)
 add_library(avif)
 
+# Require static_assert support in function context, as added in 1.4.2.
+# Was missing in some older C11 compilers: Apple Clang <= 7.0.2, etc.
+# https://github.com/AOMediaCodec/libavif/issues/3319
+target_compile_features(avif PRIVATE c_static_assert)
+
 # Adds <target> to avif_obj's public link libraries for build, and adds
 # the <target> library as an install link library for export in case a consumer
 # needs to include that library alongside libavif when statically linking.
