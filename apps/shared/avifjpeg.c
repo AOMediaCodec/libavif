@@ -589,7 +589,115 @@ static xmlDoc * avifJPEGReadXMLMemory(const uint8_t * data, size_t size, const c
     return xmlReadMemory((const char *)data, (int)size, url, NULL, /*options=*/0);
 }
 
-// Finds an 'rdf:Description' node containing a gain map version attribute (hdrgm:Version="1.0").
+// Finds the value of a gain map metadata property, that can be either stored as an attribute of 'descriptionNode'
+// (which should point to a <rdf:Description> node) or as a child node.
+// 'maxValues' is the maximum number of expected values, and the size of the 'values' array. 'numValues' is set to the number
+// of values actually found (which may be smaller or larger, but only up to 'maxValues' are stored in 'values').
+// Returns AVIF_TRUE if the property was found.
+static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
+                                            const char * propertyName,
+                                            uint32_t maxValues,
+                                            const char * values[],
+                                            uint32_t * numValues,
+                                            const char * nameSpace)
+{
+    *numValues = 0;
+
+    // Search attributes.
+    for (xmlAttr * prop = descriptionNode->properties; prop != NULL; prop = prop->next) {
+        if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)nameSpace) &&
+            !xmlStrcmp(prop->name, (const xmlChar *)propertyName) && prop->children != NULL && prop->children->content != NULL) {
+            // Properties should have just one child containing the property's value
+            // (in fact the 'children' field is documented as "the value of the property").
+            if (maxValues > 0) {
+                values[0] = (const char *)prop->children->content;
+            }
+            *numValues = 1;
+            return AVIF_TRUE;
+        }
+    }
+
+    // Search child nodes.
+    for (const xmlNode * node = descriptionNode->children; node != NULL; node = node->next) {
+        if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)nameSpace) &&
+            !xmlStrcmp(node->name, (const xmlChar *)propertyName) && node->children) {
+            // Multiple values can be specified with a Seq tag: <rdf:Seq><rdf:li>value1</rdf:li><rdf:li>value2</rdf:li>...</rdf:Seq>
+            const xmlNode * seq = avifJPEGFindXMLNodeByName(node, XML_NAME_SPACE_RDF, "Seq", /*recursive=*/AVIF_FALSE);
+            if (seq) {
+                for (xmlNode * seqChild = seq->children; seqChild; seqChild = seqChild->next) {
+                    if (!xmlStrcmp(seqChild->name, (const xmlChar *)"li") && seqChild->children != NULL &&
+                        seqChild->children->content != NULL) {
+                        if (*numValues < maxValues) {
+                            values[*numValues] = (const char *)seqChild->children->content;
+                        }
+                        ++(*numValues);
+                    }
+                }
+                return *numValues > 0 ? AVIF_TRUE : AVIF_FALSE;
+            } else if (node->children->next == NULL &&
+                       (node->children->type == XML_TEXT_NODE || node->children->type == XML_CDATA_SECTION_NODE) &&
+                       node->children->content != NULL) { // Only one child and it's text.
+                if (maxValues > 0) {
+                    values[0] = (const char *)node->children->content;
+                }
+                *numValues = 1;
+                return AVIF_TRUE;
+            }
+            // We found a tag for this property but no valid content.
+            return AVIF_FALSE;
+        }
+    }
+
+    return AVIF_FALSE; // Property not found.
+}
+
+static avifBool avifGainMapVersionIsSupported(const char * version)
+{
+    if (version == NULL) {
+        return AVIF_FALSE;
+    }
+    int major = 0;
+    int minor = 0;
+    char dot = 0;
+    const int numRead = sscanf(version, " %d %c %d", &major, &dot, &minor);
+    if (major != 1) {
+        return AVIF_FALSE;
+    }
+    if (numRead == 1) {
+        // Just "1"
+        return AVIF_TRUE;
+    }
+    if (numRead == 3 && dot == '.' && minor >= 0) {
+        // "1.x"
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
+}
+
+static avifBool avifParseBoolean(const char * str, avifBool * value)
+{
+    if (str == NULL || value == NULL) {
+        return AVIF_FALSE;
+    }
+    while (isspace((unsigned char)*str)) {
+        ++str;
+    }
+    size_t len = strlen(str);
+    while (len > 0 && isspace((unsigned char)str[len - 1])) {
+        --len;
+    }
+    if ((len == 1 && str[0] == '1') || (len == 4 && (!strncmp(str, "True", 4) || !strncmp(str, "true", 4)))) {
+        *value = AVIF_TRUE;
+        return AVIF_TRUE;
+    }
+    if ((len == 1 && str[0] == '0') || (len == 5 && (!strncmp(str, "False", 5) || !strncmp(str, "false", 5)))) {
+        *value = AVIF_FALSE;
+        return AVIF_TRUE;
+    }
+    return AVIF_FALSE;
+}
+
+// Finds an 'rdf:Description' node containing a gain map version (e.g. hdrgm:Version="1.0" or "1").
 // Returns NULL if not found.
 static const xmlNode * avifJPEGFindIsoGainMapXMPNode(const xmlNode * rootNode)
 {
@@ -606,20 +714,18 @@ static const xmlNode * avifJPEGFindIsoGainMapXMPNode(const xmlNode * rootNode)
         // shall consist of only zero or more rdf:Description elements."
         if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)XML_NAME_SPACE_RDF) &&
             !xmlStrcmp(node->name, (const xmlChar *)"Description")) {
-            // Look for the gain map version attribute: hdrgm:Version="1.0"
-            for (xmlAttr * prop = node->properties; prop != NULL; prop = prop->next) {
-                if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)XML_NAME_SPACE_GAIN_MAP) &&
-                    !xmlStrcmp(prop->name, (const xmlChar *)"Version") && prop->children != NULL &&
-                    !xmlStrcmp(prop->children->content, (const xmlChar *)"1.0")) {
-                    return node;
-                }
+            const char * version;
+            uint32_t numValues;
+            if (avifJPEGFindGainMapProperty(node, "Version", /*maxValues=*/1, &version, &numValues, XML_NAME_SPACE_GAIN_MAP) &&
+                avifGainMapVersionIsSupported(version)) {
+                return node;
             }
         }
     }
     return NULL;
 }
 
-// Finds an 'rdf:Description' node containing a <HDRGainMap:HDRGainMapVersion> child.
+// Finds an 'rdf:Description' node containing an Apple HDRGainMapVersion property.
 static const xmlNode * avifJPEGFindAppleGainMapXMPNode(const xmlNode * rootNode)
 {
     // See XMP specification https://github.com/adobe/XMP-Toolkit-SDK/blob/main/docs/XMPSpecificationPart1.pdf
@@ -635,12 +741,10 @@ static const xmlNode * avifJPEGFindAppleGainMapXMPNode(const xmlNode * rootNode)
         // shall consist of only zero or more rdf:Description elements."
         if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)XML_NAME_SPACE_RDF) &&
             !xmlStrcmp(node->name, (const xmlChar *)"Description")) {
-            // Look for a <HDRGainMap:HDRGainMapVersion> child.
-            for (const xmlNode * child = node->children; child != NULL; child = child->next) {
-                if (child->ns && !xmlStrcmp(child->ns->href, (const xmlChar *)XML_NAME_SPACE_APPLE_GAIN_MAP) &&
-                    !xmlStrcmp(child->name, (const xmlChar *)"HDRGainMapVersion")) {
-                    return node;
-                }
+            const char * version;
+            uint32_t numValues;
+            if (avifJPEGFindGainMapProperty(node, "HDRGainMapVersion", /*maxValues=*/1, &version, &numValues, XML_NAME_SPACE_APPLE_GAIN_MAP)) {
+                return node;
             }
         }
     }
@@ -685,81 +789,33 @@ static avifBool avifJPEGHasGainMapXMPNode(const uint8_t * xmpData, size_t xmpSiz
     return found;
 }
 
-// Finds the value of a gain map metadata property, that can be either stored as an attribute of 'descriptionNode'
-// (which should point to a <rdf:Description> node) or as a child node.
-// 'maxValues' is the maximum number of expected values, and the size of the 'values' array. 'numValues' is set to the number
-// of values actually found (which may be smaller or larger, but only up to 'maxValues' are stored in 'values').
-// Returns AVIF_TRUE if the property was found.
-static avifBool avifJPEGFindGainMapProperty(const xmlNode * descriptionNode,
-                                            const char * propertyName,
-                                            uint32_t maxValues,
-                                            const char * values[],
-                                            uint32_t * numValues,
-                                            const char * nameSpace)
-{
-    *numValues = 0;
-
-    // Search attributes.
-    for (xmlAttr * prop = descriptionNode->properties; prop != NULL; prop = prop->next) {
-        if (prop->ns && !xmlStrcmp(prop->ns->href, (const xmlChar *)nameSpace) &&
-            !xmlStrcmp(prop->name, (const xmlChar *)propertyName) && prop->children != NULL && prop->children->content != NULL) {
-            // Properties should have just one child containing the property's value
-            // (in fact the 'children' field is documented as "the value of the property").
-            values[0] = (const char *)prop->children->content;
-            *numValues = 1;
-            return AVIF_TRUE;
-        }
-    }
-
-    // Search child nodes.
-    for (const xmlNode * node = descriptionNode->children; node != NULL; node = node->next) {
-        if (node->ns && !xmlStrcmp(node->ns->href, (const xmlChar *)nameSpace) &&
-            !xmlStrcmp(node->name, (const xmlChar *)propertyName) && node->children) {
-            // Multiple values can be specified with a Seq tag: <rdf:Seq><rdf:li>value1</rdf:li><rdf:li>value2</rdf:li>...</rdf:Seq>
-            const xmlNode * seq = avifJPEGFindXMLNodeByName(node, XML_NAME_SPACE_RDF, "Seq", /*recursive=*/AVIF_FALSE);
-            if (seq) {
-                for (xmlNode * seqChild = seq->children; seqChild; seqChild = seqChild->next) {
-                    if (!xmlStrcmp(seqChild->name, (const xmlChar *)"li") && seqChild->children != NULL &&
-                        seqChild->children->content != NULL) {
-                        if (*numValues < maxValues) {
-                            values[*numValues] = (const char *)seqChild->children->content;
-                        }
-                        ++(*numValues);
-                    }
-                }
-                return *numValues > 0 ? AVIF_TRUE : AVIF_FALSE;
-            } else if (node->children->next == NULL && node->children->type == XML_TEXT_NODE) { // Only one child and it's text.
-                values[0] = (const char *)node->children->content;
-                *numValues = 1;
-                return AVIF_TRUE;
-            }
-            // We found a tag for this property but no valid content.
-            return AVIF_FALSE;
-        }
-    }
-
-    return AVIF_FALSE; // Property not found.
-}
-
 // Up to 3 values per property (one for each RGB channel).
 #define GAIN_MAP_PROPERTY_MAX_VALUES 3
 
 // Looks for a given gain map property's double value(s), and if found, stores them in 'values'.
 // The 'values' array should have size at least 'numDoubles', and should be initialized with default
 // values for this property, since the array will be left untouched if the property is not found.
+// If 'propertyFound' is not null, it is set to AVIF_TRUE if the property was present, or AVIF_FALSE otherwise.
 // Returns AVIF_TRUE if the property was successfully parsed, or if it was not found, since all properties
 // are optional. Returns AVIF_FALSE in case of error (invalid metadata XMP).
 static avifBool avifJPEGFindGainMapPropertyDoubles(const xmlNode * descriptionNode,
                                                    const char * propertyName,
                                                    double * values,
                                                    uint32_t numDoubles,
-                                                   const char * nameSpace)
+                                                   const char * nameSpace,
+                                                   avifBool * propertyFound)
 {
+    if (propertyFound != NULL) {
+        *propertyFound = AVIF_FALSE;
+    }
     assert(numDoubles <= GAIN_MAP_PROPERTY_MAX_VALUES);
     const char * textValues[GAIN_MAP_PROPERTY_MAX_VALUES];
     uint32_t numValues;
     if (!avifJPEGFindGainMapProperty(descriptionNode, propertyName, /*maxValues=*/numDoubles, &textValues[0], &numValues, nameSpace)) {
         return AVIF_TRUE; // Property was not found, but it's not an error since they're all optional.
+    }
+    if (propertyFound != NULL) {
+        *propertyFound = AVIF_TRUE;
     }
     if (numValues != 1 && numValues != numDoubles) {
         return AVIF_FALSE; // Invalid, we expect either 1 or exactly numDoubles values.
@@ -797,7 +853,8 @@ static inline void SwapDoubles(double * x, double * y)
 static avifBool avifJPEGParseGainMapXMPPropertiesAppleFormat(const xmlNode * descNode, avifGainMap * gainMap)
 {
     double hdrHeadroomLinear = 1.0;
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRGainMapHeadroom", &hdrHeadroomLinear, /*numDoubles=*/1, XML_NAME_SPACE_APPLE_GAIN_MAP));
+    AVIF_CHECK(
+        avifJPEGFindGainMapPropertyDoubles(descNode, "HDRGainMapHeadroom", &hdrHeadroomLinear, /*numDoubles=*/1, XML_NAME_SPACE_APPLE_GAIN_MAP, NULL));
     if (hdrHeadroomLinear <= 0) {
         return AVIF_FALSE;
     }
@@ -845,16 +902,23 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
     double baseOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
     double alternateOffset[3] = { 1.0 / 64.0, 1.0 / 64.0, 1.0 / 64.0 };
     const char * ns = XML_NAME_SPACE_GAIN_MAP;
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3, ns));
-    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3, ns));
+    avifBool hasBaseHeadroom = AVIF_FALSE;
+    avifBool hasAlternateHeadroom = AVIF_FALSE;
+    // (Recent as of 2026) Apple devices use BaseHeadroom/AlternateHeadroom instead of HDRCapacityMin/HDRCapacityMax.
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "BaseHeadroom", &baseHdrHeadroom, /*numDoubles=*/1, ns, &hasBaseHeadroom));
+    if (!hasBaseHeadroom) {
+        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMin", &baseHdrHeadroom, /*numDoubles=*/1, ns, NULL));
+    }
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "AlternateHeadroom", &alternateHdrHeadroom, /*numDoubles=*/1, ns, &hasAlternateHeadroom));
+    if (!hasAlternateHeadroom) {
+        AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "HDRCapacityMax", &alternateHdrHeadroom, /*numDoubles=*/1, ns, NULL));
+    }
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetSDR", baseOffset, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "OffsetHDR", alternateOffset, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMin", gainMapMin, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "GainMapMax", gainMapMax, /*numDoubles=*/3, ns, NULL));
+    AVIF_CHECK(avifJPEGFindGainMapPropertyDoubles(descNode, "Gamma", gainMapGamma, /*numDoubles=*/3, ns, NULL));
 
-    AVIF_CHECK(alternateHdrHeadroom > baseHdrHeadroom);
-    AVIF_CHECK(baseHdrHeadroom >= 0);
     for (int i = 0; i < 3; ++i) {
         AVIF_CHECK(gainMapMax[i] >= gainMapMin[i]);
         AVIF_CHECK(baseOffset[i] >= 0.0);
@@ -864,17 +928,25 @@ static avifBool avifJPEGParseGainMapXMPProperties(const xmlNode * rootNode, avif
 
     uint32_t numValues;
     const char * baseRenditionIsHDR;
+    avifBool isHDR = AVIF_FALSE;
     if (avifJPEGFindGainMapProperty(descNode, "BaseRenditionIsHDR", /*maxValues=*/1, &baseRenditionIsHDR, &numValues, ns)) {
-        if (!strcmp(baseRenditionIsHDR, "True")) {
-            SwapDoubles(&baseHdrHeadroom, &alternateHdrHeadroom);
-            for (int c = 0; c < 3; ++c) {
-                SwapDoubles(&baseOffset[c], &alternateOffset[c]);
-            }
-        } else if (!strcmp(baseRenditionIsHDR, "False")) {
-        } else {
+        if (!avifParseBoolean(baseRenditionIsHDR, &isHDR)) {
             return AVIF_FALSE; // Unexpected value.
         }
     }
+    if (isHDR) {
+        // Only swap if headroom was specified as CapacityMin/Max.
+        if (!hasBaseHeadroom && !hasAlternateHeadroom) {
+            SwapDoubles(&baseHdrHeadroom, &alternateHdrHeadroom);
+        }
+        for (int c = 0; c < 3; ++c) {
+            SwapDoubles(&baseOffset[c], &alternateOffset[c]);
+        }
+    }
+
+    AVIF_CHECK(baseHdrHeadroom >= 0.0);
+    AVIF_CHECK(alternateHdrHeadroom >= 0.0);
+    AVIF_CHECK(baseHdrHeadroom != alternateHdrHeadroom);
 
     for (int i = 0; i < 3; ++i) {
         AVIF_CHECK(avifDoubleToSignedFraction(gainMapMin[i], &gainMap->gainMapMin[i]));
@@ -1601,8 +1673,9 @@ static avifBool avifJPEGReadInternal(FILE * f,
 
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
     if (!ignoreGainMap && hasMpfSegment(&cinfo)) {
-        avifBool expectIsoGainMap = AVIF_FALSE;
-        avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size, &expectIsoGainMap);
+        avifBool isAppleGainMap = AVIF_FALSE;
+        const avifBool hasGainMapXmp = avifJPEGHasGainMapXMPNode(avif->xmp.data, avif->xmp.size, &isAppleGainMap);
+        const avifBool expectIsoGainMap = hasGainMapXmp && !isAppleGainMap;
         avifGainMap * gainMap = avifGainMapCreate();
         if (gainMap == NULL) {
             fprintf(stderr, "Creating gain map failed: out of memory\n");
