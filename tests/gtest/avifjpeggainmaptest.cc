@@ -108,7 +108,8 @@ TEST(JpegTest, ReadJpegWithGainMap) {
 
 TEST(JpegTest, ReadAppleJpegWithGainMap) {
   for (const std::string filename :
-       {"apple_gainmap_old.jpg", "apple_gainmap_new.jpg"}) {
+       {"apple_gainmap_v1.jpg", "apple_gainmap_v2.jpg",
+        "apple_gainmap_v3.jpg"}) {
     SCOPED_TRACE(filename);
 
     const ImagePtr image = testutil::ReadImage(
@@ -126,16 +127,27 @@ TEST(JpegTest, ReadAppleJpegWithGainMap) {
     // be read to parse the gain map.
     EXPECT_EQ(image->xmp.size, 0u);
 
-    const double headroom =
-        filename == "apple_gainmap_old.jpg" ? 3.0 : log2(4.532783);
-    CheckGainMapMetadata(*image->gainMap,
-                         /*gain_map_min=*/{0.0, 0.0, 0.0},
-                         /*gain_map_max=*/{headroom, headroom, headroom},
-                         /*gain_map_gamma=*/{1.0, 1.0, 1.0},
-                         /*base_offset=*/{0.0, 0.0, 0.0},
-                         /*alternate_offset=*/{0.0, 0.0, 0.0},
-                         /*base_hdr_headroom=*/0.0,
-                         /*alternate_hdr_headroom=*/headroom);
+    if (filename == "apple_gainmap_v3.jpg") {
+      CheckGainMapMetadata(*image->gainMap,
+                           /*gain_map_min=*/{-0.332520, -0.332520, -0.332520},
+                           /*gain_map_max=*/{1.757545, 1.757545, 1.757545},
+                           /*gain_map_gamma=*/{0.873047, 0.873047, 0.873047},
+                           /*base_offset=*/{0.000010, 0.000010, 0.000010},
+                           /*alternate_offset=*/{0.000010, 0.000010, 0.000010},
+                           /*base_hdr_headroom=*/0.0,
+                           /*alternate_hdr_headroom=*/1.757545);
+    } else {
+      const double headroom =
+          filename == "apple_gainmap_v1.jpg" ? 3.0 : log2(4.532783);
+      CheckGainMapMetadata(*image->gainMap,
+                           /*gain_map_min=*/{0.0, 0.0, 0.0},
+                           /*gain_map_max=*/{headroom, headroom, headroom},
+                           /*gain_map_gamma=*/{1.0, 1.0, 1.0},
+                           /*base_offset=*/{0.0, 0.0, 0.0},
+                           /*alternate_offset=*/{0.0, 0.0, 0.0},
+                           /*base_hdr_headroom=*/0.0,
+                           /*alternate_hdr_headroom=*/headroom);
+    }
   }
 }
 
@@ -300,6 +312,98 @@ TEST(JpegTest, InvalidNumberOfValues) {
                                        gain_map.get(), &is_avif_gain_map));
 }
 
+TEST(JpegTest, ParseXMPAppleToneMap) {
+  // Metadata matching modern iPhone photos with gain maps (e.g. iPhone photo
+  // from https://github.com/AOMediaCodec/libavif/issues/3440).
+  // These contain both Adobe Gain Map XMP metadata (with Version="1",
+  // BaseHeadroom, AlternateHeadroom, BaseRenditionIsHDR="0", and negative
+  // GainMapMin) as well as Apple HDRGainMap metadata. Note that Apple uses the
+  // namespace prefix HDRToneMap rather than hdrgm and writes properties as
+  // child elements.
+  const std::string xmp = R"(
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+          xmlns:apdi="http://ns.apple.com/pixeldatainfo/1.0/"
+          xmlns:HDRToneMap="http://ns.adobe.com/hdr-gain-map/1.0/"
+          xmlns:HDRGainMap="http://ns.apple.com/HDRGainMap/1.0/">
+       <apdi:NativeFormat>1278226488</apdi:NativeFormat>
+       <apdi:AuxiliaryImageType>urn:com:apple:photo:2020:aux:hdrgainmap</apdi:AuxiliaryImageType>
+       <apdi:StoredFormat>1278226488</apdi:StoredFormat>
+       <HDRToneMap:Version>1</HDRToneMap:Version>
+       <HDRToneMap:GainMapMax>1.757545</HDRToneMap:GainMapMax>
+       <HDRToneMap:OffsetHDR>0.000010</HDRToneMap:OffsetHDR>
+       <HDRToneMap:Gamma>0.873047</HDRToneMap:Gamma>
+       <HDRToneMap:OffsetSDR>0.000010</HDRToneMap:OffsetSDR>
+       <HDRToneMap:BaseRenditionIsHDR>0</HDRToneMap:BaseRenditionIsHDR>
+       <HDRToneMap:BaseHeadroom>0.000000</HDRToneMap:BaseHeadroom>
+       <HDRToneMap:AlternateHeadroom>1.757545</HDRToneMap:AlternateHeadroom>
+       <HDRToneMap:GainMapMin>-0.332520</HDRToneMap:GainMapMin>
+       <HDRGainMap:HDRGainMapVersion>131072</HDRGainMap:HDRGainMapVersion>
+       <HDRGainMap:HDRGainMapHeadroom>3.381224</HDRGainMap:HDRGainMapHeadroom>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+  )";
+  GainMapPtr gain_map(avifGainMapCreate());
+  avifBool is_apple_gain_map = AVIF_TRUE;
+  ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
+                                      gain_map.get(), &is_apple_gain_map));
+
+  // The Adobe gain map metadata should take precedence over the legacy Apple
+  // metadata.
+  EXPECT_FALSE(is_apple_gain_map);
+
+  CheckGainMapMetadata(*gain_map,
+                       /*gain_map_min=*/{-0.332520, -0.332520, -0.332520},
+                       /*gain_map_max=*/{1.757545, 1.757545, 1.757545},
+                       /*gain_map_gamma=*/{0.873047, 0.873047, 0.873047},
+                       /*base_offset=*/{0.000010, 0.000010, 0.000010},
+                       /*alternate_offset=*/{0.000010, 0.000010, 0.000010},
+                       /*base_hdr_headroom=*/0.0,
+                       /*alternate_hdr_headroom=*/1.757545);
+}
+
+TEST(JpegTest, ParseXMPChildElements) {
+  // Test gain map properties specified as child elements instead of attributes,
+  // and BaseRenditionIsHDR="1".
+  // Because BaseHeadroom and AlternateHeadroom already specify the headroom of
+  // the base and alternate renditions, they should NOT be swapped when
+  // BaseRenditionIsHDR="1". However, OffsetSDR and OffsetHDR should still be
+  // swapped.
+  const std::string xmp = R"(
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/">
+      <hdrgm:Version>1</hdrgm:Version>
+      <hdrgm:BaseHeadroom>2.5</hdrgm:BaseHeadroom>
+      <hdrgm:AlternateHeadroom>0.5</hdrgm:AlternateHeadroom>
+      <hdrgm:GainMapMin>-0.2</hdrgm:GainMapMin>
+      <hdrgm:GainMapMax>2.0</hdrgm:GainMapMax>
+      <hdrgm:Gamma>0.9</hdrgm:Gamma>
+      <hdrgm:OffsetSDR>0.02</hdrgm:OffsetSDR>
+      <hdrgm:OffsetHDR>0.04</hdrgm:OffsetHDR>
+      <hdrgm:BaseRenditionIsHDR>1</hdrgm:BaseRenditionIsHDR>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+  )";
+  GainMapPtr gain_map(avifGainMapCreate());
+  avifBool is_apple_gain_map = AVIF_TRUE;
+  ASSERT_TRUE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
+                                      gain_map.get(), &is_apple_gain_map));
+  EXPECT_FALSE(is_apple_gain_map);
+
+  CheckGainMapMetadata(*gain_map,
+                       /*gain_map_min=*/{-0.2, -0.2, -0.2},
+                       /*gain_map_max=*/{2.0, 2.0, 2.0},
+                       /*gain_map_gamma=*/{0.9, 0.9, 0.9},
+                       /*base_offset=*/{0.04, 0.04, 0.04},
+                       /*alternate_offset=*/{0.02, 0.02, 0.02},
+                       /*base_hdr_headroom=*/2.5,
+                       /*alternate_hdr_headroom=*/0.5);
+}
+
 TEST(JpegTest, WrongVersion) {
   const std::string xmp = R"(
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -314,6 +418,35 @@ TEST(JpegTest, WrongVersion) {
   avifBool is_avif_gain_map;
   EXPECT_FALSE(avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
                                        gain_map.get(), &is_avif_gain_map));
+}
+
+TEST(JpegTest, VersionVariations) {
+  auto test_version = [](const char* version_str) {
+    const std::string xmp = std::string(R"(
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/" hdrgm:Version=")") +
+                            version_str + R"(">
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+    )";
+    GainMapPtr gain_map(avifGainMapCreate());
+    avifBool is_apple_gain_map;
+    return avifJPEGParseGainMapXMP((const uint8_t*)xmp.data(), xmp.size(),
+                                   gain_map.get(), &is_apple_gain_map);
+  };
+
+  EXPECT_TRUE(test_version("1"));
+  EXPECT_TRUE(test_version("1.0"));
+  EXPECT_TRUE(test_version("1.1"));
+  EXPECT_FALSE(test_version("10"));
+  EXPECT_FALSE(test_version("10.0"));
+  EXPECT_FALSE(test_version("2.0"));
+  EXPECT_FALSE(test_version("1."));
+  EXPECT_FALSE(test_version("1.abc"));
+  EXPECT_FALSE(test_version(""));
 }
 
 TEST(JpegTest, InvalidXMP) {
