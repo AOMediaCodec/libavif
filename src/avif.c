@@ -184,11 +184,14 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
-    assert(srcImage->depth == dstImage->depth);
+    // These invariants are guaranteed by the current callers but are checked here anyway because
+    // this is the chokepoint for the memcpy of the biggest buffers in libavif, and because assert()
+    // disappears in release builds.
+    AVIF_ASSERT_OR_RETURN(srcImage->depth == dstImage->depth);
     if (planes & AVIF_PLANES_YUV) {
-        assert(srcImage->yuvFormat == dstImage->yuvFormat);
+        AVIF_ASSERT_OR_RETURN(srcImage->yuvFormat == dstImage->yuvFormat);
         // Note that there may be a mismatch between srcImage->yuvRange and dstImage->yuvRange
         // because libavif allows for 'colr' and AV1 OBU video range values to differ.
     }
@@ -208,12 +211,12 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
         uint8_t * dstRow = avifImagePlane(dstImage, c);
         const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
         const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
-        assert(!srcRow == !dstRow);
+        AVIF_ASSERT_OR_RETURN(!srcRow == !dstRow);
         if (!srcRow) {
             continue;
         }
-        assert(planeWidth == avifImagePlaneWidth(dstImage, c));
-        assert(planeHeight == avifImagePlaneHeight(dstImage, c));
+        AVIF_ASSERT_OR_RETURN(planeWidth == avifImagePlaneWidth(dstImage, c));
+        AVIF_ASSERT_OR_RETURN(planeHeight == avifImagePlaneHeight(dstImage, c));
 
         const size_t planeWidthBytes = planeWidth * bytesPerPixel;
         for (uint32_t y = 0; y < planeHeight; ++y) {
@@ -222,6 +225,7 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
             dstRow += dstRowBytes;
         }
     }
+    return AVIF_RESULT_OK;
 }
 
 static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage * srcImage)
@@ -279,7 +283,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    avifImageCopySamples(dstImage, srcImage, planes);
+    AVIF_CHECKRES(avifImageCopySamples(dstImage, srcImage, planes));
 
     if (srcImage->gainMap) {
         if (!dstImage->gainMap) {
