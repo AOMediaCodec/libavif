@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -3835,10 +3836,21 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         if (encoder->repetitionCount < 0 && encoder->repetitionCount != AVIF_REPETITION_COUNT_INFINITE) {
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
+        // The timescale fields of the 'mvhd' and 'mdhd' boxes are 32-bit.
+        if (encoder->timescale > UINT32_MAX) {
+            avifDiagnosticsPrintf(&encoder->diag, "timescale %" PRIu64 " does not fit in 32 bits", encoder->timescale);
+            return AVIF_RESULT_INVALID_ARGUMENT;
+        }
 
         uint64_t framesDurationInTimescales = 0;
         for (uint32_t frameIndex = 0; frameIndex < encoder->data->frames.count; ++frameIndex) {
             const avifEncoderFrame * frame = &encoder->data->frames.frame[frameIndex];
+            // The sample_delta field of the 'stts' box is 32-bit. This also guarantees that the sum below fits in
+            // 64 bits, because there are at most UINT32_MAX frames.
+            if (frame->durationInTimescales > UINT32_MAX) {
+                avifDiagnosticsPrintf(&encoder->diag, "Frame %u duration %" PRIu64 " does not fit in 32 bits", frameIndex, frame->durationInTimescales);
+                return AVIF_RESULT_INVALID_ARGUMENT;
+            }
             framesDurationInTimescales += frame->durationInTimescales;
         }
         uint64_t durationInTimescales;

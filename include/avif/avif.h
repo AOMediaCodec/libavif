@@ -1541,6 +1541,7 @@ typedef struct avifEncoder
     // consecutive frames will have at least one keyframe. When it is 0, no restriction is applied.
     int keyframeInterval;
     // For image sequences (animations), timescale of the media in Hz, i.e. the number of time units per second.
+    // Must be at most UINT32_MAX for image sequences.
     uint64_t timescale;
     // For image sequences, number of times the image sequence should be repeated. This can also be set to
     // AVIF_REPETITION_COUNT_INFINITE for infinite repetitions.
@@ -1696,7 +1697,8 @@ typedef uint32_t avifAddImageFlags;
 // The encoder instance cannot be reused. Call avifEncoderCreate() instead.
 //
 // durationInTimescales is ignored if AVIF_ADD_IMAGE_FLAG_SINGLE is set in addImageFlags,
-// or if we are encoding a layered image.
+// or if we are encoding a layered image. Otherwise it must be at most UINT32_MAX, or
+// avifEncoderFinish() will return AVIF_RESULT_INVALID_ARGUMENT for an image sequence.
 AVIF_API avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridCols,

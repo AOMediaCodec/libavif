@@ -56,6 +56,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* avifEncoderFinish() returns AVIF_RESULT_INVALID_ARGUMENT for an image
+  sequence if avifEncoder::timescale or a frame duration does not fit in 32
+  bits. They used to be silently truncated, and a total duration overflowing
+  64 bits produced a file that could not be decoded.
 
 ## [1.4.2] - 2026-05-26
 
