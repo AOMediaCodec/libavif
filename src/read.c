@@ -6949,8 +6949,6 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             }
         }
 
-        ++info->decodedTileCount;
-
         const avifBool isGrid = (info->grid.rows > 0) && (info->grid.columns > 0);
         avifBool stealPlanes = !isGrid;
         if (decoder->data->meta->sampleTransformExpression.count > 0) {
@@ -6961,6 +6959,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             tile->input->itemCategory <= AVIF_SAMPLE_TRANSFORM_MAX_CATEGORY) {
             // Keep Sample Transform input image item samples in tiles.
             // The expression will be applied in avifDecoderNextImage() below instead, once all the tiles are available.
+            ++info->decodedTileCount;
             continue;
         }
 
@@ -7009,6 +7008,10 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
                 avifImageStealPlanes(decoder->image, src, AVIF_PLANES_YUV);
             }
         }
+
+        // Only count the tile once it reached the output image. If this call fails earlier, the next
+        // call must not resume from a later tile as if the planes had been allocated.
+        ++info->decodedTileCount;
     }
     return AVIF_RESULT_OK;
 }
