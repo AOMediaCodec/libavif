@@ -56,6 +56,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Add gainmap_dimension_same_as_main_item_flag to the experimental
+  MinimizedImageBox. The gain map dimensions are only signaled when they differ
+  from the main image dimensions. Files with a gain map written by previous
+  versions of libavif with AVIF_ENABLE_EXPERIMENTAL_MINI are incompatible.
 
 ## [1.4.2] - 2026-05-26
 

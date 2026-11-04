@@ -4333,12 +4333,20 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
             AVIF_CHECKERR(brand != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             memcpy(brand, "tmap", sizeof(avifBrand));
 
-            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapWidth, largeDimensionsFlag ? 15 : 7),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_width_minus1;
-            ++gainmapWidth;
-            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapHeight, largeDimensionsFlag ? 15 : 7),
-                          AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_height_minus1;
-            ++gainmapHeight;
+            uint32_t gainmapDimensionSameAsMainItemFlag;
+            AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapDimensionSameAsMainItemFlag, 1),
+                          AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_dimension_same_as_main_item_flag;
+            if (gainmapDimensionSameAsMainItemFlag) {
+                gainmapWidth = width;
+                gainmapHeight = height;
+            } else {
+                AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapWidth, largeDimensionsFlag ? 15 : 7),
+                              AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_width_minus1;
+                ++gainmapWidth;
+                AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapHeight, largeDimensionsFlag ? 15 : 7),
+                              AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_height_minus1;
+                ++gainmapHeight;
+            }
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &gainmapMatrixCoefficients, 8), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(8) gainmap_matrix_coefficients;
             AVIF_CHECKERR(avifROStreamReadBitsU32(&s, &gainmapFullRange, 1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) gainmap_full_range_flag;
 

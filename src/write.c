@@ -2917,8 +2917,12 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
         if (hasGainmap) {
             const avifImage * tmap = encoder->data->altImageMetadata;
             const avifImage * gainmap = image->gainMap->image;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->width - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_width_minus1;
-            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->height - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_height_minus1;
+            const avifBool gainmapDimensionSameAsMainItemFlag = gainmap->width == image->width && gainmap->height == image->height;
+            AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmapDimensionSameAsMainItemFlag, 1)); // bit(1) gainmap_dimension_same_as_main_item_flag;
+            if (!gainmapDimensionSameAsMainItemFlag) {
+                AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->width - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_width_minus1;
+                AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->height - 1, largeDimensionsFlag ? 15 : 7)); // unsigned int(large_dimensions_flag ? 15 : 7) gainmap_height_minus1;
+            }
             AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->matrixCoefficients, 8)); // bit(8) gainmap_matrix_coefficients;
             AVIF_CHECKRES(avifRWStreamWriteBits(s, gainmap->yuvRange == AVIF_RANGE_FULL, 1)); // bit(1) gainmap_full_range_flag;
             const uint32_t gainmapChromaSubsampling = gainmap->yuvFormat == AVIF_PIXEL_FORMAT_YUV400   ? 0
