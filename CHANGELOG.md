@@ -56,6 +56,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Fail to decode an alpha sample that outputs no frame with the aom and avm
+  decoders, as with dav1d and libgav1. The previous alpha frame was reused,
+  although libaom and libavm invalidate it when the next sample is decoded.
 
 ## [1.4.2] - 2026-05-26
 

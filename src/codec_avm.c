@@ -21,7 +21,6 @@ struct avifCodecInternal
     avifBool decoderInitialized;
     avm_codec_ctx_t decoder;
     avm_codec_iter_t iter;
-    avm_image_t * image;
 
     avifBool encoderInitialized;
     avm_codec_ctx_t encoder;
@@ -104,14 +103,12 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         }
     }
 
-    if (nextFrame) {
-        codec->internal->image = nextFrame;
-    } else {
-        if (alpha && codec->internal->image) {
-            // Special case: reuse last alpha frame
-        } else {
-            return AVIF_FALSE;
-        }
+    // The frames returned by avm_codec_get_frame() are only valid until the next
+    // avm_codec_decode() call, so a frame output for a previous sample cannot be
+    // reused. A sample must output a frame.
+    if (!nextFrame) {
+        avifDiagnosticsPrintf(codec->diag, "The AV2 sample did not output a frame");
+        return AVIF_FALSE;
     }
 
     avifBool isColor = !alpha;
@@ -119,7 +116,7 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
         // Color (YUV) planes - set image to correct size / format, fill color
 
         avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
-        switch (codec->internal->image->fmt) {
+        switch (nextFrame->fmt) {
             case AVM_IMG_FMT_I420:
             case AVM_IMG_FMT_I42016:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
@@ -138,44 +135,44 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
             default:
                 return AVIF_FALSE;
         }
-        if (codec->internal->image->monochrome) {
+        if (nextFrame->monochrome) {
             yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
         }
 
-        image->width = codec->internal->image->d_w;
-        image->height = codec->internal->image->d_h;
-        image->depth = codec->internal->image->bit_depth;
+        image->width = nextFrame->d_w;
+        image->height = nextFrame->d_h;
+        image->depth = nextFrame->bit_depth;
 
         image->yuvFormat = yuvFormat;
-        image->yuvRange = (codec->internal->image->range == AVM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
-        if (codec->internal->image->csp == AVM_CSP_LEFT) {
+        image->yuvRange = (nextFrame->range == AVM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
+        if (nextFrame->csp == AVM_CSP_LEFT) {
             // CSP_LEFT: Horizontal offset 0, vertical offset 0.5
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_VERTICAL;
-        } else if (codec->internal->image->csp == AVM_CSP_CENTER) {
+        } else if (nextFrame->csp == AVM_CSP_CENTER) {
             // CSP_CENTER: Horizontal offset 0.5, vertical offset 0.5
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
-        } else if (codec->internal->image->csp == AVM_CSP_TOPLEFT) {
+        } else if (nextFrame->csp == AVM_CSP_TOPLEFT) {
             // CSP_TOPLEFT: Horizontal offset 0, vertical offset 0
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_COLOCATED;
         } else {
             image->yuvChromaSamplePosition = AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN;
         }
 
-        image->colorPrimaries = (avifColorPrimaries)codec->internal->image->cp;
-        image->transferCharacteristics = (avifTransferCharacteristics)codec->internal->image->tc;
-        image->matrixCoefficients = (avifMatrixCoefficients)codec->internal->image->mc;
+        image->colorPrimaries = (avifColorPrimaries)nextFrame->cp;
+        image->transferCharacteristics = (avifTransferCharacteristics)nextFrame->tc;
+        image->matrixCoefficients = (avifMatrixCoefficients)nextFrame->mc;
 
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
 
         // avifImage assumes that a depth of 8 bits means an 8-bit buffer.
         // avm_image does not. The buffer depth depends on fmt|AVM_IMG_FMT_HIGHBITDEPTH, even for 8-bit values.
-        if (!avifImageUsesU16(image) && (codec->internal->image->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
+        if (!avifImageUsesU16(image) && (nextFrame->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
             AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_YUV) == AVIF_RESULT_OK);
             for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
                 const uint32_t planeWidth = avifImagePlaneWidth(image, yuvPlane);
                 const uint32_t planeHeight = avifImagePlaneHeight(image, yuvPlane);
-                const uint8_t * srcRow = codec->internal->image->planes[yuvPlane];
+                const uint8_t * srcRow = nextFrame->planes[yuvPlane];
                 uint8_t * dstRow = avifImagePlane(image, yuvPlane);
                 const uint32_t dstRowBytes = avifImagePlaneRowBytes(image, yuvPlane);
                 for (uint32_t y = 0; y < planeHeight; ++y) {
@@ -183,45 +180,45 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                     for (uint32_t x = 0; x < planeWidth; ++x) {
                         dstRow[x] = (uint8_t)srcRow16[x];
                     }
-                    srcRow += codec->internal->image->stride[yuvPlane];
+                    srcRow += nextFrame->stride[yuvPlane];
                     dstRow += dstRowBytes;
                 }
             }
         } else {
             // Steal the pointers from the decoder's image directly
             for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-                image->yuvPlanes[yuvPlane] = codec->internal->image->planes[yuvPlane];
-                image->yuvRowBytes[yuvPlane] = codec->internal->image->stride[yuvPlane];
+                image->yuvPlanes[yuvPlane] = nextFrame->planes[yuvPlane];
+                image->yuvRowBytes[yuvPlane] = nextFrame->stride[yuvPlane];
             }
             image->imageOwnsYUVPlanes = AVIF_FALSE;
         }
     } else {
         // Alpha plane - set image to correct size, fill alpha
 
-        image->width = codec->internal->image->d_w;
-        image->height = codec->internal->image->d_h;
-        image->depth = codec->internal->image->bit_depth;
+        image->width = nextFrame->d_w;
+        image->height = nextFrame->d_h;
+        image->depth = nextFrame->bit_depth;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
 
-        if (!avifImageUsesU16(image) && (codec->internal->image->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
+        if (!avifImageUsesU16(image) && (nextFrame->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
             AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_A) == AVIF_RESULT_OK);
-            const uint8_t * srcRow = codec->internal->image->planes[0];
+            const uint8_t * srcRow = nextFrame->planes[0];
             uint8_t * dstRow = image->alphaPlane;
             for (uint32_t y = 0; y < image->height; ++y) {
                 const uint16_t * srcRow16 = (const uint16_t *)srcRow;
                 for (uint32_t x = 0; x < image->width; ++x) {
                     dstRow[x] = (uint8_t)srcRow16[x];
                 }
-                srcRow += codec->internal->image->stride[0];
+                srcRow += nextFrame->stride[0];
                 dstRow += image->alphaRowBytes;
             }
         } else {
-            image->alphaPlane = codec->internal->image->planes[0];
-            image->alphaRowBytes = codec->internal->image->stride[0];
+            image->alphaPlane = nextFrame->planes[0];
+            image->alphaRowBytes = nextFrame->stride[0];
             image->imageOwnsAlphaPlane = AVIF_FALSE;
         }
-        *isLimitedRangeAlpha = (codec->internal->image->range == AVM_CR_STUDIO_RANGE);
+        *isLimitedRangeAlpha = (nextFrame->range == AVM_CR_STUDIO_RANGE);
     }
 
     return AVIF_TRUE;

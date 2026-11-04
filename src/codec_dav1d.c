@@ -155,18 +155,13 @@ static avifBool dav1dCodecGetNextImage(struct avifCodec * codec,
         }
     } while (res == 0);
 
-    if (gotPicture) {
-        dav1d_picture_unref(&codec->internal->dav1dPicture);
-        codec->internal->dav1dPicture = nextFrame;
-        codec->internal->colorRange = codec->internal->dav1dPicture.seq_hdr->color_range ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
-        codec->internal->hasPicture = AVIF_TRUE;
-    } else {
-        if (alpha && codec->internal->hasPicture) {
-            // Special case: reuse last alpha frame
-        } else {
-            return AVIF_FALSE;
-        }
+    if (!gotPicture) {
+        return AVIF_FALSE;
     }
+    dav1d_picture_unref(&codec->internal->dav1dPicture);
+    codec->internal->dav1dPicture = nextFrame;
+    codec->internal->colorRange = codec->internal->dav1dPicture.seq_hdr->color_range ? AVIF_RANGE_FULL : AVIF_RANGE_LIMITED;
+    codec->internal->hasPicture = AVIF_TRUE;
 
     Dav1dPicture * dav1dImage = &codec->internal->dav1dPicture;
     avifBool isColor = !alpha;
