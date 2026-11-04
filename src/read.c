@@ -374,7 +374,8 @@ typedef struct avifSampleTable
     avifSampleTableSampleSizeArray sampleSizes;
     avifSampleTableTimeToSampleArray timeToSamples;
     avifSyncSampleArray syncSamples;
-    uint32_t allSamplesSize; // If this is non-zero, sampleSizes will be empty and all samples will be this size
+    avifBool hasSyncSampleBox; // If this is false, every sample is a sync sample
+    uint32_t allSamplesSize;   // If this is non-zero, sampleSizes will be empty and all samples will be this size
 } avifSampleTable;
 
 static void avifSampleTableDestroy(avifSampleTable * sampleTable);
@@ -648,7 +649,10 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
             sample->offset = sampleOffset;
             sample->size = sampleSize;
             sample->spatialID = AVIF_SPATIAL_ID_UNSET; // Not filtering by spatial_id
-            sample->sync = AVIF_FALSE;                 // to potentially be set to true following the outer loop
+            // ISO/IEC 14496-12, Section 8.6.2.1:
+            //   If the SyncSampleBox is not present, every sample is a sync sample.
+            // Otherwise the sync samples are set to true following the outer loop.
+            sample->sync = !sampleTable->hasSyncSampleBox;
 
             if (sampleSize > UINT64_MAX - sampleOffset) {
                 avifDiagnosticsPrintf(diag,
@@ -675,7 +679,7 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
         }
     }
 
-    // Assume frame 0 is sync, just in case the stss box is absent in the BMFF. (Unnecessary?)
+    // Assume frame 0 is sync, just in case the stss box does not list it.
     if (decodeInput->samples.count > 0) {
         decodeInput->samples.sample[0].sync = AVIF_TRUE;
     }
@@ -3783,6 +3787,7 @@ static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const ui
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stss]");
 
     AVIF_CHECKERR(avifROStreamReadAndEnforceVersion(&s, /*enforcedVersion=*/0, /*flags=*/NULL), AVIF_RESULT_BMFF_PARSE_FAILED);
+    sampleTable->hasSyncSampleBox = AVIF_TRUE;
 
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) entry_count;
