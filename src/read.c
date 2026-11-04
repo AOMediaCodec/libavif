@@ -5968,7 +5968,18 @@ static avifResult avifDecoderFindGainMapItem(const avifDecoder * decoder,
         avifRWDataFree(&gainMapTmp.altICC);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
-    if (ispeProp->u.ispe.width != colorItem->width || ispeProp->u.ispe.height != colorItem->height) {
+    // The 'irot' property is associated with the base and gain map input items rather than with the
+    // 'tmap' item (see avifDecoderCheckGainMapProperties()). A 90 or 270 degree rotation of the inputs
+    // swaps the width and height of the tone mapped output, so the 'tmap' ispe may have these dimensions
+    // swapped compared to the base item ispe. This is what the MinimizedImageBox derivation in
+    // avifParseMinimizedImageBox() produces. The unrotated dimensions written by avifEncoderWrite() are
+    // still accepted for backward compatibility.
+    const avifProperty * irotProp = avifPropertyArrayFind(&colorItem->properties, "irot");
+    const avifBool swapsDimensions = irotProp && (irotProp->u.irot.angle == 1 || irotProp->u.irot.angle == 3);
+    const avifBool ispeMatches =
+        (ispeProp->u.ispe.width == colorItem->width && ispeProp->u.ispe.height == colorItem->height) ||
+        (swapsDimensions && ispeProp->u.ispe.width == colorItem->height && ispeProp->u.ispe.height == colorItem->width);
+    if (!ispeMatches) {
         avifDiagnosticsPrintf(data->diag, "Box[tmap] ispe property width/height does not match base image");
         avifRWDataFree(&gainMapTmp.altICC);
         return AVIF_RESULT_BMFF_PARSE_FAILED;
