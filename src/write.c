@@ -3854,6 +3854,18 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             durationInTimescales = framesDurationInTimescales * loopCount;
         }
 
+        // Each item with samples is written as a track whose track_ID is its item index plus one.
+        uint32_t largestTrackID = 0;
+        for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
+            if (encoder->data->items.item[itemIndex].encodeOutput->samples.count != 0) {
+                largestTrackID = itemIndex + 1;
+            }
+        }
+        // ISO/IEC 14496-12, Section 8.2.2.3:
+        //   The value of next_track_ID shall be larger than the largest track-ID in use.
+        AVIF_ASSERT_OR_RETURN(largestTrackID < UINT32_MAX);
+        const uint32_t nextTrackID = largestTrackID + 1;
+
         // -------------------------------------------------------------------
         // Start moov
 
@@ -3871,8 +3883,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));          // const bit(16) reserved = 0;
         AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 8));        // const unsigned int(32)[2] reserved = 0;
         AVIF_CHECKRES(avifRWStreamWrite(&s, unityMatrix, sizeof(unityMatrix)));
-        AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 24));                       // bit(32)[6] pre_defined = 0;
-        AVIF_CHECKRES(avifRWStreamWriteU32(&s, encoder->data->items.count)); // unsigned int(32) next_track_ID;
+        AVIF_CHECKRES(avifRWStreamWriteZeros(&s, 24));        // bit(32)[6] pre_defined = 0;
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, nextTrackID)); // unsigned int(32) next_track_ID;
         AVIF_CHECKRES(avifRWStreamFinishBox(&s, mvhd));
 
         // -------------------------------------------------------------------

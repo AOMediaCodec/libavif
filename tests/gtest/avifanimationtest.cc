@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 #include <vector>
 
 #include "avif/avif.h"
@@ -310,6 +311,87 @@ TEST(AvifDecodeTest,
   // Subsequent calls should not return AVIF_RESULT_OK since there is only one
   // image in the preferred source.
   EXPECT_NE(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+}
+
+uint32_t ReadU32(const uint8_t* data) {
+  return (static_cast<uint32_t>(data[0]) << 24) |
+         (static_cast<uint32_t>(data[1]) << 16) |
+         (static_cast<uint32_t>(data[2]) << 8) | static_cast<uint32_t>(data[3]);
+}
+
+// Collects the next_track_ID of the 'mvhd' box and the track_ID of each 'tkhd'
+// box found in the 'moov' box of the given file.
+void GetTrackIds(const uint8_t* data, size_t size, uint32_t* next_track_id,
+                 std::vector<uint32_t>* track_ids) {
+  *next_track_id = 0;
+  track_ids->clear();
+  const uint8_t* const end = data + size;
+  std::vector<std::pair<const uint8_t*, const uint8_t*>> containers = {
+      {data, end}};
+  while (!containers.empty()) {
+    const uint8_t* box = containers.back().first;
+    const uint8_t* const container_end = containers.back().second;
+    containers.pop_back();
+    while (container_end - box >= 8) {
+      const uint32_t box_size = ReadU32(box);
+      ASSERT_GE(box_size, 8u);  // No support for 64-bit or 0 box sizes.
+      ASSERT_LE(box_size, static_cast<size_t>(container_end - box));
+      const uint8_t* const payload = box + 8;
+      const size_t payload_size = box_size - 8;
+      if (!memcmp(box + 4, "moov", 4) || !memcmp(box + 4, "trak", 4)) {
+        containers.emplace_back(payload, payload + payload_size);
+      } else if (!memcmp(box + 4, "mvhd", 4)) {
+        ASSERT_EQ(payload[0], 1);  // version
+        // Skip version, flags, creation_time, modification_time, timescale,
+        // duration, rate, volume, reserved, matrix and pre_defined.
+        constexpr size_t kOffset = 4 + 8 + 8 + 4 + 8 + 4 + 2 + 2 + 8 + 36 + 24;
+        ASSERT_GE(payload_size, kOffset + 4);
+        *next_track_id = ReadU32(payload + kOffset);
+      } else if (!memcmp(box + 4, "tkhd", 4)) {
+        ASSERT_EQ(payload[0], 1);  // version
+        // Skip version, flags, creation_time and modification_time.
+        constexpr size_t kOffset = 4 + 8 + 8;
+        ASSERT_GE(payload_size, kOffset + 4);
+        track_ids->push_back(ReadU32(payload + kOffset));
+      }
+      box += box_size;
+    }
+  }
+}
+
+// ISO/IEC 14496-12, Section 8.2.2.3:
+//   The value of next_track_ID shall be larger than the largest track-ID in
+//   use.
+TEST(AvifEncodeTest, NextTrackIdIsLargerThanTrackIds) {
+  if (!testutil::Av1EncoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+  for (avifPlanesFlags planes : {AVIF_PLANES_YUV, AVIF_PLANES_ALL}) {
+    SCOPED_TRACE(planes);
+    ImagePtr image = testutil::CreateImage(64, 64, 8, AVIF_PIXEL_FORMAT_YUV420,
+                                           planes, AVIF_RANGE_FULL);
+    ASSERT_NE(image, nullptr);
+    testutil::FillImageGradient(image.get());
+    EncoderPtr encoder(avifEncoderCreate());
+    ASSERT_NE(encoder, nullptr);
+    encoder->speed = AVIF_SPEED_FASTEST;
+    for (int i = 0; i < 2; ++i) {
+      ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(),
+                                    /*durationInTimescales=*/1,
+                                    AVIF_ADD_IMAGE_FLAG_NONE),
+                AVIF_RESULT_OK);
+    }
+    testutil::AvifRwData encoded;
+    ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+
+    uint32_t next_track_id;
+    std::vector<uint32_t> track_ids;
+    ASSERT_NO_FATAL_FAILURE(
+        GetTrackIds(encoded.data, encoded.size, &next_track_id, &track_ids));
+    ASSERT_EQ(track_ids.size(), planes == AVIF_PLANES_ALL ? 2u : 1u);
+    EXPECT_GT(next_track_id,
+              *std::max_element(track_ids.begin(), track_ids.end()));
+  }
 }
 
 TEST(AvifDecodeTest, AnimatedImageWithoutTracksShouldFail) {
