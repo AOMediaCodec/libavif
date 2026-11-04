@@ -56,6 +56,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Fix a use-after-free in avifEncoderAddImageGrid() with a Sample Transform
+  recipe when the right-most or bottom-most cells are smaller than the others.
 
 ## [1.4.2] - 2026-05-26
 
