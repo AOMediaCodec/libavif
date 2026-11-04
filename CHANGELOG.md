@@ -56,6 +56,12 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Consider every sample of an image sequence track without a 'stss' box to be a
+  sync sample, as required by ISO/IEC 14496-12. Only the first frame used to be
+  considered a keyframe, including in image sequences encoded by libavif with
+  AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME for every frame, so
+  avifDecoderNthImage() decoded from the first frame and
+  avifDecoderNthImageMaxExtent() returned too large extents.
 
 ## [1.4.2] - 2026-05-26
 
