@@ -20,7 +20,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.4.2
 
-* Update aom.cmd/LocalAom.cmake: v3.15.3-rc1
+* Update aom.cmd/LocalAom.cmake: v3.15.3
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.4
 * Update LocalAvm.cmake: v1.0.0
 * Update libyuv.cmd/LocalLibyuv.cmake: 26e56be0f (1960)
@@ -56,6 +56,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
+* Add gainmap_dimension_same_as_main_item_flag to the experimental
+  MinimizedImageBox. The gain map dimensions are only signaled when they differ
+  from the main image dimensions. Files with a gain map written by previous
+  versions of libavif with AVIF_ENABLE_EXPERIMENTAL_MINI are incompatible.
 * Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
   colour and then reset with colour excluded: only inspect the first colour
   tile if colour tiles exist.

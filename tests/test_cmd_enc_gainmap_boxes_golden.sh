@@ -25,8 +25,9 @@ encode_test_files() {
     for f in "paris_exif_xmp_gainmap_bigendian.jpg" \
         "paris_exif_xmp_icc_gainmap_bigendian.jpg" \
         "paris_exif_xmp_gainmap_littleendian.jpg" \
-        "apple_gainmap_old.jpg" \
-        "apple_gainmap_new.jpg"; do
+        "apple_gainmap_v1.jpg" \
+        "apple_gainmap_v2.jpg" \
+        "apple_gainmap_v3.jpg"; do
         "${AVIFENC}" -s 9 "${TESTDATA_DIR}/$f" -o "$f.avif"
     done
 

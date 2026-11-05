@@ -245,5 +245,82 @@ TEST(AvifMinimizedImageBoxTest, GainMapAlternateIcc) {
 
 //------------------------------------------------------------------------------
 
+class AvifMinimizedImageBoxGainMapTest
+    : public testing::TestWithParam<
+          std::tuple</*width=*/int, /*height=*/int, /*gain_map_width=*/int,
+                     /*gain_map_height=*/int>> {};
+
+// The gain map dimensions are only signaled in a MinimizedImageBox when they
+// differ from the main image dimensions
+// (gainmap_dimension_same_as_main_item_flag).
+TEST_P(AvifMinimizedImageBoxGainMapTest, Dimensions) {
+  const int width = std::get<0>(GetParam());
+  const int height = std::get<1>(GetParam());
+  const int gain_map_width = std::get<2>(GetParam());
+  const int gain_map_height = std::get<3>(GetParam());
+
+  ImagePtr image = testutil::CreateImage(width, height, /*depth=*/8,
+                                         AVIF_PIXEL_FORMAT_YUV420,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  image->gainMap = avifGainMapCreate();
+  ASSERT_NE(image->gainMap, nullptr);
+  image->gainMap->image =
+      testutil::CreateImage(gain_map_width, gain_map_height, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV400, AVIF_PLANES_YUV,
+                            AVIF_RANGE_FULL)
+          .release();
+  ASSERT_NE(image->gainMap->image, nullptr);
+  testutil::FillImageGradient(image->gainMap->image);
+
+  testutil::AvifRwData encoded;
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->headerFormat = AVIF_HEADER_MINI;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  // The dimensions are known from the MinimizedImageBox alone.
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->image->width, static_cast<uint32_t>(width));
+  EXPECT_EQ(decoder->image->height, static_cast<uint32_t>(height));
+  ASSERT_NE(decoder->image->gainMap, nullptr);
+  ASSERT_NE(decoder->image->gainMap->image, nullptr);
+  EXPECT_EQ(decoder->image->gainMap->image->width,
+            static_cast<uint32_t>(gain_map_width));
+  EXPECT_EQ(decoder->image->gainMap->image->height,
+            static_cast<uint32_t>(gain_map_height));
+
+  // The dimensions must match the decoded samples.
+  ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+  EXPECT_EQ(decoder->image->width, static_cast<uint32_t>(width));
+  EXPECT_EQ(decoder->image->height, static_cast<uint32_t>(height));
+  ASSERT_NE(decoder->image->gainMap, nullptr);
+  ASSERT_NE(decoder->image->gainMap->image, nullptr);
+  EXPECT_EQ(decoder->image->gainMap->image->width,
+            static_cast<uint32_t>(gain_map_width));
+  EXPECT_EQ(decoder->image->gainMap->image->height,
+            static_cast<uint32_t>(gain_map_height));
+}
+
+INSTANTIATE_TEST_SUITE_P(SmallDimensions, AvifMinimizedImageBoxGainMapTest,
+                         Combine(/*width=*/Values(8), /*height=*/Values(10),
+                                 /*gain_map_width=*/Values(1, 8),
+                                 /*gain_map_height=*/Values(5, 10)));
+
+INSTANTIATE_TEST_SUITE_P(LargeDimensions, AvifMinimizedImageBoxGainMapTest,
+                         Combine(/*width=*/Values(200), /*height=*/Values(150),
+                                 /*gain_map_width=*/Values(100, 200),
+                                 /*gain_map_height=*/Values(150)));
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace avif

@@ -25,10 +25,7 @@ avifResult avifImageRGBToYUVLibSharpYUV(avifImage * image, const avifRGBImage * 
 #if SHARPYUV_VERSION >= SHARPYUV_MAKE_VERSION(0, 4, 0)
     SharpYuvOptions options;
     SharpYuvOptionsInit(&matrix, &options);
-    if (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-        // Set to sRGB for backward compatibility.
-        options.transfer_type = kSharpYuvTransferFunctionSrgb;
-    } else {
+    if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
         options.transfer_type = (SharpYuvTransferFunctionType)image->transferCharacteristics;
     }
     const int sharpyuvRes = SharpYuvConvertWithOptions(&rgb->pixels[state->rgb.offsetBytesR],

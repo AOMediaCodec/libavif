@@ -657,9 +657,9 @@ a hex editor to make the MPF metadata big endian, as signaled by the four bytes
 |   33507 | 0xffe1 APP1 |    571 | `http://ns.adobe.com/xap/1.0/.<?x`           |
 |         |             |        | ...                                          |
 
-### File [apple_gainmap_old.jpg](apple_gainmap_old.jpg)
+### File [apple_gainmap_v1.jpg](apple_gainmap_v1.jpg)
 
-![](apple_gainmap_old.jpg)
+![](apple_gainmap_v1.jpg)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
@@ -667,15 +667,23 @@ Source: Personal photo taken on an iPhone with an older OS, resized using Previe
 to save space. The XMP does not contain the HDR headroom, instead it has to be
 read from Exif metadata.
 
-### File [apple_gainmap_new.jpg](apple_gainmap_new.jpg)
+### File [apple_gainmap_v2.jpg](apple_gainmap_v2.jpg)
 
-![](apple_gainmap_new.jpg)
+![](apple_gainmap_v2.jpg)
 
 License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
 
-Source: Same as apple_gainmap_old.jpg, but with XMP data manually copied from a
+Source: Same as apple_gainmap_v1.jpg, but with XMP data manually copied from a
 picture taken on a more recent iPhone. The difference is that the XMP metadata
 contains the <HDRGainMap:HDRGainMapHeadroom> element.
+
+### File [apple_gainmap_v3.jpg](apple_gainmap_v3.jpg)
+
+![](apple_gainmap_v3.jpg)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: Same as apple_gainmap_v2.jpg, but with XMP copied from a picture taken on an iPhone 17.
 
 ### File [paris_exif_xmp_icc_gainmap_bigendian.jpg](paris_exif_xmp_icc_gainmap_bigendian.jpg)
 

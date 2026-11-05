@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ISOBaseMediaFileTrace>
 <!--MP4Box dump trace-->
-<IsoMediaFile xmlns="urn:mpeg:isobmff:schema:file:2016" Name="apple_gainmap_old.jpg.avif">
+<IsoMediaFile xmlns="urn:mpeg:isobmff:schema:file:2016" Name="apple_gainmap_v3.jpg.avif">
 <FileTypeBox Size="36" Type="ftyp" Specification="p12" Container="file otyp" MajorBrand="avif" MinorVersion="0">
 <BrandEntry AlternateBrand="avif"/>
 <BrandEntry AlternateBrand="mif1"/>
