@@ -131,34 +131,36 @@ static avifBool y4mColorSpaceParse(const char * formatString, struct y4mFrameIte
 // Returns -1 in case of failure.
 static int y4mReadUnsignedInt(const char * start, const char * end)
 {
-    const char * p = start;
+    if (start >= end) {
+        return -1;
+    }
     int64_t value = 0;
-    while (p < end && *p >= '0' && *p <= '9') {
-        value = value * 10 + (*(p++) - '0');
+    for (const char * p = start; p < end; ++p) {
+        if ((*p < '0') || (*p > '9')) {
+            return -1;
+        }
+        value = value * 10 + (*p - '0');
         if (value > INT_MAX) {
             return -1;
         }
     }
-    return (p == start) ? -1 : (int)value;
+    return (int)value;
 }
 
-// Note: this modifies framerateString
-static avifBool y4mFramerateParse(char * framerateString, avifAppSourceTiming * sourceTiming)
+static avifBool y4mFramerateParse(const char * framerateString, avifAppSourceTiming * sourceTiming)
 {
     if (framerateString[0] != 'F') {
         return AVIF_FALSE;
     }
     ++framerateString; // skip past 'F'
 
-    char * colonLocation = strchr(framerateString, ':');
+    const char * colonLocation = strchr(framerateString, ':');
     if (!colonLocation) {
         return AVIF_FALSE;
     }
-    *colonLocation = 0;
-    ++colonLocation;
 
-    int numerator = atoi(framerateString);
-    int denominator = atoi(colonLocation);
+    const int numerator = y4mReadUnsignedInt(framerateString, colonLocation);
+    const int denominator = y4mReadUnsignedInt(colonLocation + 1, colonLocation + 1 + strlen(colonLocation + 1));
     if ((numerator < 1) || (denominator < 1)) {
         return AVIF_FALSE;
     }
@@ -168,22 +170,30 @@ static avifBool y4mFramerateParse(char * framerateString, avifAppSourceTiming * 
     return AVIF_TRUE;
 }
 
-static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
+static avifBool getHeaderString(const uint8_t * p, const uint8_t * end, char * out, size_t maxChars)
 {
-    uint8_t * headerEnd = p;
-    while ((*headerEnd != ' ') && (*headerEnd != '\n')) {
-        if (headerEnd >= end) {
+    const uint8_t * headerEnd = p;
+    while (headerEnd < end) {
+        if ((*headerEnd == ' ') || (*headerEnd == '\n')) {
+            break;
+        }
+        if (*headerEnd == '\0') {
             return AVIF_FALSE;
         }
         ++headerEnd;
     }
-    size_t formatLen = headerEnd - p;
+    if (headerEnd >= end) {
+        return AVIF_FALSE;
+    }
+    const size_t formatLen = (size_t)(headerEnd - p);
     if (formatLen > maxChars) {
         return AVIF_FALSE;
     }
 
-    strncpy(out, (const char *)p, formatLen);
-    out[formatLen] = 0;
+    if (formatLen > 0) {
+        memcpy(out, p, formatLen);
+    }
+    out[formatLen] = '\0';
     return AVIF_TRUE;
 }
 
@@ -323,10 +333,26 @@ static avifBool y4mReadInternal(const char * inputFilename,
         while (p != end) {
             switch (*p) {
                 case 'W': // width
-                    frame.width = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    frame.width = y4mReadUnsignedInt(tmpBuffer + 1, tmpBuffer + strlen(tmpBuffer));
+                    if (frame.width < 1) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
                     break;
                 case 'H': // height
-                    frame.height = y4mReadUnsignedInt((const char *)p + 1, (const char *)end);
+                    if (!getHeaderString(p, end, tmpBuffer, 31)) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
+                    frame.height = y4mReadUnsignedInt(tmpBuffer + 1, tmpBuffer + strlen(tmpBuffer));
+                    if (frame.height < 1) {
+                        fprintf(stderr, "Bad y4m header: %s\n", frame.displayFilename);
+                        goto cleanup;
+                    }
                     break;
                 case 'C': // color space
                     if (!getHeaderString(p, end, tmpBuffer, 31)) {
@@ -388,7 +414,7 @@ static avifBool y4mReadInternal(const char * inputFilename,
         fprintf(stderr, "Y4M frame header too small: %s\n", frame.displayFilename);
         goto cleanup;
     }
-    if (memcmp(raw.data, "FRAME", 5) != 0) {
+    if ((memcmp(raw.data, "FRAME", 5) != 0) || ((raw.data[5] != '\n') && (raw.data[5] != ' '))) {
         fprintf(stderr, "Truncated y4m (no frame): %s\n", frame.displayFilename);
         goto cleanup;
     }
@@ -510,6 +536,11 @@ avifBool y4mPeek(const char * inputFilename, avifImage * avif)
 
 avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
 {
+    if ((avif->width < 1) || (avif->height < 1) || (avif->width > (uint32_t)INT_MAX) || (avif->height > (uint32_t)INT_MAX)) {
+        fprintf(stderr, "ERROR: invalid y4m dimensions (%u x %u): %s\n", avif->width, avif->height, outputFilename);
+        return AVIF_FALSE;
+    }
+
     avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;
     char * y4mHeaderFormat = NULL;
@@ -627,7 +658,7 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
     }
 
     avifBool success = AVIF_TRUE;
-    if (fprintf(f, "YUV4MPEG2 W%d H%d F25:1 Ip A0:0 %s %s\nFRAME\n", avif->width, avif->height, y4mHeaderFormat, rangeString) < 0) {
+    if (fprintf(f, "YUV4MPEG2 W%u H%u F25:1 Ip A0:0 %s %s\nFRAME\n", avif->width, avif->height, y4mHeaderFormat, rangeString) < 0) {
         fprintf(stderr, "Cannot write to file: %s\n", outputFilename);
         success = AVIF_FALSE;
         goto cleanup;
@@ -639,6 +670,11 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         const uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
+        if ((planeHeight > 0) && (planeWidthBytes > 0) && !row) {
+            fprintf(stderr, "ERROR: missing plane data: %s\n", outputFilename);
+            success = AVIF_FALSE;
+            goto cleanup;
+        }
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {
                 fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeWidthBytes, outputFilename);
