@@ -56,10 +56,10 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Keep the premultiplied alpha flag of a MinimizedImageBox. The one bit
   alpha_is_premultiplied value was stored in a field compared against the alpha
   item ID, so such an image used to decode as straight alpha.
-
 * Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
   colour and then reset with colour excluded: only inspect the first colour
   tile if colour tiles exist.
+
 ## [1.4.2] - 2026-05-26
 
 ### Added since 1.4.1
