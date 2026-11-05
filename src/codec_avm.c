@@ -56,6 +56,17 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
 {
     assert(sample);
 
+    // The libavm API has no frame size limit, unlike dav1d's frame_size_limit setting or libaom's
+    // AOMD_SET_FRAME_SIZE_LIMIT control (and its aom_codec_peek_stream_info() fallback). Reject
+    // oversized AV2 sequence headers before decoding, for parity with the other codecs.
+    avifSequenceHeader sequenceHeader;
+    if (avifSequenceHeaderParse(&sequenceHeader, &sample->data, AVIF_CODEC_TYPE_AV2)) {
+        if (avifDimensionsTooLarge(sequenceHeader.maxWidth, sequenceHeader.maxHeight, codec->imageSizeLimit, codec->imageDimensionLimit)) {
+            avifDiagnosticsPrintf(codec->diag, "Image dimensions too large: %ux%u", sequenceHeader.maxWidth, sequenceHeader.maxHeight);
+            return AVIF_FALSE;
+        }
+    }
+
     if (!codec->internal->decoderInitialized) {
         avm_codec_dec_cfg_t cfg;
         memset(&cfg, 0, sizeof(avm_codec_dec_cfg_t));
