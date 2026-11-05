@@ -2154,6 +2154,8 @@ static avifResult avifParseItemLocationBox(avifMeta * meta, const uint8_t * raw,
         AVIF_CHECKERR(avifROStreamReadUX8(&s, &baseOffset, baseOffsetSize), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(base_offset_size*8) base_offset;
         uint16_t extentCount;
         AVIF_CHECKERR(avifROStreamReadU16(&s, &extentCount), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) extent_count;
+        const int bytesPerExtent = indexSize + offsetSize + lengthSize;
+        AVIF_CHECKERR(extentCount <= 1 || bytesPerExtent > 0, AVIF_RESULT_BMFF_PARSE_FAILED);
         for (int extentIter = 0; extentIter < extentCount; ++extentIter) {
             if ((version == 1 || version == 2) && indexSize > 0) {
                 // Section 8.11.3.1 of ISO/IEC 14496-12:
