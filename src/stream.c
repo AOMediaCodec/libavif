@@ -157,7 +157,7 @@ avifBool avifROStreamSkipBits(avifROStream * stream, size_t bitCount)
             return AVIF_TRUE;
         }
     }
-    const size_t num_bytes = (bitCount + 7) / 8;
+    const size_t num_bytes = bitCount / 8 + (bitCount % 8 != 0);
     AVIF_CHECK(avifROStreamSkip(stream, num_bytes));
     stream->numUsedBitsInPartialByte = bitCount % 8;
     return AVIF_TRUE;
@@ -494,7 +494,8 @@ avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
 
 avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount)
 {
-    AVIF_CHECKERR(bitCount >= 32 || (v >> bitCount) == 0, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(bitCount <= 32, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(bitCount == 32 || (v >> bitCount) == 0, AVIF_RESULT_INVALID_ARGUMENT);
     while (bitCount) {
         if (stream->numUsedBitsInPartialByte == 0) {
             AVIF_CHECKRES(makeRoom(stream, 1)); // Book a new partial byte in the stream.
