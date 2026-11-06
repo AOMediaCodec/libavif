@@ -5217,6 +5217,8 @@ static void avifDecoderCleanup(avifDecoder * decoder)
         avifImageDestroy(decoder->image);
         decoder->image = NULL;
     }
+    decoder->imageSequenceTrackPresent = AVIF_FALSE;
+    decoder->repetitionCount = 0;
     avifDiagnosticsClearError(&decoder->diag);
 }
 
@@ -5235,6 +5237,7 @@ avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source)
 
 void avifDecoderSetIO(avifDecoder * decoder, avifIO * io)
 {
+    avifDecoderCleanup(decoder);
     avifIODestroy(decoder->io);
     decoder->io = io;
 }
@@ -5535,18 +5538,40 @@ static avifBool avifTilesCanBeDecodedWithSameCodecInstance(const avifDecoderData
     return AVIF_TRUE;
 }
 
+static avifBool avifDecoderHasAllCodecs(const avifDecoderData * data)
+{
+    if (data->tiles.count == 0) {
+        return AVIF_FALSE;
+    }
+    for (unsigned int i = 0; i < data->tiles.count; ++i) {
+        if (data->tiles.tile[i].codec == NULL) {
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
+}
+
 static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
 {
     avifDecoderData * data = decoder->data;
     avifDecoderDataResetCodec(data);
 
+    avifResult res = AVIF_RESULT_OK;
     if (data->source == AVIF_DECODER_SOURCE_TRACKS) {
         // In this case, we will use at most two codec instances (one for the color planes and one for the alpha plane).
         // Gain maps are not supported.
-        AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec));
+        res = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec);
+        if (res != AVIF_RESULT_OK) {
+            avifDecoderDataResetCodec(data);
+            return res;
+        }
         data->tiles.tile[0].codec = data->codec;
         if (data->tiles.count > 1) {
-            AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[1], &decoder->diag, &data->codecAlpha));
+            res = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[1], &decoder->diag, &data->codecAlpha);
+            if (res != AVIF_RESULT_OK) {
+                avifDecoderDataResetCodec(data);
+                return res;
+            }
             data->tiles.tile[1].codec = data->codecAlpha;
         }
     } else {
@@ -5567,14 +5592,22 @@ static avifResult avifDecoderCreateCodecs(avifDecoder * decoder)
             ((data->tiles.count == 1) || (decoder->imageCount == 1 && avifTilesCanBeDecodedWithSameCodecInstance(data))) &&
             data->sampleTransformNumInputImageItems == 0;
         if (canUseSingleCodecInstance) {
-            AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec));
+            res = avifCodecCreateInternal(decoder->codecChoice, &decoder->data->tiles.tile[0], &decoder->diag, &data->codec);
+            if (res != AVIF_RESULT_OK) {
+                avifDecoderDataResetCodec(data);
+                return res;
+            }
             for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
                 decoder->data->tiles.tile[i].codec = data->codec;
             }
         } else {
             for (unsigned int i = 0; i < decoder->data->tiles.count; ++i) {
                 avifTile * tile = &decoder->data->tiles.tile[i];
-                AVIF_CHECKRES(avifCodecCreateInternal(decoder->codecChoice, tile, &decoder->diag, &tile->codec));
+                res = avifCodecCreateInternal(decoder->codecChoice, tile, &decoder->diag, &tile->codec);
+                if (res != AVIF_RESULT_OK) {
+                    avifDecoderDataResetCodec(data);
+                    return res;
+                }
             }
         }
     }
@@ -6599,6 +6632,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
         // Set all counts and timing to safe-but-uninteresting values
         decoder->imageIndex = -1;
         decoder->imageCount = 1;
+        decoder->repetitionCount = 0;
         decoder->imageTiming.timescale = 1;
         decoder->imageTiming.pts = 0;
         decoder->imageTiming.ptsInTimescales = 0;
@@ -6905,6 +6939,7 @@ static avifResult avifDecoderDecodeTiles(avifDecoder * decoder, uint32_t nextIma
             return AVIF_RESULT_OK;
         }
 
+        AVIF_ASSERT_OR_RETURN(tile->codec != NULL);
         avifBool isLimitedRangeAlpha = AVIF_FALSE;
         tile->codec->maxThreads = decoder->maxThreads;
         tile->codec->imageSizeLimit = decoder->imageSizeLimit;
@@ -7164,7 +7199,7 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     const uint32_t nextImageIndex = (uint32_t)(decoder->imageIndex + 1);
 
     // Ensure that we have created the codecs before proceeding with the decoding.
-    if (!decoder->data->tiles.tile[0].codec) {
+    if (!avifDecoderHasAllCodecs(decoder->data)) {
         AVIF_CHECKRES(avifDecoderCreateCodecs(decoder));
     }
 
