@@ -387,10 +387,13 @@ avifResult avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_
 
 avifResult avifImagePushProperty(avifImage * image, const uint8_t boxtype[4], const uint8_t usertype[16], const uint8_t * boxPayload, size_t boxPayloadSize)
 {
-    AVIF_CHECKERR(image->numProperties < SIZE_MAX / sizeof(avifImageItemProperty), AVIF_RESULT_INVALID_ARGUMENT);
+    size_t numProperties;
+    size_t propertiesSize;
+    AVIF_CHECKERR(avifCheckedAddSize(image->numProperties, 1, &numProperties) &&
+                      avifCheckedMulSize(numProperties, sizeof(avifImageItemProperty), &propertiesSize),
+                  AVIF_RESULT_INVALID_ARGUMENT);
     // Shallow copy the current properties.
-    const size_t numProperties = image->numProperties + 1;
-    avifImageItemProperty * const properties = (avifImageItemProperty *)avifAlloc(numProperties * sizeof(properties[0]));
+    avifImageItemProperty * const properties = (avifImageItemProperty *)avifAlloc(propertiesSize);
     AVIF_CHECKERR(properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     if (image->numProperties != 0) {
         memcpy(properties, image->properties, image->numProperties * sizeof(properties[0]));
@@ -434,14 +437,12 @@ avifResult avifImageAllocatePlanes(avifImage * image, avifPlanesFlags planes)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t channelSize = avifImageUsesU16(image) ? 2 : 1;
-    if (image->width > UINT32_MAX / channelSize) {
+    uint32_t fullRowBytes;
+    size_t fullSize;
+    if (!avifCheckedMulU32(channelSize, image->width, &fullRowBytes) ||
+        !avifCheckedMulSize(fullRowBytes, image->height, &fullSize) || fullSize > (size_t)PTRDIFF_MAX) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
-    const uint32_t fullRowBytes = channelSize * image->width;
-    if (image->height > PTRDIFF_MAX / fullRowBytes) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-    const size_t fullSize = (size_t)fullRowBytes * image->height;
 
     if ((planes & AVIF_PLANES_YUV) && (image->yuvFormat != AVIF_PIXEL_FORMAT_NONE)) {
         avifPixelFormatInfo info;
@@ -723,14 +724,13 @@ avifResult avifRGBImageAllocatePixels(avifRGBImage * rgb)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const uint32_t pixelSize = avifRGBImagePixelSize(rgb);
-    if (rgb->width > UINT32_MAX / pixelSize) {
+    uint32_t rowBytes;
+    size_t pixelsSize;
+    if (!avifCheckedMulU32(rgb->width, pixelSize, &rowBytes) || !avifCheckedMulSize(rowBytes, rgb->height, &pixelsSize) ||
+        pixelsSize > (size_t)PTRDIFF_MAX) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
-    const uint32_t rowBytes = rgb->width * pixelSize;
-    if (rgb->height > PTRDIFF_MAX / rowBytes) {
-        return AVIF_RESULT_INVALID_ARGUMENT;
-    }
-    rgb->pixels = (uint8_t *)avifAlloc((size_t)rowBytes * rgb->height);
+    rgb->pixels = (uint8_t *)avifAlloc(pixelsSize);
     AVIF_CHECKERR(rgb->pixels, AVIF_RESULT_OUT_OF_MEMORY);
     rgb->rowBytes = rowBytes;
     return AVIF_RESULT_OK;

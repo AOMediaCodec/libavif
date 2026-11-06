@@ -92,6 +92,13 @@ void * avifCalloc(size_t count, size_t size);
 
 float avifRoundf(float v);
 
+// Checked arithmetic for sizes and offsets. Each function stores the result of the operation in *result and
+// returns AVIF_TRUE, or returns AVIF_FALSE without modifying *result if the operation would overflow.
+AVIF_NODISCARD avifBool avifCheckedMulU32(uint32_t a, uint32_t b, uint32_t * result);
+AVIF_NODISCARD avifBool avifCheckedAddU64(uint64_t a, uint64_t b, uint64_t * result);
+AVIF_NODISCARD avifBool avifCheckedMulSize(size_t a, size_t b, size_t * result);
+AVIF_NODISCARD avifBool avifCheckedAddSize(size_t a, size_t b, size_t * result);
+
 // H (host) is platform-dependent. Could be little- or big-endian.
 // N (network) is big-endian: most- to least-significant bytes.
 // C (custom) is little-endian: least- to most-significant bytes.
