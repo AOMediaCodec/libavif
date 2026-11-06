@@ -395,10 +395,11 @@ TEST(DecodeProgressiveTest, ResetAfterExcludingColor) {
   DecoderPtr decoder(avifDecoderCreate());
   ASSERT_NE(decoder, nullptr);
   decoder->imageContentToDecode = AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA;
-  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(), (std::string(data_path) +
-                                                 "white_1x1_a1lx_progressive.avif")
-                                                    .c_str()),
-            AVIF_RESULT_OK);
+  ASSERT_EQ(
+      avifDecoderSetIOFile(
+          decoder.get(),
+          (std::string(data_path) + "white_1x1_a1lx_progressive.avif").c_str()),
+      AVIF_RESULT_OK);
   ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
   ASSERT_EQ(decoder->progressiveState, AVIF_PROGRESSIVE_STATE_AVAILABLE);
 
