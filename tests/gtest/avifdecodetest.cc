@@ -15,6 +15,113 @@ namespace {
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
 
+struct DecoderLimitsInput {
+  const char* name;
+  int cell_width;
+  int cell_height;
+  uint32_t grid_cols;
+  uint32_t grid_rows;
+};
+
+class DecoderLimitsTest : public testing::TestWithParam<DecoderLimitsInput> {};
+
+TEST_P(DecoderLimitsTest, ConfiguredImageLimits) {
+  if (avifCodecName(AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_FLAG_CAN_ENCODE) ==
+          nullptr ||
+      !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AOM encoder or AV1 decoder unavailable, skip test.";
+  }
+  const DecoderLimitsInput& input = GetParam();
+  ImagePtr cell = testutil::CreateImage(input.cell_width, input.cell_height,
+                                        /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
+                                        AVIF_PLANES_YUV);
+  ASSERT_NE(cell, nullptr);
+  testutil::FillImageGradient(cell.get());
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->codecChoice = AVIF_CODEC_CHOICE_AOM;
+  encoder->speed = AVIF_SPEED_FASTEST;
+  testutil::AvifRwData encoded;
+  if (input.grid_cols == 1 && input.grid_rows == 1) {
+    ASSERT_EQ(avifEncoderWrite(encoder.get(), cell.get(), &encoded),
+              AVIF_RESULT_OK);
+  } else {
+    // Multi-cell grids require cells of at least 64x64 pixels. Each cell is
+    // also within every accepted limit below, independently of the grid size.
+    const std::vector<const avifImage*> cells(input.grid_cols * input.grid_rows,
+                                              cell.get());
+    ASSERT_EQ(
+        avifEncoderAddImageGrid(encoder.get(), input.grid_cols, input.grid_rows,
+                                cells.data(), AVIF_ADD_IMAGE_FLAG_SINGLE),
+        AVIF_RESULT_OK);
+    ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+  }
+  const uint32_t width = cell->width * input.grid_cols;
+  const uint32_t height = cell->height * input.grid_rows;
+  const uint32_t pixel_count = width * height;
+  const uint32_t max_dimension = (width > height) ? width : height;
+  struct LimitCase {
+    const char* name;
+    uint32_t size_limit;
+    uint32_t dimension_limit;
+    bool accepted;
+  };
+  const LimitCase cases[] = {
+      {"InclusivePixelLimit", pixel_count, 0, true},
+      {"InclusiveDimensionLimit", 0, max_dimension, true},
+      {"BothInclusiveLimits", pixel_count, max_dimension, true},
+      {"PixelLimitExceeded", pixel_count - 1, max_dimension, false},
+      {"DimensionLimitExceeded", pixel_count, max_dimension - 1, false},
+      {"SizeDisabledDimensionEnforced", 0, max_dimension - 1, false},
+      {"DimensionDisabledSizeEnforced", pixel_count - 1, 0, false},
+      {"BothDisabled", 0, 0, true},
+  };
+  for (const LimitCase& limit : cases) {
+    SCOPED_TRACE(limit.name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    decoder->imageSizeLimit = limit.size_limit;
+    decoder->imageDimensionLimit = limit.dimension_limit;
+    ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+              AVIF_RESULT_OK);
+    const avifResult result = avifDecoderParse(decoder.get());
+    if (!limit.accepted) {
+      EXPECT_NE(result, AVIF_RESULT_OK) << decoder->diag.error;
+    } else {
+      ASSERT_EQ(result, AVIF_RESULT_OK) << decoder->diag.error;
+      ASSERT_NE(decoder->image, nullptr);
+      EXPECT_EQ(decoder->image->width, width);
+      EXPECT_EQ(decoder->image->height, height);
+    }
+    // Parsing must not allocate decoded pixels, even when it rejects the
+    // configured limit. Only accepted inputs proceed to the AV1 decoder.
+    if (decoder->image != nullptr) {
+      for (const uint8_t* plane : decoder->image->yuvPlanes) {
+        EXPECT_EQ(plane, nullptr);
+      }
+      EXPECT_EQ(decoder->image->alphaPlane, nullptr);
+    }
+    if (limit.accepted) {
+      ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK)
+          << decoder->diag.error;
+      EXPECT_EQ(decoder->image->width, width);
+      EXPECT_EQ(decoder->image->height, height);
+      EXPECT_NE(decoder->image->yuvPlanes[0], nullptr);
+    }
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    OrdinaryAndGrid, DecoderLimitsTest,
+    testing::Values(DecoderLimitsInput{"StillWide", 34, 12, 1, 1},
+                    DecoderLimitsInput{"StillTall", 12, 34, 1, 1},
+                    DecoderLimitsInput{"GridWide", 64, 64, 2, 1},
+                    DecoderLimitsInput{"GridTall", 64, 64, 1, 2}),
+    [](const testing::TestParamInfo<DecoderLimitsInput>& info) {
+      return info.param.name;
+    });
+
 TEST(AvifDecodeTest, ColorGridAlphaNoGrid) {
   if (!testutil::Av1DecoderAvailable()) {
     GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
