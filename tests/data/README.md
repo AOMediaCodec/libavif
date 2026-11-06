@@ -137,6 +137,15 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: single white pixel encoded with libavif at default quality.
 
+### File [white_1x1_a1lx_progressive.avif](white_1x1_a1lx_progressive.avif)
+
+![](white_1x1_a1lx_progressive.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: white_1x1.avif with an 'a1lx' property (and no 'lsel' property) on the
+primary item, which makes the item progressive.
+
 ### File [pyramid_pymd.avif](pyramid_pymd.avif)
 
 ![](pyramid_pymd.avif)

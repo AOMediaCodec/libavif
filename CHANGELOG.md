@@ -60,6 +60,9 @@ The changes are relative to the previous release, unless the baseline is specifi
   MinimizedImageBox. The gain map dimensions are only signaled when they differ
   from the main image dimensions. Files with a gain map written by previous
   versions of libavif with AVIF_ENABLE_EXPERIMENTAL_MINI are incompatible.
+* Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
+  colour and then reset with colour excluded: only inspect the first colour
+  tile if colour tiles exist.
 
 ## [1.4.2] - 2026-05-26
 
