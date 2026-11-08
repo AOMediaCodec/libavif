@@ -160,12 +160,12 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
+    AVIF_CHECKERR(rgb->depth == 8 || rgb->depth == 10 || rgb->depth == 12 || rgb->depth == 16, AVIF_RESULT_INVALID_ARGUMENT);
+
     avifResult libyuvResult = avifRGBImagePremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
     }
-
-    assert(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
     float maxF = (float)max;
@@ -347,12 +347,12 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
+    AVIF_CHECKERR(rgb->depth == 8 || rgb->depth == 10 || rgb->depth == 12 || rgb->depth == 16, AVIF_RESULT_INVALID_ARGUMENT);
+
     avifResult libyuvResult = avifRGBImageUnpremultiplyAlphaLibYUV(rgb);
     if (libyuvResult != AVIF_RESULT_NOT_IMPLEMENTED) {
         return libyuvResult;
     }
-
-    assert(rgb->depth >= 8 && rgb->depth <= 16);
 
     uint32_t max = (1 << rgb->depth) - 1;
     float maxF = (float)max;
