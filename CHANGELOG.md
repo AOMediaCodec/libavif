@@ -42,6 +42,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Parse the children of the 'iref' and 'grpl' boxes within their own
   declared box size. Files with an EntityToGroupBox carrying grouping type
   specific data after the entity_id array are no longer rejected.
+* Fix a crash when calling avifDecoderNextImage() or avifDecoderNthImage() again after a grid image failed to decode because of invalid tile dimensions.
 * Reset Sample Transform decoder state in avifDecoderReset() so repeated resets
   and avifDecoderSetSource() calls do not fail.
 * Support a 'thmb', 'auxl', 'cdsc' or 'prem' item reference that links one item
