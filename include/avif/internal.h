@@ -160,7 +160,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat.
 // Ignores the gainMap field.
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+avifResult avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 // Appends an opaque image item property.
 avifResult avifImagePushProperty(avifImage * image,
