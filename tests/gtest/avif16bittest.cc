@@ -456,6 +456,62 @@ TEST(Avif16bitTest, SampleTransformWithOtherBitDepths) {
 
 //------------------------------------------------------------------------------
 
+// Regression test for a heap-use-after-free in avifEncoderAddImageInternal().
+// When a grid cell must be padded (its dimensions differ from the first cell),
+// the padded copy is stored in cellImagePlaceholder and cellImage is made to
+// alias it. In the sample transform (bit depth extension) path, the placeholder
+// used to be destroyed *before* avifEncoderCreateBitDepthExtensionImage() read
+// from cellImage, leaving cellImage dangling; the call then read freed memory.
+// This exercises the grid + bit depth extension combination with a narrower
+// last cell so that padding (and hence the placeholder) is required.
+TEST(Avif16bitTest, SampleTransformGridPaddedCellNoUseAfterFree) {
+  if (!testutil::Av1EncoderAvailable()) {
+    GTEST_SKIP() << "AV1 Codec unavailable, skip test.";
+  }
+
+  const ImagePtr image = testutil::ReadImage(
+      data_path, "weld_16bit.png", AVIF_PIXEL_FORMAT_YUV444,
+      /*requested_depth=*/16);
+  ASSERT_NE(image, nullptr);
+  ASSERT_GE(image->width, 96u);
+  ASSERT_GE(image->height, 64u);
+
+  // 2x1 grid. The first cell defines the tile size (64x64, meeting the MIAF
+  // >=64 tile requirement). The last cell is narrower (32x64), so the encoder
+  // must pad it up to the tile size. That padding allocates cellImagePlaceholder
+  // and aliases cellImage to it -- the precondition for the use-after-free.
+  const uint32_t kGridCols = 2, kGridRows = 1;
+  const ImagePtr cell0{avifImageCreateEmpty()};
+  const ImagePtr cell1{avifImageCreateEmpty()};
+  ASSERT_NE(cell0, nullptr);
+  ASSERT_NE(cell1, nullptr);
+  const avifCropRect rect0{0, 0, 64, 64};
+  const avifCropRect rect1{64, 0, 32, 64};
+  ASSERT_EQ(avifImageSetViewRect(cell0.get(), image.get(), &rect0),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifImageSetViewRect(cell1.get(), image.get(), &rect1),
+            AVIF_RESULT_OK);
+  const avifImage* cells[] = {cell0.get(), cell1.get()};
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->sampleTransformRecipe =
+      AVIF_SAMPLE_TRANSFORM_BIT_DEPTH_EXTENSION_8B_8B;
+
+  testutil::AvifRwData encoded;
+  // Before the fix, the call below read memory freed by the premature
+  // avifImageDestroy(cellImagePlaceholder) (reported by AddressSanitizer as a
+  // heap-use-after-free). It must now complete cleanly.
+  ASSERT_EQ(avifEncoderAddImageGrid(encoder.get(), kGridCols, kGridRows, cells,
+                                    AVIF_ADD_IMAGE_FLAG_SINGLE),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK);
+  EXPECT_NE(encoded.size, 0u);
+}
+
+//------------------------------------------------------------------------------
+
 }  // namespace
 }  // namespace avif
 
