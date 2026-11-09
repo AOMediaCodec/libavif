@@ -25,6 +25,7 @@ source $(dirname "$0")/cmd_test_common.sh || exit
 # Input file paths.
 INPUT_Y4M="${TESTDATA_DIR}/kodim03_yuv420_8bpc.y4m"
 INPUT_PNG="${TESTDATA_DIR}/circle-trns-after-plte.png"
+INPUT_PARIS_PNG="${TESTDATA_DIR}/paris_icc_exif_xmp.png"
 INPUT_UTF8_Y4M="🐾.y4m"
 # Output file names.
 ENCODED_FILE="avif_test_cmd_encoded.avif"
@@ -151,6 +152,42 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
   grep " Alpha          : Absent" "${OUT_MSG}"
   grep " Alpha total size: 0 bytes" "${OUT_MSG}"
+
+  # Test tune=ssimulacra2 auto-routing and XYB color conversion.
+  echo "Testing tune=ssimulacra2"
+  # Standard PNG without ICC at q>=92 uses XYB (YUV444, MC 0, 720-byte ICC).
+  "${AVIFENC}" -s 10 -a tune=ssimulacra2 -q 95 --ignore-profile "${INPUT_PARIS_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Format         : YUV444" "${OUT_MSG}"
+  grep " Matrix Coeffs. : 0" "${OUT_MSG}"
+  grep " ICC Profile    : Present (720 bytes)" "${OUT_MSG}"
+  # PNG with embedded ICC profile at q>=92 falls back to YCbCr (MC 6) to preserve original profile.
+  "${AVIFENC}" -s 10 -a tune=ssimulacra2 -q 95 "${INPUT_PARIS_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Format         : YUV444" "${OUT_MSG}"
+  grep " Matrix Coeffs. : 6" "${OUT_MSG}"
+  # tune=ssimulacra2 with explicit -y 420 does not use XYB.
+  "${AVIFENC}" -s 10 -a tune=ssimulacra2 -q 95 -y 420 "${INPUT_PARIS_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Format         : YUV420" "${OUT_MSG}"
+  grep " Matrix Coeffs. : 6" "${OUT_MSG}"
+
+  # Test --force-xyb.
+  echo "Testing --force-xyb"
+  "${AVIFENC}" -s 10 --force-xyb -q 80 --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Format         : YUV444" "${OUT_MSG}"
+  grep " Matrix Coeffs. : 0" "${OUT_MSG}"
+  grep " ICC Profile    : Present (720 bytes)" "${OUT_MSG}"
+  # --force-xyb with incompatible options must fail.
+  "${AVIFENC}" --force-xyb -l --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb -y 420 --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb --grid 1x2 "${INPUT_PNG}" "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb --layered "${INPUT_PNG}" "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb --progressive --ignore-alpha "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb "${INPUT_Y4M}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" --force-xyb "${INPUT_PARIS_PNG}" "${ENCODED_FILE}" && exit 1
+  "${AVIFENC}" -s 10 --force-xyb -q 80 --ignore-profile "${INPUT_PARIS_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  grep " Format         : YUV444" "${OUT_MSG}"
+  grep " Matrix Coeffs. : 0" "${OUT_MSG}"
+  grep " ICC Profile    : Present (720 bytes)" "${OUT_MSG}"
 popd
 
 exit 0
