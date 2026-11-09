@@ -2295,13 +2295,17 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                 // Replace cellImage by the first or second input to the AVIF_ITEM_SAMPLE_TRANSFORM derived image item.
                 const avifBool itemWillBeEncodedLosslessly = (quality == AVIF_QUALITY_LOSSLESS);
                 avifImage * sampleTransformedImage = NULL;
+                // cellImage may alias cellImagePlaceholder (set above) but because
+                // avifEncoderCreateBitDepthExtensionImage() reads from its input image, the
+                // placeholder must stay alive until the call returns. Destroying it beforehand leaves
+                // cellImage dangling
+                const avifResult sampleTransformResult =
+                    avifEncoderCreateBitDepthExtensionImage(encoder, item, itemWillBeEncodedLosslessly, cellImage, &sampleTransformedImage);
                 if (cellImagePlaceholder) {
                     avifImageDestroy(cellImagePlaceholder); // Replaced by sampleTransformedImage.
                     cellImagePlaceholder = NULL;
                 }
-                AVIF_CHECKRES(
-                    avifEncoderCreateBitDepthExtensionImage(encoder, item, itemWillBeEncodedLosslessly, cellImage, &sampleTransformedImage));
-                assert(cellImagePlaceholder == NULL);
+                AVIF_CHECKRES(sampleTransformResult);
                 cellImagePlaceholder = sampleTransformedImage; // Transfer ownership.
                 cellImage = cellImagePlaceholder;
             }
