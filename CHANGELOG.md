@@ -63,6 +63,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
   colour and then reset with colour excluded: only inspect the first colour
   tile if colour tiles exist.
+* Avoid an unsigned integer overflow when accumulating 'stts' sample_count
+  values in avifSampleTableGetImageDelta(), which made timing values be read
+  from the wrong 'stts' entry.
 
 ## [1.4.2] - 2026-05-26
 
