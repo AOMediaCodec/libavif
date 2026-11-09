@@ -176,6 +176,101 @@ TEST(TransformTest, AlphaIrotNoIrot) {
 
 //------------------------------------------------------------------------------
 
+// The transformative properties of an image sequence are written in the sample
+// entry of its track, where there is no property deduplication.
+void EncodeDecodeImageSequence(avifTransformFlags transform_flags) {
+  ImagePtr image =
+      testutil::CreateImage(/*width=*/12, /*height=*/34, /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV444, AVIF_PLANES_YUV);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());  // The pixels do not matter.
+
+  image->transformFlags = transform_flags;
+  if (transform_flags & AVIF_TRANSFORM_CLAP) {
+    avifDiagnostics diag{};
+    const avifCropRect rect{/*x=*/4, /*y=*/6, /*width=*/8, /*height=*/10};
+    ASSERT_TRUE(avifCleanApertureBoxFromCropRect(
+        &image->clap, &rect, image->width, image->height, &diag));
+  }
+  image->irot.angle = 1;
+  image->imir.axis = 1;
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  for (int i = 0; i < 2; ++i) {
+    ASSERT_EQ(avifEncoderAddImage(encoder.get(), image.get(),
+                                  /*durationInTimescales=*/1,
+                                  AVIF_ADD_IMAGE_FLAG_NONE),
+              AVIF_RESULT_OK)
+        << encoder->diag.error;
+  }
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderFinish(encoder.get(), &encoded), AVIF_RESULT_OK)
+      << encoder->diag.error;
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+      << decoder->diag.error;
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+  ASSERT_EQ(decoder->imageCount, 2);
+  for (int i = 0; i < 2; ++i) {
+    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK)
+        << decoder->diag.error;
+  }
+
+  const avifImage& decoded = *decoder->image;
+  EXPECT_EQ(decoded.transformFlags, image->transformFlags);
+  if (transform_flags & AVIF_TRANSFORM_CLAP) {
+    EXPECT_EQ(decoded.clap.widthN, image->clap.widthN);
+    EXPECT_EQ(decoded.clap.widthD, image->clap.widthD);
+    EXPECT_EQ(decoded.clap.heightN, image->clap.heightN);
+    EXPECT_EQ(decoded.clap.heightD, image->clap.heightD);
+    EXPECT_EQ(decoded.clap.horizOffN, image->clap.horizOffN);
+    EXPECT_EQ(decoded.clap.horizOffD, image->clap.horizOffD);
+    EXPECT_EQ(decoded.clap.vertOffN, image->clap.vertOffN);
+    EXPECT_EQ(decoded.clap.vertOffD, image->clap.vertOffD);
+  }
+  if (transform_flags & AVIF_TRANSFORM_IROT) {
+    EXPECT_EQ(decoded.irot.angle, image->irot.angle);
+  }
+  if (transform_flags & AVIF_TRANSFORM_IMIR) {
+    EXPECT_EQ(decoded.imir.axis, image->imir.axis);
+  }
+}
+
+// Control: no transformative property is written.
+TEST(TransformTest, ImageSequenceWithoutTransformsControl) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+  EncodeDecodeImageSequence(/*transform_flags=*/AVIF_TRANSFORM_NONE);
+}
+
+TEST(TransformTest, ClapImageSequence) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+  EncodeDecodeImageSequence(AVIF_TRANSFORM_CLAP);
+}
+
+TEST(TransformTest, IrotImageSequence) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+  EncodeDecodeImageSequence(AVIF_TRANSFORM_IROT);
+}
+
+TEST(TransformTest, ImirImageSequence) {
+  if (!testutil::Av1EncoderAvailable() || !testutil::Av1DecoderAvailable()) {
+    GTEST_SKIP() << "AV1 codec unavailable, skip test.";
+  }
+  EncodeDecodeImageSequence(AVIF_TRANSFORM_IMIR);
+}
+
 }  // namespace
 }  // namespace avif
 

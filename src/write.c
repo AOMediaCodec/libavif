@@ -760,6 +760,10 @@ static avifResult avifEncoderWriteHDRProperties(avifRWStream * dedupStream,
                                                 avifItemPropertyAssociationArray * associations,
                                                 avifItemPropertyDedup * dedup)
 {
+    if (!dedupStream) {
+        // Track properties have no dedup: write them directly to the output.
+        dedupStream = outputStream;
+    }
     // Write Content Light Level Information, if present
     if (imageMetadata->clli.maxCLL || imageMetadata->clli.maxPALL) {
         if (dedup) {
@@ -846,6 +850,10 @@ static avifResult avifEncoderWriteTransformativeProperties(avifRWStream * dedupS
                                                            avifItemPropertyAssociationArray * associations,
                                                            avifItemPropertyDedup * dedup)
 {
+    if (!dedupStream) {
+        // Track properties have no dedup: write them directly to the output.
+        dedupStream = outputStream;
+    }
     if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
         if (dedup) {
             avifItemPropertyDedupStart(dedup);
