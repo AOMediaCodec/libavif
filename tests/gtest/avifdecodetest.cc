@@ -190,6 +190,35 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
   }
 }
 
+// Both files below were derived from colors-animated-8bpc.avif and used to
+// trigger undefined behavior (unsigned integer underflow) in the sample table
+// handling, reported by UBSan's -fsanitize=unsigned-integer-overflow.
+TEST(AvifDecodeTest, SampleTableInvalidValues) {
+  // 'stsc' box absent while 'stco' references a chunk: the absence of
+  // SampleToChunkBox entries must be handled gracefully.
+  {
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(),
+                  (std::string(data_path) + "poc_stsc_absent.avif").c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED)
+        << decoder->diag.error;
+  }
+  // 'stss' box with a sample_number of 0, which is invalid because
+  // sample_number is 1-based.
+  {
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(),
+                  (std::string(data_path) + "poc_stss_sample_number_zero.avif")
+                      .c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED)
+        << decoder->diag.error;
+  }
+}
+
 }  // namespace
 }  // namespace avif
 

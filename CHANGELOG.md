@@ -63,6 +63,9 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
   colour and then reset with colour excluded: only inspect the first colour
   tile if colour tiles exist.
+* Avoid unsigned integer underflow when parsing a SampleTable without a
+  SampleToChunkBox, and reject SyncSampleBox entries with a sample_number of 0
+  (the field is 1-based).
 
 ## [1.4.2] - 2026-05-26
 

@@ -579,6 +579,10 @@ void avifCodecDecodeInputDestroy(avifCodecDecodeInput * decodeInput)
 // Returns how many samples are in the chunk.
 static uint32_t avifGetSampleCountOfChunk(const avifSampleTableSampleToChunkArray * sampleToChunks, uint32_t chunkIndex)
 {
+    if (sampleToChunks->count == 0) {
+        // The SampleToChunkBox is absent from the SampleTable.
+        return 0;
+    }
     uint32_t sampleCount = 0;
     for (int sampleToChunkIndex = sampleToChunks->count - 1; sampleToChunkIndex >= 0; --sampleToChunkIndex) {
         const avifSampleTableSampleToChunk * sampleToChunk = &sampleToChunks->sampleToChunk[sampleToChunkIndex];
@@ -3790,6 +3794,8 @@ static avifResult avifParseSyncSampleBox(avifSampleTable * sampleTable, const ui
     for (uint32_t i = 0; i < entryCount; ++i) {
         uint32_t sampleNumber = 0;
         AVIF_CHECKERR(avifROStreamReadU32(&s, &sampleNumber), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(32) sample_number;
+        // sample_number is 1-based, so 0 is invalid.
+        AVIF_CHECKERR(sampleNumber != 0, AVIF_RESULT_BMFF_PARSE_FAILED);
         avifSyncSample * syncSample = (avifSyncSample *)avifArrayPush(&sampleTable->syncSamples);
         AVIF_CHECKERR(syncSample != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         syncSample->sampleNumber = sampleNumber;
