@@ -190,6 +190,46 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
   }
 }
 
+TEST(AvifDecodeTest, SampleTableTimingAccumulationOverflow) {
+  // The 'stts' box of this file holds three entries with sample_count values
+  // {1, UINT32_MAX, 1}. Accumulating sample_count values in
+  // avifSampleTableGetImageDelta() on a uint32_t used to wrap around, which
+  // triggered -fsanitize=unsigned-integer-overflow and made the function fall
+  // back to the last entry instead of the entry containing the image index,
+  // yielding wrong timing values.
+  const char* file_name = "poc_stts_sample_count_overflow.avif";
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOFile(decoder.get(),
+                                 (std::string(data_path) + file_name).c_str()),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+      << decoder->diag.error;
+  EXPECT_EQ(decoder->imageSequenceTrackPresent, AVIF_TRUE);
+
+  // Note: avifDecoderNthImageTiming() does not invoke the codec.
+  avifImageTiming timing;
+  ASSERT_EQ(avifDecoderNthImageTiming(decoder.get(), 0, &timing),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(timing.ptsInTimescales, 0u);
+  EXPECT_EQ(timing.durationInTimescales, 5u);
+
+  // The sample index 1 falls within the second 'stts' entry (delta 7), even
+  // though the accumulated sample_count values of the first two entries
+  // exceed UINT32_MAX.
+  ASSERT_EQ(avifDecoderNthImageTiming(decoder.get(), 1, &timing),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(timing.ptsInTimescales, 5u);
+  EXPECT_EQ(timing.durationInTimescales, 7u);
+
+  // Indexes 1 and 2 are both covered by the second entry (delta 7), since the
+  // third entry (delta 9) starts at sample index 0x100000000.
+  ASSERT_EQ(avifDecoderNthImageTiming(decoder.get(), 2, &timing),
+            AVIF_RESULT_OK);
+  EXPECT_EQ(timing.ptsInTimescales, 12u);
+  EXPECT_EQ(timing.durationInTimescales, 7u);
+}
+
 }  // namespace
 }  // namespace avif
 
