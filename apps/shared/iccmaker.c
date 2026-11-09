@@ -170,8 +170,11 @@ static void writeBigEndianU32(uint8_t * data, uint32_t value)
 
 static avifBool putS15Fixed16(uint8_t * data, double value)
 {
+    if (!isfinite(value)) {
+        return AVIF_FALSE;
+    }
     value = round(value * 65536);
-    if (value > INT32_MAX || value < INT32_MIN) {
+    if (!isfinite(value) || (value > (double)INT32_MAX) || (value < (double)INT32_MIN)) {
         return AVIF_FALSE;
     }
 
@@ -184,8 +187,11 @@ static avifBool putS15Fixed16(uint8_t * data, double value)
 
 static avifBool putU8Fixed8(uint8_t * data, float value)
 {
+    if (!isfinite(value)) {
+        return AVIF_FALSE;
+    }
     value = roundf(value * 256);
-    if (value > UINT16_MAX || value < 1) {
+    if (!isfinite(value) || (value > (float)UINT16_MAX) || (value < 1.0f)) {
         return AVIF_FALSE;
     }
 
@@ -213,7 +219,7 @@ static avifBool putColorant(uint8_t * data, const double XYZ[3])
 
 static avifBool xyToXYZ(const float xy[2], double XYZ[3])
 {
-    if (fabsf(xy[1]) < small) {
+    if (!isfinite(xy[0]) || !isfinite(xy[1]) || (fabsf(xy[1]) < small)) {
         return AVIF_FALSE;
     }
 
@@ -222,7 +228,7 @@ static avifBool xyToXYZ(const float xy[2], double XYZ[3])
     XYZ[1] = 1;
     XYZ[2] = (1 - xy[0] - xy[1]) * factor;
 
-    return AVIF_TRUE;
+    return isfinite(XYZ[0]) && isfinite(XYZ[2]);
 }
 
 // Computes I = M^-1. Returns false if M seems to be singular.
@@ -230,7 +236,7 @@ static avifBool matInv(const double M[3][3], double I[3][3])
 {
     double det = M[0][0] * (M[1][1] * M[2][2] - M[2][1] * M[1][2]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
                  M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
-    if (fabs(det) < small) {
+    if (!isfinite(det) || (fabs(det) < small)) {
         return AVIF_FALSE;
     }
     det = 1 / det;
@@ -369,6 +375,15 @@ static const double lmsD50[3] = { 0.996284, 1.02043, 0.818644 };
 
 avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries[8])
 {
+    if (!icc || !primaries || !isfinite(gamma)) {
+        return AVIF_FALSE;
+    }
+    for (int i = 0; i < 8; ++i) {
+        if (!isfinite(primaries[i])) {
+            return AVIF_FALSE;
+        }
+    }
+
     uint8_t buffer[sizeof(iccColorTemplate)];
     memcpy(buffer, iccColorTemplate, sizeof(iccColorTemplate));
 
@@ -407,7 +422,7 @@ avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries
     double lms[3];
     vecMul(bradford, whitePointXYZ, lms);
     for (int i = 0; i < 3; ++i) {
-        if (fabs(lms[i]) < small) {
+        if (!isfinite(lms[i]) || (fabs(lms[i]) < small)) {
             return AVIF_FALSE;
         }
         lms[i] = lmsD50[i] / lms[i];
@@ -455,6 +470,10 @@ avifBool avifGenerateRGBICC(avifRWData * icc, float gamma, const float primaries
 
 avifBool avifGenerateGrayICC(avifRWData * icc, float gamma, const float white[2])
 {
+    if (!icc || !white || !isfinite(gamma) || !isfinite(white[0]) || !isfinite(white[1])) {
+        return AVIF_FALSE;
+    }
+
     uint8_t buffer[sizeof(iccGrayTemplate)];
     memcpy(buffer, iccGrayTemplate, sizeof(iccGrayTemplate));
 
