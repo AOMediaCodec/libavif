@@ -1660,6 +1660,12 @@ TEST(GainMapTest, ComputeGainMapUnsupportedDepth) {
   EXPECT_EQ(gain_map->image->yuvPlanes[0], nullptr);
 }
 
+TEST(FindMinMaxWithoutOutliers, EmptyInput) {
+    float min, max;
+    ASSERT_EQ(avifFindMinMaxWithoutOutliers(nullptr, 0, &min, &max),
+              AVIF_RESULT_INVALID_ARGUMENT);
+}
+
 TEST(FindMinMaxWithoutOutliers, AllSame) {
   constexpr int kNumValues = 10000;
 
