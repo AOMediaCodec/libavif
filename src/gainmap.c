@@ -373,8 +373,18 @@ cleanup:
 // and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
 static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
+    // A NaN sample must not reach the int casts below: the comparisons in
+    // AVIF_CLAMP are all false for NaN, and (int)NaN is undefined behavior
+    // that can yield an out-of-range histogram index.
+    if (isnan(v)) {
+        return 0;
+    }
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
-    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets), numBuckets - 1);
+    int idx = (int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets);
+    if (idx < 0) { // Rounding may put the lower bound in bucket -1.
+        idx = 0;
+    }
+    return AVIF_MIN(idx, numBuckets - 1);
 }
 // Returns the lower end of the value range belonging to the given histogram bucket.
 static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int numBuckets)
@@ -402,7 +412,10 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixel
     }
 
     const int maxNumBuckets = 10000;
-    const int numBuckets = AVIF_MIN((int)ceilf((max - min) / bucketSize), maxNumBuckets);
+    const float numBucketsF = ceilf((max - min) / bucketSize);
+    // An infinite or NaN range (an infinite sample, or all NaN samples) must
+    // not reach the int cast: (int)inf and (int)NaN are undefined behavior.
+    const int numBuckets = (numBucketsF >= (float)maxNumBuckets) ? maxNumBuckets : (numBucketsF > 0.0f) ? (int)numBucketsF : 1;
     int * histogram = avifCalloc(numBuckets, sizeof(int));
     if (histogram == NULL) {
         return AVIF_RESULT_OUT_OF_MEMORY;
@@ -718,7 +731,11 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                 if (alt > altMax) {
                     altMax = alt;
                 }
-                const float ratio = (alt + alternateOffset[c]) / (base + baseOffset[c]);
+                const float denominator = base + baseOffset[c];
+                // A zero denominator yields inf or NaN, which AVIF_MAX does not
+                // filter (its comparisons are false for both). Substitute the
+                // kEpsilon floor so the sample stays finite.
+                const float ratio = (denominator > 0.0f) ? ((alt + alternateOffset[c]) / denominator) : kEpsilon;
                 const float ratioLog2 = log2f(AVIF_MAX(ratio, kEpsilon));
                 gainMapF[c][(size_t)j * width + i] = ratioLog2;
             }
