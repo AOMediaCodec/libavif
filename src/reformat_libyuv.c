@@ -69,7 +69,7 @@ unsigned int avifLibYUVVersion(void)
 // For more details on clang's CFI see: https://clang.llvm.org/docs/ControlFlowIntegrity.html.
 // For more details on clang's UBSan see: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 #if defined(__clang__)
-#define IGNORE_CFI_ICALL __attribute__((no_sanitize("cfi-icall", "function")))
+#define IGNORE_CFI_ICALL __attribute__((no_sanitize("cfi-icall", "kcfi", "function")))
 #else
 #define IGNORE_CFI_ICALL
 #endif
