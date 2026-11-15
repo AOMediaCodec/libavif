@@ -670,10 +670,25 @@ avifBool y4mWrite(const char * outputFilename, const avifImage * avif)
         uint32_t planeWidthBytes = avifImagePlaneWidth(avif, plane) << (avif->depth > 8);
         const uint8_t * row = avifImagePlane(avif, plane);
         uint32_t rowBytes = avifImagePlaneRowBytes(avif, plane);
-        if ((planeHeight > 0) && (planeWidthBytes > 0) && !row) {
-            fprintf(stderr, "ERROR: missing plane data: %s\n", outputFilename);
-            success = AVIF_FALSE;
-            goto cleanup;
+        if ((planeHeight > 0) && (planeWidthBytes > 0)) {
+            if (!row) {
+                fprintf(stderr, "ERROR: missing plane data: %s\n", outputFilename);
+                success = AVIF_FALSE;
+                goto cleanup;
+            }
+            // Each row is read as planeWidthBytes bytes but the pointer advances by rowBytes, so a
+            // stride smaller than the row width makes every row after the first overlap the previous
+            // one and the last rows read past the end of the plane.
+            if (rowBytes < planeWidthBytes) {
+                fprintf(stderr,
+                        "ERROR: plane %d row stride (%" PRIu32 " bytes) is smaller than the row width (%" PRIu32 " bytes): %s\n",
+                        plane,
+                        rowBytes,
+                        planeWidthBytes,
+                        outputFilename);
+                success = AVIF_FALSE;
+                goto cleanup;
+            }
         }
         for (uint32_t y = 0; y < planeHeight; ++y) {
             if (fwrite(row, 1, planeWidthBytes, f) != planeWidthBytes) {

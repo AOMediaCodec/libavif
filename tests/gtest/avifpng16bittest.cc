@@ -309,6 +309,118 @@ TEST(Y4mHeaderTest, RejectsOverflowAndTrailingGarbage) {
   EXPECT_FALSE(oversized_write_ok);
 }
 
+// Builds a non-owning avifImage whose plane buffers are exactly
+// row_bytes * plane_height bytes, so that any read past the declared stride
+// layout is a heap-buffer-overflow under ASan.
+struct StridedImage {
+  ImagePtr image;
+  std::vector<std::vector<uint8_t>> planes;
+};
+
+StridedImage MakeStridedImage(uint32_t width, uint32_t height, uint32_t depth,
+                              avifPixelFormat format,
+                              const uint32_t row_bytes[3]) {
+  StridedImage out;
+  out.image.reset(avifImageCreateEmpty());
+  if (out.image == nullptr) return out;
+  out.image->width = width;
+  out.image->height = height;
+  out.image->depth = depth;
+  out.image->yuvFormat = format;
+  avifPixelFormatInfo info;
+  avifGetPixelFormatInfo(format, &info);
+  const uint32_t chroma_height =
+      info.monochrome ? 0 : (height + info.chromaShiftY) >> info.chromaShiftY;
+  out.planes.resize(3);
+  for (int plane = 0; plane < 3; ++plane) {
+    const uint32_t plane_height =
+        (plane == AVIF_CHAN_Y) ? height : chroma_height;
+    if (plane_height == 0) continue;
+    out.planes[plane].assign(
+        static_cast<size_t>(row_bytes[plane]) * plane_height, 0x55);
+    out.image->yuvPlanes[plane] = out.planes[plane].data();
+    out.image->yuvRowBytes[plane] = row_bytes[plane];
+  }
+  return out;
+}
+
+void ReleaseStridedImage(StridedImage* img) {
+  for (int plane = 0; plane < 3; ++plane) {
+    img->image->yuvPlanes[plane] = nullptr;
+    img->image->yuvRowBytes[plane] = 0;
+  }
+}
+
+// Writes an image with the given plane strides and returns the y4mWrite()
+// result. The plane buffers hold exactly row_bytes * plane_height bytes.
+avifBool WriteStrided(const std::string& name, uint32_t width, uint32_t height,
+                      uint32_t depth, avifPixelFormat format,
+                      const uint32_t row_bytes[3]) {
+  StridedImage img = MakeStridedImage(width, height, depth, format, row_bytes);
+  EXPECT_NE(img.image, nullptr);
+  if (img.image == nullptr) return AVIF_FALSE;
+  const avifBool ok =
+      y4mWrite((testing::TempDir() + "avify4m_stride_" + name + ".y4m").c_str(),
+               img.image.get());
+  ReleaseStridedImage(&img);
+  return ok;
+}
+
+// Controls: stride == row width and stride > row width (padding) must still be
+// written, for 8-bit and 16-bit samples.
+TEST(Y4mWriteValidationTest, ValidStridesAreWritten) {
+  const uint32_t exact8[3] = {4, 2, 2};
+  EXPECT_TRUE(
+      WriteStrided("exact8", 4, 4, 8, AVIF_PIXEL_FORMAT_YUV420, exact8));
+  const uint32_t padded8[3] = {16, 8, 8};
+  EXPECT_TRUE(
+      WriteStrided("padded8", 4, 4, 8, AVIF_PIXEL_FORMAT_YUV420, padded8));
+  const uint32_t exact10[3] = {8, 0, 0};
+  EXPECT_TRUE(
+      WriteStrided("exact10", 4, 4, 10, AVIF_PIXEL_FORMAT_YUV400, exact10));
+  const uint32_t padded12[3] = {12, 12, 12};
+  EXPECT_TRUE(
+      WriteStrided("padded12", 4, 4, 12, AVIF_PIXEL_FORMAT_YUV444, padded12));
+}
+
+// 8-bit, Y plane stride 2 < row width 4: rows 2+ would overlap or overrun.
+TEST(Y4mWriteValidationTest, RejectsUnderStrideY8) {
+  const uint32_t under[3] = {2, 2, 2};
+  EXPECT_FALSE(
+      WriteStrided("under_y8", 4, 4, 8, AVIF_PIXEL_FORMAT_YUV420, under));
+}
+
+// 8-bit, only the U plane is under-strided (Y and V are valid): every
+// non-empty plane must be checked, not just the first.
+TEST(Y4mWriteValidationTest, RejectsUnderStrideU8) {
+  const uint32_t under_u[3] = {4, 1, 2};
+  EXPECT_FALSE(
+      WriteStrided("under_u8", 4, 4, 8, AVIF_PIXEL_FORMAT_YUV420, under_u));
+}
+
+// 16-bit samples (depth 10): the row width is 2 * width = 8 bytes. A stride of
+// 4 is >= width (4) but < the width in bytes (8).
+TEST(Y4mWriteValidationTest, RejectsUnderStrideY10) {
+  const uint32_t under[3] = {4, 0, 0};
+  EXPECT_FALSE(
+      WriteStrided("under_y10", 4, 4, 10, AVIF_PIXEL_FORMAT_YUV400, under));
+}
+
+// 16-bit samples (depth 12), 4:4:4, only the V plane is under-strided.
+TEST(Y4mWriteValidationTest, RejectsUnderStrideV12) {
+  const uint32_t under_v[3] = {8, 8, 6};
+  EXPECT_FALSE(
+      WriteStrided("under_v12", 4, 4, 12, AVIF_PIXEL_FORMAT_YUV444, under_v));
+}
+
+// A single-row image with a short stride is still rejected: the one row is read
+// as planeWidthBytes bytes from a buffer of rowBytes bytes.
+TEST(Y4mWriteValidationTest, RejectsUnderStrideSingleRow8) {
+  const uint32_t under[3] = {2, 0, 0};
+  EXPECT_FALSE(
+      WriteStrided("under_one_row8", 4, 1, 8, AVIF_PIXEL_FORMAT_YUV400, under));
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
