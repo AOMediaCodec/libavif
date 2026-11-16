@@ -64,16 +64,11 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
     }
     // Got an image!
 
-    if (nextFrame) {
-        codec->internal->gav1Image = nextFrame;
-        codec->internal->colorRange = (nextFrame->color_range == kLibgav1ColorRangeStudio) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
-    } else {
-        if (alpha && codec->internal->gav1Image) {
-            // Special case: reuse last alpha frame
-        } else {
-            return AVIF_FALSE;
-        }
+    if (!nextFrame) {
+        return AVIF_FALSE;
     }
+    codec->internal->gav1Image = nextFrame;
+    codec->internal->colorRange = (nextFrame->color_range == kLibgav1ColorRangeStudio) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
 
     const Libgav1DecoderBuffer * gav1Image = codec->internal->gav1Image;
     avifBool isColor = !alpha;

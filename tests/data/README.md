@@ -1066,6 +1066,21 @@ License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LIC
 
 Source: Random frames generated with libavif.
 
+### File [animated_alpha_sample_without_shown_frame.avif](animated_alpha_sample_without_shown_frame.avif)
+
+![](animated_alpha_sample_without_shown_frame.avif)
+
+License: [same as libavif](https://github.com/AOMediaCodec/libavif/blob/main/LICENSE)
+
+Source: two 64x64 frames (YUV444 with alpha) encoded with `avifenc -c aom -s 6`.
+The two samples of the alpha track were then replaced with the first two samples
+of six 64x64 gray frames encoded with `avifenc -c aom -s 6 -a film-grain-test=1`,
+the second one cut before its shown frame. These samples were appended to the
+`mdat` box, and the `stsz` and `stco` boxes of the alpha track were updated.
+
+The second alpha sample only holds a temporal delimiter and two hidden frames,
+so it outputs no frame and the second frame cannot be decoded.
+
 ### File [poc_b_506387278.avif](poc_b_506387278.avif)
 
 ![](poc_b_506387278.avif)

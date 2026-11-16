@@ -101,6 +101,38 @@ TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadata) {
             AVIF_RESULT_NO_IMAGES_REMAINING);
 }
 
+// The second sample of the alpha track only holds hidden frames, so it outputs
+// no frame. The alpha plane of the first frame must not be reused for the
+// second frame: the AV1 decoder may have released its buffer meanwhile. The
+// alpha is in limited range, so avifDecoderNextImage() reads it.
+TEST(AvifDecodeTest, AnimatedImageWithAlphaSampleWithoutShownFrame) {
+  const char* file_name = "animated_alpha_sample_without_shown_frame.avif";
+  for (avifCodecChoice codec_choice :
+       {AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D,
+        AVIF_CODEC_CHOICE_LIBGAV1}) {
+    const char* codec_name =
+        avifCodecName(codec_choice, AVIF_CODEC_FLAG_CAN_DECODE);
+    if (codec_name == nullptr) {
+      continue;
+    }
+    SCOPED_TRACE(codec_name);
+    DecoderPtr decoder(avifDecoderCreate());
+    ASSERT_NE(decoder, nullptr);
+    decoder->codecChoice = codec_choice;
+    ASSERT_EQ(avifDecoderSetIOFile(
+                  decoder.get(), (std::string(data_path) + file_name).c_str()),
+              AVIF_RESULT_OK);
+    ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_EQ(decoder->alphaPresent, AVIF_TRUE);
+    EXPECT_EQ(decoder->imageCount, 2);
+
+    ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+    EXPECT_NE(decoder->image->alphaPlane, nullptr);
+    EXPECT_EQ(avifDecoderNextImage(decoder.get()),
+              AVIF_RESULT_DECODE_ALPHA_FAILED);
+  }
+}
+
 //------------------------------------------------------------------------------
 // The alpha track of colors-animated-8bpc-alpha-exif-xmp.avif holds a 20 byte
 // 'tref' box at offset 1586, with a single 'auxl' box naming track 1, directly
