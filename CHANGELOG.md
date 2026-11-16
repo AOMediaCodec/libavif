@@ -63,6 +63,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fix a crash in avifDecoderReset() when a progressive AVIF is parsed with
   colour and then reset with colour excluded: only inspect the first colour
   tile if colour tiles exist.
+* Fix a use-after-free in avifEncoderAddImageGrid() with a Sample Transform
+  recipe when the right-most or bottom-most cells are smaller than the others.
 
 ## [1.4.2] - 2026-05-26
 
