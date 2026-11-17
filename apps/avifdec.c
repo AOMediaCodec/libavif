@@ -442,7 +442,7 @@ int main(int argc, char * argv[])
 
         if (decodeAllFrames) {
             // Create filename for individual frames, in the form path/to/output-0000000000.ext
-            char * lastDot = strrchr(outputFilename, '.');
+            const char * lastDot = strrchr(outputFilename, '.');
             const size_t dotPos = (lastDot != NULL) ? (size_t)(lastDot - outputFilename) : strlen(outputFilename);
             const char * extension = (lastDot != NULL) ? lastDot + 1 : "";
             const int maxFilenameWithoutExtensionLength = 1000;
