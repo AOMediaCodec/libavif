@@ -17,6 +17,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 * avifgainmaputil: add --ignore-alpha flag to discard alpha channel
 * avifgainmaputil: add --ignore-exif and --ignore-xmp flags
 * avifdec: add --ignore-exif and --ignore-xmp flags
+* avifgainmaputil: add --matrix-gain-map flag to combine command
 
 ### Changed since 1.4.2
 
@@ -68,6 +69,8 @@ The changes are relative to the previous release, unless the baseline is specifi
 * Fail to decode an alpha sample that outputs no frame with the aom and avm
   decoders, as with dav1d and libgav1. The previous alpha frame was reused,
   although libaom and libavm invalidate it when the next sample is decoded.
+* Default gain map matrix coefficients to BT.601 (6) instead of unspecified (2)
+  in avifgainmaputil combine and in avifenc when converting a JPEG+gain map.
 
 ## [1.4.2] - 2026-05-26
 
