@@ -1,4 +1,4 @@
-set(AVIF_DAV1D_TAG "1.5.4")
+set(AVIF_DAV1D_TAG "1.5.5")
 
 function(avif_build_local_dav1d)
     set(download_step_args)
