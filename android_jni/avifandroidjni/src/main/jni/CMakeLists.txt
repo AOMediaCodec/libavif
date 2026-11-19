@@ -44,4 +44,7 @@ include_directories(${CPU_FEATURES_DIR})
 add_library(cpufeatures STATIC "${CPU_FEATURES_DIR}/cpu-features.c")
 
 target_link_options(avif_android PRIVATE "-Wl,-z,max-page-size=16384")
-target_link_libraries(avif_android jnigraphics avif log cpufeatures)
+# Make AHardwareBuffer symbols weak so they are absent (null) on API < 26 rather
+# than causing a dlopen failure at load time.
+target_compile_definitions(avif_android PRIVATE __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
+target_link_libraries(avif_android android jnigraphics avif log cpufeatures)
