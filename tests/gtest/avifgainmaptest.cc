@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -335,6 +336,72 @@ TEST(GainMapTest, EncodeDecodeMetadataAllChannelsIdentical) {
 
   // Verify that the gain map metadata matches the input.
   CheckGainMapMetadataMatches(*decoded->gainMap, *image->gainMap);
+}
+
+// A clean aperture is written on both the base and gain map items, so it is
+// only valid when both have the same dimensions.
+TEST(GainMapTest, EncodeDecodeCleanApertureDifferentGainMapSizeNotImplemented) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+  ASSERT_NE(image->width, image->gainMap->image->width);
+  const avifCropRect crop_rect = {2, 4, 8, 20};
+  avifDiagnostics diag;
+  ASSERT_TRUE(avifCleanApertureBoxFromCropRect(&image->clap, &crop_rect,
+                                               image->width, image->height,
+                                               &diag));
+  image->transformFlags |= AVIF_TRANSFORM_CLAP;
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_NOT_IMPLEMENTED);
+}
+
+TEST(GainMapTest, EncodeDecodeCleanAperture) {
+  ImagePtr image = CreateTestImageWithGainMap(/*base_rendition_is_hdr=*/false);
+  ASSERT_NE(image, nullptr);
+  // Use a gain map with the same dimensions as the base image.
+  ImagePtr gain_map =
+      testutil::CreateImage(static_cast<int>(image->width),
+                            static_cast<int>(image->height), /*depth=*/8,
+                            AVIF_PIXEL_FORMAT_YUV420, AVIF_PLANES_YUV);
+  ASSERT_NE(gain_map, nullptr);
+  gain_map->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
+  gain_map->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+  gain_map->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
+  testutil::FillImageGradient(gain_map.get());
+  avifImageDestroy(image->gainMap->image);
+  image->gainMap->image = gain_map.release();
+
+  const avifCropRect crop_rect = {2, 4, 8, 20};
+  avifDiagnostics diag;
+  ASSERT_TRUE(avifCleanApertureBoxFromCropRect(&image->clap, &crop_rect,
+                                               image->width, image->height,
+                                               &diag));
+  image->transformFlags |= AVIF_TRANSFORM_CLAP;
+
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  testutil::AvifRwData encoded;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK)
+      << encoder->diag.error;
+
+  // The default strict flags validate the clap of every item.
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), encoded.data, encoded.size),
+            AVIF_RESULT_OK);
+  ASSERT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK)
+      << decoder->diag.error;
+  EXPECT_EQ(decoder->image->transformFlags & AVIF_TRANSFORM_CLAP,
+            static_cast<uint32_t>(AVIF_TRANSFORM_CLAP));
+  EXPECT_EQ(
+      std::memcmp(&decoder->image->clap, &image->clap, sizeof(image->clap)), 0);
+  ASSERT_NE(decoder->image->gainMap, nullptr);
+  ASSERT_NE(decoder->image->gainMap->image, nullptr);
 }
 
 TEST(GainMapTest, EncodeDecodeGrid) {

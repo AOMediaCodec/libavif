@@ -3362,7 +3362,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // 'clap' is treated as 'irot'/'imir', although it could differ between the base and
             // gain map image items if these have different dimensions.
             if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
-                AVIF_CHECKERR(imageMetadata->width != itemMetadata->width || imageMetadata->height != itemMetadata->height,
+                AVIF_CHECKERR(imageMetadata->width == itemMetadata->width && imageMetadata->height == itemMetadata->height,
                               AVIF_RESULT_NOT_IMPLEMENTED);
             }
 
