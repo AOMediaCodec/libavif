@@ -3,6 +3,7 @@
 
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
+#include "avifutil.h"
 #include "gtest/gtest.h"
 
 namespace avif {
@@ -63,6 +64,37 @@ TEST(TransformTest, ClapIrotImir) {
   EXPECT_EQ(decoded->clap.vertOffD, image->clap.vertOffD);
   EXPECT_EQ(decoded->irot.angle, image->irot.angle);
   EXPECT_EQ(decoded->imir.axis, image->imir.axis);
+}
+
+TEST(TransformTest, FullImageClapIrot) {
+  ImagePtr image(avifImageCreate(/*width=*/2, /*height=*/3, /*depth=*/8,
+                                 AVIF_PIXEL_FORMAT_YUV400));
+  ASSERT_NE(image, nullptr);
+  image->transformFlags = AVIF_TRANSFORM_CLAP | AVIF_TRANSFORM_IROT;
+  image->clap = {2, 1, 3, 1, 0, 1, 0, 1};
+  image->irot.angle = 1;
+
+  testutil::AvifRgbImage rgb(image.get(), 8, AVIF_RGB_FORMAT_RGB);
+  ASSERT_NE(rgb.pixels, nullptr);
+  for (uint32_t y = 0; y < rgb.height; ++y) {
+    for (uint32_t x = 0; x < rgb.width * 3; ++x) {
+      rgb.pixels[y * rgb.rowBytes + x] =
+          static_cast<uint8_t>(y * rgb.width * 3 + x);
+    }
+  }
+
+  avifRGBImage view;
+  ASSERT_EQ(avifApplyTransforms(&view, &rgb, image.get()), AVIF_RESULT_OK);
+  ASSERT_EQ(view.width, 3u);
+  ASSERT_EQ(view.height, 2u);
+  // RGB triples after a 90 degree counterclockwise rotation.
+  const uint8_t expected[2][9] = {{3, 4, 5, 9, 10, 11, 15, 16, 17},
+                                  {0, 1, 2, 6, 7, 8, 12, 13, 14}};
+  for (uint32_t y = 0; y < view.height; ++y) {
+    EXPECT_TRUE(testutil::AreByteSequencesEqual(
+        view.pixels + y * view.rowBytes, sizeof(expected[y]), expected[y],
+        sizeof(expected[y])));
+  }
 }
 
 TEST(TransformTest, ClapIrotImirNonEssential) {
