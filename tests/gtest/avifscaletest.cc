@@ -92,6 +92,76 @@ TEST(ScaleTest, LargerThanDefaultLimits) {
   EXPECT_NE(avifImageScale(image.get(), 2, 40000, &diag), AVIF_RESULT_OK);
 }
 
+// Failure to scale (e.g. source dimensions exceeding libyuv limits) should
+// leave the original image, plane pointers, row bytes, ownership, and
+// dimensions intact.
+TEST(ScaleTest, FailurePreservesOriginalImage) {
+  constexpr uint32_t kWidth = 20000;
+  constexpr uint32_t kHeight = 100;
+  ImagePtr image(
+      avifImageCreate(kWidth, kHeight, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV420));
+  ASSERT_NE(image, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(image.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_OK);
+
+  uint8_t* const original_y = image->yuvPlanes[AVIF_CHAN_Y];
+  uint8_t* const original_u = image->yuvPlanes[AVIF_CHAN_U];
+  uint8_t* const original_v = image->yuvPlanes[AVIF_CHAN_V];
+  uint8_t* const original_a = image->alphaPlane;
+  const uint32_t original_y_row_bytes = image->yuvRowBytes[AVIF_CHAN_Y];
+  const uint32_t original_a_row_bytes = image->alphaRowBytes;
+
+  ASSERT_NE(original_y, nullptr);
+  ASSERT_NE(original_u, nullptr);
+  ASSERT_NE(original_v, nullptr);
+  ASSERT_NE(original_a, nullptr);
+
+  // Write a marker byte to verify memory content isn't lost.
+  original_y[0] = 42;
+  original_a[0] = 84;
+
+  avifDiagnostics diag;
+  // Scaling from width > 16384 is rejected by libyuv limits.
+  EXPECT_EQ(avifImageScale(image.get(), 100, 100, &diag),
+            AVIF_RESULT_NOT_IMPLEMENTED);
+
+  // Image properties and planes must remain unchanged.
+  EXPECT_EQ(image->width, kWidth);
+  EXPECT_EQ(image->height, kHeight);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_Y], original_y);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_U], original_u);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_V], original_v);
+  EXPECT_EQ(image->alphaPlane, original_a);
+  EXPECT_EQ(image->yuvRowBytes[AVIF_CHAN_Y], original_y_row_bytes);
+  EXPECT_EQ(image->alphaRowBytes, original_a_row_bytes);
+  EXPECT_TRUE(image->imageOwnsYUVPlanes);
+  EXPECT_TRUE(image->imageOwnsAlphaPlane);
+  EXPECT_EQ(original_y[0], 42);
+  EXPECT_EQ(original_a[0], 84);
+}
+
+TEST(ScaleTest, UnownedPlanesPreservedOnFailure) {
+  constexpr uint32_t kWidth = 20000;
+  constexpr uint32_t kHeight = 100;
+  ImagePtr image(
+      avifImageCreate(kWidth, kHeight, /*depth=*/8, AVIF_PIXEL_FORMAT_YUV400));
+  ASSERT_NE(image, nullptr);
+
+  std::vector<uint8_t> buffer(kWidth * kHeight, 128);
+  image->yuvPlanes[AVIF_CHAN_Y] = buffer.data();
+  image->yuvRowBytes[AVIF_CHAN_Y] = kWidth;
+  image->imageOwnsYUVPlanes = AVIF_FALSE;
+
+  avifDiagnostics diag;
+  EXPECT_EQ(avifImageScale(image.get(), 100, 100, &diag),
+            AVIF_RESULT_NOT_IMPLEMENTED);
+
+  EXPECT_EQ(image->width, kWidth);
+  EXPECT_EQ(image->height, kHeight);
+  EXPECT_EQ(image->yuvPlanes[AVIF_CHAN_Y], buffer.data());
+  EXPECT_FALSE(image->imageOwnsYUVPlanes);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
