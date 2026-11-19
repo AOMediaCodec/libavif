@@ -88,6 +88,23 @@ pushd ${TMP_DIR}
   cat "${OUT_MSG}"
   grep "Format         : YUV444" "${OUT_MSG}"
 
+  # Test matrix coefficients for gain map: default (6), override with flag (0 or 1), and invalid flag combo.
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --qgain-map 60 > "${OUT_MSG}"
+  grep "Gain map.*Matrix Coeffs\. 6" "${OUT_MSG}"
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --qgain-map 100 > "${OUT_MSG}"
+  grep "Gain map.*Matrix Coeffs\. 6" "${OUT_MSG}"
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --qgain-map 100 --matrix-gain-map 0 > "${OUT_MSG}"
+  grep "Gain map.*Matrix Coeffs\. 0" "${OUT_MSG}"
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --qgain-map 60 --matrix-gain-map 1 > "${OUT_MSG}"
+  grep "Gain map.*Matrix Coeffs\. 1" "${OUT_MSG}"
+  # Identity matrix with subsampled format must fail.
+  "${AVIFGAINMAPUTIL}" combine "${INPUT_AVIF_GAINMAP_SDR}" "${INPUT_AVIF_GAINMAP_SDR}" "${AVIF_OUTPUT}" \
+      -q 50 --matrix-gain-map 0 --yuv-gain-map 420 && exit 1
+
   # Test combine with overridden cicp values. Matrix coefficient 0 (identity) makes it obvious if there is an issue.
   "${AVIFGAINMAPUTIL}" combine "${INPUT_JPEG_GAINMAP_SDR}" "${INPUT_AVIF_HDR2020}" "${AVIF_OUTPUT}" \
       -q 100 --qgain-map 100 --cicp-base 1/13/0 --ignore-profile

@@ -2527,6 +2527,11 @@ int main(int argc, char * argv[])
             image->gainMap->altTransferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_PQ;
         }
     }
+    if (image->gainMap && image->gainMap->image) {
+        if (image->gainMap->image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+            image->gainMap->image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
+        }
+    }
 #endif // AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION
 
     if (settings.paspPresent) {

@@ -38,6 +38,11 @@ CombineCommand::CombineCommand()
       .choices({"444", "422", "420", "400"})
       .help("Output format for the gain map")
       .default_value("444");
+  argparse_.add_argument<int>(arg_matrix_gain_map_, "--matrix-gain-map")
+      .help(
+          "Matrix coefficients for the gain map (e.g. 0 for identity, 6 for "
+          "BT.601). (Default: 6)")
+      .default_value("6");
   argparse_.add_argument(arg_max_headroom_, "--max-headroom")
       .help(
           "Maximum value for the base image HDR headroom and alternate "
@@ -143,6 +148,16 @@ avifResult CombineCommand::Run() {
     avifGainMapDestroy(base_image->gainMap);
     base_image->gainMap = nullptr;
   }
+
+  avifMatrixCoefficients gain_map_matrix_coefficients =
+      static_cast<avifMatrixCoefficients>(arg_matrix_gain_map_.value());
+  if (gain_map_matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+      gain_map_pixel_format != AVIF_PIXEL_FORMAT_YUV444) {
+    std::cout << "Matrix coefficients may not be set to identity (0) when "
+                 "gain map is subsampled (yuv-gain-map must be 444).\n";
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+
   base_image->gainMap = avifGainMapCreate();
   base_image->gainMap->image =
       avifImageCreate(gain_map_width, gain_map_height, arg_gain_map_depth_,
@@ -150,6 +165,7 @@ avifResult CombineCommand::Run() {
   if (base_image->gainMap->image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  base_image->gainMap->image->matrixCoefficients = gain_map_matrix_coefficients;
   avifDiagnostics diag;
   result = avifImageComputeGainMap(base_image.get(), alternate_image.get(),
                                    base_image->gainMap, &diag);
