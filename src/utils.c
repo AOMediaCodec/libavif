@@ -13,6 +13,42 @@ float avifRoundf(float v)
     return floorf(v + 0.5f);
 }
 
+avifBool avifCheckedMulU32(uint32_t a, uint32_t b, uint32_t * result)
+{
+    if (b != 0 && a > UINT32_MAX / b) {
+        return AVIF_FALSE;
+    }
+    *result = a * b;
+    return AVIF_TRUE;
+}
+
+avifBool avifCheckedAddU64(uint64_t a, uint64_t b, uint64_t * result)
+{
+    if (a > UINT64_MAX - b) {
+        return AVIF_FALSE;
+    }
+    *result = a + b;
+    return AVIF_TRUE;
+}
+
+avifBool avifCheckedMulSize(size_t a, size_t b, size_t * result)
+{
+    if (b != 0 && a > SIZE_MAX / b) {
+        return AVIF_FALSE;
+    }
+    *result = a * b;
+    return AVIF_TRUE;
+}
+
+avifBool avifCheckedAddSize(size_t a, size_t b, size_t * result)
+{
+    if (a > SIZE_MAX - b) {
+        return AVIF_FALSE;
+    }
+    *result = a + b;
+    return AVIF_TRUE;
+}
+
 // Thanks, Rob Pike! https://commandcenter.blogspot.nl/2012/04/byte-order-fallacy.html
 
 uint16_t avifHTONS(uint16_t s)
@@ -90,12 +126,12 @@ avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t init
     arr->elementSize = elementSize ? elementSize : 1;
     arr->count = 0;
     arr->capacity = initialCapacity;
-    if (arr->capacity > SIZE_MAX / arr->elementSize) {
+    size_t byteCount;
+    if (!avifCheckedMulSize(arr->elementSize, arr->capacity, &byteCount)) {
         arr->ptr = NULL;
         arr->capacity = 0;
         return AVIF_FALSE;
     }
-    size_t byteCount = (size_t)arr->elementSize * arr->capacity;
     arr->ptr = (uint8_t *)avifAlloc(byteCount);
     if (!arr->ptr) {
         arr->capacity = 0;
@@ -111,10 +147,11 @@ void * avifArrayPush(void * arrayStruct)
     if (arr->count == arr->capacity) {
         uint8_t * oldPtr = arr->ptr;
         size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
-        if (oldByteCount > SIZE_MAX / 2 || arr->capacity > UINT32_MAX / 2) {
+        size_t newByteCount;
+        uint32_t newCapacity;
+        if (!avifCheckedMulSize(oldByteCount, 2, &newByteCount) || !avifCheckedMulU32(arr->capacity, 2, &newCapacity)) {
             return NULL;
         }
-        size_t newByteCount = oldByteCount * 2;
         uint8_t * newPtr = (uint8_t *)avifAlloc(newByteCount);
         if (newPtr == NULL) {
             return NULL;
@@ -122,7 +159,7 @@ void * avifArrayPush(void * arrayStruct)
         arr->ptr = newPtr;
         memset(arr->ptr + oldByteCount, 0, oldByteCount);
         memcpy(arr->ptr, oldPtr, oldByteCount);
-        arr->capacity *= 2;
+        arr->capacity = newCapacity;
         avifFree(oldPtr);
     }
     ++arr->count;
