@@ -234,6 +234,7 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
     dstImage->numProperties = 0;
 
     if (srcImage->numProperties != 0) {
+        AVIF_CHECKERR(srcImage->numProperties <= SIZE_MAX / sizeof(srcImage->properties[0]), AVIF_RESULT_INVALID_ARGUMENT);
         dstImage->properties = (avifImageItemProperty *)avifCalloc(srcImage->numProperties, sizeof(srcImage->properties[0]));
         AVIF_CHECKERR(dstImage->properties != NULL, AVIF_RESULT_OUT_OF_MEMORY);
         dstImage->numProperties = srcImage->numProperties;
