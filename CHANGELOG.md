@@ -71,6 +71,11 @@ The changes are relative to the previous release, unless the baseline is specifi
   although libaom and libavm invalidate it when the next sample is decoded.
 * Default gain map matrix coefficients to BT.601 (6) instead of unspecified (2)
   in avifgainmaputil combine and in avifenc when converting a JPEG+gain map.
+* Reject a 'stbl' box with more than one 'stsd', 'stts', 'stsc', 'stsz' or
+  'stss' box, or with more than one chunk offset box ('stco' or 'co64'), as
+  ISO/IEC 14496-12 allows at most one of each. A second box used to be silently
+  combined with the first one. Also reject a 'stsc' entry with a
+  sample_description_index of 0, since the index starts at 1.
 
 ## [1.4.2] - 2026-05-26
 
