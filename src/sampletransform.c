@@ -359,6 +359,12 @@ avifResult avifImageApplyExpression(avifImage * dstImage,
 {
     // Check that the expression is valid.
     AVIF_ASSERT_OR_RETURN(avifSampleTransformExpressionIsValid(expression, numInputImageItems));
+    // Sample values are loaded with `row[x]` after `row += y * rowBytes`. A stride that does not
+    // cover the plane, or a height * stride product that wraps, reads or writes out of bounds.
+    AVIF_CHECKERR(avifImagePlanesHaveValidRowBytes(dstImage, planes), AVIF_RESULT_INVALID_ARGUMENT);
+    for (uint32_t i = 0; i < numInputImageItems; ++i) {
+        AVIF_CHECKERR(avifImagePlanesHaveValidRowBytes(inputImageItems[i], planes), AVIF_RESULT_INVALID_ARGUMENT);
+    }
     const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
     const avifBool skipAlpha = !(planes & AVIF_PLANES_A);
     for (int c = AVIF_CHAN_Y; c <= AVIF_CHAN_A; ++c) {

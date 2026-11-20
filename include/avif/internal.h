@@ -156,11 +156,29 @@ void avifImageSetDefaults(avifImage * image);
 // Copies all fields that do not need to be freed/allocated from srcImage to dstImage.
 void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage);
 
+// True when each of `height` rows can hold `width` pixels of `bytesPerPixel` bytes:
+//   * rowBytes is at least width * bytesPerPixel,
+//   * rowBytes is a multiple of channelBytes (1 for 8-bit samples, 2 when each sample is a uint16_t),
+//   * height * rowBytes fits in size_t.
+// channelBytes is the sample depth, not the packed pixel size. 8-bit RGBA is 4 bytes per
+// pixel and channelBytes 1, so an odd padded stride is valid. A width or height of 0
+// addresses no sample and is valid.
+AVIF_NODISCARD avifBool avifArePlaneRowBytesValid(uint32_t width, uint32_t height, uint32_t rowBytes, uint32_t bytesPerPixel, uint32_t channelBytes);
+
+// Writes a codec stride into *rowBytes. Rejects negative strides, strides that do not
+// fit in uint32_t, and strides that fail avifArePlaneRowBytesValid().
+AVIF_NODISCARD avifBool avifStorePlaneRowBytes(uint32_t * rowBytes, int64_t stride, uint32_t width, uint32_t height, uint32_t bytesPerSample);
+
+// True when every non-NULL plane selected by `planes` passes avifArePlaneRowBytesValid().
+// NULL planes are skipped. bytesPerSample is 2 when image->depth > 8, otherwise 1.
+AVIF_NODISCARD avifBool avifImagePlanesHaveValidRowBytes(const avifImage * image, avifPlanesFlags planes);
+
 // Copies the samples from srcImage to dstImage. dstImage must be allocated.
 // srcImage and dstImage must have the same width, height, and depth.
 // If the AVIF_PLANES_YUV bit is set in planes, then srcImage and dstImage must have the same yuvFormat.
 // Ignores the gainMap field.
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
+// Returns AVIF_FALSE if either image has a plane stride that cannot hold its samples.
+AVIF_NODISCARD avifBool avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes);
 
 // Appends an opaque image item property.
 avifResult avifImagePushProperty(avifImage * image,

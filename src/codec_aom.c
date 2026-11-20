@@ -245,14 +245,26 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)nextFrame->tc;
         image->matrixCoefficients = (avifMatrixCoefficients)nextFrame->mc;
 
-        // Steal the pointers from the decoder's image directly
+        // Steal the pointers from the decoder's image directly.
+        // libaom's stride is a signed int and is not guaranteed by the bitstream to cover d_w samples.
+        // Store it only after checking the sign, the uint32_t range, and the plane dimensions.
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
+        const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
+            uint32_t rowBytes;
+            if (!avifStorePlaneRowBytes(&rowBytes,
+                                        nextFrame->stride[yuvPlane],
+                                        avifImagePlaneWidth(image, yuvPlane),
+                                        avifImagePlaneHeight(image, yuvPlane),
+                                        bytesPerSample)) {
+                avifImageFreePlanes(image, AVIF_PLANES_YUV);
+                return AVIF_FALSE;
+            }
             image->yuvPlanes[yuvPlane] = nextFrame->planes[yuvPlane];
-            image->yuvRowBytes[yuvPlane] = nextFrame->stride[yuvPlane];
+            image->yuvRowBytes[yuvPlane] = rowBytes;
         }
-        image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - set image to correct size, fill alpha
 
@@ -261,10 +273,15 @@ static avifBool aomCodecGetNextImage(struct avifCodec * codec,
         image->depth = nextFrame->bit_depth;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
-        image->alphaPlane = nextFrame->planes[0];
-        image->alphaRowBytes = nextFrame->stride[0];
-        *isLimitedRangeAlpha = (nextFrame->range == AOM_CR_STUDIO_RANGE);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
+        const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+        uint32_t rowBytes;
+        if (!avifStorePlaneRowBytes(&rowBytes, nextFrame->stride[0], image->width, image->height, bytesPerSample)) {
+            return AVIF_FALSE;
+        }
+        image->alphaPlane = nextFrame->planes[0];
+        image->alphaRowBytes = rowBytes;
+        *isLimitedRangeAlpha = (nextFrame->range == AOM_CR_STUDIO_RANGE);
     }
 
     return AVIF_TRUE;
