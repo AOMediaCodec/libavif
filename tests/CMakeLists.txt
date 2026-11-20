@@ -132,6 +132,7 @@ if(AVIF_GTEST)
     add_avif_gtest(avifsampletransformtest)
     add_avif_gtest_with_data(avifscaletest)
     add_avif_gtest_with_data(avifsize0test)
+    add_avif_gtest_with_data(avifstbltest)
     add_avif_gtest(avifstreamtest)
 
     if(AVIF_CODEC_SVT_ENABLED)
