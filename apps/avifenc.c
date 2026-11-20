@@ -1655,7 +1655,9 @@ int main(int argc, char * argv[])
             }
         } else if (!strcmp(arg, "-y") || !strcmp(arg, "--yuv")) {
             NEXTARG();
-            if (!strcmp(arg, "444")) {
+            if (!strcmp(arg, "auto")) {
+                input.requestedFormat = AVIF_PIXEL_FORMAT_NONE;
+            } else if (!strcmp(arg, "444")) {
                 input.requestedFormat = AVIF_PIXEL_FORMAT_YUV444;
             } else if (!strcmp(arg, "422")) {
                 input.requestedFormat = AVIF_PIXEL_FORMAT_YUV422;
