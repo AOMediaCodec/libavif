@@ -37,6 +37,12 @@ avifResult avifImageScaleWithLimit(avifImage * image,
         avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested invalid dst dimensions [%ux%u]", dstWidth, dstHeight);
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
+    // libyuv's ScalePlane() indexes samples with the caller-provided stride. Check the source
+    // planes before handing them over: a stride shorter than the row walks off the allocation.
+    if (!avifImagePlanesHaveValidRowBytes(image, AVIF_PLANES_ALL)) {
+        avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit source plane stride does not cover its samples");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     if (avifDimensionsTooLarge(dstWidth, dstHeight, imageSizeLimit, imageDimensionLimit)) {
         avifDiagnosticsPrintf(diag, "avifImageScaleWithLimit requested dst dimensions that are too large [%ux%u]", dstWidth, dstHeight);
         return AVIF_RESULT_NOT_IMPLEMENTED;

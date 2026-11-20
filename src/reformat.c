@@ -194,6 +194,19 @@ static avifBool avifPrepareReformatState(const avifImage * image, const avifRGBI
         state->yuv.kb = 0.0f;
     }
 
+    // RGB and YUV planes are indexed as `y * rowBytes + x * bytesPerSample` below.
+    // A stride shorter than the row, or a height * stride product that wraps size_t,
+    // would read or write outside the buffer. Planes that are not allocated yet
+    // (RGB->YUV allocates them after this call) are skipped.
+    // channelBytes follows the sample depth, not the packed pixel size. 8-bit RGBA is 4 bytes
+    // per pixel and is addressed as bytes, so an odd padded stride is valid. RGB_565 is stored
+    // as one uint16_t per pixel even though rgb->depth is 8.
+    const uint32_t rgbChannelBytes = (rgb->depth > 8 || rgb->format == AVIF_RGB_FORMAT_RGB_565) ? 2 : 1;
+    if (!rgb->pixels || !avifArePlaneRowBytesValid(rgb->width, rgb->height, rgb->rowBytes, state->rgb.pixelBytes, rgbChannelBytes) ||
+        !avifImagePlanesHaveValidRowBytes(image, AVIF_PLANES_ALL)) {
+        return AVIF_FALSE;
+    }
+
     return AVIF_TRUE;
 }
 
@@ -526,22 +539,32 @@ avifResult avifImageRGBToYUV(avifImage * image, const avifRGBImage * rgb)
         avifGetPixelFormatInfo(image->yuvFormat, &info);
         const uint32_t shiftedH = (uint32_t)(((uint64_t)image->height + info.chromaShiftY) >> info.chromaShiftY);
         const int half = 1 << (image->depth - 1);
+        const uint32_t shiftedW = (uint32_t)(((uint64_t)image->width + info.chromaShiftX) >> info.chromaShiftX);
         if (image->yuvPlanes[AVIF_CHAN_U]) {
             uint8_t * uPlane = image->yuvPlanes[AVIF_CHAN_U];
-            const size_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+            const uint32_t uRowBytes = image->yuvRowBytes[AVIF_CHAN_U];
+            // shiftedH * rowBytes is the number of bytes passed to memset. Check it before the multiply.
+            if (!avifArePlaneRowBytesValid(shiftedW, shiftedH, uRowBytes, state.yuv.channelBytes, state.yuv.channelBytes)) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            const size_t uPlaneBytes = (size_t)shiftedH * uRowBytes;
             if (state.yuv.channelBytes > 1) {
-                avifMemset16(uPlane, half, shiftedH * uRowBytes / 2);
+                avifMemset16(uPlane, half, uPlaneBytes / 2);
             } else {
-                memset(uPlane, half, shiftedH * uRowBytes);
+                memset(uPlane, half, uPlaneBytes);
             }
         }
         if (image->yuvPlanes[AVIF_CHAN_V]) {
             uint8_t * vPlane = image->yuvPlanes[AVIF_CHAN_V];
-            const size_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+            const uint32_t vRowBytes = image->yuvRowBytes[AVIF_CHAN_V];
+            if (!avifArePlaneRowBytesValid(shiftedW, shiftedH, vRowBytes, state.yuv.channelBytes, state.yuv.channelBytes)) {
+                return AVIF_RESULT_REFORMAT_FAILED;
+            }
+            const size_t vPlaneBytes = (size_t)shiftedH * vRowBytes;
             if (state.yuv.channelBytes > 1) {
-                avifMemset16(vPlane, half, shiftedH * vRowBytes / 2);
+                avifMemset16(vPlane, half, vPlaneBytes / 2);
             } else {
-                memset(vPlane, half, shiftedH * vRowBytes);
+                memset(vPlane, half, vPlaneBytes);
             }
         }
     }

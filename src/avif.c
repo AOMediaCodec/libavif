@@ -184,7 +184,7 @@ void avifImageCopyNoAlloc(avifImage * dstImage, const avifImage * srcImage)
     dstImage->imir = srcImage->imir;
 }
 
-void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+avifBool avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
     assert(srcImage->depth == dstImage->depth);
     if (planes & AVIF_PLANES_YUV) {
@@ -192,7 +192,13 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
         // Note that there may be a mismatch between srcImage->yuvRange and dstImage->yuvRange
         // because libavif allows for 'colr' and AV1 OBU video range values to differ.
     }
-    const size_t bytesPerPixel = avifImageUsesU16(srcImage) ? 2 : 1;
+    // Reject undersized or overflowing strides before any memcpy. A decoded image can
+    // otherwise carry a codec stride that does not cover planeWidth samples, and the copy
+    // (including grid-tile copies) would read or write past the row.
+    if (!avifImagePlanesHaveValidRowBytes(srcImage, planes) || !avifImagePlanesHaveValidRowBytes(dstImage, planes)) {
+        return AVIF_FALSE;
+    }
+    const size_t bytesPerSample = avifImageUsesU16(srcImage) ? 2 : 1;
 
     const avifBool skipColor = !(planes & AVIF_PLANES_YUV);
     const avifBool skipAlpha = !(planes & AVIF_PLANES_A);
@@ -208,20 +214,25 @@ void avifImageCopySamples(avifImage * dstImage, const avifImage * srcImage, avif
         uint8_t * dstRow = avifImagePlane(dstImage, c);
         const uint32_t srcRowBytes = avifImagePlaneRowBytes(srcImage, c);
         const uint32_t dstRowBytes = avifImagePlaneRowBytes(dstImage, c);
-        assert(!srcRow == !dstRow);
-        if (!srcRow) {
+        if (!srcRow && !dstRow) {
             continue;
+        }
+        if (!srcRow || !dstRow) {
+            return AVIF_FALSE;
         }
         assert(planeWidth == avifImagePlaneWidth(dstImage, c));
         assert(planeHeight == avifImagePlaneHeight(dstImage, c));
 
-        const size_t planeWidthBytes = planeWidth * bytesPerPixel;
+        // planeWidth * bytesPerSample fits in uint32_t: avifArePlaneRowBytesValid() already
+        // rejected widths that overflow that product, and both strides are >= that product.
+        const size_t planeWidthBytes = (size_t)planeWidth * bytesPerSample;
         for (uint32_t y = 0; y < planeHeight; ++y) {
             memcpy(dstRow, srcRow, planeWidthBytes);
             srcRow += srcRowBytes;
             dstRow += dstRowBytes;
         }
     }
+    return AVIF_TRUE;
 }
 
 static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage * srcImage)
@@ -279,7 +290,9 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
             return allocationResult;
         }
     }
-    avifImageCopySamples(dstImage, srcImage, planes);
+    if (!avifImageCopySamples(dstImage, srcImage, planes)) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
 
     if (srcImage->gainMap) {
         if (!dstImage->gainMap) {
@@ -622,6 +635,80 @@ uint32_t avifImagePlaneWidth(const avifImage * image, int channel)
         return image->width;
     }
     return 0;
+}
+
+avifBool avifArePlaneRowBytesValid(uint32_t width, uint32_t height, uint32_t rowBytes, uint32_t bytesPerPixel, uint32_t channelBytes)
+{
+    // No sample is read or written. Callers that need a non-empty plane check dimensions themselves.
+    if (width == 0 || height == 0) {
+        return AVIF_TRUE;
+    }
+    // width * bytesPerPixel is the minimum number of bytes touched on every row.
+    // channelBytes is 1 or 2: the width of one sample, not the packed pixel.
+    if (bytesPerPixel == 0 || (channelBytes != 1 && channelBytes != 2) || width > UINT32_MAX / bytesPerPixel) {
+        return AVIF_FALSE;
+    }
+    const uint32_t minRowBytes = width * bytesPerPixel;
+    if (rowBytes < minRowBytes) {
+        return AVIF_FALSE;
+    }
+    // 16-bit samples (and RGB_565, which is one uint16_t per pixel) are loaded through uint16_t.
+    // An 8-bit RGBA pixel is four bytes, but each channel is a byte, so the stride only has to
+    // cover the row. It does not have to be a multiple of the pixel size.
+    if ((rowBytes % channelBytes) != 0) {
+        return AVIF_FALSE;
+    }
+    // Pixel loops advance by rowBytes and copy minRowBytes per row. The byte index of the
+    // last sample is (height - 1) * rowBytes + (minRowBytes - 1), which is in range when
+    // height * rowBytes fits in size_t and rowBytes >= minRowBytes.
+    if ((size_t)rowBytes > SIZE_MAX / height) {
+        return AVIF_FALSE;
+    }
+    return AVIF_TRUE;
+}
+
+avifBool avifStorePlaneRowBytes(uint32_t * rowBytes, int64_t stride, uint32_t width, uint32_t height, uint32_t bytesPerSample)
+{
+    // The stride fields are signed (aom/avm int, dav1d ptrdiff_t, libgav1 int).
+    // The decoders libavif calls allocate top-down buffers: dav1d's default picture
+    // allocator (libavif does not install its own) stores a positive stride, libaom/avm
+    // frame buffers do the same, and libgav1 computes stride from nonnegative sizes.
+    // aom_img_flip() can negate a stride, but the decoder does not call it, so a negative
+    // value here is not a flipped picture we must display. Casting it to uint32_t would
+    // wrap, and every plane walk steps forward.
+    if (stride < 0 || (uint64_t)stride > UINT32_MAX) {
+        return AVIF_FALSE;
+    }
+    const uint32_t candidate = (uint32_t)stride;
+    if (!avifArePlaneRowBytesValid(width, height, candidate, bytesPerSample, bytesPerSample)) {
+        return AVIF_FALSE;
+    }
+    *rowBytes = candidate;
+    return AVIF_TRUE;
+}
+
+avifBool avifImagePlanesHaveValidRowBytes(const avifImage * image, avifPlanesFlags planes)
+{
+    const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+    const avifBool skipColor = (planes & AVIF_PLANES_YUV) == 0;
+    const avifBool skipAlpha = (planes & AVIF_PLANES_A) == 0;
+    for (int c = AVIF_CHAN_Y; c <= AVIF_CHAN_A; ++c) {
+        const avifBool alpha = (c == AVIF_CHAN_A);
+        if ((skipColor && !alpha) || (skipAlpha && alpha)) {
+            continue;
+        }
+        if (!avifImagePlane(image, c)) {
+            continue;
+        }
+        if (!avifArePlaneRowBytesValid(avifImagePlaneWidth(image, c),
+                                       avifImagePlaneHeight(image, c),
+                                       avifImagePlaneRowBytes(image, c),
+                                       bytesPerSample,
+                                       bytesPerSample)) {
+            return AVIF_FALSE;
+        }
+    }
+    return AVIF_TRUE;
 }
 
 uint32_t avifImagePlaneHeight(const avifImage * image, int channel)
