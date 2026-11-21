@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -188,6 +190,115 @@ TEST(AvifDecodeTest, NonPersistentIOBug506387278) {
     EXPECT_EQ(avifDecoderNextImage(decoder.get()),
               AVIF_RESULT_NO_IMAGES_REMAINING);
   }
+}
+
+//------------------------------------------------------------------------------
+
+uint32_t ReadBE32(const uint8_t* bytes) {
+  return (static_cast<uint32_t>(bytes[0]) << 24) |
+         (static_cast<uint32_t>(bytes[1]) << 16) |
+         (static_cast<uint32_t>(bytes[2]) << 8) |
+         static_cast<uint32_t>(bytes[3]);
+}
+
+uint16_t ReadBE16(const uint8_t* bytes) {
+  return static_cast<uint16_t>((static_cast<uint16_t>(bytes[0]) << 8) |
+                               static_cast<uint16_t>(bytes[1]));
+}
+
+void WriteBE32(uint32_t value, uint8_t* bytes) {
+  bytes[0] = static_cast<uint8_t>(value >> 24);
+  bytes[1] = static_cast<uint8_t>(value >> 16);
+  bytes[2] = static_cast<uint8_t>(value >> 8);
+  bytes[3] = static_cast<uint8_t>(value);
+}
+
+// Returns the byte offset of the child box of the given type within the
+// [start, start + parent_size) range, or std::string::npos if there is none.
+// A full box header (4 extra bytes of version and flags) is skipped if
+// full_box is true.
+size_t FindBox(const uint8_t* data, size_t start, size_t parent_end,
+               const char* type, bool full_box) {
+  size_t pos = start + (full_box ? 4 : 0);
+  while (pos + 8 <= parent_end) {
+    const uint32_t size = ReadBE32(data + pos);
+    if (size < 8 || pos + size > parent_end) {
+      return std::string::npos;
+    }
+    if (std::memcmp(data + pos + 4, type, 4) == 0) {
+      return pos;
+    }
+    pos += size;
+  }
+  return std::string::npos;
+}
+
+// The Sample Transform derived image item of weld_sato_12B_8B_q0.avif has two
+// 'dimg' input items. This test replaces them by 259 input item IDs (each one
+// creates an empty item), which exceeds the 32 input items allowed by the
+// format. The input item count used to be stored as a uint8_t, so the count
+// 259 wrapped around to 3 and bypassed the "at most 32" validation, leading to
+// a misleading error. It is now stored as a uint32_t so that the file is
+// cleanly rejected for the right reason.
+TEST(AvifDecodeTest, SampleTransformTooManyInputItems) {
+  testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + "weld_sato_12B_8B_q0.avif");
+  ASSERT_NE(encoded.size, size_t{0});
+
+  const size_t meta_offset = FindBox(encoded.data, 0, encoded.size, "meta",
+                                     /*full_box=*/false);
+  ASSERT_NE(meta_offset, std::string::npos);
+  const size_t meta_end = meta_offset + ReadBE32(encoded.data + meta_offset);
+  const size_t iref_offset = FindBox(encoded.data, meta_offset + 8, meta_end,
+                                     "iref", /*full_box=*/true);
+  ASSERT_NE(iref_offset, std::string::npos);
+  const size_t iref_end = iref_offset + ReadBE32(encoded.data + iref_offset);
+  const size_t dimg_offset = FindBox(encoded.data, iref_offset + 8, iref_end,
+                                     "dimg", /*full_box=*/true);
+  ASSERT_NE(dimg_offset, std::string::npos);
+  ASSERT_EQ(ReadBE32(encoded.data + dimg_offset), size_t{16});
+  ASSERT_EQ(ReadBE16(encoded.data + dimg_offset + 8),
+            uint16_t{2});  // from_item_ID
+  ASSERT_EQ(ReadBE16(encoded.data + dimg_offset + 10),
+            uint16_t{2});  // reference_count
+
+  constexpr uint16_t kReferenceCount = 259;
+  const uint16_t firstNewItemID = 4;  // Existing item IDs are 1, 2 and 3.
+  constexpr size_t kExtraBytes = 2 * (kReferenceCount - 2);
+
+  std::vector<uint8_t> crafted;
+  crafted.reserve(encoded.size + kExtraBytes);
+  // All bytes before the to_item_ID array, i.e. the 'dimg' box header,
+  // from_item_ID and reference_count, with the sizes of the 'dimg', 'iref' and
+  // 'meta' boxes grown by the extra reference bytes.
+  crafted.insert(crafted.end(), encoded.data, encoded.data + dimg_offset + 12);
+  WriteBE32(ReadBE32(crafted.data() + meta_offset) + kExtraBytes,
+            crafted.data() + meta_offset);
+  WriteBE32(ReadBE32(crafted.data() + iref_offset) + kExtraBytes,
+            crafted.data() + iref_offset);
+  WriteBE32(16 + kExtraBytes, crafted.data() + dimg_offset);
+  crafted[dimg_offset + 10] = static_cast<uint8_t>(kReferenceCount >> 8);
+  crafted[dimg_offset + 11] = static_cast<uint8_t>(kReferenceCount & 0xff);
+  // 259 distinct to_item_IDs.
+  for (uint16_t i = 0; i < kReferenceCount; ++i) {
+    const uint16_t itemID = firstNewItemID + i;
+    crafted.push_back(static_cast<uint8_t>(itemID >> 8));
+    crafted.push_back(static_cast<uint8_t>(itemID & 0xff));
+  }
+  // All boxes after the 'dimg' box ('iprp', 'grpl', 'mdat').
+  crafted.insert(crafted.end(), encoded.data + dimg_offset + 16,
+                 encoded.data + encoded.size);
+
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  decoder->imageContentToDecode =
+      AVIF_IMAGE_CONTENT_COLOR_AND_ALPHA | AVIF_IMAGE_CONTENT_SAMPLE_TRANSFORMS;
+  ASSERT_EQ(
+      avifDecoderSetIOMemory(decoder.get(), crafted.data(), crafted.size()),
+      AVIF_RESULT_OK);
+  EXPECT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED);
+  EXPECT_NE(std::strstr(decoder->diag.error, "too many input items"), nullptr);
+  EXPECT_NE(std::strstr(decoder->diag.error, "got 259"), nullptr);
 }
 
 }  // namespace
