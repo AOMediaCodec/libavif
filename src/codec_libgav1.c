@@ -29,6 +29,17 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
                                       avifBool * isLimitedRangeAlpha,
                                       avifImage * image)
 {
+    // The libgav1 API has no frame size limit, unlike dav1d's frame_size_limit setting or libaom's
+    // AOMD_SET_FRAME_SIZE_LIMIT control (and its aom_codec_peek_stream_info() fallback). Reject
+    // oversized sequence headers before decoding, for parity with the other AV1 codecs.
+    avifSequenceHeader sequenceHeader;
+    if (avifSequenceHeaderParse(&sequenceHeader, &sample->data, AVIF_CODEC_TYPE_AV1)) {
+        if (avifDimensionsTooLarge(sequenceHeader.maxWidth, sequenceHeader.maxHeight, codec->imageSizeLimit, codec->imageDimensionLimit)) {
+            avifDiagnosticsPrintf(codec->diag, "Image dimensions too large: %ux%u", sequenceHeader.maxWidth, sequenceHeader.maxHeight);
+            return AVIF_FALSE;
+        }
+    }
+
     if (codec->internal->gav1Decoder == NULL) {
         codec->internal->gav1Settings.threads = codec->maxThreads;
         codec->internal->gav1Settings.operating_point = codec->operatingPoint;
