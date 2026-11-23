@@ -86,6 +86,7 @@ runs:
         triplet: x64-windows-release
         token: ${{ github.token }}
         cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+        revision: 74f5ea45ca78988784b810ad9bbb148ea7ff76d8 # Force dav1d 1.5.5. Remove at next microsoft/vcpkg release.
 
     - name: Install nasm
       if: ${{ inputs.codec-aom == 'LOCAL' || inputs.codec-avm == 'LOCAL' || inputs.codec-dav1d == 'LOCAL' || inputs.codec-svt == 'LOCAL' }}
