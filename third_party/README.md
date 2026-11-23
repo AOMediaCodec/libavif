@@ -2,7 +2,7 @@
 
 Anything in this directory is imported from third party sources with minimal changes.
 
-See `LICENSE` file of respective subdirectories of this directory for license information.
+See the top-level `LICENSE` file for license information.
 
 ## libyuv
 
