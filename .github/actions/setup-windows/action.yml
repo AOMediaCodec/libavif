@@ -43,6 +43,13 @@ runs:
   steps:
     - name: Setup Developer Command Prompt for Microsoft Visual C++
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+    - name: Prefer Visual Studio's bundled LLVM
+      run: |
+        if ($env:llvmX64 -and (Test-Path "$env:llvmX64\clang-cl.exe")) {
+          $paths = $env:Path -split ';' | Where-Object { $_ -and $_ -notlike '*\LLVM\bin*' }
+          echo "Path=$(($paths + $env:llvmX64) -join ';')" >> $env:GITHUB_ENV
+        }
+      shell: pwsh
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}
       run: pip install meson
