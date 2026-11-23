@@ -248,6 +248,46 @@ TEST(AvifDecodeTest, AlphaTrackWithTwoTrackIds) {
 
 //------------------------------------------------------------------------------
 
+// The size checks on a track used to run only when its hdlr box declared a
+// pict/vide/auxv handler, but the track is selected for decoding whatever its
+// handler type is. A file whose handler type is anything else must therefore
+// be rejected when the track dimensions exceed the decoder limits.
+TEST(AvifDecodeTest, TrackDimensionLimitsApplyToAnyDecodableHandler) {
+  const testutil::AvifRwData encoded =
+      testutil::ReadFile(std::string(data_path) + "colors-animated-8bpc.avif");
+  ASSERT_NE(encoded.size, size_t{0});
+
+  // The file holds a single 'pict' track. Its tkhd box (version 1) keeps the
+  // width and height as the 16.16 fixed point upper halves, and its hdlr box
+  // stores the handler type at these offsets.
+  constexpr uint32_t kTkhdWidthOffset = 518;
+  constexpr uint32_t kTkhdHeightOffset = 522;
+  constexpr uint32_t kHandlerTypeOffset = 638;
+  ASSERT_EQ(std::memcmp(encoded.data + kHandlerTypeOffset, "pict", 4), 0);
+  ASSERT_EQ(std::memcmp(encoded.data + kTkhdWidthOffset, "\x00\x96", 2), 0);
+  ASSERT_EQ(std::memcmp(encoded.data + kTkhdHeightOffset, "\x00\x96", 2), 0);
+
+  // Control: the track still parses when the handler type is unknown but the
+  // dimensions are unchanged.
+  testutil::AvifRwData handlerOnly = testutil::ReadFile(std::string(data_path) + "colors-animated-8bpc.avif");
+  ASSERT_NE(handlerOnly.size, size_t{0});
+  std::memcpy(handlerOnly.data + kHandlerTypeOffset, "junk", 4);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(decoder.get(), handlerOnly.data, handlerOnly.size), AVIF_RESULT_OK);
+  EXPECT_EQ(avifDecoderParse(decoder.get()), AVIF_RESULT_OK);
+
+  // Oversized dimensions must be rejected for that same unknown handler type.
+  std::memcpy(encoded.data + kHandlerTypeOffset, "junk", 4);
+  std::memcpy(encoded.data + kTkhdWidthOffset, "\xff\xff", 2);
+  std::memcpy(encoded.data + kTkhdHeightOffset, "\xff\xff", 2);
+  DecoderPtr oversizedDecoder(avifDecoderCreate());
+  ASSERT_NE(oversizedDecoder, nullptr);
+  ASSERT_EQ(avifDecoderSetIOMemory(oversizedDecoder.get(), encoded.data, encoded.size), AVIF_RESULT_OK);
+  EXPECT_EQ(avifDecoderParse(oversizedDecoder.get()), AVIF_RESULT_BMFF_PARSE_FAILED)
+      << oversizedDecoder->diag.error;
+}
+
 TEST(AvifDecodeTest, AnimatedImageWithAlphaAndMetadataIgnoreAlpha) {
   const char* file_name = "colors-animated-8bpc-alpha-exif-xmp.avif";
   DecoderPtr decoder(avifDecoderCreate());

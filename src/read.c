@@ -4146,8 +4146,13 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
             hasTrak = AVIF_TRUE;
 
             const avifTrack * track = &data->tracks.track[data->tracks.count - 1];
+            // avifDecoderReset() selects the color track without considering its
+            // handler type (a missing hdlr box also leads to an empty handlerType),
+            // so any track that can actually be decoded has to satisfy the size
+            // checks below, not only the pict/vide/auxv ones.
+            const avifBool isDecodableTrack = (track->sampleTable != NULL) && (avifSampleTableGetCodecType(track->sampleTable) != AVIF_CODEC_TYPE_UNKNOWN);
             if (!memcmp(track->handlerType, "pict", 4) || !memcmp(track->handlerType, "vide", 4) ||
-                !memcmp(track->handlerType, "auxv", 4)) {
+                !memcmp(track->handlerType, "auxv", 4) || isDecodableTrack) {
                 if ((track->width == 0) || (track->height == 0)) {
                     avifDiagnosticsPrintf(data->diag, "Track ID [%u] has an invalid size [%ux%u]", track->id, track->width, track->height);
                     return AVIF_RESULT_BMFF_PARSE_FAILED;
