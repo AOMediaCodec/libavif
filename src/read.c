@@ -175,6 +175,9 @@ typedef struct avifProperty
 {
     uint8_t type[4];
     avifBool isOpaque;
+    // Only meaningful if isOpaque. If true, u.opaque.boxPayload points into the payload owned by the corresponding
+    // property of avifMeta::properties (which outlives all items) and must not be freed or modified.
+    avifBool opaquePayloadIsBorrowed;
     union
     {
         avifImageSpatialExtents ispe;
@@ -401,7 +404,7 @@ static avifSampleTable * avifSampleTableCreate(void)
 static void avifPropertyArrayDestroy(avifPropertyArray * array)
 {
     for (size_t i = 0; i < array->count; ++i) {
-        if (array->prop[i].isOpaque) {
+        if (array->prop[i].isOpaque && !array->prop[i].opaquePayloadIsBorrowed) {
             avifRWDataFree(&array->prop[i].u.opaque.boxPayload);
         }
     }
@@ -3092,6 +3095,12 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
     uint32_t entryCount;
     AVIF_CHECKERR(avifROStreamReadU32(&s, &entryCount), AVIF_RESULT_BMFF_PARSE_FAILED);
     unsigned int prevItemID = 0;
+    // Property indices already associated with the item of the current entry. Associating the same property to the
+    // same item more than once carries no information but would make the item store (and, for opaque properties,
+    // copy the payload of) that property again for each repetition. An entry has at most 255 associations, so the
+    // bits set for an entry are cleared at its end using a list of at most 255 indices instead of clearing the whole set.
+    uint8_t associatedProperties[(0x7fff + 1 + 7) / 8] = { 0 };
+    uint16_t associatedPropertyIndices[255];
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         // ISO/IEC 14496-12, Seventh edition, 2022-01, Section 8.11.14.1:
         //   Each ItemPropertyAssociationBox shall be ordered by increasing item_ID, and there shall
@@ -3122,6 +3131,7 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
 
         uint8_t associationCount;
         AVIF_CHECKERR(avifROStreamRead(&s, &associationCount, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+        uint32_t associatedCount = 0;
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             uint8_t essential;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &essential, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) essential;
@@ -3147,6 +3157,13 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                                       propertyIndex,
                                       meta->properties.count);
                 return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+
+            // propertyIndex is at most 0x7ffe here (15 bits at most, minus the 1-indexing).
+            const avifBool alreadyAssociated = (associatedProperties[propertyIndex >> 3] >> (propertyIndex & 7)) & 1;
+            if (!alreadyAssociated) {
+                associatedProperties[propertyIndex >> 3] |= (uint8_t)(1u << (propertyIndex & 7));
+                associatedPropertyIndices[associatedCount++] = (uint16_t)propertyIndex;
             }
 
             // Copy property to item
@@ -3210,10 +3227,12 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                     }
                 }
 
-                // Supported and valid; associate it with this item.
-                avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
-                AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-                *dstProp = *srcProp;
+                // Supported and valid; associate it with this item (unless it already is).
+                if (!alreadyAssociated) {
+                    avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
+                    AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                    *dstProp = *srcProp;
+                }
             } else {
                 if (essential) {
                     // ISO/IEC 23008-12 Section 10.2.1:
@@ -3231,14 +3250,24 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
                 }
 
                 // Will be forwarded to the user through avifImage::properties.
-                avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
-                AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
-                dstProp->isOpaque = AVIF_TRUE;
-                memcpy(dstProp->type, srcProp->type, sizeof(dstProp->type));
-                memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
-                AVIF_CHECKRES(
-                    avifRWDataSet(&dstProp->u.opaque.boxPayload, srcProp->u.opaque.boxPayload.data, srcProp->u.opaque.boxPayload.size));
+                if (!alreadyAssociated) {
+                    avifProperty * dstProp = (avifProperty *)avifArrayPush(&item->properties);
+                    AVIF_CHECKERR(dstProp != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+                    dstProp->isOpaque = AVIF_TRUE;
+                    memcpy(dstProp->type, srcProp->type, sizeof(dstProp->type));
+                    memcpy(dstProp->u.opaque.usertype, srcProp->u.opaque.usertype, sizeof(dstProp->u.opaque.usertype));
+                    // Do not copy the payload: it may be large and associated with many items, so the amount of memory
+                    // needed would be the product of the two. Point at the payload of the property in meta->properties
+                    // instead, which is neither modified nor freed before the items are destroyed. The payload is only
+                    // copied for the items that end up in a decoded avifImage (see avifImagePushProperty()).
+                    dstProp->opaquePayloadIsBorrowed = AVIF_TRUE;
+                    dstProp->u.opaque.boxPayload = srcProp->u.opaque.boxPayload;
+                }
             }
+        }
+        for (uint32_t i = 0; i < associatedCount; ++i) {
+            const uint32_t clearedIndex = associatedPropertyIndices[i];
+            associatedProperties[clearedIndex >> 3] &= (uint8_t)~(1u << (clearedIndex & 7));
         }
     }
     return AVIF_RESULT_OK;
