@@ -251,6 +251,136 @@ TEST(MetaResourceTest, LargeOpaquePropertyAssociatedWithManyItems) {
 #endif
 }
 
+// Parsing 60000 items must take a fraction of a second. It took tens of
+// seconds when avifMetaFindOrCreateItem() scanned all items linearly.
+TEST(MetaResourceTest, ManyItems) {
+  Bytes file = ReadBase();
+  ASSERT_FALSE(file.empty());
+  // Two ipma boxes cannot both be injected by Inject(); a single ipma
+  // (version 0) can hold at most 65535 - 1 items, which is enough: 3 bytes
+  // per entry.
+  constexpr uint32_t kNumItems = 60000;
+  Bytes entries;
+  for (uint32_t i = 0; i < kNumItems; ++i) {
+    AppendBE16(&entries, 2 + i);
+    entries.push_back(0);
+  }
+  ASSERT_NO_FATAL_FAILURE(Inject(Bytes(), entries, kNumItems, &file));
+  const auto start = std::chrono::steady_clock::now();
+  avifResult result;
+  DecoderPtr decoder = ParseBytes(file, &result);
+  const double seconds =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+          .count();
+  ASSERT_EQ(result, AVIF_RESULT_OK);
+  // Loose sanity bound only: an absolute wall-clock threshold would be
+  // flaky on slow or sanitizer CI builds. The check that parsing stays
+  // fast for adversarial item IDs uses a ratio within the same process
+  // (see ManyItemsWithAdversarialIds below).
+  EXPECT_LT(seconds, 30.0);
+  ASSERT_EQ(avifDecoderNextImage(decoder.get()), AVIF_RESULT_OK);
+}
+
+void AppendBox(Bytes* out, const char* type, const Bytes& payload) {
+  AppendBE32(out, static_cast<uint32_t>(8 + payload.size()));
+  out->insert(out->end(), type, type + 4);
+  out->insert(out->end(), payload.begin(), payload.end());
+}
+
+void AppendFullBox(Bytes* out, const char* type, uint8_t version,
+                   const Bytes& payload) {
+  Bytes body;
+  AppendBE32(&body, static_cast<uint32_t>(version) << 24);
+  body.insert(body.end(), payload.begin(), payload.end());
+  AppendBox(out, type, body);
+}
+
+// A minimal file whose meta box holds a single ipco property ('pasp') and a
+// version 1 ipma associating it once to each of the given items. The items
+// have no data; only the parsing of the ipma matters here.
+Bytes MakeIpmaV1File(const std::vector<uint32_t>& item_ids) {
+  Bytes file;
+  Bytes ftyp;
+  ftyp.insert(ftyp.end(), {'a', 'v', 'i', 'f'});
+  AppendBE32(&ftyp, 0);
+  ftyp.insert(ftyp.end(), {'a', 'v', 'i', 'f', 'm', 'i', 'f', '1'});
+  AppendBox(&file, "ftyp", ftyp);
+  Bytes hdlr;
+  AppendBE32(&hdlr, 0);  // pre_defined
+  hdlr.insert(hdlr.end(), {'p', 'i', 'c', 't'});
+  hdlr.insert(hdlr.end(), 13, 0);  // reserved + name
+  Bytes pitm;
+  AppendBE32(&pitm, item_ids[0]);  // item_ID (version 1: 32 bits)
+  Bytes pasp;
+  AppendBE32(&pasp, 1);  // hSpacing
+  AppendBE32(&pasp, 1);  // vSpacing
+  Bytes pasp_box;
+  AppendBox(&pasp_box, "pasp", pasp);
+  Bytes ipco;
+  AppendBox(&ipco, "ipco", pasp_box);
+  Bytes ipma;
+  AppendBE32(&ipma, static_cast<uint32_t>(item_ids.size()));  // entry_count
+  for (const uint32_t item_id : item_ids) {
+    AppendBE32(&ipma, item_id);
+    ipma.push_back(1);  // association_count
+    ipma.push_back(1);  // property_index (essential flag clear, 7-bit index)
+  }
+  Bytes iprp_content;
+  iprp_content.insert(iprp_content.end(), ipco.begin(), ipco.end());
+  AppendFullBox(&iprp_content, "ipma", /*version=*/1, ipma);
+  Bytes iprp;
+  AppendBox(&iprp, "iprp", iprp_content);
+  Bytes meta;
+  AppendFullBox(&meta, "hdlr", /*version=*/0, hdlr);
+  AppendFullBox(&meta, "pitm", /*version=*/1, pitm);
+  meta.insert(meta.end(), iprp.begin(), iprp.end());
+  Bytes meta_box;
+  AppendFullBox(&meta_box, "meta", /*version=*/0, meta);
+  file.insert(file.end(), meta_box.begin(), meta_box.end());
+  return file;
+}
+
+// Item IDs chosen by an attacker must not make the item lookup degenerate.
+// A hash table indexed by the low bits of a multiplicative hash sends all
+// IDs that are multiples of a large power of two to a handful of slots, and
+// parsing becomes quadratic again: 100000 such items in a 600 KB file took
+// about 13 s of CPU with such a table, versus 0.13 s for sequential IDs.
+// The injected ipma above is version 0 (16-bit item IDs), which is too
+// small a space to reproduce that, so this test builds standalone files
+// with a version 1 ipma (32-bit item IDs) instead. The threshold is a ratio
+// against sequential IDs parsed in the same process, plus a small absolute
+// slack for timing noise, so it does not depend on the speed of the machine
+// or on the build type (sanitizers included).
+TEST(MetaResourceTest, ManyItemsWithAdversarialIds) {
+  constexpr uint32_t kNumItems = 100000;
+  const auto parse_seconds = [](const std::vector<uint32_t>& item_ids,
+                                avifResult* result) {
+    const Bytes file = MakeIpmaV1File(item_ids);
+    const auto start = std::chrono::steady_clock::now();
+    DecoderPtr decoder = ParseBytes(file, result);
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                         start)
+        .count();
+  };
+  std::vector<uint32_t> sequential_ids;
+  std::vector<uint32_t> adversarial_ids;
+  sequential_ids.reserve(kNumItems);
+  adversarial_ids.reserve(kNumItems);
+  for (uint32_t i = 0; i < kNumItems; ++i) {
+    sequential_ids.push_back(1 + i);
+    adversarial_ids.push_back((1 + i) << 15);
+  }
+  avifResult sequential_result, adversarial_result;
+  const double sequential_seconds =
+      parse_seconds(sequential_ids, &sequential_result);
+  const double adversarial_seconds =
+      parse_seconds(adversarial_ids, &adversarial_result);
+  // Both files have the same structure; only the item IDs differ, so
+  // parsing must reach the same result, in about the same time.
+  EXPECT_EQ(adversarial_result, sequential_result);
+  EXPECT_LT(adversarial_seconds, 10.0 * sequential_seconds + 0.5);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

@@ -865,6 +865,26 @@ typedef struct avifTile
 } avifTile;
 AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
 
+// A node of the binary Patricia trie that maps an item ID to the position of the item with that ID in
+// avifMeta.items (see the itemIndex field of avifMeta). The nodes are stored in a flat array and refer
+// to their children by their index in that array; index 0 is a sentinel node that is never accessed,
+// so a child index of 0 means "no child". Internal nodes branch on the bit of the item ID at bitIndex
+// (31 for the most significant bit, down to 0) and always have two children. Leaf nodes hold the item
+// ID and its position in 'id' and 'position', and are recognized by their bitIndex being
+// AVIF_ITEM_INDEX_LEAF_BIT_INDEX.
+typedef struct avifItemIndexNode
+{
+    uint32_t id;
+    uint32_t position;
+    uint32_t bitIndex;
+    uint32_t child[2];
+} avifItemIndexNode;
+AVIF_ARRAY_DECLARE(avifItemIndexNodeArray, avifItemIndexNode, node);
+
+// The bitIndex stored in the leaf nodes of the item index trie. Internal nodes branch on a bit of the
+// 32-bit item ID, so their bitIndex is at most 31.
+#define AVIF_ITEM_INDEX_LEAF_BIT_INDEX 32u
+
 // This holds one "meta" box (from the BMFF and HEIF standards) worth of relevant-to-AVIF information.
 // * If a meta box is parsed from the root level of the BMFF, it can contain the information about
 //   "items" which might be color planes, alpha planes, or EXIF or XMP metadata.
@@ -883,6 +903,14 @@ typedef struct avifMeta
     // Items are lazily created in this array when any of the above boxes refer to one by a new (unseen) ID,
     // and are then further modified/updated as new information for an item's ID is parsed.
     avifDecoderItemArray items;
+
+    // Binary Patricia trie mapping an item ID to its position in 'items'. It is kept in sync by
+    // avifMetaFindOrCreateItem(), the only function that adds items, so that looking up an item by ID
+    // takes at most 32 steps instead of a linear scan of 'items'. No hashing is involved, so the worst
+    // case does not depend on how the item IDs are distributed. itemIndexRoot is the index of the root
+    // node in 'itemIndex', or 0 if the trie is empty.
+    avifItemIndexNodeArray itemIndex;
+    uint32_t itemIndexRoot;
 
     // Any ipco boxes explained above are populated into this array as a staging area, which are
     // then duplicated into the appropriate items upon encountering an item property association
@@ -932,7 +960,14 @@ static avifMeta * avifMetaCreate(void)
     }
     memset(meta, 0, sizeof(avifMeta));
     if (!avifArrayCreate(&meta->items, sizeof(avifDecoderItem *), 8) || !avifArrayCreate(&meta->properties, sizeof(avifProperty), 16) ||
-        !avifArrayCreate(&meta->entityToGroups, sizeof(avifEntityToGroup), 1)) {
+        !avifArrayCreate(&meta->entityToGroups, sizeof(avifEntityToGroup), 1) ||
+        !avifArrayCreate(&meta->itemIndex, sizeof(avifItemIndexNode), 8)) {
+        avifMetaDestroy(meta);
+        return NULL;
+    }
+    // Reserve index 0 of the item index as a sentinel node, so that nodes can refer to their children
+    // by index with 0 meaning "no child". The sentinel node itself is never accessed.
+    if (avifArrayPush(&meta->itemIndex) == NULL) {
         avifMetaDestroy(meta);
         return NULL;
     }
@@ -953,6 +988,7 @@ static void avifMetaDestroy(avifMeta * meta)
         avifFree(item);
     }
     avifArrayDestroy(&meta->items);
+    avifArrayDestroy(&meta->itemIndex);
     avifPropertyArrayDestroy(&meta->properties);
     avifRWDataFree(&meta->idat);
     avifArrayDestroy(&meta->sampleTransformExpression);
@@ -980,18 +1016,104 @@ static avifResult avifCheckItemID(const char * boxFourcc, uint32_t itemID, avifD
     return AVIF_RESULT_OK;
 }
 
+// Returns the item with the given ID, or NULL if there is none.
+static avifDecoderItem * avifMetaFindItem(const avifMeta * meta, uint32_t itemID)
+{
+    uint32_t nodeIndex = meta->itemIndexRoot;
+    if (nodeIndex == 0) {
+        return NULL;
+    }
+    // Descend from the root towards a leaf, following the bits of itemID. The bit indices of the
+    // internal nodes strictly decrease along the way and are at most 31, so this takes at most 32 steps.
+    while (meta->itemIndex.node[nodeIndex].bitIndex != AVIF_ITEM_INDEX_LEAF_BIT_INDEX) {
+        const uint32_t bitIndex = meta->itemIndex.node[nodeIndex].bitIndex;
+        nodeIndex = meta->itemIndex.node[nodeIndex].child[(itemID >> bitIndex) & 1];
+        if (nodeIndex == 0) {
+            return NULL; // Cannot happen: internal nodes always have two children.
+        }
+    }
+    if (meta->itemIndex.node[nodeIndex].id != itemID) {
+        return NULL;
+    }
+    return meta->items.item[meta->itemIndex.node[nodeIndex].position];
+}
+
+// Inserts the (itemID, position) pair of a newly created item into the item index. The caller must
+// have checked that itemID is not in the index yet (see avifMetaFindOrCreateItem()).
+static avifResult avifMetaItemIndexInsert(avifMeta * meta, uint32_t itemID, uint32_t position)
+{
+    if (meta->itemIndexRoot == 0) {
+        avifItemIndexNode * leaf = (avifItemIndexNode *)avifArrayPush(&meta->itemIndex);
+        AVIF_CHECKERR(leaf != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+        leaf->id = itemID;
+        leaf->position = position;
+        leaf->bitIndex = AVIF_ITEM_INDEX_LEAF_BIT_INDEX;
+        meta->itemIndexRoot = meta->itemIndex.count - 1;
+        return AVIF_RESULT_OK;
+    }
+
+    // Find the leaf that itemID would be attached to, following the bits of itemID.
+    uint32_t leafIndex = meta->itemIndexRoot;
+    while (meta->itemIndex.node[leafIndex].bitIndex != AVIF_ITEM_INDEX_LEAF_BIT_INDEX) {
+        const uint32_t bitIndex = meta->itemIndex.node[leafIndex].bitIndex;
+        leafIndex = meta->itemIndex.node[leafIndex].child[(itemID >> bitIndex) & 1];
+    }
+    const uint32_t differingBits = meta->itemIndex.node[leafIndex].id ^ itemID;
+    AVIF_ASSERT_OR_RETURN(differingBits != 0); // itemID is not in the index yet.
+    // The most significant bit in which the two item IDs differ is where the new branch belongs.
+    uint32_t branchBitIndex = 31;
+    while (((differingBits >> branchBitIndex) & 1) == 0) {
+        --branchBitIndex;
+    }
+
+    // Descend again from the root, following the bits of itemID, and stop above the first node that
+    // branches at or below branchBitIndex. Both item IDs agree on every bit above branchBitIndex, so
+    // they follow the same path down to that point. The new internal node is spliced in between the
+    // node where the descent stops and its parent. This takes at most 32 steps.
+    uint32_t parentIndex = 0;
+    uint32_t parentChild = 0;
+    uint32_t nodeIndex = meta->itemIndexRoot;
+    while (meta->itemIndex.node[nodeIndex].bitIndex != AVIF_ITEM_INDEX_LEAF_BIT_INDEX &&
+           meta->itemIndex.node[nodeIndex].bitIndex > branchBitIndex) {
+        const uint32_t bitIndex = meta->itemIndex.node[nodeIndex].bitIndex;
+        parentIndex = nodeIndex;
+        parentChild = (itemID >> bitIndex) & 1;
+        nodeIndex = meta->itemIndex.node[nodeIndex].child[parentChild];
+    }
+
+    // Append the new leaf, then the new internal node. Nodes are only referred to by index from here
+    // on, because avifArrayPush() may move the backing array of the nodes.
+    avifItemIndexNode * newLeaf = (avifItemIndexNode *)avifArrayPush(&meta->itemIndex);
+    AVIF_CHECKERR(newLeaf != NULL, AVIF_RESULT_OUT_OF_MEMORY);
+    const uint32_t newLeafIndex = meta->itemIndex.count - 1;
+    newLeaf->id = itemID;
+    newLeaf->position = position;
+    newLeaf->bitIndex = AVIF_ITEM_INDEX_LEAF_BIT_INDEX;
+    avifItemIndexNode * branch = (avifItemIndexNode *)avifArrayPush(&meta->itemIndex);
+    if (branch == NULL) {
+        return AVIF_RESULT_OUT_OF_MEMORY; // The new leaf stays in the array, unreachable; harmless.
+    }
+    const uint32_t branchIndex = meta->itemIndex.count - 1;
+    branch->bitIndex = branchBitIndex;
+    branch->child[(itemID >> branchBitIndex) & 1] = newLeafIndex;
+    branch->child[((itemID >> branchBitIndex) & 1) ^ 1] = nodeIndex;
+    if (parentIndex == 0) {
+        meta->itemIndexRoot = branchIndex;
+    } else {
+        meta->itemIndex.node[parentIndex].child[parentChild] = branchIndex;
+    }
+    return AVIF_RESULT_OK;
+}
+
 static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avifDecoderItem ** item)
 {
     *item = NULL;
     AVIF_ASSERT_OR_RETURN(itemID != 0);
 
-    for (uint32_t i = 0; i < meta->items.count; ++i) {
-        if (meta->items.item[i]->id == itemID) {
-            *item = meta->items.item[i];
-            return AVIF_RESULT_OK;
-        }
+    *item = avifMetaFindItem(meta, itemID);
+    if (*item != NULL) {
+        return AVIF_RESULT_OK;
     }
-
     avifDecoderItem ** itemPtr = (avifDecoderItem **)avifArrayPush(&meta->items);
     AVIF_CHECKERR(itemPtr != NULL, AVIF_RESULT_OUT_OF_MEMORY);
     *item = (avifDecoderItem *)avifAlloc(sizeof(avifDecoderItem));
@@ -1034,6 +1156,7 @@ static avifResult avifMetaFindOrCreateItem(avifMeta * meta, uint32_t itemID, avi
     }
     (*item)->id = itemID;
     (*item)->meta = meta;
+    AVIF_CHECKRES(avifMetaItemIndexInsert(meta, itemID, meta->items.count - 1));
     return AVIF_RESULT_OK;
 }
 
@@ -5723,13 +5846,7 @@ static avifResult avifMetaFindAlphaItem(avifMeta * meta,
         avifBool isUsed;
         do {
             ++newItemID;
-            isUsed = AVIF_FALSE;
-            for (uint32_t i = 0; i < meta->items.count; ++i) {
-                if (meta->items.item[i]->id == newItemID) {
-                    isUsed = AVIF_TRUE;
-                    break;
-                }
-            }
+            isUsed = (avifMetaFindItem(meta, newItemID) != NULL);
         } while (isUsed && newItemID != 0);
         result = avifMetaFindOrCreateItem(meta, newItemID, alphaItem); // Create new empty item.
     }
