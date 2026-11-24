@@ -5,14 +5,15 @@ on:
   release:
     types: [created]
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
-  # artifact-metadata is not needed because push-to-registry is not enabled.
+permissions: {}
 
 jobs:
   build-windows-artifacts:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      # artifact-metadata is not needed because push-to-registry is not enabled.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,16 +91,28 @@ jobs:
         with:
           subject-path: build/Release/windows-artifacts.zip
 
+      - name: Upload ZIP for release publication
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-artifacts
+          path: build/Release/windows-artifacts.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  publish-windows-artifacts:
+    needs: build-windows-artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download ZIP for release publication
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-artifacts
+          path: release-assets
       - name: Upload artifacts
-        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$env:RELEASE_TAG" "build/Release/windows-artifacts.zip"
-
-    # Use the following instead of the above to test this workflow outside of a release event.
-    # - name: Upload artifacts
-    #   uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-    #   with:
-    #     name: windows-artifacts.zip
-    #     path: build/Release/windows-artifacts.zip
+        run: gh release upload -- "$RELEASE_TAG" release-assets/windows-artifacts.zip
