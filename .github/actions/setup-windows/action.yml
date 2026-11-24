@@ -43,7 +43,7 @@ runs:
   steps:
     - name: Setup Developer Command Prompt for Microsoft Visual C++
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-    - name: Prefer Visual Studio's bundled LLVM
+    - name: Prefer Visual Studio's bundled LLVM # This is needed to ensure clang-cl can compile Visual Studio's bundled C++ system headers.
       run: |
         if ($env:llvmX64 -and (Test-Path "$env:llvmX64\clang-cl.exe")) {
           $paths = $env:Path -split ';' | Where-Object { $_ -and $_ -notlike '*\LLVM\bin*' }
