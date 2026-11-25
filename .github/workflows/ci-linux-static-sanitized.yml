@@ -1,10 +1,12 @@
 name: CI Linux Static Sanitized
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/actions/**"
-      - ".github/workflows/ci-unix-static-sanitized.yml"
+      - ".github/workflows/ci-linux-static-sanitized.yml"
       - "**CMakeLists.txt"
       - "cmake/**"
       - "ext/**"
@@ -16,7 +18,7 @@ jobs:
   build-static-local-sanitized:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         # Memory sanitizer needs to be in its own file because it is slower than other sanitizers.
         sanitizer: [address, thread, undefined]

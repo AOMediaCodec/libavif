@@ -13,7 +13,7 @@ jobs:
   build-shared-installed:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         oldest-cmake: [false, true]
         include:

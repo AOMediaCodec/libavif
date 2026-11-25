@@ -1,10 +1,12 @@
 name: CI Linux Static
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/actions/**"
-      - ".github/workflows/ci-unix-static.yml"
+      - ".github/workflows/ci-linux-static.yml"
       - "**CMakeLists.txt"
       - "cmake/**"
       - "ext/**"
@@ -21,7 +23,7 @@ jobs:
   build-static-local:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         build-type: [Release, Debug]
         include:

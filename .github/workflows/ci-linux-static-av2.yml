@@ -1,10 +1,12 @@
 name: CI Linux Static AV2
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/actions/**"
-      - ".github/workflows/ci-unix-static-av2.yml"
+      - ".github/workflows/ci-linux-static-av2.yml"
       - "**CMakeLists.txt"
       - "cmake/**"
       - "ext/**"
@@ -21,7 +23,7 @@ jobs:
   build-static-local-av2:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         also-enable-av1-codecs: [OFF, LOCAL] # On top of enabling AV2 codecs.
         include:

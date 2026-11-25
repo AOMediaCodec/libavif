@@ -18,7 +18,7 @@ jobs:
   build-static-installed:
     runs-on: windows-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         compiler: [msvc, clang-cl]
 

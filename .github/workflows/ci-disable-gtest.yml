@@ -1,6 +1,8 @@
 name: CI Disable GTest
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/actions/**"

@@ -2,10 +2,12 @@
 name: CI Linux Static Sanitized Memory
 on:
   push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/actions/**"
-      - ".github/workflows/ci-unix-static-sanitized-memory.yml"
+      - ".github/workflows/ci-linux-static-sanitized-memory.yml"
 
 permissions:
   contents: read
