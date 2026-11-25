@@ -16,6 +16,9 @@ inputs:
   codec-svt:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  cache-ext:
+    description: "Whether to cache prebuilt libraries in ext"
+    default: "false"
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
@@ -92,7 +95,7 @@ runs:
         pkgs: ${{ env.AVIF_WIN_LIBRARIES }}
         triplet: x64-windows-release
         token: ${{ github.token }}
-        cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+        cache-key: ${{ env.AVIF_WIN_LIBRARIES }}-${{ hashFiles('.github/actions/setup-windows/action.yml') }}
         revision: 74f5ea45ca78988784b810ad9bbb148ea7ff76d8 # Force dav1d 1.5.5. Remove at next microsoft/vcpkg release.
 
     - name: Install nasm
@@ -132,6 +135,7 @@ runs:
     - uses: ./.github/actions/cache
       id: cache
       with:
+        cache-ext: ${{ inputs.cache-ext }}
         extra-key: ${{ inputs.extra-cache-key }}
         use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
         use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}

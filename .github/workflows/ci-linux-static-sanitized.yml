@@ -28,6 +28,7 @@ jobs:
       - uses: ./.github/actions/setup-linux
         id: setup_linux
         with:
+          cache-ext: true
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
           extra-cache-key: ${{ matrix.sanitizer }}

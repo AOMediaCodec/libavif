@@ -25,6 +25,7 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          extra-cache-key: ${{ matrix.libyuv }}
           libjpeg-turbo: "SYSTEM"
           zlibpng: "SYSTEM"
 

@@ -43,6 +43,7 @@ jobs:
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
+          extra-cache-key: ${{ matrix.case }}
           libjpeg-turbo: "SYSTEM"
           libyuv: "SYSTEM"
           zlibpng: "SYSTEM"
@@ -52,6 +53,7 @@ jobs:
         with:
           codec-aom: "SYSTEM"
           codec-dav1d: "SYSTEM"
+          extra-cache-key: ${{ matrix.case }}
           libjpeg-turbo: "SYSTEM"
           libyuv: "SYSTEM"
           zlibpng: "SYSTEM"

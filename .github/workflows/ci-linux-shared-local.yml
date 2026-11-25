@@ -28,6 +28,7 @@ jobs:
         with:
           codec-aom: "LOCAL"
           codec-dav1d: "LOCAL"
+          extra-cache-key: ${{ matrix.libyuv }}
           gcc-version: ${{ matrix.gcc }}
           libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"

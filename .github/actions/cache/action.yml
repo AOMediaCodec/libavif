@@ -1,22 +1,91 @@
 name: "Cache for all OSes"
 description: "Needs to be called before any call to ext/.cmd|sh or cmake"
 inputs:
+  cache-deps:
+    description: "Whether to cache FetchContent sources in build/_deps"
+    default: "true"
+  cache-ext:
+    description: "Whether to cache prebuilt libraries in ext"
+    default: "false"
   extra-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
   use-meson:
     description: "Whether meson is used"
-    default: false
+    default: "false"
   use-rust:
     description: "Whether rust is used"
-    default: false
+    default: "false"
+  use-sccache:
+    description: "Whether to set up and cache sccache for C/C++/Rust compilation"
+    default: "true"
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache-ext.outputs.cache-hit }}
 runs:
   using: "composite"
   steps:
+    - name: Set up sccache
+      if: ${{ inputs.use-sccache == 'true' }}
+      uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
+      with:
+        tool: sccache
+    - name: Configure sccache environment
+      if: ${{ inputs.use-sccache == 'true' }}
+      env:
+        RUNNER_OS: ${{ runner.os }}
+        USE_RUST: ${{ inputs.use-rust }}
+      run: |
+        mkdir -p "${RUNNER_TEMP}/sccache"
+        echo "SCCACHE_DIR=${RUNNER_TEMP}/sccache" >> "$GITHUB_ENV"
+        echo "SCCACHE_CACHE_SIZE=2G" >> "$GITHUB_ENV"
+        echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        if [[ "${USE_RUST}" == "true" ]]; then
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+        fi
+        if [[ "${RUNNER_OS}" == "Windows" ]]; then
+          # Emit embedded debug info (/Z7) instead of shared PDBs (/Zi) so sccache can cache MSVC objects.
+          echo "CMAKE_POLICY_DEFAULT_CMP0141=NEW" >> "$GITHUB_ENV"
+          echo "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded" >> "$GITHUB_ENV"
+        fi
+      shell: bash
+    - name: Cache sccache
+      if: ${{ inputs.use-sccache == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/sccache
+        key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ hashFiles('cmake/Modules/Local*', 'src/**', 'apps/**', 'tests/**') }}
+        restore-keys: |
+          sccache-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-
+          sccache-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+          sccache-${{ runner.os }}-${{ runner.arch }}-
+    - name: Get cargo version
+      if: ${{ inputs.use-rust == 'true' }}
+      id: cargo-version
+      run: echo "version=$(cargo --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Cache cargo-c
+      if: ${{ inputs.use-rust == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      continue-on-error: true
+      with:
+        path: ~/.cargo/bin/cargo-c*
+        key: cargo-c-${{ runner.os }}-${{ runner.arch }}-${{ steps.cargo-version.outputs.version }}
+    - name: Cache cargo registry
+      if: ${{ inputs.use-rust == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      continue-on-error: true
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}
+        restore-keys: |
+          cargo-registry-${{ runner.os }}-${{ runner.arch }}-
     - name: Find workflow path
+      if: ${{ inputs.cache-ext == 'true' }}
       env:
         WORKFLOW_REF: ${{ job.workflow_ref || github.workflow_ref }}
       id: workflow-info
@@ -29,52 +98,29 @@ runs:
         echo "path=${MIDDLE}" >> "$GITHUB_OUTPUT"
       shell: bash
     - name: Generate meson cache key
-      if: ${{ inputs.use-meson == 'true' }}
+      if: ${{ inputs.cache-ext == 'true' && inputs.use-meson == 'true' }}
       run: |
-        echo "MESON_KEY=meson-`meson --version`" >> $GITHUB_ENV
+        echo "MESON_KEY=meson-`meson --version`" >> "$GITHUB_ENV"
       shell: bash
     - name: Generate empty meson cache key
-      if: ${{ inputs.use-meson != 'true' }}
+      if: ${{ inputs.cache-ext == 'true' && inputs.use-meson != 'true' }}
       run: |
-        echo "MESON_KEY=meson-none" >> $GITHUB_ENV
+        echo "MESON_KEY=meson-none" >> "$GITHUB_ENV"
       shell: bash
-    - name: Generate cargo cache key
-      if: ${{ inputs.use-rust == 'true' }}
-      run: |
-        CARGO_VERSION=$(cargo --version | cut -d' ' -f2)
-        echo "CARGO_VERSION=${CARGO_VERSION}" >> "$GITHUB_ENV"
-        echo "CARGO_KEY=cargo-${CARGO_VERSION}-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path, 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> "$GITHUB_ENV"
-      shell: bash
-    - name: Generate empty cargo cache key
-      if: ${{ inputs.use-rust != 'true' }}
-      run: |
-        echo "CARGO_KEY=cargo-none" >> "$GITHUB_ENV"
-      shell: bash
-    - name: Cache cargo-c
-      if: ${{ inputs.use-rust == 'true' }}
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      continue-on-error: true
-      with:
-        path: ~/.cargo/bin/cargo-c*
-        key: cargo-c-${{ runner.os }}-${{ runner.arch }}-${{ env.CARGO_VERSION }}
-    - name: Cache cargo registry
-      if: ${{ inputs.use-rust == 'true' }}
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      continue-on-error: true
-      with:
-        path: |
-          ~/.cargo/registry/index
-          ~/.cargo/registry/cache
-          ~/.cargo/git/db
-        key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
     - name: Cache external dependencies in ext
+      if: ${{ inputs.cache-ext == 'true' }}
       id: cache-ext
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ext
-        key: ext-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'ext/*.cmd', 'ext/*.sh') }}
-    - name: Cache external dependencies in build/_deps
+        key: ext-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.MESON_KEY }}-${{ hashFiles(steps.workflow-info.outputs.path, 'ext/*.cmd', 'ext/*.sh') }}
+    - name: Cache external dependency sources in build/_deps
+      if: ${{ inputs.cache-deps == 'true' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: build/_deps
-        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ env.MESON_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt', 'cmake/Modules/*') }}
+        path: |
+          build/_deps
+          !build/_deps/*-build
+          !build/_deps/*-install
+          !build/_deps/rav1e-src/target
+        key: deps-src-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ hashFiles('cmake/Modules/Local*') }}
