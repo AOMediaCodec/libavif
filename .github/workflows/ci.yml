@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   # ============================================================================
-  # Stage 1: Fast gatekeepers (Linux 1x, formatting & SYSTEM-installed packages)
+  # Stage 1: Fast gatekeepers on inexpensive Linux runners (formatting, C
+  # conformance & SYSTEM-installed packages)
   # ============================================================================
   format-check:
     name: Format Check
@@ -31,7 +32,8 @@ jobs:
       os: ubuntu-latest
 
   # ============================================================================
-  # Stage 2: Core PR builds (cached Linux LOCAL codecs & packaged Windows builds)
+  # Stage 2: Core PR builds after Stage 1 succeeds (cached Linux LOCAL codecs &
+  # packaged Windows builds)
   # ============================================================================
   linux-shared-local:
     name: Linux Shared Local
@@ -61,7 +63,7 @@ jobs:
       os: windows-latest
 
   # ============================================================================
-  # Stage 3: Heavy & specialized builds (only after Stage 2 succeeds)
+  # Stage 3: Heavy, specialized & macOS builds after Stage 2 succeeds
   # ============================================================================
   linux-coverage:
     name: Linux Code Coverage
