@@ -1,15 +1,7 @@
 name: CI Linux Static Sanitized
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    paths:
-      - ".github/actions/**"
-      - ".github/workflows/ci-linux-static-sanitized.yml"
-      - "**CMakeLists.txt"
-      - "cmake/**"
-      - "ext/**"
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read

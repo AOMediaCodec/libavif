@@ -5,15 +5,12 @@
 # Runs on ubuntu only. libavif is built with clang.
 
 name: CI Fuzztest
-on: [push, pull_request]
+on:
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build-fuzztest:

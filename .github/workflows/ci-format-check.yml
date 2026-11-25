@@ -1,13 +1,26 @@
 name: CI Format Check
-on: [push, pull_request]
+on:
+  workflow_call:
+    outputs:
+      run-build-deps:
+        description: "Whether to run heavy CMake / LOCAL dependency / sanitizer workflows"
+        value: ${{ jobs.cmake-format-check.outputs.run-build-deps }}
+      run-msan:
+        description: "Whether to run MemorySanitizer workflow"
+        value: ${{ jobs.cmake-format-check.outputs.run-msan }}
+      run-android-emulator:
+        description: "Whether to run Android emulator tests"
+        value: ${{ jobs.cmake-format-check.outputs.run-android-emulator }}
+      run-macos:
+        description: "Whether to run macOS workflows"
+        value: ${{ jobs.cmake-format-check.outputs.run-macos }}
+      run-macos-static:
+        description: "Whether to run macOS static workflow"
+        value: ${{ jobs.cmake-format-check.outputs.run-macos-static }}
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   clang-format-check:
@@ -29,11 +42,91 @@ jobs:
     runs-on: ubuntu-latest
 
     name: cmake-format-check
+    outputs:
+      run-build-deps: ${{ steps.changes.outputs.run-build-deps }}
+      run-msan: ${{ steps.changes.outputs.run-msan }}
+      run-android-emulator: ${{ steps.changes.outputs.run-android-emulator }}
+      run-macos: ${{ steps.changes.outputs.run-macos }}
+      run-macos-static: ${{ steps.changes.outputs.run-macos-static }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: neg-c/cmake-format-action@ba83660ac46d64c12ca96f39478dcde7680a52bf # v0.1.3
         with:
           exclude: libavif.pc.cmake
+      - name: Compute conditional workflow flags
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref }}
+        run: |
+          IS_MAIN="false"
+          if [[ "${EVENT_NAME}" == "push" && "${REF_NAME}" == "refs/heads/main" ]]; then
+            IS_MAIN="true"
+          fi
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            ON_MAIN="false"
+            [[ "${REF_NAME}" == "refs/heads/main" ]] && ON_MAIN="true"
+            echo "run-build-deps=true" >> "$GITHUB_OUTPUT"
+            echo "run-msan=true" >> "$GITHUB_OUTPUT"
+            echo "run-android-emulator=true" >> "$GITHUB_OUTPUT"
+            echo "run-macos=${ON_MAIN}" >> "$GITHUB_OUTPUT"
+            echo "run-macos-static=${ON_MAIN}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            CHANGED=$(git diff --name-only HEAD^1 HEAD)
+          elif [[ "${EVENT_NAME}" == "push" && "${REF_NAME}" != "refs/heads/main" ]]; then
+            CHANGED=$(git diff --name-only origin/main...HEAD || git diff --name-only HEAD^1 HEAD || true)
+          elif git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+            CHANGED=$(git diff --name-only HEAD^1 HEAD)
+          else
+            CHANGED=""
+          fi
+          echo "Changed files:"
+          echo "${CHANGED}"
+
+          BUILD_DEPS="false"
+          MSAN="false"
+          ANDROID="false"
+          while IFS= read -r file; do
+            [[ -z "${file}" ]] && continue
+            case "${file}" in
+              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-disable-gtest.yml|.github/workflows/ci-linux-oldest-cmake.yml|.github/workflows/ci-linux-static.yml|.github/workflows/ci-linux-static-av2.yml|.github/workflows/ci-linux-static-sanitized.yml|.github/workflows/ci-macos-static.yml|.github/workflows/ci-windows-shared-local.yml|.github/workflows/ci-windows-static-local.yml|*CMakeLists.txt|cmake/*|ext/*)
+                BUILD_DEPS="true"
+                ;;
+            esac
+            case "${file}" in
+              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-linux-static-sanitized-memory.yml)
+                MSAN="true"
+                ;;
+            esac
+            case "${file}" in
+              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-android-emulator-tests.yml|android_jni/*)
+                ANDROID="true"
+                ;;
+            esac
+          done <<< "${CHANGED}"
+
+          RUN_BUILD_DEPS="false"
+          [[ "${IS_MAIN}" == "true" || "${BUILD_DEPS}" == "true" ]] && RUN_BUILD_DEPS="true"
+
+          RUN_MSAN="false"
+          [[ "${IS_MAIN}" == "true" || "${MSAN}" == "true" ]] && RUN_MSAN="true"
+
+          RUN_ANDROID_EMULATOR="false"
+          [[ ("${EVENT_NAME}" == "pull_request" || "${IS_MAIN}" == "true") && "${ANDROID}" == "true" ]] && RUN_ANDROID_EMULATOR="true"
+
+          RUN_MACOS_STATIC="false"
+          [[ "${IS_MAIN}" == "true" && "${BUILD_DEPS}" == "true" ]] && RUN_MACOS_STATIC="true"
+
+          echo "run-build-deps=${RUN_BUILD_DEPS}" >> "$GITHUB_OUTPUT"
+          echo "run-msan=${RUN_MSAN}" >> "$GITHUB_OUTPUT"
+          echo "run-android-emulator=${RUN_ANDROID_EMULATOR}" >> "$GITHUB_OUTPUT"
+          echo "run-macos=${IS_MAIN}" >> "$GITHUB_OUTPUT"
+          echo "run-macos-static=${RUN_MACOS_STATIC}" >> "$GITHUB_OUTPUT"

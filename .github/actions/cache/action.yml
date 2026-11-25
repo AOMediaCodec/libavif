@@ -18,7 +18,7 @@ runs:
   steps:
     - name: Find workflow path
       env:
-        WORKFLOW_REF: ${{ github.workflow_ref }}
+        WORKFLOW_REF: ${{ job.workflow_ref || github.workflow_ref }}
       id: workflow-info
       run: |
         # Remove repository path.
