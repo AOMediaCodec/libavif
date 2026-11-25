@@ -1,13 +1,25 @@
 name: CI C conformance
-on: [push, pull_request]
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Runner OS (ubuntu-latest or windows-latest)"
+        required: false
+        type: string
+        default: "ubuntu-latest"
+  workflow_dispatch:
+    inputs:
+      os:
+        description: "Runner OS"
+        required: false
+        type: choice
+        options:
+          - ubuntu-latest
+          - windows-latest
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
-
-# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build-c-warnings:
@@ -16,12 +28,11 @@ jobs:
       # Generate the configurations:
       # case 0: nodiscard, case 1: use stdbool, case 2: use enums
       matrix:
-        os: [ubuntu-latest, windows-latest]
         case: [0, 1, 2]
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ inputs.os }}
 
-    name: build-c-warnings (${{ matrix.os }}, case ${{ matrix.case }})
+    name: build-c-warnings (${{ inputs.os }}, case ${{ matrix.case }})
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
