@@ -35,14 +35,16 @@ jobs:
           add-to-path: false
       - uses: ./.github/actions/setup-linux
         with:
+          cache-deps: false
           codec-dav1d: "LOCAL"
           libyuv: "LOCAL"
-          oldest-cmake: true
       - name: Setup JDK
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          java-version: "17"
+          cache: "gradle"
+          cache-jdk: false
           distribution: "temurin"
+          java-version: "17"
       - name: Run Instrumented Tests on the Emulator
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
