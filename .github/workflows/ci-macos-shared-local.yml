@@ -16,13 +16,9 @@ jobs:
   build-shared-local:
     runs-on: macos-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         libyuv: [OFF, LOCAL]
-        include:
-          - runs-on: ubuntu-latest
-            compiler: gcc
-            gcc: 14
 
     name: build-shared-local (macos, libyuv ${{ matrix.libyuv }})
 

@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build-c-warnings:
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       # Generate the configurations:
       # case 0: nodiscard, case 1: use stdbool, case 2: use enums
       matrix:

@@ -13,7 +13,7 @@ jobs:
   build-shared-local:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         libyuv: [OFF, LOCAL]
         include:

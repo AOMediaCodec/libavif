@@ -16,7 +16,7 @@ jobs:
   build-mingw:
     runs-on: windows-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         sys:
           - ucrt64

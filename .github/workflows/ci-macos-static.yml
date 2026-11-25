@@ -5,7 +5,7 @@ on:
       - main
     paths:
       - ".github/actions/**"
-      - ".github/workflows/ci-unix-static.yml"
+      - ".github/workflows/ci-macos-static.yml"
       - "**CMakeLists.txt"
       - "cmake/**"
       - "ext/**"
@@ -22,7 +22,7 @@ jobs:
   build-static-local:
     runs-on: macos-latest
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.ref != 'refs/heads/main' }}
       matrix:
         build-type: [Release, Debug]
 
