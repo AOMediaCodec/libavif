@@ -155,6 +155,10 @@ avifResult avifRGBImagePremultiplyAlpha(avifRGBImage * rgb)
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 
+    if (rgb->isFloat) {
+        return (rgb->depth == 16) ? AVIF_RESULT_NOT_IMPLEMENTED : AVIF_RESULT_INVALID_ARGUMENT;
+    }
+
     // no alpha.
     if (!avifRGBFormatHasAlpha(rgb->format)) {
         return AVIF_RESULT_INVALID_ARGUMENT;
@@ -340,6 +344,10 @@ avifResult avifRGBImageUnpremultiplyAlpha(avifRGBImage * rgb)
     // no data
     if (!rgb->pixels || !rgb->rowBytes) {
         return AVIF_RESULT_REFORMAT_FAILED;
+    }
+
+    if (rgb->isFloat) {
+        return (rgb->depth == 16) ? AVIF_RESULT_NOT_IMPLEMENTED : AVIF_RESULT_INVALID_ARGUMENT;
     }
 
     // no alpha.
