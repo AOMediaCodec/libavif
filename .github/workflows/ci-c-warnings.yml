@@ -98,7 +98,7 @@ jobs:
           -DAVIF_ENABLE_WERROR=ON ${{ env.AVIF_CMAKE_C_COMPILER}} ${{ env.AVIF_CMAKE_CXX_COMPILER }}
           ${{ env.CMAKE_AVIF_FLAGS }}
       - name: Build libavif
-        run: cmake --build build --config Release --parallel 4
+        run: cmake --build build --config Release --parallel
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure
