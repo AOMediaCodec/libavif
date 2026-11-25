@@ -41,23 +41,31 @@ runs:
     - name: Generate cargo cache key
       if: ${{ inputs.use-rust == 'true' }}
       run: |
-        echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path, 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> $GITHUB_ENV
+        CARGO_VERSION=$(cargo --version | cut -d' ' -f2)
+        echo "CARGO_VERSION=${CARGO_VERSION}" >> "$GITHUB_ENV"
+        echo "CARGO_KEY=cargo-${CARGO_VERSION}-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path, 'cmake/Modules/Findrav1e.cmake', 'cmake/Modules/LocalRav1e.cmake', 'ext/rav1e.cmd') }}" >> "$GITHUB_ENV"
       shell: bash
     - name: Generate empty cargo cache key
       if: ${{ inputs.use-rust != 'true' }}
       run: |
-        echo "CARGO_KEY=cargo-none" >> $GITHUB_ENV
+        echo "CARGO_KEY=cargo-none" >> "$GITHUB_ENV"
       shell: bash
-    - name: Cache all of cargo
+    - name: Cache cargo-c
+      if: ${{ inputs.use-rust == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      continue-on-error: true
+      with:
+        path: ~/.cargo/bin/cargo-c*
+        key: cargo-c-${{ runner.os }}-${{ runner.arch }}-${{ env.CARGO_VERSION }}
+    - name: Cache cargo registry
       if: ${{ inputs.use-rust == 'true' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       continue-on-error: true
       with:
         path: |
-          ~/.cargo
-          build/cargo
-          cargo*
-          corrosion
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
         key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
     - name: Cache external dependencies in ext
       id: cache-ext

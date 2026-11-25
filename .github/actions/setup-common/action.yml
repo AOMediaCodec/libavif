@@ -1,16 +1,7 @@
 name: "Common setup for all OSes"
 description: "Installs common dependencies"
 inputs:
-  codec-aom:
-    description: "Can take the values: OFF, LOCAL, SYSTEM"
-    default: "OFF"
-  codec-dav1d:
-    description: "Can take the values: OFF, LOCAL, SYSTEM"
-    default: "OFF"
   codec-rav1e:
-    description: "Can take the values: OFF, LOCAL, SYSTEM"
-    default: "OFF"
-  codec-svt:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
   oldest-cmake:
@@ -19,15 +10,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up Python
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: "3.x"
-    - name: Set up latest CMake
-      if: ${{ runner.os != 'Linux' || inputs.oldest-cmake != 'true' }}
-      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
-      with:
-        cmake-version: "latest"
+    # Python 3, modern CMake, Ninja, and stable Rust are preinstalled on all
+    # GitHub-hosted Linux, macOS, and Windows runners. Only install CMake when
+    # testing the minimum supported version.
     - name: Set up CMake 3.22
       if: ${{ runner.os == 'Linux' && inputs.oldest-cmake == 'true' }}
       uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
@@ -37,12 +22,11 @@ runs:
     - name: Print CMake version
       run: cmake --version
       shell: bash
-    - name: Set up rust
-      if: ${{ inputs.codec-rav1e == 'LOCAL' }}
-      uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
-      with:
-        toolchain: stable
     - name: Set up cargo-c
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
-      run: cargo install cargo-c --features=vendored-openssl
+      run: |
+        if (-not (Get-Command cargo-cinstall -ErrorAction SilentlyContinue)) {
+          cargo install --locked cargo-c --features=vendored-openssl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
       shell: pwsh
