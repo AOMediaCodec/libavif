@@ -3,8 +3,11 @@
 
 #include "combine_command.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <iostream>
+#include <string>
 
 #include "avif/avif_cxx.h"
 #include "imageio.h"
@@ -15,35 +18,42 @@ CombineCommand::CombineCommand()
     : ProgramCommand("combine",
                      "Create an AVIF image with a gain map from a base image "
                      "and an alternate image") {
-  argparse_.add_argument(arg_base_filename_, "base_image")
+  argparse_.add_argument("base_image")
       .help(
           "The base image, that will be shown by viewers that don't support "
           "gain maps");
-  argparse_.add_argument(arg_alternate_filename_, "alternate_image")
+  argparse_.add_argument("alternate_image")
       .help("The alternate image, the result of fully applying the gain map");
-  argparse_.add_argument(arg_output_filename_, "output_image.avif");
-  argparse_.add_argument(arg_downscaling_, "--downscaling")
+  argparse_.add_argument("output_image.avif");
+  argparse_.add_argument("--downscaling")
       .help("Downscaling factor for the gain map")
-      .default_value("1");
-  argparse_.add_argument(arg_gain_map_quality_, "--qgain-map")
+      .scan<'d', int>()
+      .default_value(1)
+      .nargs(1);
+  argparse_.add_argument("--qgain-map")
       .help("Quality for the gain map (0-100, where 100 is lossless)")
-      .default_value("60");
-  argparse_.add_argument(arg_gain_map_depth_, "--depth-gain-map")
-      .choices({"8", "10", "12"})
+      .scan<'d', int>()
+      .default_value(60)
+      .nargs(1);
+  argparse_.add_argument("--depth-gain-map")
+      .choices(8, 10, 12)
       .help("Output depth for the gain map")
-      .default_value("8");
-  argparse_
-      .add_argument<int, PixelFormatConverter>(arg_gain_map_pixel_format_,
-                                               "--yuv-gain-map")
-      .choices({"444", "422", "420", "400"})
+      .scan<'d', int>()
+      .default_value(8)
+      .nargs(1);
+  argparse_.add_argument("--yuv-gain-map")
+      .choices("444", "422", "420", "400")
       .help("Output format for the gain map")
-      .default_value("444");
-  argparse_.add_argument<int>(arg_matrix_gain_map_, "--matrix-gain-map")
+      .default_value(std::string("444"))
+      .nargs(1);
+  argparse_.add_argument("--matrix-gain-map")
       .help(
           "Matrix coefficients for the gain map (e.g. 0 for identity, 6 for "
-          "BT.601). (Default: 6)")
-      .default_value("6");
-  argparse_.add_argument(arg_max_headroom_, "--max-headroom")
+          "BT.601).")
+      .scan<'d', int>()
+      .default_value(6)
+      .nargs(1);
+  argparse_.add_argument("--max-headroom")
       .help(
           "Maximum value for the base image HDR headroom and alternate "
           "image HDR headroom. Overrides the default headroom values computed "
@@ -53,86 +63,88 @@ CombineCommand::CombineCommand()
           "other is HDR, the full HDR image (i.e. without tone mapping to SDR "
           "using the gain map) will be shown for displays with at least this "
           "amount of HDR headroom.")
-      .default_value("4.0");
-  argparse_
-      .add_argument<CicpValues, CicpConverter>(arg_base_cicp_, "--cicp-base")
+      .scan<'g', float>()
+      .default_value(4.0f)
+      .nargs(1);
+  argparse_.add_argument("--cicp-base")
       .help(
           "Set or override the CICP values for the base image, expressed as "
           "P/T/M where P = color primaries, T = transfer characteristics, "
-          "M = matrix coefficients.");
-  argparse_
-      .add_argument<CicpValues, CicpConverter>(arg_alternate_cicp_,
-                                               "--cicp-alternate")
+          "M = matrix coefficients.")
+      .action(ParseCicp);
+  argparse_.add_argument("--cicp-alternate")
       .help(
           "Set or override the CICP values for the alternate image, expressed "
           "as P/T/M  where P = color primaries, T = transfer characteristics, "
-          "M = matrix coefficients.");
-  argparse_
-      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
-          arg_base_clli_, "--clli-base")
+          "M = matrix coefficients.")
+      .action(ParseCicp);
+  argparse_.add_argument("--clli-base")
       .help(
           "Override content light level information of the base image, "
-          "expressed as:  MaxCLL,MaxPALL.");
-  argparse_
-      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
-          arg_alternate_clli_, "--clli-alternate")
+          "expressed as:  MaxCLL,MaxPALL.")
+      .action(ParseClli);
+  argparse_.add_argument("--clli-alternate")
       .help(
           "Override content light level information of the alternate image, "
-          "expressed as:  MaxCLL,MaxPALL.");
+          "expressed as:  MaxCLL,MaxPALL.")
+      .action(ParseClli);
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
   arg_jobs_.Init(argparse_);
 }
 
 avifResult CombineCommand::Run() {
-  const avifPixelFormat pixel_format =
-      static_cast<avifPixelFormat>(arg_image_read_.pixel_format.value());
+  const std::string base_filename = argparse_.get<std::string>("base_image");
+  const std::string alternate_filename =
+      argparse_.get<std::string>("alternate_image");
+  const std::string output_filename =
+      argparse_.get<std::string>("output_image.avif");
+  const avifPixelFormat pixel_format = arg_image_read_.pixel_format();
   const avifPixelFormat gain_map_pixel_format =
-      static_cast<avifPixelFormat>(arg_gain_map_pixel_format_.value());
+      ParsePixelFormat(argparse_.get<std::string>("--yuv-gain-map"));
 
   ImagePtr base_image(avifImageCreateEmpty());
   ImagePtr alternate_image(avifImageCreateEmpty());
   if (base_image == nullptr || alternate_image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  if (arg_base_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
-    base_image->colorPrimaries = arg_base_cicp_.value().color_primaries;
-    base_image->transferCharacteristics =
-        arg_base_cicp_.value().transfer_characteristics;
-    base_image->matrixCoefficients = arg_base_cicp_.value().matrix_coefficients;
+  if (const auto base_cicp = argparse_.present<CicpValues>("--cicp-base")) {
+    base_image->colorPrimaries = base_cicp->color_primaries;
+    base_image->transferCharacteristics = base_cicp->transfer_characteristics;
+    base_image->matrixCoefficients = base_cicp->matrix_coefficients;
   }
   avifResult result = ReadImage(
-      base_image.get(), arg_base_filename_, pixel_format, arg_image_read_.depth,
-      arg_image_read_.ignore_profile, arg_image_read_.ignore_exif,
-      arg_image_read_.ignore_xmp, arg_image_read_.ignore_alpha,
-      /*ignore_gain_map=*/true, arg_jobs_.jobs.value());
+      base_image.get(), base_filename, pixel_format, arg_image_read_.depth(),
+      arg_image_read_.ignore_profile(), arg_image_read_.ignore_exif(),
+      arg_image_read_.ignore_xmp(), arg_image_read_.ignore_alpha(),
+      /*ignore_gain_map=*/true, arg_jobs_.jobs());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read base image: " << avifResultToString(result)
               << "\n";
     return result;
   }
 
-  if (arg_alternate_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
-    alternate_image->colorPrimaries =
-        arg_alternate_cicp_.value().color_primaries;
+  if (const auto alternate_cicp =
+          argparse_.present<CicpValues>("--cicp-alternate")) {
+    alternate_image->colorPrimaries = alternate_cicp->color_primaries;
     alternate_image->transferCharacteristics =
-        arg_alternate_cicp_.value().transfer_characteristics;
-    alternate_image->matrixCoefficients =
-        arg_alternate_cicp_.value().matrix_coefficients;
+        alternate_cicp->transfer_characteristics;
+    alternate_image->matrixCoefficients = alternate_cicp->matrix_coefficients;
   }
   result =
-      ReadImage(alternate_image.get(), arg_alternate_filename_, pixel_format,
-                arg_image_read_.depth, arg_image_read_.ignore_profile,
-                arg_image_read_.ignore_exif, arg_image_read_.ignore_xmp,
-                arg_image_read_.ignore_alpha, /*ignore_gain_map=*/true,
-                arg_jobs_.jobs.value());
+      ReadImage(alternate_image.get(), alternate_filename, pixel_format,
+                arg_image_read_.depth(), arg_image_read_.ignore_profile(),
+                arg_image_read_.ignore_exif(), arg_image_read_.ignore_xmp(),
+                arg_image_read_.ignore_alpha(), /*ignore_gain_map=*/true,
+                arg_jobs_.jobs());
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to read alternate image: "
               << avifResultToString(result) << "\n";
     return result;
   }
 
-  const uint32_t downscaling = std::max<int>(1, arg_downscaling_);
+  const uint32_t downscaling =
+      std::max<int>(1, argparse_.get<int>("--downscaling"));
   const uint32_t rounding = downscaling / 2;
   const uint32_t gain_map_width =
       std::max((base_image->width + rounding) / downscaling, 1u);
@@ -150,7 +162,8 @@ avifResult CombineCommand::Run() {
   }
 
   avifMatrixCoefficients gain_map_matrix_coefficients =
-      static_cast<avifMatrixCoefficients>(arg_matrix_gain_map_.value());
+      static_cast<avifMatrixCoefficients>(
+          argparse_.get<int>("--matrix-gain-map"));
   if (gain_map_matrix_coefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
       gain_map_pixel_format != AVIF_PIXEL_FORMAT_YUV444) {
     std::cout << "Matrix coefficients may not be set to identity (0) when "
@@ -159,9 +172,9 @@ avifResult CombineCommand::Run() {
   }
 
   base_image->gainMap = avifGainMapCreate();
-  base_image->gainMap->image =
-      avifImageCreate(gain_map_width, gain_map_height, arg_gain_map_depth_,
-                      gain_map_pixel_format);
+  base_image->gainMap->image = avifImageCreate(
+      gain_map_width, gain_map_height, argparse_.get<int>("--depth-gain-map"),
+      gain_map_pixel_format);
   if (base_image->gainMap->image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
@@ -175,51 +188,50 @@ avifResult CombineCommand::Run() {
     return result;
   }
 
-  if (arg_max_headroom_.value() > 0) {
-    if (arg_max_headroom_.value() * base_image->gainMap->baseHdrHeadroom.d <
+  const float max_headroom = argparse_.get<float>("--max-headroom");
+  if (max_headroom > 0) {
+    if (max_headroom * base_image->gainMap->baseHdrHeadroom.d <
         base_image->gainMap->baseHdrHeadroom.n) {
       if (!avifDoubleToUnsignedFraction(
-              arg_max_headroom_.value(),
-              &base_image->gainMap->baseHdrHeadroom)) {
-        std::cout << "Unable to express " << arg_max_headroom_.value()
-                  << " as a fraction";
+              max_headroom, &base_image->gainMap->baseHdrHeadroom)) {
+        std::cout << "Unable to express " << max_headroom << " as a fraction";
         return AVIF_RESULT_INVALID_ARGUMENT;
       }
     }
-    if (arg_max_headroom_.value() *
-            base_image->gainMap->alternateHdrHeadroom.d <
+    if (max_headroom * base_image->gainMap->alternateHdrHeadroom.d <
         base_image->gainMap->alternateHdrHeadroom.n) {
       if (!avifDoubleToUnsignedFraction(
-              arg_max_headroom_.value(),
-              &base_image->gainMap->alternateHdrHeadroom)) {
-        std::cout << "Unable to express " << arg_max_headroom_.value()
-                  << " as a fraction";
+              max_headroom, &base_image->gainMap->alternateHdrHeadroom)) {
+        std::cout << "Unable to express " << max_headroom << " as a fraction";
         return AVIF_RESULT_INVALID_ARGUMENT;
       }
     }
   }
 
-  if (arg_base_clli_.provenance() == argparse::Provenance::SPECIFIED) {
-    base_image->clli = arg_base_clli_.value();
+  if (const auto base_clli =
+          argparse_.present<avifContentLightLevelInformationBox>(
+              "--clli-base")) {
+    base_image->clli = *base_clli;
   }
-  if (arg_alternate_clli_.provenance() == argparse::Provenance::SPECIFIED) {
-    base_image->gainMap->altCLLI = arg_alternate_clli_.value();
+  if (const auto alternate_clli =
+          argparse_.present<avifContentLightLevelInformationBox>(
+              "--clli-alternate")) {
+    base_image->gainMap->altCLLI = *alternate_clli;
   }
 
   EncoderPtr encoder(avifEncoderCreate());
   if (encoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  encoder->quality = arg_image_encode_.quality;
-  encoder->qualityAlpha = arg_image_encode_.quality_alpha;
-  encoder->qualityGainMap = arg_gain_map_quality_;
-  encoder->speed = arg_image_encode_.speed;
-  encoder->maxThreads = arg_jobs_.jobs.value();
+  encoder->quality = arg_image_encode_.quality();
+  encoder->qualityAlpha = arg_image_encode_.quality_alpha();
+  encoder->qualityGainMap = argparse_.get<int>("--qgain-map");
+  encoder->speed = arg_image_encode_.speed();
+  encoder->maxThreads = arg_jobs_.jobs();
   encoder->autoTiling = true;  // Match avifenc default.
-  result =
-      WriteAvifGrid(base_image.get(), arg_image_encode_.grid.value().grid_cols,
-                    arg_image_encode_.grid.value().grid_rows, encoder.get(),
-                    arg_output_filename_);
+  const GridOptions grid = arg_image_encode_.grid();
+  result = WriteAvifGrid(base_image.get(), grid.grid_cols, grid.grid_rows,
+                         encoder.get(), output_filename);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";

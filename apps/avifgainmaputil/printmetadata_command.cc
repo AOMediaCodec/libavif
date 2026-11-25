@@ -5,6 +5,9 @@
 
 #include <cassert>
 #include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 #include "avif/avif_cxx.h"
 
@@ -33,21 +36,24 @@ std::string FormatFractions(const T fractions[3]) {
 PrintMetadataCommand::PrintMetadataCommand()
     : ProgramCommand("printmetadata",
                      "Print the metadata of the gain map of an AVIF file") {
-  argparse_.add_argument(arg_input_filename_, "input_filename");
+  argparse_.add_argument("input_filename");
   arg_jobs_.Init(argparse_);
 }
 
 avifResult PrintMetadataCommand::Run() {
+  const std::string input_filename =
+      argparse_.get<std::string>("input_filename");
+
   DecoderPtr decoder(avifDecoderCreate());
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->maxThreads = arg_jobs_.jobs.value();
+  decoder->maxThreads = arg_jobs_.jobs();
 
   avifResult result =
-      avifDecoderSetIOFile(decoder.get(), arg_input_filename_.value().c_str());
+      avifDecoderSetIOFile(decoder.get(), input_filename.c_str());
   if (result != AVIF_RESULT_OK) {
-    std::cerr << "Cannot open file for read: " << arg_input_filename_ << "\n";
+    std::cerr << "Cannot open file for read: " << input_filename << "\n";
     return result;
   }
   result = avifDecoderParse(decoder.get());
@@ -57,7 +63,7 @@ avifResult PrintMetadataCommand::Run() {
     return result;
   }
   if (decoder->image->gainMap == nullptr) {
-    std::cerr << "Input image " << arg_input_filename_
+    std::cerr << "Input image " << input_filename
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }

@@ -1,11 +1,14 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <algorithm>
+#include <exception>
 #include <iomanip>
+#include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "argparse.hpp"
 #include "avif/avif.h"
 #include "avifutil.h"
 #include "combine_command.h"
@@ -122,7 +125,7 @@ int main(int argc, char** argv) {
           command->PrintUsage();
         }
         return (result == AVIF_RESULT_OK) ? 0 : 1;
-      } catch (const std::invalid_argument& e) {
+      } catch (const std::exception& e) {
         std::cerr << e.what() << "\n\n";
         command->PrintUsage();
         return 1;

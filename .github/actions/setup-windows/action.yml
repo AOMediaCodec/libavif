@@ -1,6 +1,9 @@
 name: "Setup on Windows"
 description: "Installs dependencies specific to Windows"
 inputs:
+  argparse:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-aom:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -58,6 +61,10 @@ runs:
     - name: Install libaom library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
       run: echo "AVIF_WIN_LIBRARIES=aom" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install argparse library
+      if: ${{ inputs.argparse == 'SYSTEM' }}
+      run: echo "AVIF_WIN_LIBRARIES=${AVIF_WIN_LIBRARIES} argparse" >> "$GITHUB_ENV"
       shell: bash
     - name: Install libdav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}

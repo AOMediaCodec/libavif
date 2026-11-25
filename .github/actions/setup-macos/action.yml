@@ -1,6 +1,9 @@
 name: "Setup on macOS"
 description: "Installs dependencies specific to macOS"
 inputs:
+  argparse:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-aom:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -40,6 +43,10 @@ runs:
     - name: Install AOM library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
       run: echo "AVIF_MAC_LIBRARIES=aom" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install argparse library
+      if: ${{ inputs.argparse == 'SYSTEM' }}
+      run: echo "AVIF_MAC_LIBRARIES=${AVIF_MAC_LIBRARIES} argparse" >> "$GITHUB_ENV"
       shell: bash
     - name: Install dav1d library
       if: ${{ inputs.codec-dav1d == 'SYSTEM' }}

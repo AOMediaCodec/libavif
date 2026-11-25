@@ -15,7 +15,6 @@ class PrintMetadataCommand : public ProgramCommand {
   avifResult Run() override;
 
  private:
-  argparse::ArgValue<std::string> arg_input_filename_;
   JobsArgs arg_jobs_;
 };
 
