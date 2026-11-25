@@ -49,6 +49,7 @@ jobs:
       - uses: ./.github/actions/cache
         with:
           extra-key: ${{ matrix.sys }}
+          use-sccache: false
       - name: Print cmake version
         run: cmake --version
 

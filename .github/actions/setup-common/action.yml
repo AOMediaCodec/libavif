@@ -26,6 +26,10 @@ runs:
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
       run: |
         if (-not (Get-Command cargo-cinstall -ErrorAction SilentlyContinue)) {
+          # Bypass sccache: cargo-c's binary is already cached directly, and on
+          # Windows its large dependency graph exceeds the 32,767-char command-line
+          # limit when sccache expands Cargo's @argfile (mozilla/sccache#3053).
+          Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue
           cargo install --locked cargo-c --features=vendored-openssl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }

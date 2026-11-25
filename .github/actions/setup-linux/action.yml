@@ -16,6 +16,12 @@ inputs:
   codec-svt:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
+  cache-deps:
+    description: "Whether to cache FetchContent sources in build/_deps"
+    default: "true"
+  cache-ext:
+    description: "Whether to cache prebuilt libraries in ext"
+    default: "false"
   extra-cache-key:
     description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
     default: ""
@@ -104,6 +110,8 @@ runs:
     - uses: ./.github/actions/cache
       id: cache
       with:
+        cache-deps: ${{ inputs.cache-deps }}
+        cache-ext: ${{ inputs.cache-ext }}
         extra-key: ${{ inputs.extra-cache-key }}
         use-meson: ${{ inputs.codec-dav1d == 'LOCAL' }}
         use-rust: ${{ inputs.codec-rav1e == 'LOCAL' }}

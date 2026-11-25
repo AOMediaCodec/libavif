@@ -30,6 +30,7 @@ jobs:
           codec-dav1d: "SYSTEM"
           codec-rav1e: "SYSTEM"
           codec-svt: "SYSTEM"
+          extra-cache-key: ${{ matrix.oldest-cmake }}
           gcc-version: ${{ matrix.gcc }}
           gtest: "SYSTEM"
           libjpeg-turbo: "SYSTEM"

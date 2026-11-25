@@ -30,6 +30,7 @@ jobs:
           codec-dav1d: "LOCAL"
           codec-rav1e: "LOCAL"
           codec-svt: "LOCAL"
+          extra-cache-key: ${{ matrix.build-type }}
           gcc-version: ${{ matrix.gcc }}
           libjpeg-turbo: "SYSTEM"
           libxml2: "LOCAL"
