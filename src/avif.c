@@ -248,11 +248,8 @@ static avifResult avifImageCopyProperties(avifImage * dstImage, const avifImage 
     return AVIF_RESULT_OK;
 }
 
-avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+static avifResult avifImageCopyInternal(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
 {
-    // Disallow self copy even though it could be supported easily. Self copy is
-    // unlikely to be needed, so it almost always indicates a programming error.
-    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
     avifImageFreePlanes(dstImage, AVIF_PLANES_ALL);
     avifImageCopyNoAlloc(dstImage, srcImage);
 
@@ -320,6 +317,25 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
     }
 
     return AVIF_RESULT_OK;
+}
+
+avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifPlanesFlags planes)
+{
+    // Disallow self copy even though it could be supported easily. Self copy is
+    // unlikely to be needed, so it almost always indicates a programming error.
+    AVIF_CHECKERR(dstImage != srcImage, AVIF_RESULT_INVALID_ARGUMENT);
+
+    // Copy before modifying dstImage because srcImage may be a view into its planes.
+    avifImage * tmpImage = avifImageCreateEmpty();
+    AVIF_CHECKERR(tmpImage, AVIF_RESULT_OUT_OF_MEMORY);
+    const avifResult result = avifImageCopyInternal(tmpImage, srcImage, planes);
+    if (result == AVIF_RESULT_OK) {
+        avifImage oldImage = *dstImage;
+        *dstImage = *tmpImage;
+        *tmpImage = oldImage;
+    }
+    avifImageDestroy(tmpImage);
+    return result;
 }
 
 avifResult avifImageSetViewRect(avifImage * dstImage, const avifImage * srcImage, const avifCropRect * rect)
