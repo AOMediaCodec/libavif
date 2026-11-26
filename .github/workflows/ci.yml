@@ -14,19 +14,26 @@ concurrency:
 
 jobs:
   # ============================================================================
-  # Stage 1: Fast gatekeepers on inexpensive Linux runners (formatting, C
-  # conformance & SYSTEM-installed packages)
+  # Stage 0: Fast formatting check & target selection
   # ============================================================================
   format-check:
     name: Format Check
     uses: ./.github/workflows/ci-format-check.yml
 
+  # ============================================================================
+  # Stage 1: Fast gatekeepers on inexpensive Linux runners (C conformance &
+  # SYSTEM-installed packages)
+  # ============================================================================
   linux-shared-installed:
     name: Linux Shared Installed
+    needs: [format-check]
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_shared_installed }}
     uses: ./.github/workflows/ci-linux-shared-installed.yml
 
   c-warnings-linux:
     name: C Conformance (Linux)
+    needs: [format-check]
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).c_warnings_linux }}
     uses: ./.github/workflows/ci-c-warnings.yml
     with:
       os: ubuntu-latest
@@ -38,118 +45,127 @@ jobs:
   linux-shared-local:
     name: Linux Shared Local
     needs: &stage1 [format-check, linux-shared-installed, c-warnings-linux]
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_shared_local }}
     uses: ./.github/workflows/ci-linux-shared-local.yml
 
   linux-golden-tests:
     name: Linux Golden Tests
     needs: *stage1
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_golden_tests }}
     uses: ./.github/workflows/ci-linux-golden-tests.yml
 
   mingw:
     name: MinGW
     needs: *stage1
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).mingw }}
     uses: ./.github/workflows/ci-mingw.yml
 
   windows-installed:
     name: Windows Installed
     needs: *stage1
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).windows_installed }}
     uses: ./.github/workflows/ci-windows-installed.yml
 
   c-warnings-windows:
     name: C Conformance (Windows)
     needs: *stage1
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).c_warnings_windows }}
     uses: ./.github/workflows/ci-c-warnings.yml
     with:
       os: windows-latest
 
   # ============================================================================
   # Stage 3: Heavy, specialized & macOS builds after Stage 2 succeeds
+  # Note: GitHub Actions only exposes outputs from direct `needs` dependencies,
+  # so Stage 3 jobs also list `format-check` (and Stage 1 for direct failure
+  # propagation when Stage 2 jobs are skipped).
   # ============================================================================
   linux-coverage:
     name: Linux Code Coverage
-    needs: &stage2 [linux-shared-local, linux-golden-tests, mingw, windows-installed, c-warnings-windows]
+    needs: &stage2 [format-check, linux-shared-installed, c-warnings-linux, linux-shared-local, linux-golden-tests, mingw, windows-installed, c-warnings-windows]
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_coverage }}
     uses: ./.github/workflows/ci-linux-coverage.yml
 
   fuzztest:
     name: Fuzztest
     needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).fuzztest }}
     uses: ./.github/workflows/ci-fuzztest.yml
 
   android-jni:
     name: Android JNI
     needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).android_jni }}
     uses: ./.github/workflows/ci-android-jni.yml
 
-  # Note: GitHub Actions only exposes outputs from direct `needs` dependencies, so
-  # conditional Stage 3 jobs also list `format-check` to read its trigger flags.
   linux-oldest-cmake:
     name: Linux Oldest CMake
-    needs: &stage2-with-flags [format-check, linux-shared-local, linux-golden-tests, mingw, windows-installed, c-warnings-windows]
-    if: &if-build-deps success() && needs.format-check.outputs.run-build-deps == 'true'
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_oldest_cmake }}
     uses: ./.github/workflows/ci-linux-oldest-cmake.yml
 
   disable-gtest:
     name: Disable GTest
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).disable_gtest }}
     uses: ./.github/workflows/ci-disable-gtest.yml
 
   linux-static:
     name: Linux Static
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_static }}
     uses: ./.github/workflows/ci-linux-static.yml
 
   linux-static-av2:
     name: Linux Static AV2
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_static_av2 }}
     uses: ./.github/workflows/ci-linux-static-av2.yml
 
   linux-static-sanitized:
     name: Linux Static Sanitized
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_static_sanitized }}
     uses: ./.github/workflows/ci-linux-static-sanitized.yml
 
   linux-static-sanitized-memory:
     name: Linux Static Sanitized Memory
-    needs: *stage2-with-flags
-    if: success() && needs.format-check.outputs.run-msan == 'true'
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).linux_static_sanitized_memory }}
     uses: ./.github/workflows/ci-linux-static-sanitized-memory.yml
 
   windows-shared-local:
     name: Windows Shared Local
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).windows_shared_local }}
     uses: ./.github/workflows/ci-windows-shared-local.yml
 
   windows-static-local:
     name: Windows Static Local
-    needs: *stage2-with-flags
-    if: *if-build-deps
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).windows_static_local }}
     uses: ./.github/workflows/ci-windows-static-local.yml
 
   android-emulator-tests:
     name: Android Emulator Tests
-    needs: *stage2-with-flags
-    if: success() && needs.format-check.outputs.run-android-emulator == 'true'
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).android_emulator_tests }}
     uses: ./.github/workflows/ci-android-emulator-tests.yml
 
   macos-shared-installed:
     name: macOS Shared Installed
-    needs: *stage2-with-flags
-    if: &if-macos success() && needs.format-check.outputs.run-macos == 'true'
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).macos_shared_installed }}
     uses: ./.github/workflows/ci-macos-shared-installed.yml
 
   macos-shared-local:
     name: macOS Shared Local
-    needs: *stage2-with-flags
-    if: *if-macos
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).macos_shared_local }}
     uses: ./.github/workflows/ci-macos-shared-local.yml
 
   macos-static:
     name: macOS Static
-    needs: *stage2-with-flags
-    if: success() && needs.format-check.outputs.run-macos-static == 'true'
+    needs: *stage2
+    if: ${{ !failure() && !cancelled() && fromJSON(needs.format-check.outputs.targets).macos_static }}
     uses: ./.github/workflows/ci-macos-static.yml
