@@ -567,6 +567,35 @@ if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST O
     enable_language(CXX)
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag(-Wunsafe-buffer-usage AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
+        # Probe the positive form: Clang accepts unknown -Wno- flags silently,
+        # so checking -Wno-unsafe-buffer-usage-in-libc-call would always pass.
+        check_cxx_compiler_flag(-Wunsafe-buffer-usage-in-libc-call AVIF_HAVE_WUNSAFE_BUFFER_USAGE_IN_LIBC_CALL)
+    endif()
+endif()
+
+# Opt a list of C++ source files into the -Wunsafe-buffer-usage diagnostic
+# (the first step of adopting the Safe Buffers Programming Model). Apply only
+# to .cc files that have been audited to be free of raw pointer arithmetic and
+# raw-pointer indexing; new code added to those files must keep them clean.
+# The libc-call subgroup is disabled where it exists because it fires on
+# functions such as strdup() that are used in third-party headers (e.g.
+# libargparse) we do not own; our own code avoids those by convention.
+# No-op on toolchains where the flag is not available (Clang < 16, GCC, MSVC).
+function(avif_enable_safe_buffers_warning)
+    if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE)
+        set(safe_buffers_options "-Wunsafe-buffer-usage")
+        if(AVIF_HAVE_WUNSAFE_BUFFER_USAGE_IN_LIBC_CALL)
+            list(APPEND safe_buffers_options "-Wno-unsafe-buffer-usage-in-libc-call")
+        endif()
+        set_source_files_properties(${ARGN} PROPERTIES COMPILE_OPTIONS "${safe_buffers_options}")
+    endif()
+endfunction()
+
+if(AVIF_ENABLE_COMPLIANCE_WARDEN)
+    avif_enable_safe_buffers_warning(src/compliance.cc)
 endif()
 
 set_target_properties(avif_obj PROPERTIES C_VISIBILITY_PRESET hidden)
@@ -727,6 +756,7 @@ if(AVIF_BUILD_APPS)
         apps/avifgainmaputil/program_command.cc
         apps/avifgainmaputil/swapbase_command.cc
     )
+    avif_enable_safe_buffers_warning(${AVIFGAINMAPUTIL_SRCS})
 
     add_executable(avifgainmaputil "${AVIFGAINMAPUTIL_SRCS}")
     if(WIN32)
