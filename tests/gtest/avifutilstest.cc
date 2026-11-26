@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 #include "avif/internal.h"
 #include "gtest/gtest.h"
@@ -139,6 +141,99 @@ TEST(ToFractionTest, BadValues) {
   // Too large.
   EXPECT_FALSE(
       avifDoubleToUnsignedFraction(((double)UINT32_MAX) + 1.0, &fraction));
+}
+
+//------------------------------------------------------------------------------
+// Checked arithmetic
+
+TEST(CheckedArithmeticTest, MulU32) {
+  uint32_t result = 123;
+  EXPECT_TRUE(avifCheckedMulU32(0, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulU32(0, UINT32_MAX, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulU32(UINT32_MAX, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulU32(UINT32_MAX, 1, &result));
+  EXPECT_EQ(result, UINT32_MAX);
+  // 65535 * 65537 = 2^32 - 1 just fits.
+  EXPECT_TRUE(avifCheckedMulU32(65535, 65537, &result));
+  EXPECT_EQ(result, UINT32_MAX);
+  EXPECT_TRUE(avifCheckedMulU32(UINT32_MAX / 2, 2, &result));
+  EXPECT_EQ(result, UINT32_MAX - 1);
+
+  // The result is left untouched on overflow.
+  result = 123;
+  // 65536 * 65536 = 2^32 just overflows.
+  EXPECT_FALSE(avifCheckedMulU32(65536, 65536, &result));
+  EXPECT_FALSE(avifCheckedMulU32(UINT32_MAX / 2 + 1, 2, &result));
+  EXPECT_FALSE(avifCheckedMulU32(2, UINT32_MAX / 2 + 1, &result));
+  EXPECT_FALSE(avifCheckedMulU32(UINT32_MAX, UINT32_MAX, &result));
+  EXPECT_EQ(result, 123u);
+}
+
+TEST(CheckedArithmeticTest, AddU64) {
+  uint64_t result = 123;
+  EXPECT_TRUE(avifCheckedAddU64(0, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedAddU64(UINT64_MAX, 0, &result));
+  EXPECT_EQ(result, UINT64_MAX);
+  EXPECT_TRUE(avifCheckedAddU64(0, UINT64_MAX, &result));
+  EXPECT_EQ(result, UINT64_MAX);
+  EXPECT_TRUE(avifCheckedAddU64(UINT64_MAX - 1, 1, &result));
+  EXPECT_EQ(result, UINT64_MAX);
+  EXPECT_TRUE(avifCheckedAddU64(UINT64_MAX / 2, UINT64_MAX / 2 + 1, &result));
+  EXPECT_EQ(result, UINT64_MAX);
+
+  result = 123;
+  EXPECT_FALSE(avifCheckedAddU64(UINT64_MAX, 1, &result));
+  EXPECT_FALSE(avifCheckedAddU64(1, UINT64_MAX, &result));
+  EXPECT_FALSE(
+      avifCheckedAddU64(UINT64_MAX / 2 + 1, UINT64_MAX / 2 + 1, &result));
+  EXPECT_FALSE(avifCheckedAddU64(UINT64_MAX, UINT64_MAX, &result));
+  EXPECT_EQ(result, 123u);
+}
+
+TEST(CheckedArithmeticTest, MulSize) {
+  size_t result = 123;
+  EXPECT_TRUE(avifCheckedMulSize(0, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulSize(0, SIZE_MAX, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulSize(SIZE_MAX, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedMulSize(SIZE_MAX, 1, &result));
+  EXPECT_EQ(result, SIZE_MAX);
+  EXPECT_TRUE(avifCheckedMulSize(SIZE_MAX / 2, 2, &result));
+  EXPECT_EQ(result, SIZE_MAX - 1);
+  EXPECT_TRUE(avifCheckedMulSize(SIZE_MAX / 4, 4, &result));
+  EXPECT_EQ(result, SIZE_MAX - 3);
+
+  result = 123;
+  EXPECT_FALSE(avifCheckedMulSize(SIZE_MAX / 2 + 1, 2, &result));
+  EXPECT_FALSE(avifCheckedMulSize(2, SIZE_MAX / 2 + 1, &result));
+  EXPECT_FALSE(avifCheckedMulSize(SIZE_MAX / 4 + 1, 4, &result));
+  EXPECT_FALSE(avifCheckedMulSize(SIZE_MAX, SIZE_MAX, &result));
+  EXPECT_EQ(result, 123u);
+}
+
+TEST(CheckedArithmeticTest, AddSize) {
+  size_t result = 123;
+  EXPECT_TRUE(avifCheckedAddSize(0, 0, &result));
+  EXPECT_EQ(result, 0u);
+  EXPECT_TRUE(avifCheckedAddSize(SIZE_MAX, 0, &result));
+  EXPECT_EQ(result, SIZE_MAX);
+  EXPECT_TRUE(avifCheckedAddSize(0, SIZE_MAX, &result));
+  EXPECT_EQ(result, SIZE_MAX);
+  EXPECT_TRUE(avifCheckedAddSize(SIZE_MAX - 4, 4, &result));
+  EXPECT_EQ(result, SIZE_MAX);
+
+  result = 123;
+  EXPECT_FALSE(avifCheckedAddSize(SIZE_MAX, 1, &result));
+  EXPECT_FALSE(avifCheckedAddSize(1, SIZE_MAX, &result));
+  EXPECT_FALSE(avifCheckedAddSize(SIZE_MAX - 3, 4, &result));
+  EXPECT_FALSE(avifCheckedAddSize(SIZE_MAX, SIZE_MAX, &result));
+  EXPECT_EQ(result, 123u);
 }
 
 }  // namespace
