@@ -4,6 +4,7 @@
 #include "avif/internal.h"
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 
@@ -103,6 +104,10 @@ avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 
     const uint32_t width = baseImage->width;
     const uint32_t height = baseImage->height;
+    if (width == 0 || height == 0) {
+        avifDiagnosticsPrintf(diag, "Image dimensions must be non-zero");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
 
     const avifBool useBaseColorSpace = gainMap->useBaseColorSpace;
     const avifColorPrimaries gainMapMathPrimaries =
@@ -373,8 +378,21 @@ cleanup:
 // and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
 static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
+    if (isnan(v) || bucketMax <= bucketMin || numBuckets <= 1) {
+        return 0;
+    }
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
-    return AVIF_MIN((int)avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets), numBuckets - 1);
+    const float scaled = avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets);
+    if (!isfinite(scaled)) {
+        return (v >= bucketMax) ? (numBuckets - 1) : 0;
+    }
+    if (scaled <= 0.0f) {
+        return 0;
+    }
+    if (scaled >= (float)(numBuckets - 1)) {
+        return numBuckets - 1;
+    }
+    return (int)scaled;
 }
 // Returns the lower end of the value range belonging to the given histogram bucket.
 static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int numBuckets)
@@ -384,9 +402,13 @@ static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int
 
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixels, float * rangeMin, float * rangeMax)
 {
+    if (numPixels == 0) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
     const float bucketSize = 0.01f;        // Size of one bucket. Empirical value.
     const float maxOutliersRatio = 0.001f; // 0.1%
-    const int maxOutliersOnEachSide = (int)avifRoundf(numPixels * maxOutliersRatio / 2.0f);
+    const double rawMaxOutliers = round((double)numPixels * (double)maxOutliersRatio / 2.0);
+    const int maxOutliersOnEachSide = (rawMaxOutliers >= (double)INT_MAX) ? INT_MAX : (int)rawMaxOutliers;
 
     float min = gainMapF[0];
     float max = gainMapF[0];
@@ -402,7 +424,9 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixel
     }
 
     const int maxNumBuckets = 10000;
-    const int numBuckets = AVIF_MIN((int)ceilf((max - min) / bucketSize), maxNumBuckets);
+    const float rawNumBuckets = ceilf((max - min) / bucketSize);
+    const int numBuckets = (isnan(rawNumBuckets) || rawNumBuckets >= (float)maxNumBuckets) ? maxNumBuckets
+                                                                                           : AVIF_MAX((int)rawNumBuckets, 1);
     int * histogram = avifCalloc(numBuckets, sizeof(int));
     if (histogram == NULL) {
         return AVIF_RESULT_OUT_OF_MEMORY;
@@ -569,6 +593,14 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
     AVIF_CHECKRES(avifChooseColorSpaceForGainMapMath(baseColorPrimaries, altColorPrimaries, &gainMapMathPrimaries));
     const uint32_t width = baseRgbImage->width;
     const uint32_t height = baseRgbImage->height;
+    if (width == 0 || height == 0) {
+        avifDiagnosticsPrintf(diag, "Image dimensions must be non-zero");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
+    if (width > SIZE_MAX / height) {
+        avifDiagnosticsPrintf(diag, "Image dimensions overflow");
+        return AVIF_RESULT_INVALID_ARGUMENT;
+    }
 
     avifRGBColorSpaceInfo baseRGBInfo;
     avifRGBColorSpaceInfo altRGBInfo;

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -1846,6 +1847,73 @@ TEST(GainMapTest, ApplyGainMapNaN) {
   EXPECT_EQ(toneMap.rowBytes, 0u);
 
   avifRGBImageFreePixels(&toneMap);
+}
+
+TEST(FindMinMaxWithoutOutliers, EmptyAndNonFiniteValues) {
+  float min = 0.0f;
+  float max = 0.0f;
+  EXPECT_EQ(avifFindMinMaxWithoutOutliers(nullptr, 0, &min, &max),
+            AVIF_RESULT_INVALID_ARGUMENT);
+
+  std::vector<float> extreme(2000, 1.0f);
+  extreme[0] = -std::numeric_limits<float>::max();
+  extreme[1] = std::numeric_limits<float>::max();
+  EXPECT_EQ(
+      avifFindMinMaxWithoutOutliers(extreme.data(), extreme.size(), &min, &max),
+      AVIF_RESULT_OK);
+
+  std::vector<float> with_inf(2000, 1.0f);
+  with_inf[0] = 0.0f;
+  with_inf[1] = std::numeric_limits<float>::infinity();
+  EXPECT_EQ(avifFindMinMaxWithoutOutliers(with_inf.data(), with_inf.size(),
+                                          &min, &max),
+            AVIF_RESULT_OK);
+
+  std::vector<float> with_nan(2000, 1.0f);
+  with_nan[0] = 0.0f;
+  with_nan[1] = std::numeric_limits<float>::quiet_NaN();
+  EXPECT_EQ(avifFindMinMaxWithoutOutliers(with_nan.data(), with_nan.size(),
+                                          &min, &max),
+            AVIF_RESULT_OK);
+}
+
+TEST(GainMapTest, ComputeAndApplyZeroDimensions) {
+  avifRGBImage zero_rgb = {};
+  zero_rgb.width = 0;
+  zero_rgb.height = 0;
+  zero_rgb.depth = 8;
+  zero_rgb.format = AVIF_RGB_FORMAT_RGB;
+
+  GainMapPtr gain_map(avifGainMapCreate());
+  ASSERT_NE(gain_map, nullptr);
+  gain_map->image = avifImageCreate(4, 4, 8, AVIF_PIXEL_FORMAT_YUV444);
+  ASSERT_NE(gain_map->image, nullptr);
+  ASSERT_EQ(avifImageAllocatePlanes(gain_map->image, AVIF_PLANES_YUV),
+            AVIF_RESULT_OK);
+  FillTestGainMapMetadata(/*base_rendition_is_hdr=*/false, gain_map.get());
+
+  avifDiagnostics diag;
+  avifDiagnosticsClearError(&diag);
+  EXPECT_EQ(avifRGBImageComputeGainMap(&zero_rgb, AVIF_COLOR_PRIMARIES_SRGB,
+                                       AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+                                       &zero_rgb, AVIF_COLOR_PRIMARIES_SRGB,
+                                       AVIF_TRANSFER_CHARACTERISTICS_SRGB,
+                                       gain_map.get(), &diag),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  // Caller's gainMap->image planes must remain intact on early validation
+  // error.
+  EXPECT_NE(gain_map->image->yuvPlanes[0], nullptr);
+
+  avifRGBImage tone_mapped = {};
+  tone_mapped.depth = 8;
+  tone_mapped.format = AVIF_RGB_FORMAT_RGBA;
+  avifContentLightLevelInformationBox clli = {};
+  EXPECT_EQ(avifRGBImageApplyGainMap(
+                &zero_rgb, AVIF_COLOR_PRIMARIES_SRGB,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, gain_map.get(),
+                /*hdrHeadroom=*/1.0f, AVIF_COLOR_PRIMARIES_SRGB,
+                AVIF_TRANSFER_CHARACTERISTICS_SRGB, &tone_mapped, &clli, &diag),
+            AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 }  // namespace
