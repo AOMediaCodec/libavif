@@ -1,6 +1,9 @@
 name: "Setup on Linux"
 description: "Installs dependencies and sets env variables specific to Linux"
 inputs:
+  argparse:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
   codec-aom:
     description: "Can take the values: OFF, LOCAL, SYSTEM"
     default: "OFF"
@@ -52,6 +55,10 @@ runs:
     - name: Install libaom library
       if: ${{ inputs.codec-aom == 'SYSTEM' }}
       run: echo "AVIF_UNIX_LIBRARIES=libaom-dev" >> "$GITHUB_ENV"
+      shell: bash
+    - name: Install argparse library
+      if: ${{ inputs.argparse == 'SYSTEM' }}
+      run: echo "AVIF_UNIX_LIBRARIES=${AVIF_UNIX_LIBRARIES} libargparse-dev" >> "$GITHUB_ENV"
       shell: bash
     - name: Set up meson
       if: ${{ inputs.codec-dav1d == 'LOCAL' }}

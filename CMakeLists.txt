@@ -262,6 +262,10 @@ set_local_or_system_option(
 )
 check_avif_option(AVIF_LIBXML2 TARGET LibXml2::LibXml2 PKG_NAME LibXml2)
 
+set_local_or_system_option(
+    "ARGPARSE" "LOCAL" "Use argparse (p-ranav/argparse). Needed for avifgainmaputil when AVIF_BUILD_APPS is ON."
+)
+
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -714,7 +718,10 @@ if(AVIF_BUILD_APPS)
     endif()
     target_link_libraries(avifdec avif_apps avif avif_enable_warnings)
 
-    include(LocalLibargparse)
+    if(AVIF_ARGPARSE STREQUAL "OFF")
+        message(FATAL_ERROR "libavif: AVIF_ARGPARSE cannot be OFF when AVIF_BUILD_APPS is ON")
+    endif()
+    check_avif_option(AVIF_ARGPARSE TARGET argparse::argparse PKG_NAME argparse)
 
     set(AVIFGAINMAPUTIL_SRCS
         apps/avifgainmaputil/avifgainmaputil.cc
@@ -737,7 +744,8 @@ if(AVIF_BUILD_APPS)
         endif()
     endif()
     set_target_properties(avifgainmaputil PROPERTIES LINKER_LANGUAGE "CXX")
-    target_link_libraries(avifgainmaputil libargparse avif_apps avif avif_enable_warnings)
+    target_link_libraries(avifgainmaputil argparse::argparse avif_apps avif avif_enable_warnings)
+    target_include_directories(avifgainmaputil SYSTEM PRIVATE $<TARGET_PROPERTY:argparse::argparse,INTERFACE_INCLUDE_DIRECTORIES>)
     if(AVIF_LIBYUV_ENABLED)
         target_compile_definitions(avifgainmaputil PRIVATE -DAVIF_LIBYUV_ENABLED=1)
         target_link_libraries(avifgainmaputil yuv::yuv)

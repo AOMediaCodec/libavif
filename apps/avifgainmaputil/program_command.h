@@ -4,9 +4,12 @@
 #ifndef LIBAVIF_APPS_AVIFGAINMAPUTIL_PROGRAM_COMMAND_H_
 #define LIBAVIF_APPS_AVIFGAINMAPUTIL_PROGRAM_COMMAND_H_
 
+#include <argparse/argparse.hpp>
+#include <ostream>
+#include <sstream>
 #include <string>
+#include <vector>
 
-#include "argparse.hpp"
 #include "avif/avif.h"
 
 namespace avif {
@@ -49,14 +52,8 @@ class ProgramCommand {
 //------------------------------------------------------------------------------
 // Utilities for flag parsing.
 
-// avifPixelFormat converter for use with argparse.
-// Actually converts to int, converting to avifPixelFormat didn't seem to
-// compile.
-struct PixelFormatConverter {
-  // Methods expected by argparse.
-  argparse::ConvertedValue<int> from_str(const std::string& str);
-  std::vector<std::string> default_choices();
-};
+// Parses a YUV format string ("444", "422", "420", "400") into avifPixelFormat.
+avifPixelFormat ParsePixelFormat(const std::string& str);
 
 struct CicpValues {
   avifColorPrimaries color_primaries;
@@ -64,124 +61,66 @@ struct CicpValues {
   avifMatrixCoefficients matrix_coefficients;
 };
 
-// CicpValues converter for use with argparse. Parses the format 'P/T/M'.
-struct CicpConverter {
-  // Methods expected by argparse.
-  argparse::ConvertedValue<CicpValues> from_str(const std::string& str);
-  std::vector<std::string> default_choices();
-};
+// Parses CICP values in the format 'P/T/M'.
+CicpValues ParseCicp(const std::string& str);
 
-// avifContentLightLevelInformationBox converter for use with argparse.
-// Parses the format 'maxCLL,maxPALL'.
-struct ClliConverter {
-  // Methods expected by argparse.
-  argparse::ConvertedValue<avifContentLightLevelInformationBox> from_str(
-      const std::string& str);
-  std::vector<std::string> default_choices();
-};
+// Parses content light level information in the format 'maxCLL,maxPALL'.
+avifContentLightLevelInformationBox ParseClli(const std::string& str);
 
 struct GridOptions {
-  int grid_cols = 0;
-  int grid_rows = 0;
+  int grid_cols = 1;
+  int grid_rows = 1;
 };
 
-// GridOptions converter for use with argparse. Parses the format 'MxN'.
-struct GridOptionsConverter {
-  // Methods expected by argparse.
-  argparse::ConvertedValue<GridOptions> from_str(const std::string& str);
-  std::vector<std::string> default_choices();
-};
+inline std::ostream& operator<<(std::ostream& os, const GridOptions& grid) {
+  return os << grid.grid_cols << "x" << grid.grid_rows;
+}
 
-// Jobs converter for use with argparse. Parses an integer or "all".
-struct JobsConverter {
-  // Methods expected by argparse.
-  argparse::ConvertedValue<int> from_str(const std::string& str);
-  std::vector<std::string> default_choices();
-};
+// Parses grid options in the format 'MxN'.
+GridOptions ParseGridOptions(const std::string& str);
+
+// Parses a jobs value: an integer or "all".
+int ParseJobs(const std::string& str);
 
 // Basic flags for image writing.
 struct BasicImageEncodeArgs {
-  argparse::ArgValue<int> speed;
-  argparse::ArgValue<int> quality;
-  argparse::ArgValue<int> quality_alpha;
-  argparse::ArgValue<GridOptions> grid;
-
   // can_have_alpha should be true if the image can have alpha and the
   // output format can be avif.
-  void Init(argparse::ArgumentParser& argparse, bool can_have_alpha) {
-    argparse.add_argument(speed, "--speed", "-s")
-        .help("Encoder speed (0-10, slowest-fastest)")
-        .default_value("6");
-    argparse.add_argument(quality, "--qcolor", "-q")
-        .help((can_have_alpha
-                   ? "Quality for color (0-100, where 100 is lossless)"
-                   : "Quality (0-100, where 100 is lossless)"))
-        .default_value("60");
-    if (can_have_alpha) {
-      argparse.add_argument(quality_alpha, "--qalpha")
-          .help("Quality for alpha (0-100, where 100 is lossless)")
-          .default_value("100");
-    }
-    argparse.add_argument<GridOptions, GridOptionsConverter>(grid, "--grid")
-        .help("Encode a grid AVIF with M cols and N rows, expressed as MxN")
-        .default_value("1x1");
-  }
+  void Init(argparse::ArgumentParser& argparse, bool can_have_alpha);
+
+  int speed() const;
+  int quality() const;
+  int quality_alpha() const;
+  GridOptions grid() const;
+
+ private:
+  const argparse::ArgumentParser* argparse_ = nullptr;
+  bool can_have_alpha_ = false;
 };
 
 // Flags relevant when reading jpeg/png.
 struct ImageReadArgs {
-  argparse::ArgValue<int> depth;
-  argparse::ArgValue<int> pixel_format;
-  argparse::ArgValue<bool> ignore_profile;
-  argparse::ArgValue<bool> ignore_alpha;
-  argparse::ArgValue<bool> ignore_exif;
-  argparse::ArgValue<bool> ignore_xmp;
+  void Init(argparse::ArgumentParser& argparse);
 
-  void Init(argparse::ArgumentParser& argparse) {
-    argparse
-        .add_argument<int, PixelFormatConverter>(pixel_format, "--yuv", "-y")
-        .help("Output YUV format for avif (default = automatic)");
-    argparse.add_argument(depth, "--depth", "-d")
-        .choices({"0", "8", "10", "12"})
-        .help("Output depth (0 = automatic)");
-    argparse.add_argument(ignore_profile, "--ignore-profile")
-        .help(
-            "If the input file contains an embedded color profile, ignore it "
-            "(no-op if absent)")
-        .action(argparse::Action::STORE_TRUE)
-        .default_value("false");
-    argparse.add_argument(ignore_alpha, "--ignore-alpha")
-        .help(
-            "If the input file contains an alpha channel, ignore it "
-            "(no-op if absent)")
-        .action(argparse::Action::STORE_TRUE)
-        .default_value("false");
-    argparse.add_argument(ignore_exif, "--ignore-exif")
-        .help(
-            "If the input file contains embedded Exif metadata, ignore it "
-            "(no-op if absent)")
-        .action(argparse::Action::STORE_TRUE)
-        .default_value("false");
-    argparse.add_argument(ignore_xmp, "--ignore-xmp")
-        .help(
-            "If the input file contains embedded XMP metadata, ignore it "
-            "(no-op if absent)")
-        .action(argparse::Action::STORE_TRUE)
-        .default_value("false");
-  }
+  int depth() const;
+  avifPixelFormat pixel_format() const;
+  bool ignore_profile() const;
+  bool ignore_alpha() const;
+  bool ignore_exif() const;
+  bool ignore_xmp() const;
+
+ private:
+  const argparse::ArgumentParser* argparse_ = nullptr;
 };
 
 // Flags for setting the number of worker threads.
 struct JobsArgs {
-  argparse::ArgValue<int> jobs;
+  void Init(argparse::ArgumentParser& argparse);
 
-  void Init(argparse::ArgumentParser& argparse) {
-    argparse.add_argument<int, JobsConverter>(jobs, "--jobs", "-j")
-        .help(
-            "Number of jobs (worker threads), or 'all' to potentially use as "
-            "many cores as possible.")
-        .default_value("all");
-  }
+  int jobs() const;
+
+ private:
+  const argparse::ArgumentParser* argparse_ = nullptr;
 };
 
 // Helper to parse flags that contain several delimited values.

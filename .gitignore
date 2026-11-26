@@ -6,7 +6,7 @@
 /ext/fuzztest
 /ext/googletest
 /ext/gpac
-/ext/libargparse
+/ext/argparse
 /ext/libjpeg
 /ext/libjpeg-turbo
 /ext/libgav1

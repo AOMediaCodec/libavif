@@ -3,7 +3,10 @@
 
 #include "tonemap_command.h"
 
+#include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <string>
 
 #include "avif/avif_cxx.h"
 #include "avifutil.h"
@@ -18,22 +21,22 @@ TonemapCommand::TonemapCommand()
           "(how much brighter the display can go compared to SDR white)",
           "Images with ICC  profiles are not supported: use --ignore-profile "
           "and optionally set --cicp-input and/or --cicp-output if needed.") {
-  argparse_.add_argument(arg_input_filename_, "input_image");
-  argparse_.add_argument(arg_output_filename_, "output_image");
-  argparse_.add_argument(arg_headroom_, "--headroom")
+  argparse_.add_argument("input_image");
+  argparse_.add_argument("output_image");
+  argparse_.add_argument("--headroom")
       .help(
           "HDR headroom to tone map to. This is log2 of the ratio of HDR to "
           "SDR luminance. 0 means SDR.")
-      .default_value("0");
-  argparse_
-      .add_argument<CicpValues, CicpConverter>(arg_input_cicp_, "--cicp-input")
+      .scan<'g', float>()
+      .default_value(0.0f)
+      .nargs(1);
+  argparse_.add_argument("--cicp-input")
       .help(
           "Override input CICP values, expressed as P/T/M "
           "where P = color primaries, T = transfer characteristics, "
-          "M = matrix coefficients.");
-  argparse_
-      .add_argument<CicpValues, CicpConverter>(arg_output_cicp_,
-                                               "--cicp-output")
+          "M = matrix coefficients.")
+      .action(ParseCicp);
+  argparse_.add_argument("--cicp-output")
       .help(
           "CICP values for the output, expressed as P/T/M "
           "where P = color primaries, T = transfer characteristics, "
@@ -42,38 +45,44 @@ TonemapCommand::TonemapCommand()
           "If not specified, 'color primaries' defaults to the base image's "
           "primaries, 'transfer characteristics' defaults to 16 (PQ) if "
           "headroom > 0, or 13 (sRGB) otherwise, 'matrix coefficients' "
-          "defaults to 6 (BT601).");
-  argparse_
-      .add_argument<avifContentLightLevelInformationBox, ClliConverter>(
-          arg_clli_, "--clli")
+          "defaults to 6 (BT601).")
+      .action(ParseCicp);
+  argparse_.add_argument("--clli")
       .help(
           "Override content light level information expressed as: "
-          "MaxCLL,MaxPALL. Only relevant when saving to AVIF.");
+          "MaxCLL,MaxPALL. Only relevant when saving to AVIF.")
+      .action(ParseClli);
   arg_image_read_.Init(argparse_);
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_jobs_.Init(argparse_);
 }
 
 avifResult TonemapCommand::Run() {
-  avifContentLightLevelInformationBox clli_box = arg_clli_.value();
-  bool clli_set = arg_clli_.provenance() == argparse::Provenance::SPECIFIED;
+  const std::string input_filename = argparse_.get<std::string>("input_image");
+  const std::string output_filename =
+      argparse_.get<std::string>("output_image");
+  const auto clli_opt =
+      argparse_.present<avifContentLightLevelInformationBox>("--clli");
+  avifContentLightLevelInformationBox clli_box =
+      clli_opt.value_or(avifContentLightLevelInformationBox{});
+  bool clli_set = clli_opt.has_value();
 
-  const float headroom = arg_headroom_;
+  const float headroom = argparse_.get<float>("--headroom");
   const bool tone_mapping_to_hdr = (headroom > 0.0f);
 
   DecoderPtr decoder(avifDecoderCreate());
   if (decoder == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
-  decoder->maxThreads = arg_jobs_.jobs.value();
-  if (arg_image_read_.ignore_alpha) {
+  decoder->maxThreads = arg_jobs_.jobs();
+  if (arg_image_read_.ignore_alpha()) {
     decoder->imageContentToDecode &= ~AVIF_IMAGE_CONTENT_ALPHA;
   }
   decoder->imageContentToDecode |= AVIF_IMAGE_CONTENT_GAIN_MAP;
-  decoder->ignoreICC = arg_image_read_.ignore_profile;
-  decoder->ignoreExif = arg_image_read_.ignore_exif;
-  decoder->ignoreXMP = arg_image_read_.ignore_xmp;
-  avifResult result = ReadAvif(decoder.get(), arg_input_filename_);
+  decoder->ignoreICC = arg_image_read_.ignore_profile();
+  decoder->ignoreExif = arg_image_read_.ignore_exif();
+  decoder->ignoreXMP = arg_image_read_.ignore_xmp();
+  avifResult result = ReadAvif(decoder.get(), input_filename);
   if (result != AVIF_RESULT_OK) {
     return result;
   }
@@ -87,15 +96,14 @@ avifResult TonemapCommand::Run() {
     return result;
   }
 
-  if (arg_input_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
-    image->colorPrimaries = arg_input_cicp_.value().color_primaries;
-    image->transferCharacteristics =
-        arg_input_cicp_.value().transfer_characteristics;
-    image->matrixCoefficients = arg_input_cicp_.value().matrix_coefficients;
+  if (const auto input_cicp = argparse_.present<CicpValues>("--cicp-input")) {
+    image->colorPrimaries = input_cicp->color_primaries;
+    image->transferCharacteristics = input_cicp->transfer_characteristics;
+    image->matrixCoefficients = input_cicp->matrix_coefficients;
   }
 
   if (image->gainMap == nullptr || image->gainMap->image == nullptr) {
-    std::cerr << "Input image " << arg_input_filename_
+    std::cerr << "Input image " << input_filename
               << " does not contain a gain map\n";
     return AVIF_RESULT_INVALID_ARGUMENT;
   }
@@ -127,8 +135,8 @@ avifResult TonemapCommand::Run() {
 
   // Determine output CICP.
   CicpValues cicp;
-  if (arg_output_cicp_.provenance() == argparse::Provenance::SPECIFIED) {
-    cicp = arg_output_cicp_;  // User provided values.
+  if (const auto output_cicp = argparse_.present<CicpValues>("--cicp-output")) {
+    cicp = *output_cicp;  // User provided values.
   } else if (tone_mapping_to_base || (tone_mapping_to_hdr && base_is_hdr)) {
     cicp = {image->colorPrimaries, image->transferCharacteristics,
             image->matrixCoefficients};
@@ -150,7 +158,7 @@ avifResult TonemapCommand::Run() {
   }
 
   // Determine output depth.
-  int depth = arg_image_read_.depth;
+  int depth = arg_image_read_.depth();
   if (depth == 0) {
     if (tone_mapping_to_base) {
       depth = image->depth;
@@ -166,8 +174,7 @@ avifResult TonemapCommand::Run() {
   }
 
   // Determine output pixel format.
-  avifPixelFormat pixel_format =
-      (avifPixelFormat)arg_image_read_.pixel_format.value();
+  avifPixelFormat pixel_format = arg_image_read_.pixel_format();
   const avifPixelFormat alt_yuv_format =
       (image->gainMap->altPlaneCount == 1)
           ? AVIF_PIXEL_FORMAT_YUV400
@@ -216,7 +223,7 @@ avifResult TonemapCommand::Run() {
   }
   avifDiagnostics diag;
   result = avifImageApplyGainMap(
-      image.get(), image->gainMap, arg_headroom_, cicp.color_primaries,
+      image.get(), image->gainMap, headroom, cicp.color_primaries,
       cicp.transfer_characteristics, &tone_mapped_rgb,
       clli_set ? nullptr : &clli_box, &diag);
   if (result != AVIF_RESULT_OK) {
@@ -243,10 +250,10 @@ avifResult TonemapCommand::Run() {
     return result;
   }
 
-  return WriteImage(tone_mapped.get(), arg_image_encode_.grid.value().grid_cols,
-                    arg_image_encode_.grid.value().grid_rows,
-                    arg_output_filename_, arg_image_encode_.quality,
-                    arg_image_encode_.speed, arg_jobs_.jobs.value());
+  const GridOptions grid = arg_image_encode_.grid();
+  return WriteImage(tone_mapped.get(), grid.grid_cols, grid.grid_rows,
+                    output_filename, arg_image_encode_.quality(),
+                    arg_image_encode_.speed(), arg_jobs_.jobs());
 }
 
 }  // namespace avif
