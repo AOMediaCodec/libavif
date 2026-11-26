@@ -43,16 +43,18 @@ jobs:
           -DAVIF_JPEG=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_LIBXML2=LOCAL
           -DAVIF_LIBYUV=LOCAL -DAVIF_ZLIBPNG=LOCAL
           -DAVIF_BUILD_EXAMPLES=ON -DAVIF_BUILD_APPS=ON
-          -DAVIF_BUILD_TESTS=ON -DAVIF_GTEST=LOCAL
+          -DAVIF_BUILD_TESTS=${{ (matrix.generator == '-G Ninja' && 'ON') || 'OFF' }}
+          -DAVIF_GTEST=${{ (matrix.generator == '-G Ninja' && 'LOCAL') || 'OFF' }}
           -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON
           -DAVIF_ENABLE_EXPERIMENTAL_EXTENDED_PIXI=ON
           -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
       - name: Build libavif
         env:
-          CL: ${{ matrix.generator == '' && '/MP' || '' }}
+          CL: ${{ (matrix.generator == '' && '/MP') || '' }}
         run: cmake --build build --config Release --parallel
       - name: Run AVIF Tests
+        if: ${{ matrix.generator == '-G Ninja' }}
         working-directory: ./build
         run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
       - name: Set the config folder for Ninja
