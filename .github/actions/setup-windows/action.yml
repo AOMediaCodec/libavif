@@ -115,7 +115,11 @@ runs:
       run: |
         $LINK = "https://github.com/xiph/rav1e/releases/download/v0.8.1"
         $FILE = "rav1e-0.8.1-windows-msvc-generic"
-        curl -LO "$LINK/$FILE.zip"
+        $SHA256 = "1cb0a501c36186e14b5ad8812f442a070222da8818d0ea761a2beabcac2453cf"
+        Invoke-WebRequest -Uri "$LINK/$FILE.zip" -OutFile "$FILE.zip" -ErrorAction Stop
+        if ((Get-FileHash -LiteralPath "$FILE.zip" -Algorithm SHA256 -ErrorAction Stop).Hash -ne $SHA256) {
+          throw "SHA-256 mismatch for $FILE.zip"
+        }
         mkdir -p ${{ github.workspace }}\tmp
         7z x -y "$FILE.zip" -o"${{ github.workspace }}\tmp"
         # Do not mv the folder's content to not overwrite, and rsync is not installed.
