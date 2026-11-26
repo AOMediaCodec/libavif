@@ -617,10 +617,20 @@ static avifBool av1SequenceHeaderParse(avifSequenceHeader * header, const avifRO
         }
 
         uint32_t obu_size = 0;
-        if (obu_has_size_field)
+        if (obu_has_size_field) {
             obu_size = avifBitsReadUleb128(&bits);
-        else
-            obu_size = (int)obus.size - 1 - obu_extension_flag;
+        } else {
+            const size_t header_size = (size_t)1 + obu_extension_flag;
+            if (obus.size < header_size) {
+                return AVIF_FALSE;
+            }
+#if SIZE_MAX > UINT32_MAX
+            if ((obus.size - header_size) > UINT32_MAX) {
+                return AVIF_FALSE;
+            }
+#endif
+            obu_size = (uint32_t)(obus.size - header_size);
+        }
 
         if (bits.error) {
             return AVIF_FALSE;
