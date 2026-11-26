@@ -2590,6 +2590,11 @@ static avifBool avifEncoderIsMiniCompatible(const avifEncoder * encoder)
         return AVIF_FALSE;
     }
 
+    // The MinimizedImageBox has no syntax for 'pasp' and 'clap'.
+    if (encoder->data->imageMetadata->transformFlags & (AVIF_TRANSFORM_PASP | AVIF_TRANSFORM_CLAP)) {
+        return AVIF_FALSE;
+    }
+
     // Check for maximum field values and maximum chunk sizes.
 
     // width_minus1 and height_minus1
@@ -2761,7 +2766,8 @@ static avifResult avifEncoderWriteMiniBox(avifEncoder * encoder, avifRWStream * 
     const avifBool hasAlpha = alphaItem != NULL;
     const avifBool alphaIsPremultiplied = encoder->data->imageMetadata->alphaPremultiplied;
     const avifBool hasGainmap = gainmapItem != NULL;
-    const avifBool hasHdr = hasGainmap; // libavif only supports gainmap-based HDR encoding for now.
+    const avifBool hasClli = image->clli.maxCLL != 0 || image->clli.maxPALL != 0;
+    const avifBool hasHdr = hasGainmap || hasClli; // libavif only supports gain map and 'clli' based HDR encoding for now.
     const avifBool hasIcc = image->icc.size != 0;
     const uint32_t chromaSubsampling = image->yuvFormat == AVIF_PIXEL_FORMAT_YUV400   ? 0
                                        : image->yuvFormat == AVIF_PIXEL_FORMAT_YUV420 ? 1

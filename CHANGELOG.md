@@ -71,6 +71,10 @@ The changes are relative to the previous release, unless the baseline is specifi
   although libaom and libavm invalidate it when the next sample is decoded.
 * Default gain map matrix coefficients to BT.601 (6) instead of unspecified (2)
   in avifgainmaputil combine and in avifenc when converting a JPEG+gain map.
+* Keep 'pasp', 'clap' and 'clli' when writing a MinimizedImageBox. With
+  AVIF_ENABLE_EXPERIMENTAL_MINI and AVIF_HEADER_MINI, 'pasp' and 'clap' were
+  dropped, so now such an image falls back to a MetaBox. 'clli' was dropped
+  without a gain map, so now it is written with hdr_flag set.
 
 ## [1.4.2] - 2026-05-26
 
