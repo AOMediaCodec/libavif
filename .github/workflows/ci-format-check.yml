@@ -4,44 +4,28 @@ on:
     outputs:
       run-build-deps:
         description: "Whether to run heavy CMake / LOCAL dependency / sanitizer workflows"
-        value: ${{ jobs.cmake-format-check.outputs.run-build-deps }}
+        value: ${{ jobs.format-check.outputs.run-build-deps }}
       run-msan:
         description: "Whether to run MemorySanitizer workflow"
-        value: ${{ jobs.cmake-format-check.outputs.run-msan }}
+        value: ${{ jobs.format-check.outputs.run-msan }}
       run-android-emulator:
         description: "Whether to run Android emulator tests"
-        value: ${{ jobs.cmake-format-check.outputs.run-android-emulator }}
+        value: ${{ jobs.format-check.outputs.run-android-emulator }}
       run-macos:
         description: "Whether to run macOS workflows"
-        value: ${{ jobs.cmake-format-check.outputs.run-macos }}
+        value: ${{ jobs.format-check.outputs.run-macos }}
       run-macos-static:
         description: "Whether to run macOS static workflow"
-        value: ${{ jobs.cmake-format-check.outputs.run-macos-static }}
+        value: ${{ jobs.format-check.outputs.run-macos-static }}
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  clang-format-check:
+  format-check:
     runs-on: ubuntu-latest
-
-    name: clang-format-check
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: RafikFarhad/clang-format-github-action@601dce42932921470d1acf9295faa87752162048 # v7
-        with:
-          style: file
-          sources: "apps/*.c,apps/**/*.h,apps/**/*.c,apps/**/*.cc,examples/*.c,include/avif/*.h,src/*.c,tests/*.c,tests/**/*.h,tests/**/*.cc"
-          excludes: "apps/shared/iccjpeg.h,apps/shared/iccjpeg.c"
-
-  cmake-format-check:
-    runs-on: ubuntu-latest
-
-    name: cmake-format-check
+    name: format-check
     outputs:
       run-build-deps: ${{ steps.changes.outputs.run-build-deps }}
       run-msan: ${{ steps.changes.outputs.run-msan }}
@@ -54,9 +38,22 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: neg-c/cmake-format-action@ba83660ac46d64c12ca96f39478dcde7680a52bf # v0.1.3
-        with:
-          exclude: libavif.pc.cmake
+      - name: Check C/C++ formatting (clang-format)
+        run: |
+          clang-format --version
+          git ls-files \
+            ':(glob)apps/*.c' ':(glob)apps/**/*.h' ':(glob)apps/**/*.c' ':(glob)apps/**/*.cc' \
+            ':(glob)examples/*.c' ':(glob)include/avif/*.h' ':(glob)src/*.c' \
+            ':(glob)tests/*.c' ':(glob)tests/**/*.h' ':(glob)tests/**/*.cc' \
+            ':!:apps/shared/iccjpeg.h' ':!:apps/shared/iccjpeg.c' \
+            | xargs clang-format --dry-run --Werror --style=file --fallback-style=LLVM
+      - name: Check CMake formatting (cmake-format)
+        run: |
+          python3 -m venv "${RUNNER_TEMP}/cmake-format-venv"
+          "${RUNNER_TEMP}/cmake-format-venv/bin/pip" install --quiet "cmakelang[YAML]"
+          "${RUNNER_TEMP}/cmake-format-venv/bin/cmake-format" --version
+          git ls-files 'CMakeLists.txt' '**/CMakeLists.txt' '*.cmake' '**/*.cmake' ':!:libavif.pc.cmake' \
+            | xargs "${RUNNER_TEMP}/cmake-format-venv/bin/cmake-format" --check
       - name: Compute conditional workflow flags
         id: changes
         env:
