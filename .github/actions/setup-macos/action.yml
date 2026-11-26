@@ -86,10 +86,24 @@ runs:
 
     - name: Install libraries
       if: env.AVIF_MAC_LIBRARIES != ''
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: 1
+        HOMEBREW_NO_INSTALL_CLEANUP: 1
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
       run: |
-        brew update
-        brew cleanup
-        brew install ${AVIF_MAC_LIBRARIES}
+        MISSING_PACKAGES=()
+        for pkg in ${AVIF_MAC_LIBRARIES}; do
+          if [[ "${pkg}" == "imagemagick" ]] && (command -v magick >/dev/null 2>&1 || command -v convert >/dev/null 2>&1); then
+            continue
+          fi
+          if [[ "${pkg}" == "meson" || "${pkg}" == "nasm" ]] && command -v "${pkg}" >/dev/null 2>&1; then
+            continue
+          fi
+          MISSING_PACKAGES+=("${pkg}")
+        done
+        if [[ ${#MISSING_PACKAGES[@]} -gt 0 ]]; then
+          brew install "${MISSING_PACKAGES[@]}"
+        fi
       shell: bash
 
     - uses: ./.github/actions/cache
