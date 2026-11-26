@@ -1,6 +1,8 @@
 // Copyright 2023 Google LLC
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <string>
+
 #include "avif/avif.h"
 #include "aviftest_helpers.h"
 #include "gtest/gtest.h"
@@ -319,6 +321,90 @@ INSTANTIATE_TEST_SUITE_P(LargeDimensions, AvifMinimizedImageBoxGainMapTest,
                          Combine(/*width=*/Values(200), /*height=*/Values(150),
                                  /*gain_map_width=*/Values(100, 200),
                                  /*gain_map_height=*/Values(150)));
+
+//------------------------------------------------------------------------------
+
+class AvifMinimizedImageBoxPropertyTest
+    : public testing::TestWithParam<std::string> {};
+
+// A MinimizedImageBox has no syntax for 'clap' and 'pasp', so the encoder must
+// fall back to a regular MetaBox instead of dropping them. It does have a
+// syntax for 'clli', which must be kept in the MinimizedImageBox.
+TEST_P(AvifMinimizedImageBoxPropertyTest, IsKept) {
+  const std::string& property = GetParam();
+
+  ImagePtr image = testutil::CreateImage(/*width=*/16, /*height=*/16,
+                                         /*depth=*/8, AVIF_PIXEL_FORMAT_YUV444,
+                                         AVIF_PLANES_YUV, AVIF_RANGE_FULL);
+  ASSERT_NE(image, nullptr);
+  testutil::FillImageGradient(image.get());
+  if (property == "clap") {
+    image->transformFlags |= AVIF_TRANSFORM_CLAP;
+    image->clap.widthN = 8;
+    image->clap.widthD = 1;
+    image->clap.heightN = 8;
+    image->clap.heightD = 1;
+    image->clap.horizOffN = 0;
+    image->clap.horizOffD = 1;
+    image->clap.vertOffN = 0;
+    image->clap.vertOffD = 1;
+  } else if (property == "pasp") {
+    image->transformFlags |= AVIF_TRANSFORM_PASP;
+    image->pasp.hSpacing = 2;
+    image->pasp.vSpacing = 1;
+  } else {
+    ASSERT_EQ(property, "clli");
+    image->clli.maxCLL = 1000;
+    image->clli.maxPALL = 400;
+  }
+
+  testutil::AvifRwData encoded;
+  EncoderPtr encoder(avifEncoderCreate());
+  ASSERT_NE(encoder, nullptr);
+  encoder->speed = AVIF_SPEED_FASTEST;
+  encoder->headerFormat = AVIF_HEADER_MINI;
+  ASSERT_EQ(avifEncoderWrite(encoder.get(), image.get(), &encoded),
+            AVIF_RESULT_OK);
+
+  // The major brand of the FileTypeBox follows its size and type.
+  ASSERT_GE(encoded.size, 12u);
+  const std::string major_brand(reinterpret_cast<const char*>(encoded.data) + 8,
+                                4);
+  EXPECT_EQ(major_brand, property == "clli" ? "mif3" : "avif");
+
+  ImagePtr decoded(avifImageCreateEmpty());
+  ASSERT_NE(decoded, nullptr);
+  DecoderPtr decoder(avifDecoderCreate());
+  ASSERT_NE(decoder, nullptr);
+  ASSERT_EQ(avifDecoderReadMemory(decoder.get(), decoded.get(), encoded.data,
+                                  encoded.size),
+            AVIF_RESULT_OK);
+
+  // Only the container may differ from the regular MetaBox encoding.
+  // AreImagesEqual() compares 'clap', 'pasp' and 'clli'.
+  testutil::AvifRwData encoded_meta =
+      testutil::Encode(image.get(), encoder->speed);
+  ASSERT_NE(encoded_meta.data, nullptr);
+  ImagePtr decoded_meta =
+      testutil::Decode(encoded_meta.data, encoded_meta.size);
+  ASSERT_NE(decoded_meta, nullptr);
+  EXPECT_TRUE(testutil::AreImagesEqual(*decoded_meta.get(), *decoded.get()));
+  EXPECT_EQ(decoded->transformFlags, image->transformFlags);
+  if (property == "clap") {
+    EXPECT_EQ(decoded->clap.widthN, 8u);
+  } else if (property == "pasp") {
+    EXPECT_EQ(decoded->pasp.hSpacing, 2u);
+  } else {
+    EXPECT_EQ(decoded->clli.maxCLL, 1000u);
+    EXPECT_EQ(decoded->clli.maxPALL, 400u);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(Property, AvifMinimizedImageBoxPropertyTest,
+                         Values("clap", "pasp", "clli"),
+                         [](const testing::TestParamInfo<std::string>& info) {
+                           return info.param;
+                         });
 
 //------------------------------------------------------------------------------
 
