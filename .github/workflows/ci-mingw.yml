@@ -31,21 +31,37 @@ jobs:
       - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: ${{ matrix.sys }}
-          update: true
+          update: false
           install: >-
             git
           pacboy: >-
             aom:p
-            cmake:p
-            diffutils:p
             cc:p
+            ccache:p
+            cmake:p
             dav1d:p
+            diffutils:p
             imagemagick:p
             libjpeg-turbo:p
             libpng:p
             libyuv:p
             ninja:p
             zlib:p
+      - name: Configure ccache
+        run: |
+          CCACHE_PATH="$(cygpath -m "$RUNNER_TEMP")/ccache"
+          mkdir -p "$CCACHE_PATH"
+          echo "CCACHE_DIR=$CCACHE_PATH" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=500M" >> "$GITHUB_ENV"
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
+      - name: Cache ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-mingw-${{ matrix.sys }}-${{ hashFiles('cmake/Modules/Local*', 'src/**', 'apps/**', 'tests/**') }}
+          restore-keys: |
+            ccache-mingw-${{ matrix.sys }}-
       - name: Print cmake version
         run: cmake --version
 
@@ -65,4 +81,4 @@ jobs:
         run: cmake --build build --config Release --parallel
       - name: Run AVIF Tests
         working-directory: ./build
-        run: ctest -j --output-on-failure
+        run: ctest -j $(nproc) --output-on-failure
