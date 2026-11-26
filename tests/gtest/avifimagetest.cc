@@ -49,5 +49,27 @@ TEST(AvifImageTest, WriteImage) {
       image.get(), (testing::TempDir() + "/avifimagetest.png").c_str()));
 }
 
+TEST(AvifImageTest, CopyRejectsTooManyProperties) {
+  ImagePtr src(avifImageCreateEmpty());
+  ImagePtr dst(avifImageCreateEmpty());
+  ASSERT_NE(src, nullptr);
+  ASSERT_NE(dst, nullptr);
+
+  const uint8_t property_type[4] = {'a', 'b', 'c', 'd'};
+  const uint8_t property_payload = 0;
+  ASSERT_EQ(
+      avifImageAddOpaqueProperty(src.get(), property_type, &property_payload,
+                                 sizeof(property_payload)),
+      AVIF_RESULT_OK);
+
+  src->numProperties =
+      std::numeric_limits<size_t>::max() / sizeof(avifImageItemProperty) + 1;
+  EXPECT_EQ(avifImageCopy(dst.get(), src.get(), AVIF_PLANES_ALL),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  src->numProperties = 1;
+  EXPECT_EQ(dst->properties, nullptr);
+  EXPECT_EQ(dst->numProperties, 0u);
+}
+
 }  // namespace
 }  // namespace avif
