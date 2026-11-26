@@ -83,7 +83,7 @@ jobs:
           CXXFLAGS: ${{ env.CI_CXXFLAGS }}
           LDFLAGS: ${{ env.CI_LDFLAGS }}
       - name: Build libavif
-        run: cmake --build build --config Debug --parallel 4
+        run: cmake --build build --config Debug --parallel
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

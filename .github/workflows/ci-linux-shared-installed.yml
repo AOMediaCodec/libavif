@@ -51,7 +51,7 @@ jobs:
           -DAVIF_BUILD_GDK_PIXBUF=ON -DCMAKE_INSTALL_PREFIX=./build/install
           -DAVIF_ENABLE_WERROR=ON ${{ env.CMAKE_AVIF_FLAGS }}
       - name: Build libavif
-        run: cmake --build build --config Release --parallel 4
+        run: cmake --build build --config Release --parallel
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -j $(getconf _NPROCESSORS_ONLN) --output-on-failure

@@ -49,7 +49,9 @@ jobs:
           -DAVIF_ENABLE_WERROR=ON
           -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
       - name: Build libavif
-        run: cmake --build build --config Release --parallel 4
+        env:
+          CL: ${{ matrix.generator == '' && '/MP' || '' }}
+        run: cmake --build build --config Release --parallel
       - name: Run AVIF Tests
         working-directory: ./build
         run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure
