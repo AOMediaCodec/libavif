@@ -3,7 +3,7 @@ set(AVIF_CORROSION_GIT_TAG v0.6.1)
 set(AVIF_CARGOC_GIT_TAG v0.10.20)
 
 set(RAV1E_LIB_FILENAME
-    "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${AVIF_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/lib/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}"
 )
 
 if(EXISTS "${RAV1E_LIB_FILENAME}")
@@ -11,6 +11,11 @@ if(EXISTS "${RAV1E_LIB_FILENAME}")
     add_library(rav1e::rav1e STATIC IMPORTED)
     set_target_properties(rav1e::rav1e PROPERTIES IMPORTED_LOCATION "${RAV1E_LIB_FILENAME}" IMPORTED_SONAME rav1e AVIF_LOCAL ON)
     target_include_directories(rav1e::rav1e INTERFACE "${AVIF_SOURCE_DIR}/ext/rav1e/build.libavif/usr/include/rav1e")
+    if(WIN32)
+        target_link_libraries(rav1e::rav1e INTERFACE kernel32 ntdll userenv ws2_32 bcrypt dbghelp synchronization)
+    elseif(UNIX AND NOT APPLE)
+        target_link_libraries(rav1e::rav1e INTERFACE ${CMAKE_DL_LIBS} m pthread)
+    endif()
 else()
     message(
         STATUS "libavif(AVIF_CODEC_RAV1E=LOCAL): compiled rav1e library not found at ${RAV1E_LIB_FILENAME}; using FetchContent"
@@ -78,8 +83,8 @@ else()
     )
     set(RAV1E_ENVVARS)
     if(AVIF_OPTIMIZE_RAV1E_FOR_SIZE)
-        set(RAV1E_ENVVARS "CARGO_PROFILE_RELEASE_DEBUG=0" "CARGO_PROFILE_RELEASE_STRIP=true"
-                          "CARGO_PROFILE_PROFILE_RELEASE_OPT_LEVEL=\"s\"" "CARGO_PROFILE_RELEASE_INCREMENTAL=false"
+        set(RAV1E_ENVVARS "CARGO_PROFILE_RELEASE_DEBUG=0" "CARGO_PROFILE_RELEASE_STRIP=true" "CARGO_PROFILE_RELEASE_OPT_LEVEL=s"
+                          "CARGO_PROFILE_RELEASE_INCREMENTAL=false"
         )
     endif()
     if(CMAKE_C_IMPLICIT_LINK_DIRECTORIES MATCHES "alpine-linux-musl")
