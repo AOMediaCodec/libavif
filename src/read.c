@@ -822,6 +822,12 @@ typedef enum avifUniqueBoxFlag
     AVIF_UNIQUE_IINF,
     AVIF_UNIQUE_IREF,
     AVIF_UNIQUE_GRPL,
+    AVIF_UNIQUE_STSD,
+    AVIF_UNIQUE_STTS,
+    AVIF_UNIQUE_STSC,
+    AVIF_UNIQUE_STSZ,
+    AVIF_UNIQUE_STCO_CO64, // Shared by 'stco' and 'co64', of which only one may be present.
+    AVIF_UNIQUE_STSS,
 } avifUniqueBoxFlag;
 // Use this to keep track of whether or not a child box that must be unique (0 or 1 present) has
 // been seen yet, when parsing a parent box. If the "seen" bit is already set for a given box when
@@ -3752,6 +3758,13 @@ static avifResult avifParseSampleToChunkBox(avifSampleTable * sampleTable, const
             }
         }
         prevFirstChunk = sampleToChunk->firstChunk;
+        // Section 8.7.4.3 of ISO/IEC 14496-12:
+        //   The index ranges from 1 to the number of sample entries in the Sample Description Box.
+        // Only the lower bound is checked here because 'stsd' may come after 'stsc'.
+        if (sampleToChunk->sampleDescriptionIndex == 0) {
+            avifDiagnosticsPrintf(diag, "Box[stsc] has a sample_description_index of 0");
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
     }
     return AVIF_RESULT_OK;
 }
@@ -3878,23 +3891,38 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
 
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[stbl]");
 
+    // Sections 8.5.2.1 ('stsd'), 8.6.1.2.1 ('stts') and 8.7.4.1 ('stsc') of ISO/IEC 14496-12:
+    //   Quantity: Exactly one
+    // Sections 8.7.3.1 ('stsz', 'stz2') and 8.7.5.1 ('stco', 'co64') of ISO/IEC 14496-12:
+    //   Quantity: Exactly one variant must be present
+    // Section 8.6.2.1 ('stss') of ISO/IEC 14496-12:
+    //   Quantity: Zero or one
+    // Only duplicates are rejected here. 'stz2' is not parsed, so only 'stsz' is checked.
+    uint32_t uniqueBoxFlags = 0;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
         AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
 
         if (!memcmp(header.type, "stco", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STCO_CO64, "stbl", "stco", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseChunkOffsetBox(track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "co64", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STCO_CO64, "stbl", "co64", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseChunkOffsetBox(track->sampleTable, AVIF_TRUE, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsc", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STSC, "stbl", "stsc", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseSampleToChunkBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsz", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STSZ, "stbl", "stsz", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseSampleSizeBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stss", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STSS, "stbl", "stss", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseSyncSampleBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stts", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STTS, "stbl", "stts", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseTimeToSampleBox(track->sampleTable, avifROStreamCurrent(&s), header.size, diag));
         } else if (!memcmp(header.type, "stsd", 4)) {
+            AVIF_CHECKERR(uniqueBoxSeen(&uniqueBoxFlags, AVIF_UNIQUE_STSD, "stbl", "stsd", diag), AVIF_RESULT_BMFF_PARSE_FAILED);
             AVIF_CHECKRES(avifParseSampleDescriptionBox(track->sampleTable,
                                                         rawOffset + avifROStreamOffset(&s),
                                                         avifROStreamCurrent(&s),
