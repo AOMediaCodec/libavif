@@ -28,7 +28,6 @@ jobs:
           add-to-path: false
       - uses: ./.github/actions/setup-linux
         with:
-          cache-deps: false
           codec-dav1d: "LOCAL"
       - name: Setup JDK
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
