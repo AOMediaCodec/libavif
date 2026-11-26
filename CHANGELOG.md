@@ -21,6 +21,7 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ### Changed since 1.4.2
 
+* avifenc: properly handle 'auto' format for --yuv option
 * Update aom.cmd/LocalAom.cmake: v3.15.3
 * Update dav1d.cmd/dav1d_android.sh/LocalDav1d.cmake: 1.5.5
 * Update LocalAvm.cmake: v1.0.0
