@@ -36,7 +36,7 @@ else
   TESTDATA_DIR="$(pwd)/data"
 fi
 if [[ "$#" -ge 5 && ! -z "$5" ]]; then
-  OUTPUT_DIR="$(eval echo "$5")/test_cmd_enc_boxes_golden"
+  OUTPUT_DIR="$(eval echo "$5")/$(basename "$0" .sh)"
 else
   OUTPUT_DIR="$(mktemp -d)"
 fi
@@ -67,8 +67,9 @@ has_errors=false
 
 # Cleanup
 cleanup() {
+    local exit_code=$?
     # Only delete temp files if the test succeeded, to allow debugging in case or error.
-    if ! $has_errors; then
+    if [[ $exit_code -eq 0 ]] && ! $has_errors; then
         find ${OUTPUT_DIR} -type f \( -name '*.avif' -o -name '*.xml' -o -name '*.xml.diff' \) -delete
     fi
 }
