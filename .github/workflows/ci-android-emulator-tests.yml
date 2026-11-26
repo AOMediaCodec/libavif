@@ -35,7 +35,6 @@ jobs:
           add-to-path: false
       - uses: ./.github/actions/setup-linux
         with:
-          cache-deps: false
           codec-dav1d: "LOCAL"
           libyuv: "LOCAL"
       - name: Setup JDK

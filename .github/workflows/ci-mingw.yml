@@ -46,10 +46,6 @@ jobs:
             libyuv:p
             ninja:p
             zlib:p
-      - uses: ./.github/actions/cache
-        with:
-          extra-key: ${{ matrix.sys }}
-          use-sccache: false
       - name: Print cmake version
         run: cmake --version
 

@@ -1,9 +1,6 @@
 name: "Cache for all OSes"
 description: "Needs to be called before any call to ext/.cmd|sh or cmake"
 inputs:
-  cache-deps:
-    description: "Whether to cache FetchContent sources in build/_deps"
-    default: "true"
   cache-ext:
     description: "Whether to cache prebuilt libraries in ext"
     default: "false"
@@ -16,9 +13,6 @@ inputs:
   use-rust:
     description: "Whether rust is used"
     default: "false"
-  use-sccache:
-    description: "Whether to set up and cache sccache for C/C++/Rust compilation"
-    default: "true"
 outputs:
   ext-cache-hit:
     value: ${{ steps.cache-ext.outputs.cache-hit }}
@@ -26,12 +20,10 @@ runs:
   using: "composite"
   steps:
     - name: Set up sccache
-      if: ${{ inputs.use-sccache == 'true' }}
       uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
       with:
         tool: sccache
     - name: Configure sccache environment
-      if: ${{ inputs.use-sccache == 'true' }}
       env:
         RUNNER_OS: ${{ runner.os }}
         USE_RUST: ${{ inputs.use-rust }}
@@ -51,7 +43,6 @@ runs:
         fi
       shell: bash
     - name: Cache sccache
-      if: ${{ inputs.use-sccache == 'true' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.temp }}/sccache
@@ -114,13 +105,3 @@ runs:
       with:
         path: ext
         key: ext-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.MESON_KEY }}-${{ hashFiles(steps.workflow-info.outputs.path, 'ext/*.cmd', 'ext/*.sh') }}
-    - name: Cache external dependency sources in build/_deps
-      if: ${{ inputs.cache-deps == 'true' }}
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: |
-          build/_deps
-          !build/_deps/*-build
-          !build/_deps/*-install
-          !build/_deps/rav1e-src/target
-        key: deps-src-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ hashFiles('cmake/Modules/Local*') }}
