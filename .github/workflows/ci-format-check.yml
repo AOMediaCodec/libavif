@@ -44,30 +44,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF_NAME: ${{ github.ref }}
         run: |
-          ALL_JOBS=(
-            linux_shared_installed
-            c_warnings_linux
-            linux_shared_local
-            linux_golden_tests
-            mingw
-            windows_installed
-            c_warnings_windows
-            linux_coverage
-            fuzztest
-            android_jni
-            linux_oldest_cmake
-            disable_gtest
-            linux_static
-            linux_static_av2
-            linux_static_sanitized
-            linux_static_sanitized_memory
-            windows_shared_local
-            windows_static_local
-            android_emulator_tests
-            macos_shared_installed
-            macos_shared_local
-            macos_static
-          )
           ALL_LINUX_JOBS=(
             linux_shared_installed
             c_warnings_linux
@@ -94,6 +70,16 @@ jobs:
             macos_shared_installed
             macos_shared_local
             macos_static
+          )
+          # Workflows that do not use .github/actions/setup-* (nor cache/setup-common).
+          OTHER_JOBS=(
+            mingw
+          )
+          ALL_JOBS=(
+            "${ALL_LINUX_JOBS[@]}"
+            "${ALL_WINDOWS_JOBS[@]}"
+            "${ALL_MACOS_JOBS[@]}"
+            "${OTHER_JOBS[@]}"
           )
           DEFAULT_JOBS=(
             linux_shared_installed
@@ -130,7 +116,7 @@ jobs:
           fi
 
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            enable_jobs "${DEFAULT_JOBS[@]}" "${BUILD_DEPS_JOBS[@]}" linux_static_sanitized_memory android_emulator_tests
+            enable_jobs "${ALL_LINUX_JOBS[@]}" "${ALL_WINDOWS_JOBS[@]}" "${OTHER_JOBS[@]}"
             [[ "${REF_NAME}" == "refs/heads/main" ]] && enable_jobs "${ALL_MACOS_JOBS[@]}"
           else
             if [[ "${EVENT_NAME}" == "pull_request" ]]; then
@@ -148,7 +134,7 @@ jobs:
             if [[ -z "${CHANGED}" ]]; then
               enable_jobs "${DEFAULT_JOBS[@]}"
               if [[ "${IS_MAIN}" == "true" ]]; then
-                enable_jobs "${BUILD_DEPS_JOBS[@]}" linux_static_sanitized_memory android_emulator_tests macos_shared_installed macos_shared_local
+                enable_jobs "${BUILD_DEPS_JOBS[@]}" linux_static_sanitized_memory macos_shared_installed macos_shared_local
               fi
             else
               NON_CI_CHANGED="false"
@@ -167,8 +153,12 @@ jobs:
                   .github/actions/setup-windows/*)
                     enable_jobs "${ALL_WINDOWS_JOBS[@]}"
                     ;;
-                  .github/actions/*)
+                  .github/actions/cache/*|.github/actions/setup-common/*)
+                    # Used by setup-linux, setup-macos, and setup-windows (not ci-mingw.yml).
                     enable_jobs "${ALL_LINUX_JOBS[@]}" "${ALL_WINDOWS_JOBS[@]}" "${ALL_MACOS_JOBS[@]}"
+                    ;;
+                  .github/actions/*)
+                    enable_jobs "${ALL_JOBS[@]}"
                     ;;
                   .github/workflows/ci.yml|.github/workflows/ci-format-check.yml)
                     enable_jobs "${ALL_JOBS[@]}"
@@ -220,7 +210,7 @@ jobs:
                   enable_jobs "${BUILD_DEPS_JOBS[@]}"
                 fi
                 if [[ "${IS_MAIN}" == "true" ]]; then
-                  enable_jobs linux_static_sanitized_memory android_emulator_tests macos_shared_installed macos_shared_local
+                  enable_jobs linux_static_sanitized_memory macos_shared_installed macos_shared_local
                   [[ "${BUILD_DEPS_CODE}" == "true" ]] && enable_jobs macos_static
                 fi
               fi
