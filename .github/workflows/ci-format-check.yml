@@ -2,21 +2,9 @@ name: CI Format Check
 on:
   workflow_call:
     outputs:
-      run-build-deps:
-        description: "Whether to run heavy CMake / LOCAL dependency / sanitizer workflows"
-        value: ${{ jobs.format-check.outputs.run-build-deps }}
-      run-msan:
-        description: "Whether to run MemorySanitizer workflow"
-        value: ${{ jobs.format-check.outputs.run-msan }}
-      run-android-emulator:
-        description: "Whether to run Android emulator tests"
-        value: ${{ jobs.format-check.outputs.run-android-emulator }}
-      run-macos:
-        description: "Whether to run macOS workflows"
-        value: ${{ jobs.format-check.outputs.run-macos }}
-      run-macos-static:
-        description: "Whether to run macOS static workflow"
-        value: ${{ jobs.format-check.outputs.run-macos-static }}
+      targets:
+        description: "JSON map of CI workflow jobs to run"
+        value: ${{ jobs.format-check.outputs.targets }}
   workflow_dispatch:
 
 permissions:
@@ -27,11 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: format-check
     outputs:
-      run-build-deps: ${{ steps.changes.outputs.run-build-deps }}
-      run-msan: ${{ steps.changes.outputs.run-msan }}
-      run-android-emulator: ${{ steps.changes.outputs.run-android-emulator }}
-      run-macos: ${{ steps.changes.outputs.run-macos }}
-      run-macos-static: ${{ steps.changes.outputs.run-macos-static }}
+      targets: ${{ steps.changes.outputs.targets }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,70 +44,202 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF_NAME: ${{ github.ref }}
         run: |
+          ALL_JOBS=(
+            linux_shared_installed
+            c_warnings_linux
+            linux_shared_local
+            linux_golden_tests
+            mingw
+            windows_installed
+            c_warnings_windows
+            linux_coverage
+            fuzztest
+            android_jni
+            linux_oldest_cmake
+            disable_gtest
+            linux_static
+            linux_static_av2
+            linux_static_sanitized
+            linux_static_sanitized_memory
+            windows_shared_local
+            windows_static_local
+            android_emulator_tests
+            macos_shared_installed
+            macos_shared_local
+            macos_static
+          )
+          ALL_LINUX_JOBS=(
+            linux_shared_installed
+            c_warnings_linux
+            linux_shared_local
+            linux_golden_tests
+            linux_coverage
+            fuzztest
+            android_jni
+            linux_oldest_cmake
+            disable_gtest
+            linux_static
+            linux_static_av2
+            linux_static_sanitized
+            linux_static_sanitized_memory
+            android_emulator_tests
+          )
+          ALL_WINDOWS_JOBS=(
+            windows_installed
+            c_warnings_windows
+            windows_shared_local
+            windows_static_local
+          )
+          ALL_MACOS_JOBS=(
+            macos_shared_installed
+            macos_shared_local
+            macos_static
+          )
+          DEFAULT_JOBS=(
+            linux_shared_installed
+            c_warnings_linux
+            linux_shared_local
+            linux_golden_tests
+            mingw
+            windows_installed
+            c_warnings_windows
+            linux_coverage
+            fuzztest
+            android_jni
+          )
+          BUILD_DEPS_JOBS=(
+            linux_oldest_cmake
+            disable_gtest
+            linux_static
+            linux_static_av2
+            linux_static_sanitized
+            windows_shared_local
+            windows_static_local
+          )
+
+          declare -A ENABLED=()
+          enable_jobs() {
+            for job in "$@"; do
+              ENABLED["${job}"]=true
+            done
+          }
+
           IS_MAIN="false"
           if [[ "${EVENT_NAME}" == "push" && "${REF_NAME}" == "refs/heads/main" ]]; then
             IS_MAIN="true"
           fi
 
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            ON_MAIN="false"
-            [[ "${REF_NAME}" == "refs/heads/main" ]] && ON_MAIN="true"
-            echo "run-build-deps=true" >> "$GITHUB_OUTPUT"
-            echo "run-msan=true" >> "$GITHUB_OUTPUT"
-            echo "run-android-emulator=true" >> "$GITHUB_OUTPUT"
-            echo "run-macos=${ON_MAIN}" >> "$GITHUB_OUTPUT"
-            echo "run-macos-static=${ON_MAIN}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
-            CHANGED=$(git diff --name-only HEAD^1 HEAD)
-          elif [[ "${EVENT_NAME}" == "push" && "${REF_NAME}" != "refs/heads/main" ]]; then
-            CHANGED=$(git diff --name-only origin/main...HEAD || git diff --name-only HEAD^1 HEAD || true)
-          elif git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
-            CHANGED=$(git diff --name-only HEAD^1 HEAD)
+            enable_jobs "${DEFAULT_JOBS[@]}" "${BUILD_DEPS_JOBS[@]}" linux_static_sanitized_memory android_emulator_tests
+            [[ "${REF_NAME}" == "refs/heads/main" ]] && enable_jobs "${ALL_MACOS_JOBS[@]}"
           else
-            CHANGED=""
+            if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+              CHANGED=$(git diff --name-only HEAD^1 HEAD)
+            elif [[ "${EVENT_NAME}" == "push" && "${REF_NAME}" != "refs/heads/main" ]]; then
+              CHANGED=$(git diff --name-only origin/main...HEAD || git diff --name-only HEAD^1 HEAD || true)
+            elif git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+              CHANGED=$(git diff --name-only HEAD^1 HEAD)
+            else
+              CHANGED=""
+            fi
+            echo "Changed files:"
+            echo "${CHANGED}"
+
+            if [[ -z "${CHANGED}" ]]; then
+              enable_jobs "${DEFAULT_JOBS[@]}"
+              if [[ "${IS_MAIN}" == "true" ]]; then
+                enable_jobs "${BUILD_DEPS_JOBS[@]}" linux_static_sanitized_memory android_emulator_tests macos_shared_installed macos_shared_local
+              fi
+            else
+              NON_CI_CHANGED="false"
+              BUILD_DEPS_CODE="false"
+              DIRECT_ANDROID_EMULATOR="false"
+
+              while IFS= read -r file; do
+                [[ -z "${file}" ]] && continue
+                case "${file}" in
+                  .github/actions/setup-linux/*)
+                    enable_jobs "${ALL_LINUX_JOBS[@]}"
+                    ;;
+                  .github/actions/setup-macos/*)
+                    enable_jobs "${ALL_MACOS_JOBS[@]}"
+                    ;;
+                  .github/actions/setup-windows/*)
+                    enable_jobs "${ALL_WINDOWS_JOBS[@]}"
+                    ;;
+                  .github/actions/*)
+                    enable_jobs "${ALL_LINUX_JOBS[@]}" "${ALL_WINDOWS_JOBS[@]}" "${ALL_MACOS_JOBS[@]}"
+                    ;;
+                  .github/workflows/ci.yml|.github/workflows/ci-format-check.yml)
+                    enable_jobs "${ALL_JOBS[@]}"
+                    ;;
+                  .github/workflows/ci-android-emulator-tests.yml)
+                    enable_jobs android_emulator_tests
+                    DIRECT_ANDROID_EMULATOR="true"
+                    ;;
+                  .github/workflows/ci-android-jni.yml)                  enable_jobs android_jni ;;
+                  .github/workflows/ci-c-warnings.yml)                   enable_jobs c_warnings_linux c_warnings_windows ;;
+                  .github/workflows/ci-disable-gtest.yml)                enable_jobs disable_gtest ;;
+                  .github/workflows/ci-fuzztest.yml)                     enable_jobs fuzztest ;;
+                  .github/workflows/ci-linux-coverage.yml)               enable_jobs linux_coverage ;;
+                  .github/workflows/ci-linux-golden-tests.yml)           enable_jobs linux_golden_tests ;;
+                  .github/workflows/ci-linux-oldest-cmake.yml)           enable_jobs linux_oldest_cmake ;;
+                  .github/workflows/ci-linux-shared-installed.yml)       enable_jobs linux_shared_installed ;;
+                  .github/workflows/ci-linux-shared-local.yml)           enable_jobs linux_shared_local ;;
+                  .github/workflows/ci-linux-static.yml)                 enable_jobs linux_static ;;
+                  .github/workflows/ci-linux-static-av2.yml)             enable_jobs linux_static_av2 ;;
+                  .github/workflows/ci-linux-static-sanitized.yml)       enable_jobs linux_static_sanitized ;;
+                  .github/workflows/ci-linux-static-sanitized-memory.yml) enable_jobs linux_static_sanitized_memory ;;
+                  .github/workflows/ci-macos-shared-installed.yml)       enable_jobs macos_shared_installed ;;
+                  .github/workflows/ci-macos-shared-local.yml)           enable_jobs macos_shared_local ;;
+                  .github/workflows/ci-macos-static.yml)                 enable_jobs macos_static ;;
+                  .github/workflows/ci-mingw.yml)                        enable_jobs mingw ;;
+                  .github/workflows/ci-windows-installed.yml)            enable_jobs windows_installed ;;
+                  .github/workflows/ci-windows-shared-local.yml)         enable_jobs windows_shared_local ;;
+                  .github/workflows/ci-windows-static-local.yml)         enable_jobs windows_static_local ;;
+                  .github/*)
+                    # Other .github files (dependabot.yml, scorecard.yml, release artifact workflows, etc.)
+                    ;;
+                  *)
+                    NON_CI_CHANGED="true"
+                    case "${file}" in
+                      *CMakeLists.txt|cmake/*|ext/*)
+                        BUILD_DEPS_CODE="true"
+                        ;;
+                      android_jni/*)
+                        enable_jobs android_emulator_tests
+                        ;;
+                    esac
+                    ;;
+                esac
+              done <<< "${CHANGED}"
+
+              if [[ "${NON_CI_CHANGED}" == "true" ]]; then
+                enable_jobs "${DEFAULT_JOBS[@]}"
+                if [[ "${IS_MAIN}" == "true" || "${BUILD_DEPS_CODE}" == "true" ]]; then
+                  enable_jobs "${BUILD_DEPS_JOBS[@]}"
+                fi
+                if [[ "${IS_MAIN}" == "true" ]]; then
+                  enable_jobs linux_static_sanitized_memory android_emulator_tests macos_shared_installed macos_shared_local
+                  [[ "${BUILD_DEPS_CODE}" == "true" ]] && enable_jobs macos_static
+                fi
+              fi
+
+              if [[ "${EVENT_NAME}" != "pull_request" && "${IS_MAIN}" != "true" && "${DIRECT_ANDROID_EMULATOR}" != "true" ]]; then
+                unset 'ENABLED[android_emulator_tests]'
+              fi
+            fi
           fi
-          echo "Changed files:"
-          echo "${CHANGED}"
 
-          BUILD_DEPS="false"
-          MSAN="false"
-          ANDROID="false"
-          while IFS= read -r file; do
-            [[ -z "${file}" ]] && continue
-            case "${file}" in
-              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-disable-gtest.yml|.github/workflows/ci-linux-oldest-cmake.yml|.github/workflows/ci-linux-static.yml|.github/workflows/ci-linux-static-av2.yml|.github/workflows/ci-linux-static-sanitized.yml|.github/workflows/ci-macos-static.yml|.github/workflows/ci-windows-shared-local.yml|.github/workflows/ci-windows-static-local.yml|*CMakeLists.txt|cmake/*|ext/*)
-                BUILD_DEPS="true"
-                ;;
-            esac
-            case "${file}" in
-              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-linux-static-sanitized-memory.yml)
-                MSAN="true"
-                ;;
-            esac
-            case "${file}" in
-              .github/actions/*|.github/workflows/ci.yml|.github/workflows/ci-android-emulator-tests.yml|android_jni/*)
-                ANDROID="true"
-                ;;
-            esac
-          done <<< "${CHANGED}"
-
-          RUN_BUILD_DEPS="false"
-          [[ "${IS_MAIN}" == "true" || "${BUILD_DEPS}" == "true" ]] && RUN_BUILD_DEPS="true"
-
-          RUN_MSAN="false"
-          [[ "${IS_MAIN}" == "true" || "${MSAN}" == "true" ]] && RUN_MSAN="true"
-
-          RUN_ANDROID_EMULATOR="false"
-          [[ ("${EVENT_NAME}" == "pull_request" || "${IS_MAIN}" == "true") && "${ANDROID}" == "true" ]] && RUN_ANDROID_EMULATOR="true"
-
-          RUN_MACOS_STATIC="false"
-          [[ "${IS_MAIN}" == "true" && "${BUILD_DEPS}" == "true" ]] && RUN_MACOS_STATIC="true"
-
-          echo "run-build-deps=${RUN_BUILD_DEPS}" >> "$GITHUB_OUTPUT"
-          echo "run-msan=${RUN_MSAN}" >> "$GITHUB_OUTPUT"
-          echo "run-android-emulator=${RUN_ANDROID_EMULATOR}" >> "$GITHUB_OUTPUT"
-          echo "run-macos=${IS_MAIN}" >> "$GITHUB_OUTPUT"
-          echo "run-macos-static=${RUN_MACOS_STATIC}" >> "$GITHUB_OUTPUT"
+          JSON="{"
+          SEP=""
+          ENABLED_LIST=()
+          for job in "${ALL_JOBS[@]}"; do
+            val="${ENABLED[$job]:-false}"
+            JSON+="${SEP}\"${job}\":${val}"
+            SEP=","
+            [[ "${val}" == "true" ]] && ENABLED_LIST+=("${job}")
+          done
+          JSON+="}"
+          echo "Enabled jobs (${#ENABLED_LIST[@]}/${#ALL_JOBS[@]}): ${ENABLED_LIST[*]:-none}"
+          echo "targets=${JSON}" >> "$GITHUB_OUTPUT"
