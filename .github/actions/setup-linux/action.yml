@@ -99,9 +99,21 @@ runs:
       shell: bash
 
     - name: Install libraries
+      if: env.AVIF_UNIX_LIBRARIES != ''
       run: |
-        sudo apt update -y
-        sudo apt install -y ${AVIF_UNIX_LIBRARIES}
+        MISSING_PACKAGES=()
+        for pkg in ${AVIF_UNIX_LIBRARIES}; do
+          if [[ "${pkg}" == "imagemagick" ]] && (command -v magick >/dev/null 2>&1 || command -v convert >/dev/null 2>&1); then
+            continue
+          fi
+          if ! dpkg-query -W -f='${Status}' "${pkg}" 2>/dev/null | grep -qx "install ok installed"; then
+            MISSING_PACKAGES+=("${pkg}")
+          fi
+        done
+        if [[ ${#MISSING_PACKAGES[@]} -gt 0 ]]; then
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends "${MISSING_PACKAGES[@]}"
+        fi
       shell: bash
 
     - uses: ./.github/actions/cache
