@@ -172,6 +172,11 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
             for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
                 const uint32_t planeWidth = avifImagePlaneWidth(image, yuvPlane);
                 const uint32_t planeHeight = avifImagePlaneHeight(image, yuvPlane);
+                // The source samples are uint16_t even when the destination depth is 8.
+                uint32_t srcRowBytes;
+                if (!avifStorePlaneRowBytes(&srcRowBytes, nextFrame->stride[yuvPlane], planeWidth, planeHeight, /*bytesPerSample=*/2)) {
+                    return AVIF_FALSE;
+                }
                 const uint8_t * srcRow = nextFrame->planes[yuvPlane];
                 uint8_t * dstRow = avifImagePlane(image, yuvPlane);
                 const uint32_t dstRowBytes = avifImagePlaneRowBytes(image, yuvPlane);
@@ -180,17 +185,27 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                     for (uint32_t x = 0; x < planeWidth; ++x) {
                         dstRow[x] = (uint8_t)srcRow16[x];
                     }
-                    srcRow += nextFrame->stride[yuvPlane];
+                    srcRow += srcRowBytes;
                     dstRow += dstRowBytes;
                 }
             }
         } else {
-            // Steal the pointers from the decoder's image directly
-            for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
-                image->yuvPlanes[yuvPlane] = nextFrame->planes[yuvPlane];
-                image->yuvRowBytes[yuvPlane] = nextFrame->stride[yuvPlane];
-            }
+            // Steal the pointers from the decoder's image directly.
             image->imageOwnsYUVPlanes = AVIF_FALSE;
+            const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+            for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
+                uint32_t rowBytes;
+                if (!avifStorePlaneRowBytes(&rowBytes,
+                                            nextFrame->stride[yuvPlane],
+                                            avifImagePlaneWidth(image, yuvPlane),
+                                            avifImagePlaneHeight(image, yuvPlane),
+                                            bytesPerSample)) {
+                    avifImageFreePlanes(image, AVIF_PLANES_YUV);
+                    return AVIF_FALSE;
+                }
+                image->yuvPlanes[yuvPlane] = nextFrame->planes[yuvPlane];
+                image->yuvRowBytes[yuvPlane] = rowBytes;
+            }
         }
     } else {
         // Alpha plane - set image to correct size, fill alpha
@@ -203,6 +218,10 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
 
         if (!avifImageUsesU16(image) && (nextFrame->fmt & AVM_IMG_FMT_HIGHBITDEPTH)) {
             AVIF_CHECK(avifImageAllocatePlanes(image, AVIF_PLANES_A) == AVIF_RESULT_OK);
+            uint32_t srcRowBytes;
+            if (!avifStorePlaneRowBytes(&srcRowBytes, nextFrame->stride[0], image->width, image->height, /*bytesPerSample=*/2)) {
+                return AVIF_FALSE;
+            }
             const uint8_t * srcRow = nextFrame->planes[0];
             uint8_t * dstRow = image->alphaPlane;
             for (uint32_t y = 0; y < image->height; ++y) {
@@ -210,13 +229,18 @@ static avifBool avmCodecGetNextImage(struct avifCodec * codec,
                 for (uint32_t x = 0; x < image->width; ++x) {
                     dstRow[x] = (uint8_t)srcRow16[x];
                 }
-                srcRow += nextFrame->stride[0];
+                srcRow += srcRowBytes;
                 dstRow += image->alphaRowBytes;
             }
         } else {
-            image->alphaPlane = nextFrame->planes[0];
-            image->alphaRowBytes = nextFrame->stride[0];
             image->imageOwnsAlphaPlane = AVIF_FALSE;
+            const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+            uint32_t rowBytes;
+            if (!avifStorePlaneRowBytes(&rowBytes, nextFrame->stride[0], image->width, image->height, bytesPerSample)) {
+                return AVIF_FALSE;
+            }
+            image->alphaPlane = nextFrame->planes[0];
+            image->alphaRowBytes = rowBytes;
         }
         *isLimitedRangeAlpha = (nextFrame->range == AVM_CR_STUDIO_RANGE);
     }

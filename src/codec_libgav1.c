@@ -103,14 +103,25 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
         image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
-        // Steal the pointers from the decoder's image directly
+        // Steal the pointers from the decoder's image directly.
+        // Keep the stride only when it is non-negative and covers every sample of the plane.
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
+        const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
         int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
         for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
+            uint32_t rowBytes;
+            if (!avifStorePlaneRowBytes(&rowBytes,
+                                        gav1Image->stride[yuvPlane],
+                                        avifImagePlaneWidth(image, yuvPlane),
+                                        avifImagePlaneHeight(image, yuvPlane),
+                                        bytesPerSample)) {
+                avifImageFreePlanes(image, AVIF_PLANES_YUV);
+                return AVIF_FALSE;
+            }
             image->yuvPlanes[yuvPlane] = gav1Image->plane[yuvPlane];
-            image->yuvRowBytes[yuvPlane] = gav1Image->stride[yuvPlane];
+            image->yuvRowBytes[yuvPlane] = rowBytes;
         }
-        image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - set image to correct size, fill alpha
 
@@ -119,10 +130,15 @@ static avifBool gav1CodecGetNextImage(struct avifCodec * codec,
         image->depth = gav1Image->bitdepth;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
-        image->alphaPlane = gav1Image->plane[0];
-        image->alphaRowBytes = gav1Image->stride[0];
-        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
         image->imageOwnsAlphaPlane = AVIF_FALSE;
+        const uint32_t bytesPerSample = (image->depth > 8) ? 2 : 1;
+        uint32_t rowBytes;
+        if (!avifStorePlaneRowBytes(&rowBytes, gav1Image->stride[0], image->width, image->height, bytesPerSample)) {
+            return AVIF_FALSE;
+        }
+        image->alphaPlane = gav1Image->plane[0];
+        image->alphaRowBytes = rowBytes;
+        *isLimitedRangeAlpha = (codec->internal->colorRange == AVIF_RANGE_LIMITED);
     }
 
     return AVIF_TRUE;

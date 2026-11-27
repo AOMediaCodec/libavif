@@ -1969,7 +1969,10 @@ static avifResult avifDecoderDataCopyTileToImage(avifDecoderData * data,
     const avifCropRect srcTileViewRect = { 0, 0, dstTileViewRect.width, dstTileViewRect.height };
     AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&dstTileView, &dstView, &dstTileViewRect) == AVIF_RESULT_OK);
     AVIF_ASSERT_OR_RETURN(avifImageSetViewRect(&srcTileView, tile->image, &srcTileViewRect) == AVIF_RESULT_OK);
-    avifImageCopySamples(&dstTileView, &srcTileView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV);
+    if (!avifImageCopySamples(&dstTileView, &srcTileView, avifIsAlpha(tile->input->itemCategory) ? AVIF_PLANES_A : AVIF_PLANES_YUV)) {
+        avifDiagnosticsPrintf(data->diag, "Tile plane stride does not cover its samples");
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
     return AVIF_RESULT_OK;
 }
 
