@@ -378,18 +378,18 @@ cleanup:
 // and values ranging in [bucketMin, bucketMax] (values outside of the range are added to the first/last buckets).
 static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int numBuckets)
 {
-    if (isnan(v) || bucketMax <= bucketMin || numBuckets <= 1) {
+    if (!isfinite(v) || bucketMax <= bucketMin || numBuckets <= 1) {
         return 0;
     }
     v = AVIF_CLAMP(v, bucketMin, bucketMax);
-    const float scaled = avifRoundf((v - bucketMin) / (bucketMax - bucketMin) * numBuckets);
+    const double scaled = round(((double)v - (double)bucketMin) / ((double)bucketMax - (double)bucketMin) * (double)numBuckets);
     if (!isfinite(scaled)) {
         return (v >= bucketMax) ? (numBuckets - 1) : 0;
     }
-    if (scaled <= 0.0f) {
+    if (scaled <= 0.0) {
         return 0;
     }
-    if (scaled >= (float)(numBuckets - 1)) {
+    if (scaled >= (double)(numBuckets - 1)) {
         return numBuckets - 1;
     }
     return (int)scaled;
@@ -397,12 +397,12 @@ static int avifValueToBucketIdx(float v, float bucketMin, float bucketMax, int n
 // Returns the lower end of the value range belonging to the given histogram bucket.
 static float avifBucketIdxToValue(int idx, float bucketMin, float bucketMax, int numBuckets)
 {
-    return idx * (bucketMax - bucketMin) / numBuckets + bucketMin;
+    return (float)((double)idx * ((double)bucketMax - (double)bucketMin) / (double)numBuckets + (double)bucketMin);
 }
 
 avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixels, float * rangeMin, float * rangeMax)
 {
-    if (numPixels == 0) {
+    if (gainMapF == NULL || numPixels == 0) {
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
     const float bucketSize = 0.01f;        // Size of one bucket. Empirical value.
@@ -410,29 +410,46 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, size_t numPixel
     const double rawMaxOutliers = round((double)numPixels * (double)maxOutliersRatio / 2.0);
     const int maxOutliersOnEachSide = (rawMaxOutliers >= (double)INT_MAX) ? INT_MAX : (int)rawMaxOutliers;
 
-    float min = gainMapF[0];
-    float max = gainMapF[0];
-    for (size_t i = 1; i < numPixels; ++i) {
-        min = AVIF_MIN(min, gainMapF[i]);
-        max = AVIF_MAX(max, gainMapF[i]);
+    float min = 0.0f;
+    float max = 0.0f;
+    avifBool foundFinite = AVIF_FALSE;
+    for (size_t i = 0; i < numPixels; ++i) {
+        const float v = gainMapF[i];
+        if (!isfinite(v)) {
+            continue;
+        }
+        if (!foundFinite) {
+            min = v;
+            max = v;
+            foundFinite = AVIF_TRUE;
+        } else {
+            min = AVIF_MIN(min, v);
+            max = AVIF_MAX(max, v);
+        }
+    }
+    if (!foundFinite) {
+        return AVIF_RESULT_INVALID_ARGUMENT;
     }
 
     *rangeMin = min;
     *rangeMax = max;
-    if ((max - min) <= (bucketSize * 2) || maxOutliersOnEachSide == 0) {
+    const double range = (double)max - (double)min;
+    if (range <= (double)bucketSize * 2.0 || maxOutliersOnEachSide == 0) {
         return AVIF_RESULT_OK;
     }
 
     const int maxNumBuckets = 10000;
-    const float rawNumBuckets = ceilf((max - min) / bucketSize);
-    const int numBuckets = (isnan(rawNumBuckets) || rawNumBuckets >= (float)maxNumBuckets) ? maxNumBuckets
-                                                                                           : AVIF_MAX((int)rawNumBuckets, 1);
+    const double rawNumBuckets = ceil(range / (double)bucketSize);
+    const int numBuckets = (isnan(rawNumBuckets) || rawNumBuckets >= (double)maxNumBuckets) ? maxNumBuckets
+                                                                                            : AVIF_MAX((int)rawNumBuckets, 1);
     int * histogram = avifCalloc(numBuckets, sizeof(int));
     if (histogram == NULL) {
         return AVIF_RESULT_OUT_OF_MEMORY;
     }
     for (size_t i = 0; i < numPixels; ++i) {
-        ++(histogram[avifValueToBucketIdx(gainMapF[i], min, max, numBuckets)]);
+        if (isfinite(gainMapF[i])) {
+            ++(histogram[avifValueToBucketIdx(gainMapF[i], min, max, numBuckets)]);
+        }
     }
 
     int leftOutliers = 0;
@@ -597,7 +614,7 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         avifDiagnosticsPrintf(diag, "Image dimensions must be non-zero");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }
-    if (width > SIZE_MAX / height) {
+    if ((size_t)width > SIZE_MAX / sizeof(float) / height) {
         avifDiagnosticsPrintf(diag, "Image dimensions overflow");
         return AVIF_RESULT_INVALID_ARGUMENT;
     }

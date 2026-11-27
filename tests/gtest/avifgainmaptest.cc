@@ -1861,6 +1861,8 @@ TEST(FindMinMaxWithoutOutliers, EmptyAndNonFiniteValues) {
   EXPECT_EQ(
       avifFindMinMaxWithoutOutliers(extreme.data(), extreme.size(), &min, &max),
       AVIF_RESULT_OK);
+  EXPECT_TRUE(std::isfinite(min));
+  EXPECT_TRUE(std::isfinite(max));
 
   std::vector<float> with_inf(2000, 1.0f);
   with_inf[0] = 0.0f;
@@ -1868,13 +1870,22 @@ TEST(FindMinMaxWithoutOutliers, EmptyAndNonFiniteValues) {
   EXPECT_EQ(avifFindMinMaxWithoutOutliers(with_inf.data(), with_inf.size(),
                                           &min, &max),
             AVIF_RESULT_OK);
+  EXPECT_TRUE(std::isfinite(min));
+  EXPECT_TRUE(std::isfinite(max));
 
   std::vector<float> with_nan(2000, 1.0f);
-  with_nan[0] = 0.0f;
-  with_nan[1] = std::numeric_limits<float>::quiet_NaN();
+  with_nan[0] = std::numeric_limits<float>::quiet_NaN();
+  with_nan[1] = 0.0f;
   EXPECT_EQ(avifFindMinMaxWithoutOutliers(with_nan.data(), with_nan.size(),
                                           &min, &max),
             AVIF_RESULT_OK);
+  EXPECT_TRUE(std::isfinite(min));
+  EXPECT_TRUE(std::isfinite(max));
+
+  std::vector<float> all_nan(16, std::numeric_limits<float>::quiet_NaN());
+  EXPECT_EQ(
+      avifFindMinMaxWithoutOutliers(all_nan.data(), all_nan.size(), &min, &max),
+      AVIF_RESULT_INVALID_ARGUMENT);
 }
 
 TEST(GainMapTest, ComputeAndApplyZeroDimensions) {
