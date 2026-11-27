@@ -21,17 +21,27 @@ source $(dirname "$0")/cmd_test_common.sh || exit
 # Input file path.
 INPUT_PNG="${TESTDATA_DIR}/weld_16bit.png"
 # Output file names.
+INPUT_CROP_PNG="avif_test_cmd_depth_extension_input.png"
 ENCODED_FILE="avif_test_cmd_depth_extension.avif"
 DECODED_FILE="avif_test_cmd_depth_extension_decoded.png"
 
 cleanup() {
   pushd ${TMP_DIR}
-    rm -f -- "${ENCODED_FILE}"
+    rm -f -- "${INPUT_CROP_PNG}" "${ENCODED_FILE}" "${DECODED_FILE}"
   popd
 }
 trap cleanup EXIT
 
 pushd ${TMP_DIR}
+  # Crop the 1024x684 input image to speed up encoding under sanitizers.
+  if command -v magick &> /dev/null; then
+    magick "${INPUT_PNG}" -crop 128x128+0+0 +repage -depth 16 "${INPUT_CROP_PNG}"
+    INPUT_PNG="${INPUT_CROP_PNG}"
+  elif command -v convert &> /dev/null; then
+    convert "${INPUT_PNG}" -crop 128x128+0+0 +repage -depth 16 "${INPUT_CROP_PNG}"
+    INPUT_PNG="${INPUT_CROP_PNG}"
+  fi
+
   echo "Default depth"
   "${AVIFENC}" "${INPUT_PNG}" --speed 9 -o "${ENCODED_FILE}"
 

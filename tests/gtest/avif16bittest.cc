@@ -40,6 +40,9 @@ TEST_P(SampleTransformTest, Avif16bit) {
   const ImagePtr image = testutil::ReadImage(
       data_path, "weld_16bit.png", yuv_format, /*requested_depth=*/16);
   ASSERT_NE(image, nullptr);
+  // Speed test up.
+  image->width = 128;
+  image->height = 128;
   image->yuvRange = yuv_range;  // Some pixel values are out-of-range.
   if (create_alpha && !image->alphaPlane) {
     // Simulate alpha plane with a view on luma.

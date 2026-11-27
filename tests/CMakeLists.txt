@@ -31,6 +31,7 @@ if(AVIF_CODEC_LIBGAV1_ENABLED OR AVIF_LIBYUV_ENABLED)
 endif()
 target_link_libraries(aviftest avif avif_enable_warnings)
 add_test(NAME aviftest COMMAND aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data)
+set_tests_properties(aviftest PROPERTIES COST 0)
 register_test_for_coverage(aviftest ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 
 add_executable(avifyuv avifyuv.c)
@@ -41,6 +42,7 @@ endif()
 target_link_libraries(avifyuv avif avif_enable_warnings)
 foreach(AVIFYUV_MODE limited rgb) # Modes drift and premultiply take more than 2 minutes each so they are disabled.
     add_test(NAME avifyuv_${AVIFYUV_MODE} COMMAND avifyuv -m ${AVIFYUV_MODE})
+    set_tests_properties(avifyuv_${AVIFYUV_MODE} PROPERTIES COST 0)
 endforeach()
 
 if(AVIF_FUZZTEST OR AVIF_GTEST OR AVIF_BUILD_APPS)
@@ -58,12 +60,14 @@ macro(add_avif_gtest TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::GTest GTest::Main ${ARGN} avif_enable_warnings)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    set_tests_properties(${TEST_NAME} PROPERTIES COST 0)
     register_test_for_coverage(${TEST_NAME})
 endmacro()
 macro(add_avif_gtest_with_data TEST_NAME)
     add_executable(${TEST_NAME} gtest/${TEST_NAME}.cc)
     target_link_libraries(${TEST_NAME} PRIVATE aviftest_helpers GTest::GTest ${ARGN} avif_enable_warnings)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
+    set_tests_properties(${TEST_NAME} PROPERTIES COST 0)
     register_test_for_coverage(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/data/)
 endmacro()
 
@@ -144,6 +148,17 @@ if(AVIF_GTEST)
     add_avif_gtest(avifutilstest)
     add_avif_gtest(avify4mtest)
 
+    # Schedule tests in descending COST order (2=large, 1=medium, 0=small) so heavy
+    # suites start immediately instead of stalling the tail of parallel ctest runs.
+    set_tests_properties(
+        avif16bittest avifchangesettingtest avifencodetest avifgainmaptest avifgridapitest avifrgbtoyuvthreadingtest aviftunetest
+        PROPERTIES COST 2
+    )
+    set_tests_properties(
+        avifallocationtest avifincrtest aviflosslesstest avifmetadatatest avifprogressivetest avifrangetest avifrgbtoyuvtest
+        PROPERTIES COST 1
+    )
+
     if(NOT AVIF_CODEC_AOM OR NOT AVIF_CODEC_AOM_ENCODE)
         set_tests_properties(
             # These tests are supported with aom being the encoder. If the aom encoder is unavailable,
@@ -187,6 +202,7 @@ if(AVIF_FUZZTEST)
         link_fuzztest(${TEST_NAME})
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} --stack_limit_kb=512)
         set_property(TEST ${TEST_NAME} PROPERTY ENVIRONMENT "TEST_DATA_DIRS=${CMAKE_CURRENT_SOURCE_DIR}/data/")
+        set_tests_properties(${TEST_NAME} PROPERTIES COST 0)
     endmacro()
 
     # Recommended top-level CMake options:
@@ -244,6 +260,7 @@ macro(add_cmd_test SHELL_SCRIPT)
     else()
         add_test(NAME ${SHELL_SCRIPT} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${SHELL_SCRIPT}.sh "" ${CMAKE_BINARY_DIR} ${ARGN})
     endif()
+    set_tests_properties(${SHELL_SCRIPT} PROPERTIES COST 0)
 endmacro()
 
 if(AVIF_BUILD_APPS)
@@ -271,6 +288,11 @@ if(AVIF_BUILD_APPS)
     add_cmd_test(test_cmd_transform ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
+    set_tests_properties(
+        test_cmd_animation test_cmd_avifgainmaputil test_cmd_depth_extension test_cmd_grid test_cmd_metadata test_cmd_targetsize
+        PROPERTIES COST 1
+    )
+
     if(NOT AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         set_tests_properties(test_cmd_stdin PROPERTIES DISABLED True)
     endif()
@@ -286,6 +308,7 @@ if(AVIF_BUILD_APPS)
         set(GOLDEN_TESTS_OUTPUT_DIR "" CACHE STRING "Output path for golden tests (will be a temp dir if empty)")
 
         add_cmd_test(test_cmd_enc_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR})
+        set_tests_properties(test_cmd_enc_boxes_golden PROPERTIES COST 1)
 
         if(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
             add_cmd_test(test_cmd_gainmap ${CMAKE_CURRENT_SOURCE_DIR}/data)
@@ -293,6 +316,7 @@ if(AVIF_BUILD_APPS)
             add_cmd_test(
                 test_cmd_enc_gainmap_boxes_golden ${MP4BOX_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/data ${GOLDEN_TESTS_OUTPUT_DIR}
             )
+            set_tests_properties(test_cmd_gainmap test_cmd_enc_gainmap_boxes_golden PROPERTIES COST 1)
         endif()
     endif()
 
@@ -322,6 +346,7 @@ endif()
 if(AVIF_CODEC_AVM_ENABLED)
     if(AVIF_GTEST)
         add_avif_gtest(avifavmtest)
+        set_tests_properties(avifavmtest PROPERTIES COST 2)
         if(AVIF_ENABLE_EXPERIMENTAL_MINI)
             add_avif_gtest(avifavmminitest)
         endif()
@@ -330,6 +355,7 @@ if(AVIF_CODEC_AVM_ENABLED)
     if(AVIF_BUILD_APPS)
         add_cmd_test(test_cmd_avm ${CMAKE_CURRENT_SOURCE_DIR}/data)
         add_cmd_test(test_cmd_avm_lossless ${CMAKE_CURRENT_SOURCE_DIR}/data)
+        set_tests_properties(test_cmd_avm test_cmd_avm_lossless PROPERTIES COST 1)
     endif()
 
     # AV2 support is experimental and only available when avm is explicitly specified as the encoder.
