@@ -13,7 +13,7 @@
 
 const uint8_t * avifROStreamCurrent(avifROStream * stream)
 {
-    return stream->raw->data + stream->offset;
+    return (stream->offset > 0) ? (stream->raw->data + stream->offset) : stream->raw->data;
 }
 
 void avifROStreamStart(avifROStream * stream, avifROData * raw, avifDiagnostics * diag, const char * diagContext)
@@ -71,8 +71,10 @@ avifBool avifROStreamRead(avifROStream * stream, uint8_t * data, size_t size)
         return AVIF_FALSE;
     }
 
-    memcpy(data, stream->raw->data + stream->offset, size);
-    stream->offset += size;
+    if (size > 0) {
+        memcpy(data, stream->raw->data + stream->offset, size);
+        stream->offset += size;
+    }
     return AVIF_TRUE;
 }
 
@@ -157,7 +159,7 @@ avifBool avifROStreamSkipBits(avifROStream * stream, size_t bitCount)
             return AVIF_TRUE;
         }
     }
-    const size_t num_bytes = (bitCount + 7) / 8;
+    const size_t num_bytes = bitCount / 8 + ((bitCount % 8) != 0);
     AVIF_CHECK(avifROStreamSkip(stream, num_bytes));
     stream->numUsedBitsInPartialByte = bitCount % 8;
     return AVIF_TRUE;
@@ -404,6 +406,7 @@ avifResult avifRWStreamWriteFullBox(avifRWStream * stream, const char * type, si
     if (version != -1) {
         headerSize += 4;
     }
+    AVIF_CHECKERR(contentSize <= UINT32_MAX - headerSize, AVIF_RESULT_INVALID_ARGUMENT);
 
     AVIF_CHECKRES(makeRoom(stream, headerSize));
     memset(stream->raw->data + stream->offset, 0, headerSize);
@@ -486,15 +489,18 @@ avifResult avifRWStreamWriteU64(avifRWStream * stream, uint64_t v)
 avifResult avifRWStreamWriteZeros(avifRWStream * stream, size_t byteCount)
 {
     assert(stream->numUsedBitsInPartialByte == 0); // Byte alignment is required.
-    AVIF_CHECKRES(makeRoom(stream, byteCount));
-    memset(stream->raw->data + stream->offset, 0, byteCount);
-    stream->offset += byteCount;
+    if (byteCount > 0) {
+        AVIF_CHECKRES(makeRoom(stream, byteCount));
+        memset(stream->raw->data + stream->offset, 0, byteCount);
+        stream->offset += byteCount;
+    }
     return AVIF_RESULT_OK;
 }
 
 avifResult avifRWStreamWriteBits(avifRWStream * stream, uint32_t v, size_t bitCount)
 {
-    AVIF_CHECKERR(bitCount >= 32 || (v >> bitCount) == 0, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(bitCount <= sizeof(v) * 8, AVIF_RESULT_INVALID_ARGUMENT);
+    AVIF_CHECKERR(bitCount == sizeof(v) * 8 || (v >> bitCount) == 0, AVIF_RESULT_INVALID_ARGUMENT);
     while (bitCount) {
         if (stream->numUsedBitsInPartialByte == 0) {
             AVIF_CHECKRES(makeRoom(stream, 1)); // Book a new partial byte in the stream.

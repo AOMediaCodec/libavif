@@ -216,6 +216,35 @@ TEST(StreamTest, OverflowChecksInMakeRoom) {
             AVIF_RESULT_OUT_OF_MEMORY);
 }
 
+TEST(StreamTest, BoundaryAndOverflowGuards) {
+  // Zero-size reads and current pointer on empty NULL-backed stream.
+  avifROData empty_ro = {nullptr, 0};
+  avifROStream ro_stream;
+  avifROStreamStart(&ro_stream, &empty_ro, nullptr, nullptr);
+  EXPECT_EQ(avifROStreamCurrent(&ro_stream), nullptr);
+  EXPECT_TRUE(avifROStreamRead(&ro_stream, nullptr, 0));
+  EXPECT_FALSE(avifROStreamSkipBits(&ro_stream, SIZE_MAX));
+  EXPECT_FALSE(avifROStreamSkipBits(&ro_stream, SIZE_MAX - 3));
+
+  // Zero-size writes, >32-bit WriteBits, and >UINT32_MAX box sizes.
+  testutil::AvifRwData rw_data;
+  avifRWStream rw_stream;
+  avifRWStreamStart(&rw_stream, &rw_data);
+  EXPECT_EQ(avifRWStreamWriteZeros(&rw_stream, 0), AVIF_RESULT_OK);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0, 33),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0, 40),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamWriteFullBox(&rw_stream, "test", UINT32_MAX - 7, -1, 0,
+                                     nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamWriteFullBox(&rw_stream, "test", UINT32_MAX - 11, 0, 0,
+                                     nullptr),
+            AVIF_RESULT_INVALID_ARGUMENT);
+  EXPECT_EQ(avifRWStreamWriteFullBox(&rw_stream, "test", 16, 0, 0, nullptr),
+            AVIF_RESULT_OK);
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
