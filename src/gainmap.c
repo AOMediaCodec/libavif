@@ -912,6 +912,7 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
     gainMap->altColorPrimaries = altImage->colorPrimaries;
     gainMap->altTransferCharacteristics = altImage->transferCharacteristics;
     gainMap->altMatrixCoefficients = altImage->matrixCoefficients;
+    gainMap->altYUVRange = altImage->yuvRange;
     gainMap->altDepth = altImage->depth;
     gainMap->altPlaneCount = (altImage->yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
     gainMap->altCLLI = altImage->clli;

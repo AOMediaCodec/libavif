@@ -300,6 +300,7 @@ avifResult avifImageCopy(avifImage * dstImage, const avifImage * srcImage, avifP
         dstImage->gainMap->altColorPrimaries = srcImage->gainMap->altColorPrimaries;
         dstImage->gainMap->altTransferCharacteristics = srcImage->gainMap->altTransferCharacteristics;
         dstImage->gainMap->altMatrixCoefficients = srcImage->gainMap->altMatrixCoefficients;
+        dstImage->gainMap->altYUVRange = srcImage->gainMap->altYUVRange;
         dstImage->gainMap->altDepth = srcImage->gainMap->altDepth;
         dstImage->gainMap->altPlaneCount = srcImage->gainMap->altPlaneCount;
         dstImage->gainMap->altCLLI = srcImage->gainMap->altCLLI;

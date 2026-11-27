@@ -242,7 +242,10 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     }
 
     // Maximum denominator: makes sure that the numerator is <= maxNumerator and the denominator is <= UINT32_MAX.
-    const uint32_t maxD = (v <= 1) ? UINT32_MAX : (uint32_t)floor(maxNumerator / v);
+    uint32_t maxD = (v <= 1) ? UINT32_MAX : (uint32_t)floor(maxNumerator / v);
+    while (maxD > 1 && (double)maxD * v > (double)maxNumerator) {
+        --maxD;
+    }
 
     // Find the best approximation of v as a fraction using continued fractions, see
     // https://en.wikipedia.org/wiki/Continued_fraction
@@ -258,7 +261,7 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
         const double numeratorDouble = (double)(*denominator) * v;
         assert(numeratorDouble <= maxNumerator);
         *numerator = (uint32_t)round(numeratorDouble);
-        if (fabs(numeratorDouble - (*numerator)) == 0.0) {
+        if (fabs(numeratorDouble - (*numerator)) == 0.0 || currentV == 0.0) {
             return AVIF_TRUE;
         }
         currentV = 1.0 / currentV;
