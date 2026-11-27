@@ -1575,14 +1575,20 @@ static avifResult avifImageYUVToRGBImpl(const avifImage * image, avifRGBImage * 
         }
     }
 
-    // Process alpha premultiplication, if necessary
+    // Process alpha premultiplication, if necessary.
+    // Pixels are still integer samples here even when F16 output is requested,
+    // because avifRGBImageToF16() runs below.
     if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_MULTIPLY) {
-        avifResult result = avifRGBImagePremultiplyAlpha(rgb);
+        avifRGBImage integerRGB = *rgb;
+        integerRGB.isFloat = AVIF_FALSE;
+        avifResult result = avifRGBImagePremultiplyAlpha(&integerRGB);
         if (result != AVIF_RESULT_OK) {
             return result;
         }
     } else if (alphaMultiplyMode == AVIF_ALPHA_MULTIPLY_MODE_UNMULTIPLY) {
-        avifResult result = avifRGBImageUnpremultiplyAlpha(rgb);
+        avifRGBImage integerRGB = *rgb;
+        integerRGB.isFloat = AVIF_FALSE;
+        avifResult result = avifRGBImageUnpremultiplyAlpha(&integerRGB);
         if (result != AVIF_RESULT_OK) {
             return result;
         }
