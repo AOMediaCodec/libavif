@@ -87,9 +87,20 @@ AVIF_ARRAY_DECLARE(avifArrayInternal, uint8_t, ptr);
 avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t initialCapacity)
 {
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
-    arr->elementSize = elementSize ? elementSize : 1;
+    if (elementSize == 0) {
+        arr->ptr = NULL;
+        arr->elementSize = 0;
+        arr->count = 0;
+        arr->capacity = 0;
+        return AVIF_FALSE;
+    }
+    arr->elementSize = elementSize;
     arr->count = 0;
     arr->capacity = initialCapacity;
+    if (arr->capacity == 0) {
+        arr->ptr = NULL;
+        return AVIF_TRUE;
+    }
     if (arr->capacity > SIZE_MAX / arr->elementSize) {
         arr->ptr = NULL;
         arr->capacity = 0;
@@ -108,21 +119,30 @@ avifBool avifArrayCreate(void * arrayStruct, uint32_t elementSize, uint32_t init
 void * avifArrayPush(void * arrayStruct)
 {
     avifArrayInternal * arr = (avifArrayInternal *)arrayStruct;
+    if (arr->elementSize == 0 || arr->count > arr->capacity) {
+        return NULL;
+    }
     if (arr->count == arr->capacity) {
-        uint8_t * oldPtr = arr->ptr;
-        size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
-        if (oldByteCount > SIZE_MAX / 2 || arr->capacity > UINT32_MAX / 2) {
+        if (arr->capacity > UINT32_MAX / 2) {
             return NULL;
         }
-        size_t newByteCount = oldByteCount * 2;
+        const uint32_t newCapacity = (arr->capacity == 0) ? 1 : arr->capacity * 2;
+        if (newCapacity > SIZE_MAX / arr->elementSize) {
+            return NULL;
+        }
+        uint8_t * oldPtr = arr->ptr;
+        size_t oldByteCount = (size_t)arr->elementSize * arr->capacity;
+        size_t newByteCount = (size_t)arr->elementSize * newCapacity;
         uint8_t * newPtr = (uint8_t *)avifAlloc(newByteCount);
         if (newPtr == NULL) {
             return NULL;
         }
+        if (oldByteCount > 0) {
+            memcpy(newPtr, oldPtr, oldByteCount);
+        }
+        memset(newPtr + oldByteCount, 0, newByteCount - oldByteCount);
         arr->ptr = newPtr;
-        memset(arr->ptr + oldByteCount, 0, oldByteCount);
-        memcpy(arr->ptr, oldPtr, oldByteCount);
-        arr->capacity *= 2;
+        arr->capacity = newCapacity;
         avifFree(oldPtr);
     }
     ++arr->count;
@@ -181,6 +201,9 @@ static avifBool overflowsInt32(int64_t x)
 
 avifBool avifFractionCD(avifFraction * a, avifFraction * b)
 {
+    if (a->d == 0 || b->d == 0) {
+        return AVIF_FALSE;
+    }
     avifFractionSimplify(a);
     avifFractionSimplify(b);
     if (a->d != b->d) {
@@ -242,7 +265,16 @@ static avifBool avifDoubleToUnsignedFractionImpl(double v, uint32_t maxNumerator
     }
 
     // Maximum denominator: makes sure that the numerator is <= maxNumerator and the denominator is <= UINT32_MAX.
-    const uint32_t maxD = (v <= 1) ? UINT32_MAX : (uint32_t)floor(maxNumerator / v);
+    uint32_t maxD = UINT32_MAX;
+    if (v > 0.0) {
+        const double maxDDouble = floor((double)maxNumerator / v);
+        if (maxDDouble < (double)UINT32_MAX) {
+            maxD = (uint32_t)maxDDouble;
+        }
+        if ((double)maxD * v > (double)maxNumerator) {
+            --maxD;
+        }
+    }
 
     // Find the best approximation of v as a fraction using continued fractions, see
     // https://en.wikipedia.org/wiki/Continued_fraction
