@@ -3362,7 +3362,7 @@ static avifResult avifRWStreamWriteProperties(avifItemPropertyDedup * const dedu
             // 'clap' is treated as 'irot'/'imir', although it could differ between the base and
             // gain map image items if these have different dimensions.
             if (imageMetadata->transformFlags & AVIF_TRANSFORM_CLAP) {
-                AVIF_CHECKERR(imageMetadata->width != itemMetadata->width || imageMetadata->height != itemMetadata->height,
+                AVIF_CHECKERR(imageMetadata->width == itemMetadata->width && imageMetadata->height == itemMetadata->height,
                               AVIF_RESULT_NOT_IMPLEMENTED);
             }
 
@@ -4007,8 +4007,8 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(writeConfigBox(&s, &item->av1C, encoder->data->configPropName));
             if (item->itemCategory == AVIF_ITEM_COLOR) {
                 AVIF_CHECKRES(avifEncoderWriteColorProperties(&s, imageMetadata, NULL, NULL));
-                AVIF_CHECKRES(avifEncoderWriteHDRProperties(NULL, &s, imageMetadata, NULL, NULL));
-                AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(NULL, &s, imageMetadata, NULL, NULL));
+                AVIF_CHECKRES(avifEncoderWriteHDRProperties(&s, &s, imageMetadata, NULL, NULL));
+                AVIF_CHECKRES(avifEncoderWriteTransformativeProperties(&s, &s, imageMetadata, NULL, NULL));
             }
 
             avifBoxMarker ccst;
