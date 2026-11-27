@@ -194,6 +194,113 @@ TEST(StreamTest, SkipBits) {
   EXPECT_EQ(ro_stream.numUsedBitsInPartialByte, 0);
 }
 
+TEST(StreamTest, WriteBitsWidthBounds) {
+  for (size_t prefix_bits = 0; prefix_bits < 8; ++prefix_bits) {
+    for (size_t bit_count : {0u, 1u, 7u, 8u, 31u, 32u}) {
+      SCOPED_TRACE(prefix_bits);
+      SCOPED_TRACE(bit_count);
+      const uint32_t value = bit_count == 32
+                                 ? std::numeric_limits<uint32_t>::max()
+                                 : (uint32_t{1} << bit_count) - 1;
+      testutil::AvifRwData rw_data;
+      avifRWStream rw_stream;
+      avifRWStreamStart(&rw_stream, &rw_data);
+      ASSERT_EQ(avifRWStreamWriteBits(&rw_stream, 0, prefix_bits),
+                AVIF_RESULT_OK);
+      ASSERT_EQ(avifRWStreamWriteBits(&rw_stream, value, bit_count),
+                AVIF_RESULT_OK);
+      EXPECT_EQ(rw_stream.numUsedBitsInPartialByte,
+                (prefix_bits + bit_count) % 8);
+      EXPECT_EQ(avifRWStreamOffset(&rw_stream),
+                (prefix_bits + bit_count + 7) / 8);
+      if (rw_stream.numUsedBitsInPartialByte != 0) {
+        ASSERT_EQ(avifRWStreamWriteBits(&rw_stream, 0,
+                                        8 - rw_stream.numUsedBitsInPartialByte),
+                  AVIF_RESULT_OK);
+      }
+      avifRWStreamFinishWrite(&rw_stream);
+      avifROData ro_data = {rw_data.data, rw_data.size};
+      avifDiagnostics diag;
+      avifDiagnosticsClearError(&diag);
+      avifROStream ro_stream;
+      avifROStreamStart(&ro_stream, &ro_data, &diag, "width bounds");
+      ASSERT_TRUE(avifROStreamSkipBits(&ro_stream, prefix_bits));
+      uint32_t actual = 0;
+      ASSERT_TRUE(avifROStreamReadBitsU32(&ro_stream, &actual, bit_count));
+      EXPECT_EQ(actual, value);
+    }
+    for (size_t invalid_bits : {size_t{33}, size_t{40}, size_t{64}}) {
+      SCOPED_TRACE(prefix_bits);
+      SCOPED_TRACE(invalid_bits);
+      testutil::AvifRwData rw_data;
+      avifRWStream rw_stream;
+      avifRWStreamStart(&rw_stream, &rw_data);
+      ASSERT_EQ(avifRWStreamWriteBits(&rw_stream, 0, prefix_bits),
+                AVIF_RESULT_OK);
+      const size_t offset_before = avifRWStreamOffset(&rw_stream);
+      const size_t partial_before = rw_stream.numUsedBitsInPartialByte;
+      EXPECT_EQ(avifRWStreamWriteBits(&rw_stream, 0, invalid_bits),
+                AVIF_RESULT_INVALID_ARGUMENT);
+      EXPECT_EQ(avifRWStreamOffset(&rw_stream), offset_before);
+      EXPECT_EQ(rw_stream.numUsedBitsInPartialByte, partial_before);
+      avifRWStreamFinishWrite(&rw_stream);
+    }
+  }
+}
+
+TEST(StreamTest, SkipBitsCeilingBounds) {
+  const uint8_t data[] = {0x96, 0x3c, 0xa5, 0x5a, 0xf0};
+  const size_t total_bits = sizeof(data) * 8;
+  avifROData ro_data = {data, sizeof(data)};
+  for (size_t initial_bits = 0; initial_bits < 8; ++initial_bits) {
+    for (size_t bit_count = 0; bit_count <= total_bits - initial_bits;
+         ++bit_count) {
+      SCOPED_TRACE(initial_bits);
+      SCOPED_TRACE(bit_count);
+      avifDiagnostics diag;
+      avifDiagnosticsClearError(&diag);
+      avifROStream stream;
+      avifROStreamStart(&stream, &ro_data, &diag, "ceiling bounds");
+      ASSERT_TRUE(avifROStreamSkipBits(&stream, initial_bits));
+      ASSERT_TRUE(avifROStreamSkipBits(&stream, bit_count));
+      const size_t position = initial_bits + bit_count;
+      EXPECT_EQ(avifROStreamOffset(&stream), (position + 7) / 8);
+      EXPECT_EQ(stream.numUsedBitsInPartialByte, position % 8);
+      const size_t partial_bits = position % 8 == 0 ? 0 : 8 - position % 8;
+      EXPECT_EQ(avifROStreamRemainingBytes(&stream) * 8 + partial_bits,
+                total_bits - position);
+      if (position < total_bits) {
+        uint8_t next = 0;
+        ASSERT_TRUE(avifROStreamReadBitsU8(&stream, &next, 1));
+        EXPECT_EQ(next, (data[position / 8] >> (7 - position % 8)) & 1);
+      }
+    }
+    avifDiagnostics diag;
+    avifDiagnosticsClearError(&diag);
+    avifROStream stream;
+    avifROStreamStart(&stream, &ro_data, &diag, "insufficient input");
+    ASSERT_TRUE(avifROStreamSkipBits(&stream, initial_bits));
+    EXPECT_FALSE(avifROStreamSkipBits(&stream, total_bits - initial_bits + 1));
+    for (size_t overflow_bits : {std::numeric_limits<size_t>::max() - 6,
+                                 std::numeric_limits<size_t>::max()}) {
+      SCOPED_TRACE(initial_bits);
+      SCOPED_TRACE(overflow_bits);
+      avifDiagnostics overflow_diag;
+      avifDiagnosticsClearError(&overflow_diag);
+      avifROStream overflow_stream;
+      avifROStreamStart(&overflow_stream, &ro_data, &overflow_diag,
+                        "overflow ceiling");
+      ASSERT_TRUE(avifROStreamSkipBits(&overflow_stream, initial_bits));
+      const size_t offset_before = avifROStreamOffset(&overflow_stream);
+      EXPECT_FALSE(avifROStreamSkipBits(&overflow_stream, overflow_bits));
+      if (initial_bits == 0) {
+        EXPECT_EQ(avifROStreamOffset(&overflow_stream), offset_before);
+        EXPECT_EQ(overflow_stream.numUsedBitsInPartialByte, 0u);
+      }
+    }
+  }
+}
+
 TEST(StreamTest, WriteBitsLimit) {
   testutil::AvifRwData rw_data;
   avifRWStream rw_stream;
