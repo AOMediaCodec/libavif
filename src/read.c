@@ -4907,9 +4907,15 @@ static avifBool avifParseFileTypeBox(avifFileType * ftyp, const uint8_t * raw, s
         avifDiagnosticsPrintf(diag, "Box[ftyp] contains a compatible brands section that isn't divisible by 4 [%zu]", compatibleBrandsBytes);
         return AVIF_FALSE;
     }
+#if SIZE_MAX / 4 > INT_MAX
+    if ((compatibleBrandsBytes / 4) > (size_t)INT_MAX) {
+        avifDiagnosticsPrintf(diag, "Box[ftyp] contains too many compatible brands [%zu]", compatibleBrandsBytes / 4);
+        return AVIF_FALSE;
+    }
+#endif
     ftyp->compatibleBrands = avifROStreamCurrent(&s);
     AVIF_CHECK(avifROStreamSkip(&s, compatibleBrandsBytes));
-    ftyp->compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
+    ftyp->compatibleBrandsCount = (int)(compatibleBrandsBytes / 4);
 
     return AVIF_TRUE;
 }
