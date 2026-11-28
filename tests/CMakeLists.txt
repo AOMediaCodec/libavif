@@ -88,6 +88,9 @@ if(AVIF_GTEST)
     add_avif_gtest(avifclaptest)
     add_avif_gtest(avifcllitest)
     add_avif_gtest(avifcodectest)
+    add_avif_gtest(avifcustomcodectest)
+    target_sources(avifcustomcodectest PRIVATE customcodec/stub_codec.c)
+    target_include_directories(avifcustomcodectest PRIVATE customcodec)
     add_avif_gtest_with_data(avifcolrconverttest)
     add_avif_gtest(avifcolrtest)
     add_avif_gtest_with_data(avifdecodetest)
@@ -270,6 +273,18 @@ if(AVIF_BUILD_APPS)
     add_cmd_test(test_cmd_targetsize ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_transform ${CMAKE_CURRENT_SOURCE_DIR}/data)
     add_cmd_test(test_cmd_avifgainmaputil ${CMAKE_CURRENT_SOURCE_DIR}/data)
+
+    # The custom codec library must share the libavif registry with the apps. Only the shared libavif build
+    # guarantees that: the static build hides libavif symbols (C_VISIBILITY_PRESET hidden), so the apps cannot
+    # export them to the library.
+    if(BUILD_SHARED_LIBS)
+        add_library(avif_custom_codec_stub MODULE customcodec/stub_codec.c customcodec/stub_plugin.c)
+        target_link_libraries(avif_custom_codec_stub PRIVATE avif avif_enable_warnings)
+        add_cmd_test(test_cmd_custom_codec ${CMAKE_CURRENT_SOURCE_DIR}/data)
+        set_tests_properties(
+            test_cmd_custom_codec PROPERTIES ENVIRONMENT "AVIF_CUSTOM_CODEC_STUB=$<TARGET_FILE:avif_custom_codec_stub>"
+        )
+    endif()
 
     if(NOT AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
         set_tests_properties(test_cmd_stdin PROPERTIES DISABLED True)
