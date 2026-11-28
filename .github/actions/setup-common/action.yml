@@ -22,6 +22,20 @@ runs:
     - name: Print CMake version
       run: cmake --version
       shell: bash
+    - name: Pin preinstalled Rust toolchain
+      if: ${{ inputs.codec-rav1e == 'LOCAL' }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        # Prevent rustup from auto-updating the stable channel in-place during
+        # parallel cargo-cinstall builds (which removes rustc/rust-std out from
+        # under running rustc processes).
+        echo "RUSTUP_AUTO_INSTALL=0" >> $env:GITHUB_ENV
+        $rustc = (rustup which rustc).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $rustc) { exit 1 }
+        $toolchainBin = Split-Path -Parent $rustc
+        echo "RUSTC=$rustc" >> $env:GITHUB_ENV
+        echo "$toolchainBin" >> $env:GITHUB_PATH
+      shell: pwsh
     - name: Set up cargo-c
       if: ${{ inputs.codec-rav1e == 'LOCAL' }}
       run: |
